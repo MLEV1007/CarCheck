@@ -1,0 +1,164 @@
+'use client';
+
+import { AlertTriangle, Loader2 } from 'lucide-react';
+import { getPaintStatus } from '@/lib/inspections/constants';
+import { PaintStatusBadge } from '@/components/inspections/wizard/PaintStatusBadge';
+import type { CarInfoState, DefectState, PaintMeasurementState } from '@/lib/inspections/types';
+
+interface StepSummaryProps {
+  carInfo: CarInfoState;
+  paintMeasurements: PaintMeasurementState[];
+  defects: DefectState[];
+  isSubmitting: boolean;
+  submitError: string | null;
+  onBack: () => void;
+  onSaveDraft: () => void;
+  onPublish: () => void;
+}
+
+/** LÉPÉS 4 -- Összegzés & Publikálás (PROJEKT_INSTRUKCIOK.md 5.B.4). */
+export function StepSummary({
+  carInfo,
+  paintMeasurements,
+  defects,
+  isSubmitting,
+  submitError,
+  onBack,
+  onSaveDraft,
+  onPublish,
+}: StepSummaryProps) {
+  const filledPaint = paintMeasurements.filter((panel) => panel.micronValue.trim() !== '');
+  const carLabel = [carInfo.carBrand, carInfo.carModel].filter(Boolean).join(' ') || 'Ismeretlen autó';
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div>
+        <h2 className="text-[18px] font-semibold tracking-[-0.3px] text-linear-ink">Összegzés & Publikálás</h2>
+        <p className="mt-1 text-[13px] text-linear-ink-subtle">
+          Ellenőrizd az adatokat, majd mentsd piszkozatként, vagy fejezd be és publikáld az ügyfélriportot.
+        </p>
+      </div>
+
+      <div className="rounded-lg border border-linear-hairline bg-linear-surface-1 p-5">
+        <p className="text-[15px] font-semibold text-linear-ink">{carLabel}</p>
+        <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-[13px] sm:grid-cols-3">
+          <SummaryField label="Évjárat" value={carInfo.year || '—'} />
+          <SummaryField label="Rendszám" value={carInfo.licensePlate || '—'} mono />
+          <SummaryField label="Km óra állás" value={carInfo.odometer ? `${carInfo.odometer} km` : '—'} />
+          <SummaryField label="Alvázszám (VIN)" value={carInfo.vin || '—'} mono />
+        </dl>
+      </div>
+
+      <div className="rounded-lg border border-linear-hairline bg-linear-surface-1 p-5">
+        <p className="text-[13px] font-semibold uppercase tracking-[0.4px] text-linear-ink-subtle">
+          Festékvastagság-mérés ({filledPaint.length} elem rögzítve)
+        </p>
+        {filledPaint.length === 0 ? (
+          <p className="mt-2 text-[13px] text-linear-ink-subtle">Nincs rögzített mérés.</p>
+        ) : (
+          <ul className="mt-3 flex flex-col divide-y divide-linear-hairline">
+            {filledPaint.map((panel) => {
+              const micron = Number(panel.micronValue);
+              return (
+                <li key={panel.elementName} className="flex items-center justify-between gap-3 py-2">
+                  <span className="text-[13px] text-linear-ink">{panel.elementName}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="font-mono text-[13px] text-linear-ink-muted">{micron} µm</span>
+                    <PaintStatusBadge status={getPaintStatus(micron)} />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+
+      <div className="rounded-lg border border-linear-hairline bg-linear-surface-1 p-5">
+        <p className="text-[13px] font-semibold uppercase tracking-[0.4px] text-linear-ink-subtle">
+          Hibák ({defects.length} rögzítve)
+        </p>
+        {defects.length === 0 ? (
+          <p className="mt-2 text-[13px] text-linear-ink-subtle">Nincs rögzített hiba.</p>
+        ) : (
+          <ul className="mt-3 flex flex-col divide-y divide-linear-hairline">
+            {defects.map((defect, index) => (
+              <li key={defect.clientId} className="flex items-center gap-3 py-2.5">
+                {defect.previewUrl ? (
+                  defect.file?.type.startsWith('video/') ? (
+                    <video src={defect.previewUrl} className="h-12 w-12 shrink-0 rounded-md object-cover" />
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={defect.previewUrl}
+                      alt=""
+                      className="h-12 w-12 shrink-0 rounded-md object-cover"
+                    />
+                  )
+                ) : (
+                  <div className="h-12 w-12 shrink-0 rounded-md bg-linear-surface-2" />
+                )}
+                <div className="min-w-0">
+                  <p className="text-[13px] font-medium text-linear-ink">
+                    #{index + 1} · {defect.category}
+                  </p>
+                  <p className="truncate text-[12px] text-linear-ink-subtle">{defect.description}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {submitError && (
+        <p
+          role="alert"
+          className="flex items-start gap-2 rounded-md border border-[#e05a5a]/30 bg-[#3a1a1a]/40 px-3 py-2.5 text-[13px] text-[#e05a5a]"
+        >
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          {submitError}
+        </p>
+      )}
+
+      <div className="flex flex-col-reverse gap-3 border-t border-linear-hairline pt-5 sm:flex-row sm:items-center sm:justify-between">
+        <button
+          type="button"
+          onClick={onBack}
+          disabled={isSubmitting}
+          className="inline-flex h-10 items-center rounded-md border border-linear-hairline-strong bg-linear-surface-1 px-5 text-[14px] font-medium text-linear-ink transition-colors hover:bg-linear-surface-2 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Vissza
+        </button>
+
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <button
+            type="button"
+            onClick={onSaveDraft}
+            disabled={isSubmitting}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-linear-hairline-strong bg-linear-surface-1 px-5 text-[14px] font-medium text-linear-ink transition-colors hover:bg-linear-surface-2 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+            Mentés piszkozatként
+          </button>
+          <button
+            type="button"
+            onClick={onPublish}
+            disabled={isSubmitting}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-linear-primary px-5 text-[14px] font-medium text-white transition-colors hover:bg-linear-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+            Vizsgálat befejezése & Publikálás
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SummaryField({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div>
+      <dt className="text-[11px] uppercase tracking-[0.4px] text-linear-ink-subtle">{label}</dt>
+      <dd className={'mt-0.5 text-linear-ink ' + (mono ? 'font-mono' : '')}>{value}</dd>
+    </div>
+  );
+}
