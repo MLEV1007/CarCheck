@@ -6,7 +6,7 @@ import { InspectionWizard } from '@/components/inspections/wizard/InspectionWiza
 import { InspectionDetailView } from '@/components/inspections/detail/InspectionDetailView';
 import { InspectionNotFound } from '@/components/inspections/detail/InspectionNotFound';
 import { PAINT_PANELS } from '@/lib/inspections/constants';
-import type { CarInfoState, DefectState, PaintMeasurementState } from '@/lib/inspections/types';
+import type { CarInfoState, DefectState, GeneralPhotoState, PaintMeasurementState } from '@/lib/inspections/types';
 
 interface InspectionDetailPageProps {
   params: Promise<{ id: string }>;
@@ -48,7 +48,9 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
 
   const { data: inspection } = await supabase
     .from('inspections')
-    .select('id, car_brand, car_model, year, vin, license_plate, odometer, status, public_token, created_at')
+    .select(
+      'id, car_brand, car_model, year, vin, license_plate, odometer, status, public_token, general_photos, created_at'
+    )
     .eq('id', id)
     .eq('user_id', user.id)
     .maybeSingle();
@@ -97,6 +99,12 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
       previewUrl: row.media_url,
     }));
 
+    const initialGeneralPhotos: GeneralPhotoState[] = (inspection.general_photos ?? []).map((url: string) => ({
+      clientId: url,
+      file: null,
+      previewUrl: url,
+    }));
+
     return (
       <div className="min-h-screen bg-linear-canvas">
         <header className="flex h-16 items-center gap-3 border-b border-linear-hairline px-4 sm:px-6">
@@ -113,6 +121,7 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
         <InspectionWizard
           inspectionId={inspection.id}
           initialCarInfo={initialCarInfo}
+          initialGeneralPhotos={initialGeneralPhotos.length > 0 ? initialGeneralPhotos : undefined}
           initialPaintMeasurements={initialPaintMeasurements}
           initialDefects={initialDefects.length > 0 ? initialDefects : undefined}
         />
@@ -125,6 +134,7 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
       inspection={inspection}
       paintMeasurements={paintMeasurements ?? []}
       defects={defects ?? []}
+      generalPhotos={inspection.general_photos ?? []}
     />
   );
 }

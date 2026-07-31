@@ -18,6 +18,9 @@ export interface PublicReportInspection {
   license_plate: string | null;
   odometer: number | null;
   status: 'draft' | 'completed' | string;
+  /** Általános autó fotók (elölről/hátulról/oldalról/beltér/műszerfal stb.) -- a
+   * `get_public_report` RPC 2026-07-31-es kiegészítése óta tartalmazza. */
+  general_photos: string[];
   created_at: string;
   updated_at: string;
 }

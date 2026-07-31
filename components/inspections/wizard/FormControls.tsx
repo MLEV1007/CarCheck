@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 /**
  * Linear design system (linear.md) `text-input` tokenje -- surface-1 háttér,
  * rounded-md, hairline szegély, fókuszban primary-focus keret. Ezeket a mezőket
- * a wizard mind a négy lépése újrahasznosítja, hogy a form-vizuál konzisztens maradjon.
+ * a wizard mind az öt lépése újrahasznosítja, hogy a form-vizuál konzisztens maradjon.
  */
 
 const FIELD_BASE =
@@ -16,6 +16,7 @@ interface FieldWrapperProps {
   label: string;
   htmlFor?: string;
   hint?: string;
+  error?: string;
 }
 
 function FieldLabel({ label, htmlFor, hint }: FieldWrapperProps) {
@@ -29,14 +30,31 @@ function FieldLabel({ label, htmlFor, hint }: FieldWrapperProps) {
   );
 }
 
+/** Szigorú adatvalidáció (PROJEKT_INSTRUKCIOK.md, "Szigorú adatvalidáció" lépés) -- ha a
+ * `error` prop meg van adva, piros keret + piros hibaszöveg jelenik meg a mező alatt. */
+function FieldError({ error }: { error?: string }) {
+  if (!error) return null;
+  return (
+    <span role="alert" className="text-[12px] text-[#e05a5a]">
+      {error}
+    </span>
+  );
+}
+
 interface TextFieldProps extends InputHTMLAttributes<HTMLInputElement>, FieldWrapperProps {}
 
-export function TextField({ label, hint, id, className, ...props }: TextFieldProps) {
+export function TextField({ label, hint, error, id, className, ...props }: TextFieldProps) {
   const fieldId = id ?? props.name;
   return (
     <div className="flex flex-col gap-1.5">
       <FieldLabel label={label} htmlFor={fieldId} hint={hint} />
-      <input id={fieldId} className={cn(FIELD_BASE, className)} {...props} />
+      <input
+        id={fieldId}
+        aria-invalid={!!error}
+        className={cn(FIELD_BASE, error && 'border-[#e05a5a] focus:border-[#e05a5a] focus:ring-[#e05a5a]/30', className)}
+        {...props}
+      />
+      <FieldError error={error} />
     </div>
   );
 }
@@ -46,12 +64,17 @@ interface SelectFieldProps extends SelectHTMLAttributes<HTMLSelectElement>, Fiel
   placeholder?: string;
 }
 
-export function SelectField({ label, hint, id, className, options, placeholder, ...props }: SelectFieldProps) {
+export function SelectField({ label, hint, error, id, className, options, placeholder, ...props }: SelectFieldProps) {
   const fieldId = id ?? props.name;
   return (
     <div className="flex flex-col gap-1.5">
       <FieldLabel label={label} htmlFor={fieldId} hint={hint} />
-      <select id={fieldId} className={cn(FIELD_BASE, 'appearance-none', className)} {...props}>
+      <select
+        id={fieldId}
+        aria-invalid={!!error}
+        className={cn(FIELD_BASE, 'appearance-none', error && 'border-[#e05a5a] focus:border-[#e05a5a] focus:ring-[#e05a5a]/30', className)}
+        {...props}
+      >
         {placeholder && (
           <option value="" disabled>
             {placeholder}
@@ -63,6 +86,7 @@ export function SelectField({ label, hint, id, className, options, placeholder, 
           </option>
         ))}
       </select>
+      <FieldError error={error} />
     </div>
   );
 }

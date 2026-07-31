@@ -37,7 +37,7 @@ export function PaintMap({ measurements }: { measurements: PublicReportPaintMeas
   if (measurements.length === 0) return null;
 
   return (
-    <section className="py-16 first:pt-0">
+    <section className="border-t border-bmw-hairline py-16 first:border-t-0 first:pt-0">
       <SectionHeading eyebrow="Karosszéria" title="Festékvastagság-térkép" />
 
       <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">

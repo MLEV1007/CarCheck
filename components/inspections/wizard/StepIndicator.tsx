@@ -3,9 +3,10 @@ import type { WizardStep } from '@/lib/inspections/types';
 
 const STEPS: { step: WizardStep; label: string }[] = [
   { step: 1, label: 'Autó adatok' },
-  { step: 2, label: 'Festékvastagság' },
-  { step: 3, label: 'Hibák & Média' },
-  { step: 4, label: 'Összegzés' },
+  { step: 2, label: 'Fotók' },
+  { step: 3, label: 'Festékvastagság' },
+  { step: 4, label: 'Hibák & Média' },
+  { step: 5, label: 'Összegzés' },
 ];
 
 /**

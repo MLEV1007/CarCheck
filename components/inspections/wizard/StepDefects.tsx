@@ -13,7 +13,7 @@ interface StepDefectsProps {
   onNext: () => void;
 }
 
-/** LÉPÉS 3 -- Hibák és Média rögzítése (PROJEKT_INSTRUKCIOK.md 5.B.3). */
+/** LÉPÉS 4 -- Hibák és Média rögzítése (PROJEKT_INSTRUKCIOK.md 5.B.3). */
 export function StepDefects({ value, onChange, onBack, onNext }: StepDefectsProps) {
   function updateDefect(clientId: string, patch: Partial<DefectState>) {
     onChange(value.map((defect) => (defect.clientId === clientId ? { ...defect, ...patch } : defect)));

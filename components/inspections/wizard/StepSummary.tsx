@@ -8,6 +8,7 @@ import type { CarInfoState, DefectState, PaintMeasurementState } from '@/lib/ins
 
 interface StepSummaryProps {
   carInfo: CarInfoState;
+  generalPhotoCount: number;
   paintMeasurements: PaintMeasurementState[];
   defects: DefectState[];
   isSubmitting: boolean;
@@ -17,9 +18,10 @@ interface StepSummaryProps {
   onPublish: () => void;
 }
 
-/** LÉPÉS 4 -- Összegzés & Publikálás (PROJEKT_INSTRUKCIOK.md 5.B.4). */
+/** LÉPÉS 5 -- Összegzés & Publikálás (PROJEKT_INSTRUKCIOK.md 5.B.4). */
 export function StepSummary({
   carInfo,
+  generalPhotoCount,
   paintMeasurements,
   defects,
   isSubmitting,
@@ -47,6 +49,7 @@ export function StepSummary({
           <SummaryField label="Rendszám" value={carInfo.licensePlate || '—'} mono />
           <SummaryField label="Km óra állás" value={carInfo.odometer ? `${carInfo.odometer} km` : '—'} />
           <SummaryField label="Alvázszám (VIN)" value={carInfo.vin || '—'} mono />
+          <SummaryField label="Általános fotók" value={generalPhotoCount > 0 ? `${generalPhotoCount} db` : '—'} />
         </dl>
       </div>
 

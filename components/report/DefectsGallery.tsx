@@ -32,7 +32,7 @@ export function DefectsGallery({ defects }: DefectsGalleryProps) {
   const grouped = useMemo(() => groupByCategory(defects), [defects]);
 
   return (
-    <section className="border-t border-bmw-hairline py-16">
+    <section className="border-t border-bmw-hairline py-16 first:border-t-0 first:pt-0">
       <SectionHeading
         eyebrow="Talált hibák"
         title={defects.length > 0 ? `${defects.length} rögzített hiba` : 'Nincs rögzített hiba'}

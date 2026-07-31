@@ -47,6 +47,7 @@ interface InspectionDetailViewProps {
   inspection: DetailInspection;
   paintMeasurements: DetailPaintMeasurement[];
   defects: DetailDefect[];
+  generalPhotos: string[];
 }
 
 /**
@@ -60,7 +61,12 @@ interface InspectionDetailViewProps {
  * `get_public_report` RPC-t (2026-07-31-es migráció óta) is inaktiválja a linken,
  * amíg a vizsgáló újra nem publikálja, így a régi ügyfél-link nem mutat félkész adatot.
  */
-export function InspectionDetailView({ inspection, paintMeasurements, defects }: InspectionDetailViewProps) {
+export function InspectionDetailView({
+  inspection,
+  paintMeasurements,
+  defects,
+  generalPhotos,
+}: InspectionDetailViewProps) {
   const router = useRouter();
   const [copied, setCopied] = useState(false);
   const [showToast, setShowToast] = useState(false);
@@ -204,6 +210,34 @@ export function InspectionDetailView({ inspection, paintMeasurements, defects }:
             />
             <DetailField label="Alvázszám (VIN)" value={inspection.vin || '—'} mono />
           </dl>
+        </div>
+
+        <div className="rounded-lg border border-linear-hairline bg-linear-surface-1 p-5">
+          <p className="text-[13px] font-semibold uppercase tracking-[0.4px] text-linear-ink-subtle">
+            Általános fotók ({generalPhotos.length} db)
+          </p>
+          {generalPhotos.length === 0 ? (
+            <p className="mt-2 text-[13px] text-linear-ink-subtle">Nincs feltöltve általános fotó.</p>
+          ) : (
+            <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
+              {generalPhotos.map((url, index) => (
+                <a
+                  key={url}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="aspect-square overflow-hidden rounded-md border border-linear-hairline bg-linear-surface-2"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={url}
+                    alt={`Általános fotó ${index + 1}`}
+                    className="h-full w-full object-cover transition-opacity hover:opacity-80"
+                  />
+                </a>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="rounded-lg border border-linear-hairline bg-linear-surface-1 p-5">

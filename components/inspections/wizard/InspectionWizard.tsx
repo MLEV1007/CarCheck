@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { StepIndicator } from '@/components/inspections/wizard/StepIndicator';
 import { StepCarInfo } from '@/components/inspections/wizard/StepCarInfo';
+import { StepGeneralPhotos } from '@/components/inspections/wizard/StepGeneralPhotos';
 import { StepPaintMeasurements } from '@/components/inspections/wizard/StepPaintMeasurements';
 import { StepDefects } from '@/components/inspections/wizard/StepDefects';
 import { StepSummary } from '@/components/inspections/wizard/StepSummary';
@@ -14,21 +15,24 @@ import {
   EMPTY_DEFECT,
   type CarInfoState,
   type DefectState,
+  type GeneralPhotoState,
   type PaintMeasurementState,
   type WizardStep,
 } from '@/lib/inspections/types';
 
 const STEP_LABELS: Record<WizardStep, string> = {
   1: 'Autó adatok',
-  2: 'Festékvastagság-mérés',
-  3: 'Hibák & Média',
-  4: 'Összegzés & Publikálás',
+  2: 'Általános fotók',
+  3: 'Festékvastagság-mérés',
+  4: 'Hibák & Média',
+  5: 'Összegzés & Publikálás',
 };
 
 interface InspectionWizardProps {
   /** Meglévő piszkozat folytatásakor a `/inspections/[id]` route adja át -- ha nincs megadva, új UUID generálódik (új vizsgálat). */
   inspectionId?: string;
   initialCarInfo?: CarInfoState;
+  initialGeneralPhotos?: GeneralPhotoState[];
   initialPaintMeasurements?: PaintMeasurementState[];
   initialDefects?: DefectState[];
 }
@@ -41,7 +45,7 @@ interface InspectionWizardProps {
  *
  * Ha az `inspectionId` prop nincs megadva (új vizsgálat, `/inspections/new`), kliens-oldalon
  * generálunk egy UUID-t (crypto.randomUUID()) már a wizard megnyitásakor, hogy a 3. lépés
- * média-feltöltései és a végleges mentés (4. lépés) ugyanarra a sorra hivatkozzanak. Ha meg
+ * média-feltöltései és a végleges mentés (5. lépés) ugyanarra a sorra hivatkozzanak. Ha meg
  * van adva (piszkozat folytatása), azt a sort frissítjük tovább -- a `handleSubmit` mindkét
  * esetben ugyanazt az utat futja be: az `inspections` sor UPSERT-je (id-ütközésnél UPDATE),
  * a `paint_measurements`/`defects` gyerek-sorok pedig előbb törlődnek `inspection_id` alapján,
@@ -52,12 +56,14 @@ interface InspectionWizardProps {
 export function InspectionWizard({
   inspectionId: initialInspectionId,
   initialCarInfo,
+  initialGeneralPhotos,
   initialPaintMeasurements,
   initialDefects,
 }: InspectionWizardProps = {}) {
   const router = useRouter();
   const [step, setStep] = useState<WizardStep>(1);
   const [carInfo, setCarInfo] = useState<CarInfoState>(initialCarInfo ?? EMPTY_CAR_INFO);
+  const [generalPhotos, setGeneralPhotos] = useState<GeneralPhotoState[]>(initialGeneralPhotos ?? []);
   const [paintMeasurements, setPaintMeasurements] = useState<PaintMeasurementState[]>(
     initialPaintMeasurements ?? PAINT_PANELS.map((elementName) => ({ elementName, micronValue: '' }))
   );
@@ -87,6 +93,28 @@ export function InspectionWizard({
         throw new Error('A munkamenet lejárt. Jelentkezz be újra, és próbáld meg ismét.');
       }
 
+      // Általános autó fotók feltöltése (PROJEKT_INSTRUKCIOK.md, "Általános autó fotók modul"
+      // lépés) -- ugyanaz a minta, mint a hiba-médiánál: a most kiválasztott (`file` !== null)
+      // képek most töltődnek fel, a piszkozat szerkesztésekor már meglévő, még mindig a listában
+      // lévő URL-eket (`previewUrl`, nem `blob:`) nem töltjük fel újra, csak megtartjuk. A
+      // `general_photos` egyetlen oszlop az `inspections` sorban, ezért nincs szükség külön
+      // törlés+beszúrás ciklusra, mint a `paint_measurements`/`defects` gyerek-tábláknál -- az
+      // UPSERT egyszerűen felülírja a teljes tömböt a jelenlegi state-nek megfelelően.
+      const generalPhotoUrls = await Promise.all(
+        generalPhotos.map(async (photo) => {
+          if (photo.file) {
+            const safeName = photo.file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+            const path = `${user.id}/${inspectionId}/general/${crypto.randomUUID()}-${safeName}`;
+            const { error: uploadError } = await supabase.storage
+              .from('inspection-media')
+              .upload(path, photo.file, { upsert: true });
+            if (uploadError) throw uploadError;
+            return supabase.storage.from('inspection-media').getPublicUrl(path).data.publicUrl;
+          }
+          return photo.previewUrl;
+        })
+      );
+
       const { data: inspectionRow, error: inspectionError } = await supabase
         .from('inspections')
         .upsert({
@@ -98,6 +126,7 @@ export function InspectionWizard({
           vin: carInfo.vin || null,
           license_plate: carInfo.licensePlate || null,
           odometer: carInfo.odometer ? Number(carInfo.odometer) : null,
+          general_photos: generalPhotoUrls,
           status,
         })
         .select('public_token')
@@ -207,32 +236,41 @@ export function InspectionWizard({
     <div className="mx-auto flex max-w-3xl flex-col gap-5 px-4 py-8 sm:px-6 sm:py-10">
       <StepIndicator current={step} />
       <p className="-mt-1 text-[13px] font-medium text-linear-ink-subtle sm:hidden">
-        {step}. lépés / 4 · {STEP_LABELS[step]}
+        {step}. lépés / 5 · {STEP_LABELS[step]}
       </p>
 
       <div className="rounded-lg border border-linear-hairline bg-linear-surface-1 p-5 sm:p-7">
         {step === 1 && <StepCarInfo value={carInfo} onChange={setCarInfo} onNext={() => setStep(2)} />}
         {step === 2 && (
-          <StepPaintMeasurements
-            value={paintMeasurements}
-            onChange={setPaintMeasurements}
+          <StepGeneralPhotos
+            value={generalPhotos}
+            onChange={setGeneralPhotos}
             onBack={() => setStep(1)}
             onNext={() => setStep(3)}
           />
         )}
         {step === 3 && (
-          <StepDefects value={defects} onChange={setDefects} onBack={() => setStep(2)} onNext={() => setStep(4)} />
+          <StepPaintMeasurements
+            value={paintMeasurements}
+            onChange={setPaintMeasurements}
+            onBack={() => setStep(2)}
+            onNext={() => setStep(4)}
+          />
         )}
         {step === 4 && (
+          <StepDefects value={defects} onChange={setDefects} onBack={() => setStep(3)} onNext={() => setStep(5)} />
+        )}
+        {step === 5 && (
           <StepSummary
             carInfo={carInfo}
+            generalPhotoCount={generalPhotos.length}
             paintMeasurements={paintMeasurements}
             defects={defects.filter(
               (defect) => defect.category.trim() !== '' || defect.description.trim() !== '' || defect.file
             )}
             isSubmitting={isSubmitting}
             submitError={submitError}
-            onBack={() => setStep(3)}
+            onBack={() => setStep(4)}
             onSaveDraft={() => handleSubmit('draft')}
             onPublish={() => handleSubmit('completed')}
           />

@@ -50,4 +50,27 @@ export const EMPTY_DEFECT = (): DefectState => ({
   previewUrl: null,
 });
 
-export type WizardStep = 1 | 2 | 3 | 4;
+/**
+ * Egy általános autó fotó (elölről/hátulról/oldalról/beltér/műszerfal stb. -- nem a
+ * `defects` hibafotói, hanem az `inspections.general_photos` szöveg-tömb elemei).
+ * Ugyanaz a minta, mint a `DefectState.file`/`previewUrl`-nél: `file` egy most kiválasztott,
+ * még fel nem töltött kép; `previewUrl` piszkozat szerkesztésekor egy már meglévő Storage
+ * publikus URL is lehet `file` nélkül -- a megkülönböztetés itt is a `blob:` séma-ellenőrzéssel
+ * történik (lásd InspectionWizard.tsx `handleSubmit`).
+ */
+export interface GeneralPhotoState {
+  clientId: string;
+  file: File | null;
+  previewUrl: string;
+}
+
+export const CREATE_GENERAL_PHOTO = (file: File): GeneralPhotoState => ({
+  clientId:
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `photo-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  file,
+  previewUrl: URL.createObjectURL(file),
+});
+
+export type WizardStep = 1 | 2 | 3 | 4 | 5;

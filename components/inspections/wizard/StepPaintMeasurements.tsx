@@ -11,7 +11,7 @@ interface StepPaintMeasurementsProps {
   onNext: () => void;
 }
 
-/** LÉPÉS 2 -- Festékvastagság-mérés (PROJEKT_INSTRUKCIOK.md 5.B.2). */
+/** LÉPÉS 3 -- Festékvastagság-mérés (PROJEKT_INSTRUKCIOK.md 5.B.2). */
 export function StepPaintMeasurements({ value, onChange, onBack, onNext }: StepPaintMeasurementsProps) {
   function setMicronValue(index: number, micronValue: string) {
     const next = [...value];
