@@ -232,7 +232,7 @@ A tényleges hiba a **Supabase Storage `inspection-media` bucket `storage.object
 - Az `EQUIPMENT_CATALOG` katalógus (209 elem, 4 kategória) NEM bővíthető a UI-ból -- kód-szintű módosítást igényel (`lib/inspections/constants.ts`). A `toInitialEquipment` helper (`app/inspections/[id]/page.tsx`) felkészítve arra, hogy a katalógus bővítése ne törjön el régebbi, kevesebb elemet tartalmazó mentett adatot.
 
 ## Következő lépés
-- **Push a lokális commiteknak:** a `27124ab`/`a5e0a68` (Rendszer-téma + mobil UI javítások) és az ehhez a lépéshez tartozó ÚJ commit (3 új szakértői modul -- lásd fent, a session végén készül el) csak lokálisan léteznek a felhasználó gépén (a sandbox nem tud hitelesíteni a GitHub felé) -- fusd le `git push`-t a saját terminálodból/Git klienseddel a `CarCheck` mappában.
+- **Push a lokális commiteknak:** a `27124ab`/`a5e0a68` (Rendszer-téma + mobil UI javítások), egy korábbi commit (3 új szakértői modul) és a legújabb `7930570` (Wizard UX javítások: stepper fix, dinamikus Tovább feliratok, DOT validáció, bővített felszereltség-katalógus, dashboard táblázat javítás) csak lokálisan léteznek a felhasználó gépén (a sandbox nem tud hitelesíteni a GitHub felé) -- fusd le `git push`-t a saját terminálodból/Git klienseddel a `CarCheck` mappában.
 - **Kézi funkcionális teszt -- 3 új modul (ÚJ, még nem futtatott):**
   * Diagnosztika: "OBD Tiszta" ki/be kapcsolása, több hibakód felvétele/törlése, üres kód mezővel a "Tovább" gomb tényleg letiltva-e, majd a publikus riport helyesen mutatja-e a zöld/piros állapotot.
   * Felszereltség: mindhárom állapot (Működik/Nem működik/Nem releváns) végigkattintva minden elemen, majd ellenőrizni, hogy a publikus riport mátrixa CSAK a működő/hibás elemeket mutatja-e (a `na` helyesen kimarad-e).
