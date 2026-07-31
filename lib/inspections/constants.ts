@@ -1,4 +1,4 @@
-import type { PaintStatus } from '@/lib/inspections/types';
+import type { EquipmentStatus, PaintStatus, TirePosition } from '@/lib/inspections/types';
 
 /**
  * Előre definiált karosszéria elemek a festékvastagság-méréshez
@@ -36,3 +36,37 @@ export function getPaintStatus(micronValue: number): PaintStatus {
   if (micronValue <= 300) return 'ujrafujt';
   return 'gittelt';
 }
+
+/**
+ * Felszereltségi Elemek Állapota Modul (PROJEKT_INSTRUKCIOK.md, "3 új szakértői modul"
+ * lépés, B pont) -- a leggyakoribb kényelmi/biztonsági extrák előre definiált listája.
+ */
+export const EQUIPMENT_ITEMS: string[] = [
+  'Klímaberendezés',
+  'Távolságtartó tempomat',
+  'Tolatókamera / Radar',
+  'Ülésfűtés',
+  'Sávtartó asszisztens',
+  'Mátrix LED / Xenon fényszórók',
+  'Elektromos ablakok',
+  'Navigáció',
+];
+
+export const EQUIPMENT_STATUS_LABEL: Record<EquipmentStatus, string> = {
+  working: 'Működik',
+  not_working: 'Nem működik',
+  na: 'Nem releváns',
+};
+
+/** Gumiabroncsok Állapota modul (PROJEKT_INSTRUKCIOK.md, "3 új szakértői modul" lépés,
+ * C pont) -- a 4 kerékpozíció megjelenítési sorrendje és felirata. */
+export const TIRE_POSITIONS: { position: TirePosition; label: string }[] = [
+  { position: 'fl', label: 'Bal első (FL)' },
+  { position: 'fr', label: 'Jobb első (FR)' },
+  { position: 'rl', label: 'Bal hátsó (RL)' },
+  { position: 'rr', label: 'Jobb hátsó (RR)' },
+];
+
+/** A gumiabroncs "koros" figyelmeztetés küszöbe (PROJEKT_INSTRUKCIOK.md: "Ha a gumik
+ * életkora meghaladja az 5 évet"), lásd `lib/inspections/tireDot.ts` `decodeDot()`. */
+export const TIRE_AGE_WARNING_YEARS = 5;

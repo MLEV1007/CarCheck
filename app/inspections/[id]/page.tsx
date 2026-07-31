@@ -5,8 +5,65 @@ import { createClient } from '@/lib/supabase/server';
 import { InspectionWizard } from '@/components/inspections/wizard/InspectionWizard';
 import { InspectionDetailView } from '@/components/inspections/detail/InspectionDetailView';
 import { InspectionNotFound } from '@/components/inspections/detail/InspectionNotFound';
-import { PAINT_PANELS } from '@/lib/inspections/constants';
-import type { CarInfoState, DefectState, GeneralPhotoState, PaintMeasurementState } from '@/lib/inspections/types';
+import { EQUIPMENT_ITEMS, PAINT_PANELS } from '@/lib/inspections/constants';
+import type {
+  CarInfoState,
+  DefectState,
+  DiagnosticsState,
+  EquipmentItemState,
+  EquipmentStatus,
+  GeneralPhotoState,
+  PaintMeasurementState,
+  TiresState,
+} from '@/lib/inspections/types';
+import { EMPTY_TIRES } from '@/lib/inspections/types';
+
+/** DB (JSONB) -> wizard state konverzió a 3 új szakértői modulhoz (PROJEKT_INSTRUKCIOK.md,
+ * "3 új szakértői modul" lépés). Külön, oldal-szintű helperek, mert csak itt (piszkozat
+ * előtöltésekor) van rá szükség -- a mentés iránya (wizard state -> DB) az
+ * InspectionWizard.tsx `handleSubmit`-jában él. */
+function toInitialDiagnostics(raw: unknown): DiagnosticsState {
+  const value = (raw ?? {}) as { no_dtc?: boolean; codes?: Array<{ code?: string; description?: string }> };
+  const codes = Array.isArray(value.codes) ? value.codes : [];
+  return {
+    noDtc: value.no_dtc ?? true,
+    codes: codes.map((entry, index) => ({
+      clientId: `dtc-${index}`,
+      code: entry.code ?? '',
+      description: entry.description ?? '',
+    })),
+  };
+}
+
+function toInitialEquipment(raw: unknown): EquipmentItemState[] {
+  const stored = Array.isArray(raw) ? (raw as Array<{ name?: string; status?: string }>) : [];
+  const VALID_STATUSES: EquipmentStatus[] = ['working', 'not_working', 'na'];
+  // A teljes, JELENLEGI katalógust (EQUIPMENT_ITEMS) használjuk alapnak -- ha a tárolt
+  // tömbben egy elem hiányzik (pl. a katalógus bővült a vizsgálat rögzítése óta), az
+  // alapértelmezett `na` státusszal jelenik meg, nem esik ki a listából.
+  return EQUIPMENT_ITEMS.map((name) => {
+    const match = stored.find((entry) => entry.name === name);
+    const status = match?.status && VALID_STATUSES.includes(match.status as EquipmentStatus)
+      ? (match.status as EquipmentStatus)
+      : 'na';
+    return { name, status };
+  });
+}
+
+function toInitialTires(raw: unknown): TiresState {
+  const value = (raw ?? {}) as Partial<Record<keyof TiresState, { mm?: number | null; dot?: string | null }>>;
+  const positions: Array<keyof TiresState> = ['fl', 'fr', 'rl', 'rr'];
+  const result = { ...EMPTY_TIRES };
+  for (const position of positions) {
+    const tire = value[position];
+    if (!tire) continue;
+    result[position] = {
+      mm: tire.mm != null ? String(tire.mm) : '',
+      dot: tire.dot ?? '',
+    };
+  }
+  return result;
+}
 
 interface InspectionDetailPageProps {
   params: Promise<{ id: string }>;
@@ -49,7 +106,7 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
   const { data: inspection } = await supabase
     .from('inspections')
     .select(
-      'id, car_brand, car_model, year, vin, license_plate, odometer, status, public_token, general_photos, created_at'
+      'id, car_brand, car_model, year, vin, license_plate, odometer, status, public_token, general_photos, diagnostics, equipment, tires, created_at'
     )
     .eq('id', id)
     .eq('user_id', user.id)
@@ -122,6 +179,9 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
           inspectionId={inspection.id}
           initialCarInfo={initialCarInfo}
           initialGeneralPhotos={initialGeneralPhotos.length > 0 ? initialGeneralPhotos : undefined}
+          initialDiagnostics={toInitialDiagnostics(inspection.diagnostics)}
+          initialEquipment={toInitialEquipment(inspection.equipment)}
+          initialTires={toInitialTires(inspection.tires)}
           initialPaintMeasurements={initialPaintMeasurements}
           initialDefects={initialDefects.length > 0 ? initialDefects : undefined}
         />
@@ -135,6 +195,9 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
       paintMeasurements={paintMeasurements ?? []}
       defects={defects ?? []}
       generalPhotos={inspection.general_photos ?? []}
+      diagnostics={toInitialDiagnostics(inspection.diagnostics)}
+      equipment={toInitialEquipment(inspection.equipment)}
+      tires={toInitialTires(inspection.tires)}
     />
   );
 }

@@ -6,16 +6,21 @@ import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   Check,
+  CheckCircle2,
   Copy,
   ExternalLink,
   Loader2,
+  MinusCircle,
   Pencil,
+  XCircle,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { PaintStatusBadge } from '@/components/inspections/wizard/PaintStatusBadge';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { isVideoUrl } from '@/lib/reports/media';
-import type { PaintStatus } from '@/lib/inspections/types';
+import { EQUIPMENT_STATUS_LABEL } from '@/lib/inspections/constants';
+import { decodeDot } from '@/lib/inspections/tireDot';
+import type { DiagnosticsState, EquipmentItemState, PaintStatus, TiresState } from '@/lib/inspections/types';
 
 interface DetailInspection {
   id: string;
@@ -48,7 +53,17 @@ interface InspectionDetailViewProps {
   paintMeasurements: DetailPaintMeasurement[];
   defects: DetailDefect[];
   generalPhotos: string[];
+  diagnostics: DiagnosticsState;
+  equipment: EquipmentItemState[];
+  tires: TiresState;
 }
+
+const EQUIPMENT_ICON = { working: CheckCircle2, not_working: XCircle, na: MinusCircle } as const;
+const EQUIPMENT_ICON_CLASS = {
+  working: 'text-linear-success',
+  not_working: 'text-linear-danger',
+  na: 'text-linear-ink-tertiary',
+} as const;
 
 /**
  * Befejezett vizsgálat belső szakértői adatlapja (`/inspections/[id]`, ha a
@@ -66,8 +81,16 @@ export function InspectionDetailView({
   paintMeasurements,
   defects,
   generalPhotos,
+  diagnostics,
+  equipment,
+  tires,
 }: InspectionDetailViewProps) {
   const router = useRouter();
+  const diagnosticCodes = diagnostics.codes.filter((entry) => entry.code.trim() !== '');
+  const relevantEquipment = equipment.filter((item) => item.status !== 'na');
+  const filledTirePositions = Object.entries(tires).filter(
+    ([, tire]) => tire.mm.trim() !== '' || tire.dot.trim() !== ''
+  );
   const [copied, setCopied] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [isReverting, setIsReverting] = useState(false);
@@ -237,6 +260,83 @@ export function InspectionDetailView({
                 </a>
               ))}
             </div>
+          )}
+        </div>
+
+        <div className="rounded-lg border border-linear-hairline bg-linear-surface-1 p-5">
+          <p className="text-[13px] font-semibold uppercase tracking-[0.4px] text-linear-ink-subtle">Diagnosztika</p>
+          {diagnostics.noDtc ? (
+            <p className="mt-2 inline-flex items-center gap-1.5 text-[13px] text-linear-success">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              OBD Tiszta -- nincs hibakód
+            </p>
+          ) : diagnosticCodes.length === 0 ? (
+            <p className="mt-2 text-[13px] text-linear-ink-subtle">Nincs rögzített hibakód.</p>
+          ) : (
+            <ul className="mt-3 flex flex-col divide-y divide-linear-hairline">
+              {diagnosticCodes.map((entry) => (
+                <li key={entry.clientId} className="flex items-center gap-3 py-2">
+                  <span className="font-mono text-[13px] font-semibold text-linear-danger">{entry.code}</span>
+                  <span className="min-w-0 flex-1 truncate text-[13px] text-linear-ink-muted">
+                    {entry.description || 'Nincs megadva leírás.'}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="rounded-lg border border-linear-hairline bg-linear-surface-1 p-5">
+          <p className="text-[13px] font-semibold uppercase tracking-[0.4px] text-linear-ink-subtle">
+            Felszereltség állapota ({relevantEquipment.length} jelölt elem)
+          </p>
+          {relevantEquipment.length === 0 ? (
+            <p className="mt-2 text-[13px] text-linear-ink-subtle">Nincs jelölt (működő/hibás) felszereltségi elem.</p>
+          ) : (
+            <ul className="mt-3 flex flex-col divide-y divide-linear-hairline">
+              {relevantEquipment.map((item) => {
+                const Icon = EQUIPMENT_ICON[item.status];
+                return (
+                  <li key={item.name} className="flex items-center justify-between gap-3 py-2">
+                    <span className="text-[13px] text-linear-ink">{item.name}</span>
+                    <span className={'inline-flex items-center gap-1.5 text-[13px] ' + EQUIPMENT_ICON_CLASS[item.status]}>
+                      <Icon className="h-3.5 w-3.5" />
+                      {EQUIPMENT_STATUS_LABEL[item.status]}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+
+        <div className="rounded-lg border border-linear-hairline bg-linear-surface-1 p-5">
+          <p className="text-[13px] font-semibold uppercase tracking-[0.4px] text-linear-ink-subtle">
+            Gumiabroncsok ({filledTirePositions.length}/4 pozíció kitöltve)
+          </p>
+          {filledTirePositions.length === 0 ? (
+            <p className="mt-2 text-[13px] text-linear-ink-subtle">Nincs rögzített gumiabroncs-adat.</p>
+          ) : (
+            <ul className="mt-3 flex flex-col divide-y divide-linear-hairline">
+              {filledTirePositions.map(([position, tire]) => {
+                const decoded = tire.dot.length === 4 ? decodeDot(tire.dot) : null;
+                return (
+                  <li key={position} className="flex items-center justify-between gap-3 py-2">
+                    <span className="text-[13px] uppercase text-linear-ink">{position}</span>
+                    <span className="flex items-center gap-3 text-[13px] text-linear-ink-muted">
+                      {tire.mm && <span className="font-mono">{tire.mm} mm</span>}
+                      {tire.dot && <span className="font-mono">DOT {tire.dot}</span>}
+                      {decoded && (
+                        <span className={decoded.isOld ? 'text-linear-warning' : 'text-linear-ink-subtle'}>
+                          {decoded.label}
+                          {decoded.isOld ? ' ⚠' : ''}
+                        </span>
+                      )}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </div>
 

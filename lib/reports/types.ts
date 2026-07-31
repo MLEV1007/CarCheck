@@ -1,4 +1,4 @@
-import type { PaintStatus } from '@/lib/inspections/types';
+import type { EquipmentStatus, PaintStatus, TirePosition } from '@/lib/inspections/types';
 
 /**
  * A `public.get_public_report(p_token uuid)` Postgres RPC (SECURITY DEFINER)
@@ -21,8 +21,36 @@ export interface PublicReportInspection {
   /** Általános autó fotók (elölről/hátulról/oldalról/beltér/műszerfal stb.) -- a
    * `get_public_report` RPC 2026-07-31-es kiegészítése óta tartalmazza. */
   general_photos: string[];
+  /** Diagnosztikai hibakódok modul (3 új szakértői modul lépés) -- ha `no_dtc` igaz,
+   * a `codes` a mentéskor mindig üresen kerül be (lásd InspectionWizard.tsx). */
+  diagnostics: PublicReportDiagnostics;
+  /** Felszereltségi elemek állapota modul. */
+  equipment: PublicReportEquipmentItem[];
+  /** Gumiabroncsok állapota modul -- kerékpozíciónként opcionális, mert egy régi
+   * (e modul előtti) vizsgálatnál vagy részlegesen kitöltött piszkozatnál hiányozhat. */
+  tires: Partial<Record<TirePosition, PublicReportTireMeasurement>>;
   created_at: string;
   updated_at: string;
+}
+
+export interface PublicReportDiagnosticCode {
+  code: string;
+  description: string;
+}
+
+export interface PublicReportDiagnostics {
+  no_dtc: boolean;
+  codes: PublicReportDiagnosticCode[];
+}
+
+export interface PublicReportEquipmentItem {
+  name: string;
+  status: EquipmentStatus;
+}
+
+export interface PublicReportTireMeasurement {
+  mm: number | null;
+  dot: string | null;
 }
 
 export interface PublicReportPaintMeasurement {

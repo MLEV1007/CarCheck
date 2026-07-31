@@ -1,0 +1,118 @@
+'use client';
+
+import { AlertTriangle } from 'lucide-react';
+import { TextField } from '@/components/inspections/wizard/FormControls';
+import { TIRE_POSITIONS } from '@/lib/inspections/constants';
+import { decodeDot } from '@/lib/inspections/tireDot';
+import { sanitizeDotCode, sanitizeMm } from '@/lib/inspections/validation';
+import type { TirePosition, TiresState } from '@/lib/inspections/types';
+
+interface StepTiresProps {
+  value: TiresState;
+  onChange: (value: TiresState) => void;
+  onBack: () => void;
+  onNext: () => void;
+}
+
+/**
+ * LÉPÉS -- Gumiabroncsok Állapota & DOT Dekódoló Modul (PROJEKT_INSTRUKCIOK.md,
+ * "3 új szakértői modul" lépés, C pont). A 4 számjegyű DOT kódból (WWYY formátum)
+ * a `lib/inspections/tireDot.ts` `decodeDot()` élőben (minden billentyűleütésnél)
+ * kiszámolja a gyártási hetet/évet, és 5+ éves kornál sárga "Koros gumiabroncs"
+ * figyelmeztetést jelenít meg -- ez a kliens-oldali visszajelzés, a végleges
+ * dekódolt érték a publikus riportban (get_public_report RPC) is újraszámolódik
+ * a tárolt DOT kódból, nem a wizardból küldött értékből.
+ */
+export function StepTires({ value, onChange, onBack, onNext }: StepTiresProps) {
+  function setField(position: TirePosition, field: 'mm' | 'dot', fieldValue: string) {
+    onChange({ ...value, [position]: { ...value[position], [field]: fieldValue } });
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div>
+        <h2 className="text-[18px] font-semibold tracking-[-0.3px] text-linear-ink">Gumiabroncsok állapota</h2>
+        <p className="mt-1 text-[13px] text-linear-ink-subtle">
+          Add meg a profilmélységet (mm) és a DOT kódot (4 számjegy, pl. 1122) kerékpozíciónként. A DOT
+          kódból automatikusan kiszámoljuk a gyártási hetet/évet.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {TIRE_POSITIONS.map(({ position, label }) => {
+          const tire = value[position];
+          const decoded = tire.dot.length === 4 ? decodeDot(tire.dot) : null;
+          const showInvalidHint = tire.dot.length === 4 && !decoded;
+
+          return (
+            <div key={position} className="rounded-lg border border-linear-hairline bg-linear-surface-1 p-4">
+              <p className="text-[13px] font-semibold uppercase tracking-[0.4px] text-linear-ink-subtle">{label}</p>
+
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <TextField
+                  label="Profilmélység"
+                  name={`tire-mm-${position}`}
+                  inputMode="decimal"
+                  placeholder="pl. 6.5"
+                  hint="mm"
+                  value={tire.mm}
+                  onChange={(e) => setField(position, 'mm', sanitizeMm(e.target.value))}
+                />
+                <TextField
+                  label="DOT kód"
+                  name={`tire-dot-${position}`}
+                  inputMode="numeric"
+                  placeholder="pl. 1122"
+                  maxLength={4}
+                  className="font-mono tracking-wider"
+                  value={tire.dot}
+                  onChange={(e) => setField(position, 'dot', sanitizeDotCode(e.target.value))}
+                />
+              </div>
+
+              {showInvalidHint && (
+                <p className="mt-3 text-[12px] text-linear-ink-subtle">
+                  Érvénytelen DOT kód -- ellenőrizd a hetet (01-53).
+                </p>
+              )}
+
+              {decoded && (
+                <div
+                  className={
+                    'mt-3 flex items-center gap-2 rounded-md px-3 py-2 text-[12px] font-medium ' +
+                    (decoded.isOld
+                      ? 'bg-linear-warning-soft text-linear-warning'
+                      : 'bg-linear-surface-2 text-linear-ink-muted')
+                  }
+                >
+                  {decoded.isOld && <AlertTriangle className="h-3.5 w-3.5 shrink-0" />}
+                  <span>
+                    Gyártás: {decoded.label}
+                    {decoded.isOld ? ' -- Koros gumiabroncs' : ''}
+                  </span>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex flex-wrap justify-between gap-3 border-t border-linear-hairline pt-5">
+        <button
+          type="button"
+          onClick={onBack}
+          className="inline-flex h-10 items-center rounded-md border border-linear-hairline-strong bg-linear-surface-1 px-5 text-[14px] font-medium text-linear-ink transition-colors hover:bg-linear-surface-2"
+        >
+          Vissza
+        </button>
+        <button
+          type="button"
+          onClick={onNext}
+          className="inline-flex h-10 items-center rounded-md bg-linear-primary px-5 text-[14px] font-medium text-white transition-colors hover:bg-linear-primary-hover"
+        >
+          Tovább a festékvastagsághoz
+        </button>
+      </div>
+    </div>
+  );
+}

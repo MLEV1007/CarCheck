@@ -1,14 +1,25 @@
 'use client';
 
-import { AlertTriangle, Loader2 } from 'lucide-react';
-import { getPaintStatus } from '@/lib/inspections/constants';
+import { AlertTriangle, CheckCircle2, Loader2, MinusCircle, XCircle } from 'lucide-react';
+import { EQUIPMENT_STATUS_LABEL, getPaintStatus } from '@/lib/inspections/constants';
+import { decodeDot } from '@/lib/inspections/tireDot';
 import { PaintStatusBadge } from '@/components/inspections/wizard/PaintStatusBadge';
 import { isVideoUrl } from '@/lib/reports/media';
-import type { CarInfoState, DefectState, PaintMeasurementState } from '@/lib/inspections/types';
+import type {
+  CarInfoState,
+  DefectState,
+  DiagnosticsState,
+  EquipmentItemState,
+  PaintMeasurementState,
+  TiresState,
+} from '@/lib/inspections/types';
 
 interface StepSummaryProps {
   carInfo: CarInfoState;
   generalPhotoCount: number;
+  diagnostics: DiagnosticsState;
+  equipment: EquipmentItemState[];
+  tires: TiresState;
   paintMeasurements: PaintMeasurementState[];
   defects: DefectState[];
   isSubmitting: boolean;
@@ -18,10 +29,20 @@ interface StepSummaryProps {
   onPublish: () => void;
 }
 
-/** LÉPÉS 5 -- Összegzés & Publikálás (PROJEKT_INSTRUKCIOK.md 5.B.4). */
+const EQUIPMENT_ICON = { working: CheckCircle2, not_working: XCircle, na: MinusCircle } as const;
+const EQUIPMENT_ICON_CLASS = {
+  working: 'text-linear-success',
+  not_working: 'text-linear-danger',
+  na: 'text-linear-ink-tertiary',
+} as const;
+
+/** LÉPÉS 8 -- Összegzés & Publikálás (PROJEKT_INSTRUKCIOK.md 5.B.4 + "3 új szakértői modul"). */
 export function StepSummary({
   carInfo,
   generalPhotoCount,
+  diagnostics,
+  equipment,
+  tires,
   paintMeasurements,
   defects,
   isSubmitting,
@@ -31,6 +52,11 @@ export function StepSummary({
   onPublish,
 }: StepSummaryProps) {
   const filledPaint = paintMeasurements.filter((panel) => panel.micronValue.trim() !== '');
+  const diagnosticCodes = diagnostics.codes.filter((entry) => entry.code.trim() !== '');
+  const relevantEquipment = equipment.filter((item) => item.status !== 'na');
+  const filledTirePositions = Object.entries(tires).filter(
+    ([, tire]) => tire.mm.trim() !== '' || tire.dot.trim() !== ''
+  );
   const carLabel = [carInfo.carBrand, carInfo.carModel].filter(Boolean).join(' ') || 'Ismeretlen autó';
 
   return (
@@ -51,6 +77,83 @@ export function StepSummary({
           <SummaryField label="Alvázszám (VIN)" value={carInfo.vin || '—'} mono fullWidth />
           <SummaryField label="Általános fotók" value={generalPhotoCount > 0 ? `${generalPhotoCount} db` : '—'} />
         </dl>
+      </div>
+
+      <div className="rounded-lg border border-linear-hairline bg-linear-surface-1 p-5">
+        <p className="text-[13px] font-semibold uppercase tracking-[0.4px] text-linear-ink-subtle">Diagnosztika</p>
+        {diagnostics.noDtc ? (
+          <p className="mt-2 inline-flex items-center gap-1.5 text-[13px] text-linear-success">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            OBD Tiszta -- nincs hibakód
+          </p>
+        ) : diagnosticCodes.length === 0 ? (
+          <p className="mt-2 text-[13px] text-linear-ink-subtle">Nincs rögzített hibakód.</p>
+        ) : (
+          <ul className="mt-3 flex flex-col divide-y divide-linear-hairline">
+            {diagnosticCodes.map((entry) => (
+              <li key={entry.clientId} className="flex items-center gap-3 py-2">
+                <span className="font-mono text-[13px] font-semibold text-linear-danger">{entry.code}</span>
+                <span className="min-w-0 flex-1 truncate text-[13px] text-linear-ink-muted">
+                  {entry.description || 'Nincs megadva leírás.'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="rounded-lg border border-linear-hairline bg-linear-surface-1 p-5">
+        <p className="text-[13px] font-semibold uppercase tracking-[0.4px] text-linear-ink-subtle">
+          Felszereltség állapota ({relevantEquipment.length} jelölt elem)
+        </p>
+        {relevantEquipment.length === 0 ? (
+          <p className="mt-2 text-[13px] text-linear-ink-subtle">Nincs jelölt (működő/hibás) felszereltségi elem.</p>
+        ) : (
+          <ul className="mt-3 flex flex-col divide-y divide-linear-hairline">
+            {relevantEquipment.map((item) => {
+              const Icon = EQUIPMENT_ICON[item.status];
+              return (
+                <li key={item.name} className="flex items-center justify-between gap-3 py-2">
+                  <span className="text-[13px] text-linear-ink">{item.name}</span>
+                  <span className={'inline-flex items-center gap-1.5 text-[13px] ' + EQUIPMENT_ICON_CLASS[item.status]}>
+                    <Icon className="h-3.5 w-3.5" />
+                    {EQUIPMENT_STATUS_LABEL[item.status]}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+
+      <div className="rounded-lg border border-linear-hairline bg-linear-surface-1 p-5">
+        <p className="text-[13px] font-semibold uppercase tracking-[0.4px] text-linear-ink-subtle">
+          Gumiabroncsok ({filledTirePositions.length}/4 pozíció kitöltve)
+        </p>
+        {filledTirePositions.length === 0 ? (
+          <p className="mt-2 text-[13px] text-linear-ink-subtle">Nincs rögzített gumiabroncs-adat.</p>
+        ) : (
+          <ul className="mt-3 flex flex-col divide-y divide-linear-hairline">
+            {filledTirePositions.map(([position, tire]) => {
+              const decoded = tire.dot.length === 4 ? decodeDot(tire.dot) : null;
+              return (
+                <li key={position} className="flex items-center justify-between gap-3 py-2">
+                  <span className="text-[13px] uppercase text-linear-ink">{position}</span>
+                  <span className="flex items-center gap-3 text-[13px] text-linear-ink-muted">
+                    {tire.mm && <span className="font-mono">{tire.mm} mm</span>}
+                    {tire.dot && <span className="font-mono">DOT {tire.dot}</span>}
+                    {decoded && (
+                      <span className={decoded.isOld ? 'text-linear-warning' : 'text-linear-ink-subtle'}>
+                        {decoded.label}
+                        {decoded.isOld ? ' ⚠' : ''}
+                      </span>
+                    )}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
 
       <div className="rounded-lg border border-linear-hairline bg-linear-surface-1 p-5">

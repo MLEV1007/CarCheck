@@ -5,6 +5,9 @@ import type { PublicReportData } from '@/lib/reports/types';
 import { ReportHeader } from '@/components/report/ReportHeader';
 import { ReportHero } from '@/components/report/ReportHero';
 import { GeneralPhotosGallery } from '@/components/report/GeneralPhotosGallery';
+import { DiagnosticsCard } from '@/components/report/DiagnosticsCard';
+import { EquipmentMatrix } from '@/components/report/EquipmentMatrix';
+import { TiresCard } from '@/components/report/TiresCard';
 import { PaintMap } from '@/components/report/PaintMap';
 import { DefectsGallery } from '@/components/report/DefectsGallery';
 import { ReportNotFound } from '@/components/report/ReportNotFound';
@@ -56,6 +59,9 @@ export default async function PublicReportPage({ params }: PublicReportPageProps
 
       <main className="mx-auto max-w-[1200px] px-4 sm:px-8 lg:px-12">
         <GeneralPhotosGallery photos={report.inspection.general_photos} />
+        <DiagnosticsCard diagnostics={report.inspection.diagnostics} />
+        <EquipmentMatrix equipment={report.inspection.equipment} />
+        <TiresCard tires={report.inspection.tires} />
         <PaintMap measurements={report.paint_measurements} />
         <DefectsGallery defects={report.defects} />
       </main>

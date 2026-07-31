@@ -73,4 +73,67 @@ export const CREATE_GENERAL_PHOTO = (file: File): GeneralPhotoState => ({
   previewUrl: URL.createObjectURL(file),
 });
 
-export type WizardStep = 1 | 2 | 3 | 4 | 5;
+/**
+ * Diagnosztikai hibakódok modul (PROJEKT_INSTRUKCIOK.md, "Diagnosztikai Hibakódok
+ * Modul" lépés). Ha `noDtc` igaz ("Nincs diagnosztikai hibakód (OBD Tiszta)"),
+ * a `codes` lista figyelmen kívül marad mentéskor (lásd InspectionWizard.tsx).
+ */
+export interface DiagnosticCodeState {
+  clientId: string;
+  code: string;
+  description: string;
+}
+
+export interface DiagnosticsState {
+  noDtc: boolean;
+  codes: DiagnosticCodeState[];
+}
+
+export const EMPTY_DIAGNOSTIC_CODE = (): DiagnosticCodeState => ({
+  clientId:
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `dtc-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  code: '',
+  description: '',
+});
+
+export const EMPTY_DIAGNOSTICS: DiagnosticsState = { noDtc: true, codes: [] };
+
+/**
+ * Felszereltségi elemek állapota modul (PROJEKT_INSTRUKCIOK.md, "Felszereltségi
+ * Elemek Állapota Modul" lépés) -- a `lib/inspections/constants.ts` `EQUIPMENT_ITEMS`
+ * előre definiált listájának minden eleméhez egy 3-állású státusz tartozik.
+ */
+export type EquipmentStatus = 'working' | 'not_working' | 'na';
+
+export interface EquipmentItemState {
+  name: string;
+  status: EquipmentStatus;
+}
+
+/**
+ * Gumiabroncsok állapota & DOT dekódoló modul (PROJEKT_INSTRUKCIOK.md, "Gumiabroncsok
+ * Állapota & DOT Dekódoló Modul" lépés) -- 4 kerékpozíció, mindegyiknél profilmélység
+ * (mm) és a 4 számjegyű DOT (WWYY) kód. A gyártási dátum/kor a `lib/inspections/tireDot.ts`
+ * `decodeDot()` segédfüggvényével számolódik ki a `dot` szövegértékből, NEM tárolt mező.
+ */
+export type TirePosition = 'fl' | 'fr' | 'rl' | 'rr';
+
+export interface TireMeasurementState {
+  mm: string;
+  dot: string;
+}
+
+export type TiresState = Record<TirePosition, TireMeasurementState>;
+
+export const EMPTY_TIRE_MEASUREMENT: TireMeasurementState = { mm: '', dot: '' };
+
+export const EMPTY_TIRES: TiresState = {
+  fl: { ...EMPTY_TIRE_MEASUREMENT },
+  fr: { ...EMPTY_TIRE_MEASUREMENT },
+  rl: { ...EMPTY_TIRE_MEASUREMENT },
+  rr: { ...EMPTY_TIRE_MEASUREMENT },
+};
+
+export type WizardStep = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;

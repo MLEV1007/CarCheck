@@ -105,3 +105,28 @@ export function getCarInfoErrors(value: CarInfoState): CarInfoErrors {
 export function isCarInfoValid(value: CarInfoState): boolean {
   return Object.keys(getCarInfoErrors(value)).length === 0;
 }
+
+/** Diagnosztikai hibakód (pl. "P0300"): nagybetűsítés + csak alfanumerikus karakterek,
+ * max 8 karakter (bőven elég a szabványos OBD-II kódoknak, pl. "P0300", "U0100"). */
+export function sanitizeDiagnosticCode(raw: string): string {
+  return raw
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '')
+    .slice(0, 8);
+}
+
+/** Gumiabroncs DOT kód: csak számjegyek, pontosan 4 karakter (WWYY -- lásd `tireDot.ts`). */
+export function sanitizeDotCode(raw: string): string {
+  return raw.replace(/\D/g, '').slice(0, 4);
+}
+
+/** Gumiabroncs profilmélység (mm): számjegyek + legfeljebb egy tizedespont, max 5
+ * karakter (pl. "12.5") -- reális profilmélység 0-20 mm körül mozog. */
+export function sanitizeMm(raw: string): string {
+  let value = raw.replace(/[^0-9.]/g, '');
+  const firstDot = value.indexOf('.');
+  if (firstDot !== -1) {
+    value = value.slice(0, firstDot + 1) + value.slice(firstDot + 1).replace(/\./g, '');
+  }
+  return value.slice(0, 5);
+}
