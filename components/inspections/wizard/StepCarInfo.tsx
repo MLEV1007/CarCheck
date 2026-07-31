@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 import { SelectField, TextField } from '@/components/inspections/wizard/FormControls';
+import { VinScanToast, type VinScanToastVariant } from '@/components/inspections/wizard/VinScanToast';
 import { CAR_BRANDS, CAR_CATALOG, OTHER_OPTION, getModelsForBrand } from '@/lib/inspections/carCatalog';
 import {
   getCarInfoErrors,
@@ -11,7 +12,11 @@ import {
   sanitizeVin,
   sanitizeYear,
 } from '@/lib/inspections/validation';
+import { recognizeVinFromImage } from '@/lib/inspections/vinOcr';
 import type { CarInfoState } from '@/lib/inspections/types';
+
+const VIN_SCAN_FAILURE_MESSAGE =
+  'Nem sikerült felismerni az alvázszámot. Kérlek fotózd közelebbről, vagy gépeld be manuálisan!';
 
 interface StepCarInfoProps {
   value: CarInfoState;
@@ -53,6 +58,11 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
   const [touched, setTouched] = useState<Partial<Record<keyof CarInfoState, boolean>>>({});
   const [attemptedNext, setAttemptedNext] = useState(false);
 
+  // VIN OCR (Tesseract.js, kliens-oldali, 100%-ig ingyenes -- lásd lib/inspections/vinOcr.ts).
+  const vinFileInputRef = useRef<HTMLInputElement>(null);
+  const [isScanningVin, setIsScanningVin] = useState(false);
+  const [vinScanToast, setVinScanToast] = useState<{ variant: VinScanToastVariant; message: string } | null>(null);
+
   const errors = getCarInfoErrors(value);
   const showError = (field: keyof CarInfoState) => (touched[field] || attemptedNext ? errors[field] : undefined);
 
@@ -89,6 +99,40 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
     set('carModel', selected);
   }
 
+  function handleVinScanClick() {
+    vinFileInputRef.current?.click();
+  }
+
+  /** Fotó kiválasztása/lefotózása után lefuttatja a Tesseract.js OCR-t (lib/inspections/vinOcr.ts),
+   * és sikeres 17 karakteres VIN találat esetén automatikusan kitölti a mezőt. A gomb a
+   * felismerés alatt le van tiltva (`isScanningVin`), hogy a user ne indíthasson el több
+   * párhuzamos worker-t véletlen dupla kattintással. */
+  async function handleVinPhotoSelected(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null;
+    // Az input értékét azonnal töröljük, hogy ugyanaz a fájl újra kiválasztható legyen
+    // (böngésző különben nem tüzeli az onChange-et változatlan fájlnál).
+    event.target.value = '';
+    if (!file) return;
+
+    setIsScanningVin(true);
+    setVinScanToast(null);
+    try {
+      const result = await recognizeVinFromImage(file);
+      if (result.success && result.vin) {
+        const vin = sanitizeVin(result.vin);
+        set('vin', vin);
+        markTouched('vin');
+        setVinScanToast({ variant: 'success', message: `Alvázszám sikeresen beolvasva: ${vin}` });
+      } else {
+        setVinScanToast({ variant: 'warning', message: VIN_SCAN_FAILURE_MESSAGE });
+      }
+    } catch {
+      setVinScanToast({ variant: 'warning', message: VIN_SCAN_FAILURE_MESSAGE });
+    } finally {
+      setIsScanningVin(false);
+    }
+  }
+
   function handleNext() {
     if (Object.keys(errors).length === 0) {
       onNext();
@@ -101,6 +145,14 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
 
   return (
     <div className="flex flex-col gap-6">
+      {vinScanToast && (
+        <VinScanToast
+          variant={vinScanToast.variant}
+          message={vinScanToast.message}
+          onDismiss={() => setVinScanToast(null)}
+        />
+      )}
+
       <div>
         <h2 className="text-[18px] font-semibold tracking-[-0.3px] text-linear-ink">Autó alapadatok</h2>
         <p className="mt-1 text-[13px] text-linear-ink-subtle">
@@ -206,17 +258,42 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
           onBlur={() => markTouched('odometer')}
         />
 
-        <TextField
-          label="Alvázszám (VIN)"
-          name="vin"
-          placeholder="17 karakteres azonosító"
-          maxLength={17}
-          className="font-mono uppercase tracking-wider"
-          error={showError('vin')}
-          value={value.vin}
-          onChange={(e) => set('vin', sanitizeVin(e.target.value))}
-          onBlur={() => markTouched('vin')}
-        />
+        <div className="flex flex-col gap-1.5">
+          <TextField
+            label="Alvázszám (VIN)"
+            name="vin"
+            placeholder="17 karakteres azonosító"
+            maxLength={17}
+            className="font-mono uppercase tracking-wider"
+            error={showError('vin')}
+            value={value.vin}
+            onChange={(e) => set('vin', sanitizeVin(e.target.value))}
+            onBlur={() => markTouched('vin')}
+          />
+          <input
+            ref={vinFileInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={handleVinPhotoSelected}
+          />
+          <button
+            type="button"
+            onClick={handleVinScanClick}
+            disabled={isScanningVin}
+            className="inline-flex h-8 w-fit items-center gap-1.5 self-start rounded-md border border-linear-hairline bg-linear-surface-2 px-2.5 text-[12px] font-medium text-linear-ink-muted transition-colors hover:border-linear-primary/50 hover:text-linear-ink disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isScanningVin ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                📷 Alvázszám felismerése…
+              </>
+            ) : (
+              '📷 VIN beolvasása fotóról'
+            )}
+          </button>
+        </div>
 
         <TextField
           label="Rendszám"
