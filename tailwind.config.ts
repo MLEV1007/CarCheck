@@ -6,6 +6,12 @@ import type { Config } from 'tailwindcss';
 // ütközzenek a Stripe tokenekkel ugyanabban a configban.
 const config: Config = {
   content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}', './lib/**/*.{ts,tsx}'],
+  // Rendszer-téma (System Theme): a `next-themes` a <html>-re teszi a `dark` class-t,
+  // ha az eszköz sötét témán van (lásd `components/theme/ThemeProvider.tsx`). Csak a
+  // `linear-*` tokenek (Szakértői Munkaterület) CSS-változó-alapúak és reagálnak erre --
+  // a `stripe-*` (Auth/Landing/Beállítások) és `bmw-*` (Publikus riport) tokenek
+  // szándékosan fix, literal hex értékek maradnak, a design rendszer előírása szerint.
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
@@ -29,21 +35,32 @@ const config: Config = {
           lemon: '#9b6829',
         },
         // Design tokenek forrása: linear.md (Szakértői Munkaterület -- /dashboard, /inspections/*).
+        // CSS-változókra épülnek (lásd app/globals.css :root / .dark), hogy a Rendszer-téma
+        // (System Theme, components/theme/ThemeProvider.tsx) világos/sötét váltása minden
+        // meglévő `bg-linear-*`/`text-linear-*`/stb. class-t automatikusan kövessen, komponens-
+        // szintű `dark:` prefixek nélkül. A `primary`/`success`/`warning`/`danger` az
+        // `rgb(var(--x-rgb) / <alpha-value>)` mintát használja, hogy a Tailwind opacity
+        // módosítók (pl. `bg-linear-primary/10`) is működjenek CSS-változóval is.
         linear: {
-          canvas: '#010102',
-          'surface-1': '#0f1011',
-          'surface-2': '#141516',
-          'surface-3': '#18191a',
-          hairline: '#23252a',
-          'hairline-strong': '#34343a',
-          ink: '#f7f8f8',
-          'ink-muted': '#d0d6e0',
-          'ink-subtle': '#8a8f98',
-          'ink-tertiary': '#62666d',
-          primary: '#5e6ad2',
-          'primary-hover': '#828fff',
-          'primary-focus': '#5e69d1',
-          success: '#27a644',
+          canvas: 'var(--linear-canvas)',
+          'surface-1': 'var(--linear-surface-1)',
+          'surface-2': 'var(--linear-surface-2)',
+          'surface-3': 'var(--linear-surface-3)',
+          hairline: 'var(--linear-hairline)',
+          'hairline-strong': 'var(--linear-hairline-strong)',
+          ink: 'var(--linear-ink)',
+          'ink-muted': 'var(--linear-ink-muted)',
+          'ink-subtle': 'var(--linear-ink-subtle)',
+          'ink-tertiary': 'var(--linear-ink-tertiary)',
+          primary: 'rgb(var(--linear-primary-rgb) / <alpha-value>)',
+          'primary-hover': 'var(--linear-primary-hover)',
+          'primary-focus': 'var(--linear-primary-focus)',
+          success: 'rgb(var(--linear-success-rgb) / <alpha-value>)',
+          'success-soft': 'var(--linear-success-soft)',
+          warning: 'rgb(var(--linear-warning-rgb) / <alpha-value>)',
+          'warning-soft': 'var(--linear-warning-soft)',
+          danger: 'rgb(var(--linear-danger-rgb) / <alpha-value>)',
+          'danger-soft': 'var(--linear-danger-soft)',
         },
         // Design tokenek forrása: bmw.md (Publikus Ügyfélriport -- /report/[public_token]).
         bmw: {

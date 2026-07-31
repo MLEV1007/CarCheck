@@ -7,6 +7,9 @@ interface ReportHeroProps {
 interface SpecItem {
   label: string;
   value: string;
+  /** 17 karakteres VIN-hez: mobilon (`grid-cols-2`) teljes szélességű sort kap és
+   * `break-all`/monospace stílust, hogy ne csússzon bele a szomszédos mezőbe. */
+  fullWidth?: boolean;
 }
 
 function formatDate(iso: string): string {
@@ -17,7 +20,7 @@ function buildSpecs(inspection: PublicReportInspection): SpecItem[] {
   return [
     { label: 'Évjárat', value: inspection.year ? String(inspection.year) : '—' },
     { label: 'Rendszám', value: inspection.license_plate || '—' },
-    { label: 'Alvázszám (VIN)', value: inspection.vin || '—' },
+    { label: 'Alvázszám (VIN)', value: inspection.vin || '—', fullWidth: true },
     {
       label: 'Km óra állás',
       value: typeof inspection.odometer === 'number' ? `${inspection.odometer.toLocaleString('hu-HU')} km` : '—',
@@ -47,11 +50,18 @@ export function ReportHero({ inspection }: ReportHeroProps) {
 
         <dl className="mt-10 grid grid-cols-2 gap-x-6 gap-y-8 border-t border-white/15 pt-10 sm:grid-cols-4">
           {specs.map((spec) => (
-            <div key={spec.label}>
+            <div key={spec.label} className={spec.fullWidth ? 'col-span-2 sm:col-span-1' : undefined}>
               <dt className="text-[12px] font-bold uppercase tracking-[1.5px] text-bmw-on-dark-soft">
                 {spec.label}
               </dt>
-              <dd className="mt-2 text-[20px] font-bold tabular-nums sm:text-[22px]">{spec.value}</dd>
+              <dd
+                className={
+                  'mt-2 text-[20px] font-bold tabular-nums sm:text-[22px] ' +
+                  (spec.fullWidth ? 'break-all font-mono text-[17px] sm:text-[20px]' : '')
+                }
+              >
+                {spec.value}
+              </dd>
             </div>
           ))}
         </dl>

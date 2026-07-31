@@ -62,7 +62,7 @@ export function StepDefects({ value, onChange, onBack, onNext }: StepDefectsProp
               <button
                 type="button"
                 onClick={() => removeDefect(defect.clientId)}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-linear-ink-subtle transition-colors hover:bg-linear-surface-2 hover:text-[#e05a5a]"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-linear-ink-subtle transition-colors hover:bg-linear-surface-2 hover:text-linear-danger"
                 aria-label="Hiba törlése"
               >
                 <Trash2 className="h-4 w-4" />
@@ -111,7 +111,7 @@ export function StepDefects({ value, onChange, onBack, onNext }: StepDefectsProp
         </button>
       </div>
 
-      <div className="flex justify-between border-t border-linear-hairline pt-5">
+      <div className="flex flex-wrap justify-between gap-3 border-t border-linear-hairline pt-5">
         <button
           type="button"
           onClick={onBack}

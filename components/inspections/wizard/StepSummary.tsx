@@ -48,7 +48,7 @@ export function StepSummary({
           <SummaryField label="Évjárat" value={carInfo.year || '—'} />
           <SummaryField label="Rendszám" value={carInfo.licensePlate || '—'} mono />
           <SummaryField label="Km óra állás" value={carInfo.odometer ? `${carInfo.odometer} km` : '—'} />
-          <SummaryField label="Alvázszám (VIN)" value={carInfo.vin || '—'} mono />
+          <SummaryField label="Alvázszám (VIN)" value={carInfo.vin || '—'} mono fullWidth />
           <SummaryField label="Általános fotók" value={generalPhotoCount > 0 ? `${generalPhotoCount} db` : '—'} />
         </dl>
       </div>
@@ -116,7 +116,7 @@ export function StepSummary({
       {submitError && (
         <p
           role="alert"
-          className="flex items-start gap-2 rounded-md border border-[#e05a5a]/30 bg-[#3a1a1a]/40 px-3 py-2.5 text-[13px] text-[#e05a5a]"
+          className="flex items-start gap-2 rounded-md border border-linear-danger/30 bg-linear-danger-soft px-3 py-2.5 text-[13px] text-linear-danger"
         >
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           {submitError}
@@ -158,11 +158,24 @@ export function StepSummary({
   );
 }
 
-function SummaryField({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+function SummaryField({
+  label,
+  value,
+  mono,
+  fullWidth,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+  /** 17 karakteres VIN-hez: 2-oszlopos mobil rácsban teljes szélességű sort kap, hogy ne
+   * csússzon/lógjon bele a szomszédos mezőbe (`col-span-full` a legszűkebb, `grid-cols-2`
+   * nézeten -- `sm:` felett már mindenképp elfér a saját cellájában). */
+  fullWidth?: boolean;
+}) {
   return (
-    <div>
+    <div className={fullWidth ? 'col-span-2 sm:col-span-1' : undefined}>
       <dt className="text-[11px] uppercase tracking-[0.4px] text-linear-ink-subtle">{label}</dt>
-      <dd className={'mt-0.5 text-linear-ink ' + (mono ? 'font-mono' : '')}>{value}</dd>
+      <dd className={'mt-0.5 text-linear-ink ' + (mono ? 'font-mono break-all' : '')}>{value}</dd>
     </div>
   );
 }

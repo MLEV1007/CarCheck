@@ -51,9 +51,10 @@ export function ReportHeader({ company }: ReportHeaderProps) {
         <button
           type="button"
           onClick={() => window.print()}
-          className="h-12 shrink-0 rounded-none border border-bmw-hairline-strong bg-bmw-canvas px-6 text-[14px] font-bold uppercase tracking-[0.5px] text-bmw-ink transition-colors hover:border-[var(--report-accent)] hover:bg-bmw-surface-soft print:hidden"
+          className="h-12 shrink-0 rounded-none border border-bmw-hairline-strong bg-bmw-canvas px-4 text-[14px] font-bold uppercase tracking-[0.5px] text-bmw-ink transition-colors hover:border-[var(--report-accent)] hover:bg-bmw-surface-soft sm:px-6 print:hidden"
         >
-          Nyomtatás / PDF
+          <span className="sm:hidden">PDF</span>
+          <span className="hidden sm:inline">Nyomtatás / PDF</span>
         </button>
       </div>
     </header>

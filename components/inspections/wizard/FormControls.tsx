@@ -35,7 +35,7 @@ function FieldLabel({ label, htmlFor, hint }: FieldWrapperProps) {
 function FieldError({ error }: { error?: string }) {
   if (!error) return null;
   return (
-    <span role="alert" className="text-[12px] text-[#e05a5a]">
+    <span role="alert" className="text-[12px] text-linear-danger">
       {error}
     </span>
   );
@@ -51,7 +51,7 @@ export function TextField({ label, hint, error, id, className, ...props }: TextF
       <input
         id={fieldId}
         aria-invalid={!!error}
-        className={cn(FIELD_BASE, error && 'border-[#e05a5a] focus:border-[#e05a5a] focus:ring-[#e05a5a]/30', className)}
+        className={cn(FIELD_BASE, error && 'border-linear-danger focus:border-linear-danger focus:ring-linear-danger/30', className)}
         {...props}
       />
       <FieldError error={error} />
@@ -72,7 +72,7 @@ export function SelectField({ label, hint, error, id, className, options, placeh
       <select
         id={fieldId}
         aria-invalid={!!error}
-        className={cn(FIELD_BASE, 'appearance-none', error && 'border-[#e05a5a] focus:border-[#e05a5a] focus:ring-[#e05a5a]/30', className)}
+        className={cn(FIELD_BASE, 'appearance-none', error && 'border-linear-danger focus:border-linear-danger focus:ring-linear-danger/30', className)}
         {...props}
       >
         {placeholder && (

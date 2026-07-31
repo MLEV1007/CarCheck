@@ -2,15 +2,15 @@ import { PAINT_STATUS_LABEL } from '@/lib/inspections/constants';
 import type { PaintStatus } from '@/lib/inspections/types';
 
 const STATUS_STYLES: Record<PaintStatus, string> = {
-  gyari: 'bg-[#122a1a] text-linear-success',
-  ujrafujt: 'bg-[#3a3320] text-[#e0b84b]',
-  gittelt: 'bg-[#3a1a1a] text-[#e05a5a]',
+  gyari: 'bg-linear-success-soft text-linear-success',
+  ujrafujt: 'bg-linear-warning-soft text-linear-warning',
+  gittelt: 'bg-linear-danger-soft text-linear-danger',
 };
 
 const DOT_STYLES: Record<PaintStatus, string> = {
   gyari: 'bg-linear-success',
-  ujrafujt: 'bg-[#e0b84b]',
-  gittelt: 'bg-[#e05a5a]',
+  ujrafujt: 'bg-linear-warning',
+  gittelt: 'bg-linear-danger',
 };
 
 /**

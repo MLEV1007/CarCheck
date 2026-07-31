@@ -42,7 +42,10 @@ export function StepPaintMeasurements({ value, onChange, onBack, onNext }: StepP
             >
               <span className="text-[14px] font-medium text-linear-ink">{panel.elementName}</span>
 
-              <div className="flex items-center gap-3">
+              {/* `flex-wrap`: 320px-es képernyőn a fix szélességű input (w-28) + badge
+                  (w-[124px]) együtt kilógna a kártya szélességéből -- így a badge inkább
+                  új sorra kerül, minthogy a kártya vízszintesen görgethetővé váljon. */}
+              <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:gap-3">
                 <div className="relative">
                   <input
                     type="number"
@@ -66,7 +69,7 @@ export function StepPaintMeasurements({ value, onChange, onBack, onNext }: StepP
         })}
       </ul>
 
-      <div className="flex justify-between border-t border-linear-hairline pt-5">
+      <div className="flex flex-wrap justify-between gap-3 border-t border-linear-hairline pt-5">
         <button
           type="button"
           onClick={onBack}

@@ -189,7 +189,7 @@ export function InspectionDetailView({
         </div>
 
         {revertError && (
-          <p role="alert" className="rounded-md border border-[#e05a5a]/30 bg-[#3a1a1a]/40 px-3 py-2.5 text-[13px] text-[#e05a5a]">
+          <p role="alert" className="rounded-md border border-linear-danger/30 bg-linear-danger-soft px-3 py-2.5 text-[13px] text-linear-danger">
             {revertError}
           </p>
         )}
@@ -208,7 +208,7 @@ export function InspectionDetailView({
               label="Km óra állás"
               value={typeof inspection.odometer === 'number' ? `${inspection.odometer.toLocaleString('hu-HU')} km` : '—'}
             />
-            <DetailField label="Alvázszám (VIN)" value={inspection.vin || '—'} mono />
+            <DetailField label="Alvázszám (VIN)" value={inspection.vin || '—'} mono fullWidth />
           </dl>
         </div>
 
@@ -302,11 +302,24 @@ export function InspectionDetailView({
   );
 }
 
-function DetailField({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+function DetailField({
+  label,
+  value,
+  mono,
+  fullWidth,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+  /** 17 karakteres VIN-hez: a 2-oszlopos mobil rácsban (`grid-cols-2 sm:grid-cols-4`) teljes
+   * szélességű sort kap, hogy ne csússzon/lógjon bele a szomszédos mezőbe -- `sm:` felett a
+   * 4-oszlopos elrendezésben már mindenképp elfér a saját cellájában. */
+  fullWidth?: boolean;
+}) {
   return (
-    <div>
+    <div className={fullWidth ? 'col-span-2 sm:col-span-1' : undefined}>
       <dt className="text-[11px] uppercase tracking-[0.4px] text-linear-ink-subtle">{label}</dt>
-      <dd className={'mt-0.5 text-linear-ink ' + (mono ? 'font-mono' : '')}>{value}</dd>
+      <dd className={'mt-0.5 break-all text-linear-ink ' + (mono ? 'font-mono' : '')}>{value}</dd>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import './globals.css';
 
 // A Stripe design system (stripe.md) a proprietary "Sohne"-t írja elő, ennek dokumentált
@@ -20,8 +21,14 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="hu" className={inter.variable}>
-      <body className="font-sohne antialiased">{children}</body>
+    // suppressHydrationWarning: a next-themes az első kliens-oldali render ELŐTT (inline
+    // script) állítja be a `dark`/`light` osztályt a rendszer-témának megfelelően -- ez a
+    // szerver által renderelt és a kliensen hidratált <html> osztálylista között szándékos,
+    // ártalmatlan eltérést okoz, amit ez a prop néma marad React figyelmeztetés nélkül.
+    <html lang="hu" className={inter.variable} suppressHydrationWarning>
+      <body className="font-sohne antialiased">
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   );
 }

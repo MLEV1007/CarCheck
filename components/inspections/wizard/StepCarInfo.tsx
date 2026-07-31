@@ -230,7 +230,7 @@ export function StepCarInfo({ value, onChange, onNext }: StepCarInfoProps) {
       {attemptedNext && Object.keys(errors).length > 0 && (
         <p
           role="alert"
-          className="flex items-start gap-2 rounded-md border border-[#e05a5a]/30 bg-[#3a1a1a]/40 px-3 py-2.5 text-[13px] text-[#e05a5a]"
+          className="flex items-start gap-2 rounded-md border border-linear-danger/30 bg-linear-danger-soft px-3 py-2.5 text-[13px] text-linear-danger"
         >
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           Javítsd a pirossal jelölt mezőket a továbblépéshez.

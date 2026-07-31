@@ -143,7 +143,7 @@ function InspectionRowItem({
         <StatusBadge isDraft={isDraft} />
       </div>
 
-      <div className="flex items-center gap-2 sm:justify-end">
+      <div className="flex flex-wrap items-center gap-2 sm:justify-end">
         {isDraft ? (
           <Link
             href={`/inspections/${inspection.id}`}

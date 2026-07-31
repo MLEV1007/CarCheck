@@ -12,10 +12,10 @@ export function StatusBadge({ isDraft }: StatusBadgeProps) {
     <span
       className={
         'inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-medium ' +
-        (isDraft ? 'bg-[#3a3320] text-[#e0b84b]' : 'bg-[#122a1a] text-linear-success')
+        (isDraft ? 'bg-linear-warning-soft text-linear-warning' : 'bg-linear-success-soft text-linear-success')
       }
     >
-      <span className={'h-1.5 w-1.5 rounded-full ' + (isDraft ? 'bg-[#e0b84b]' : 'bg-linear-success')} />
+      <span className={'h-1.5 w-1.5 rounded-full ' + (isDraft ? 'bg-linear-warning' : 'bg-linear-success')} />
       {isDraft ? 'Piszkozat' : 'Befejezett'}
     </span>
   );

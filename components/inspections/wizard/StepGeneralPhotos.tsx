@@ -91,7 +91,7 @@ export function StepGeneralPhotos({ value, onChange, onBack, onNext }: StepGener
         </button>
       </div>
 
-      <div className="flex justify-between border-t border-linear-hairline pt-5">
+      <div className="flex flex-wrap justify-between gap-3 border-t border-linear-hairline pt-5">
         <button
           type="button"
           onClick={onBack}
