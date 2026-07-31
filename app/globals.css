@@ -17,3 +17,16 @@ body {
 .tabular-nums-stripe {
   font-feature-settings: 'tnum';
 }
+
+/*
+ * BMW design system (bmw.md) -- Publikus Ügyfélriport (/report/[public_token]).
+ * Nyomtatás / "PDF letöltés" a böngésző window.print()-jét használja: háttérszínek
+ * (sötétkék hero sáv, festék-státusz kártyák) nélkül a nyomtatott/PDF export
+ * használhatatlan lenne, ezért itt kényszerítjük ki a színek megtartását.
+ */
+@media print {
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

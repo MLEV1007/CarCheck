@@ -1,6 +1,22 @@
 # Státusz — Autó Állapotfelmérő SaaS (MVP)
 
-_Utolsó frissítés: 2026-07-30_
+_Utolsó frissítés: 2026-07-31_
+
+## Hibajavítás (2026-07-31): "new row violates row-level security policy" mentéskor
+
+**Jelenség:** a `/inspections/new` wizard 4. lépésénél (Mentés piszkozatként / Publikálás) a fotó/videó feltöltés a Supabase Storage-ba `400`-as hibával elszállt, `"new row violates row-level security policy for table \"objects\""` postgres hibaüzenettel. A wizard ezután a best-effort rollback-jét futtatta (törölte a már beszúrt `inspections`/`paint_measurements`/`defects` sorokat), a usernek pedig hibaüzenetet mutatott.
+
+**Gyökérok — NEM a frontend insert payload volt hibás.** Ellenőriztem: az `InspectionWizard.tsx` `handleSubmit` függvénye már eddig is helyesen küldte a `user_id: user.id` mezőt mind a három tábla (`inspections`, `paint_measurements`, `defects`) minden beszúrásához, és az élő adatbázisban az RLS policy-k (`auth.uid() = user_id`, `WITH CHECK` is jelen) is helyesek voltak mindhárom táblán.
+
+A tényleges hiba a **Supabase Storage `inspection-media` bucket `storage.objects` tábláján hiányzó SELECT RLS policy** volt. A bucket csak INSERT/UPDATE/DELETE policy-kkal rendelkezett, SELECT policy nélkül. A Supabase Storage API a feltöltéskor belsőleg egy `INSERT ... RETURNING`-ot futtat, hogy visszaadja a létrehozott objektum metaadatait — ehhez viszont a beszúrt sor **SELECT-láthatósága** is kell (Postgres RLS: a `RETURNING` klauzula a SELECT policy-t is kikényszeríti). SELECT policy hiányában minden feltöltés RLS hibával bukott, függetlenül attól, hogy az INSERT policy önmagában helyes volt. (Éles adatbázison, tranzakcióban `SET LOCAL ROLE authenticated` + `request.jwt.claims` szimulációval reprodukáltam és igazoltam: `RETURNING` nélkül az insert sikeres volt, `RETURNING`-gal RLS hibát dobott — pontosan a megfigyelt hibaüzenettel.)
+
+**Javítás (Supabase migrációk, `nsejmkcwvksbwxscvrvb` projekt):**
+1. `add_inspection_media_authenticated_select_policy` — hozzáadva egy SELECT policy a `storage.objects`-hez.
+2. `scope_inspection_media_policies_to_owner_folder` — a 4 policy-t (SELECT/INSERT/UPDATE/DELETE) szigorítottam: a korábbi verzió bármely bejelentkezett usernek engedte bármely másik user mappájában lévő fájlok írását/olvasását/törlését (csak a `bucket_id = 'inspection-media'` feltételt nézte) — ez ellentétes a projekt 3. pontjában rögzített szigorú multi-tenant izolációval. Az új policy-k a feltöltési útvonal (`{user_id}/{inspectionId}/{fájlnév}`) első szegmensét (`storage.foldername(name))[1]`) `auth.uid()`-hoz kötik, így egy user csak a saját mappájában lévő objektumokat láthatja/írhatja/törölheti.
+
+**Ellenőrzés:** éles DB-n, tranzakción belüli szimulációval igazoltam mindkét irányban — saját mappába való feltöltés sikeres, másik user mappájába való feltöltési kísérlet RLS hibával elutasítva. `get_advisors` (security) újrafuttatva: nincs új figyelmeztetés, csak a korábbról ismert két (szándékos, külön TODO) `SECURITY DEFINER` warning és a leaked password protection warning.
+
+**Következtetés a jövőre:** a `"new row violates row-level security policy"` hiba a `storage.objects` táblánál nem feltétlenül jelenti azt, hogy az INSERT/WITH CHECK policy hibás — hiányzó SELECT policy is pontosan ugyanezt az üzenetet adja, mert a Storage API `RETURNING`-ot használ.
 
 ## Kész funkciók
 
@@ -58,7 +74,25 @@ _Utolsó frissítés: 2026-07-30_
 - Adatbázis séma ellenőrizve élesben (`list_tables`, `nsejmkcwvksbwxscvrvb`): `inspections`, `paint_measurements`, `defects` oszlopai, valamint az `inspection-media` publikus Storage bucket és a hozzá tartozó `authenticated`-only insert/update/delete policy-k megegyeznek a wizard kódjában feltételezett sémával.
 - Éles `next build` a szinkronizált projektmappában nem futtatható a sandboxból (fájltulajdonosi jogosultság — a felhasználó gépén fut egy élő `next dev` szerver ugyanerre a mappára), ezért a típusellenőrzés + kód-review + élő séma-ellenőrzés + Supabase advisor adta a validációt ehhez a lépéshez.
 
+### 5. Publikus Ügyfélriport (`/report/[public_token]`)
+[BMW Corporate Design Style — 0px lekerekítés mindenhol]
+- **Nem igényel bejelentkezést** — nincs a middleware `PROTECTED_PREFIXES` listáján. Adatlekérdezés kizárólag a `get_public_report(p_token uuid)` Postgres RPC-n (SECURITY DEFINER) keresztül, `supabase.rpc(...)`-vel — soha nem közvetlen tábla-lekérdezéssel (az RLS policy-k úgyis elutasítanák a bejelentkezés nélküli/idegen olvasást).
+- `app/report/[public_token]/page.tsx`: Server Component, Next.js 15 async `params`. Ha az RPC hibát ad (pl. érvénytelen UUID formátumú token) vagy `null`-t (nem létező/törölt riport), a `ReportNotFound.tsx` letisztult 404 állapotot jelenít meg.
+- `lib/reports/types.ts`: a `get_public_report` jsonb visszatérési struktúrájának TS típusai (`PublicReportData` = `inspection` + `paint_measurements[]` + `defects[]` + `company`).
+- `components/report/ReportHeader.tsx`: cég branding (logó vagy monogram-fallback, névtelen/telefonos elérhetőség) + "Nyomtatás / PDF" gomb (natív `window.print()`, `print:hidden`-nel eltűnik nyomtatáskor).
+- `components/report/ReportHero.tsx`: sötétkék (`bg-bmw-surface-dark` #1a2129) hero sáv — márka+modell cím, vizsgálat dátuma, 4 speccel (évjárat, rendszám, VIN, km óra állás).
+- `components/report/PaintMap.tsx`: karosszéria elemek rácsa a mikron-értékekkel, a wizardban már kiszámolt `status` (gyári/újrafújt/gittelt) alapján zöld/sárga/piros színkódolással + jelmagyarázat.
+- `components/report/DefectsGallery.tsx` + `MediaLightbox.tsx`: hibák kategória szerint csoportosítva, fotó/videó thumbnaillel (kiterjesztés alapján `lib/reports/media.ts` `isVideoUrl()` dönti el fotó vagy videó), kattintásra kliens-oldali lightbox (Esc-re és háttérre kattintva zárható).
+- `tailwind.config.ts`: felvéve a `bmw-*` design tokenek (primary #1c69d4, surface-dark #1a2129, semantic success/warning/error stb.) a `bmw.md` alapján, a stripe-*/linear-* mellé.
+- `app/layout.tsx`: az Inter fontcsalád súlyai kibővítve `700`-zal (korábban csak 300/400/500 volt) a BMW design drámai bold/light kontrasztjához — ez az egész appot érinti, de visszafelé kompatibilis (a Stripe/Linear felületek nem használtak 700-at, nem törnek el).
+- `app/globals.css`: `@media print` szabály (`print-color-adjust: exact`) hozzáadva, hogy a sötétkék hero sáv és a szín-kódolt festék-kártyák háttérszíne megmaradjon PDF exportnál/nyomtatáskor.
+
+## Ellenőrzés (2026-07-31, riport oldal)
+- `npx tsc --noEmit` — hibamentes.
+- ESLint nem futtatható (a projektben nincs `.eslintrc` konfiguráció felvéve — ez már a korábbi lépések előtt is így volt, nem ehhez a lépéshez tartozó hiányosság).
+- Kód-review: a riport oldal kizárólag az RPC-t hívja, nincs benne közvetlen `.from('inspections'|'defects'|'paint_measurements')` hívás.
+
 ## Következő lépés
 - `/inspections/[id]` — piszkozat vizsgálat szerkesztése/folytatása (jelenleg a dashboard "Folytatás" gombja erre a route-ra mutat, de még nincs megépítve).
-- `/report/[public_token]` — publikus, bejelentkezés nélküli ügyfélriport [BMW Design Style].
 - `/settings` — céglogó, cégnév, telefonszám, márkaszín feltöltése a `profiles` táblába.
+- A `/report/[public_token]` oldalon a cég `primary_color` mezője (settings-ből) jelenleg nincs bekötve az akcentszínbe — a BMW kék (`bmw-primary`) fixen van használva; ha a "márkaszín" funkció elkészül a settings oldalon, érdemes megfontolni, hogy a riport akcentszíne dinamikusan kövesse-e azt, vagy maradjon a BMW kék a design rendszer konzisztenciája miatt (tisztázandó kérdés, nem hibás jelenlegi állapot).
