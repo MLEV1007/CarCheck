@@ -68,10 +68,13 @@ export function RegisterForm() {
 
   if (confirmationSent) {
     return (
-      <div className="flex flex-col gap-4 text-center">
+      <div className="flex flex-col gap-4 rounded-stripe-md border border-stripe-hairline bg-white p-6 text-center">
+        <p className="font-sohne text-[16px] font-normal text-stripe-ink">
+          ✉️ Visszaigazoló e-mailt küldtünk!
+        </p>
         <p className="font-sohne text-[15px] font-light text-stripe-ink">
-          Megerősítő emailt küldtünk a(z) <span className="font-normal">{email}</span> címre.
-          Kattints a benne lévő linkre a fiókod aktiválásához.
+          Kérlek, ellenőrizd a postaládádat (<span className="font-normal">{email}</span>) és a Spam
+          mappát a regisztráció befejezéséhez.
         </p>
         <Link href="/login">
           <Button variant="secondary" fullWidth type="button">

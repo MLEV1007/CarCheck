@@ -1,0 +1,208 @@
+<!--
+  ============================================================================
+  AUTÓ ÁLLAPOTFELMÉRŐ — Supabase Auth E-mail Sablonok (White-label, magyar)
+  ============================================================================
+
+  Ez a fájl NEM egy renderelt oldal — dokumentáció + copy-paste forrás a
+  Supabase Dashboardhoz (Authentication → Emails → Templates).
+
+  Két sablon van benne, egymás után, jól elkülönítve:
+    1. "Confirm signup"   → lásd a <!-- SABLON 1 --> blokkot
+    2. "Reset password"   → lásd a <!-- SABLON 2 --> blokkot
+
+  Beillesztés a Supabase Dashboardba:
+    1. Supabase Dashboard → a projekt → Authentication → Emails → Templates.
+    2. Válaszd ki a megfelelő sablont ("Confirm signup" / "Reset password"),
+       és a "Source" / HTML szerkesztőbe másold be a megfelelő <table> blokkot
+       (a <!-- SABLON kezdete --> és <!-- SABLON vége --> közötti részt,
+       a komment sorok nélkül).
+    3. A "Subject heading" mezőbe írd be a sablon alatt megadott tárgysort.
+    4. Mentsd el. A Supabase automatikusan behelyettesíti a `{{ .ConfirmationURL }}`
+       változót a valós, egyedi linkkel kiküldéskor.
+
+  Design forrás: stripe.md (Auth/Landing/Beállítások design rendszer) —
+  elektromos indigó (#533afd) CTA gomb, mély sötétkék (#0d253d) szöveg,
+  alig színezett háttér (#f6f9fc), pill-alakú (rounded-full) gomb.
+
+  Fontos e-mail-technikai megjegyzések:
+  - Táblázat-alapú (table-based) elrendezés + inline stílusok, mert a legtöbb
+    levelezőkliens (Outlook desktop, Gmail app stb.) nem támogatja megbízhatóan
+    a modern CSS-t (flex/grid, külső stíluslap).
+  - Rendszer-betűtípus stack (nincs @font-face-importálás), mert a Sohne nem
+    tölthető be megbízhatóan minden kliensben.
+  - max-width: 600px, reszponzív (mobil levelezőkben egy oszlopba rendeződik).
+-->
+
+<!-- ============================================================ -->
+<!-- SABLON 1 — Regisztráció visszaigazolása (Confirm signup)       -->
+<!-- Tárgysor (Subject heading): Erősítsd meg a regisztrációdat - Autó Állapotfelmérő -->
+<!-- SABLON kezdete -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f6f9fc; padding:40px 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <tr>
+    <td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; background-color:#ffffff; border-radius:16px; border:1px solid #e3e8ee; overflow:hidden;">
+
+        <!-- Fejléc / branding sáv -->
+        <tr>
+          <td style="padding:32px 40px 0 40px;" align="left">
+            <span style="display:inline-block; font-size:20px; font-weight:600; letter-spacing:-0.26px; color:#0d253d;">
+              🚗 Autó Állapotfelmérő
+            </span>
+          </td>
+        </tr>
+
+        <!-- Fő tartalom -->
+        <tr>
+          <td style="padding:32px 40px 8px 40px;">
+            <h1 style="margin:0 0 16px 0; font-size:26px; font-weight:300; letter-spacing:-0.26px; line-height:1.2; color:#0d253d;">
+              Már csak egy lépés választ el a fiókodtól
+            </h1>
+            <p style="margin:0 0 20px 0; font-size:16px; line-height:1.6; font-weight:400; color:#273951;">
+              Üdvözlünk az Autó Állapotfelmérőben! Köszönjük, hogy regisztráltál. A fiókod aktiválásához
+              és a bejelentkezéshez már csak meg kell erősítened az e-mail címedet az alábbi gombra kattintva.
+            </p>
+          </td>
+        </tr>
+
+        <!-- CTA gomb -->
+        <tr>
+          <td style="padding:8px 40px 32px 40px;" align="left">
+            <table role="presentation" cellpadding="0" cellspacing="0">
+              <tr>
+                <td align="center" style="border-radius:999px; background-color:#533afd;">
+                  <a href="{{ .ConfirmationURL }}" target="_blank"
+                     style="display:inline-block; padding:14px 32px; font-size:15px; font-weight:500; color:#ffffff; text-decoration:none; border-radius:999px;">
+                    E-mail cím megerősítése
+                  </a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Elválasztó + alternatív link -->
+        <tr>
+          <td style="padding:0 40px;">
+            <div style="border-top:1px solid #e3e8ee; padding-top:20px;">
+              <p style="margin:0 0 6px 0; font-size:13px; color:#64748d;">
+                Ha a gomb nem működik, másold be az alábbi linket a böngésződbe:
+              </p>
+              <p style="margin:0; font-size:13px; word-break:break-all; color:#533afd;">
+                <a href="{{ .ConfirmationURL }}" style="color:#533afd; text-decoration:underline;">{{ .ConfirmationURL }}</a>
+              </p>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Lábléc -->
+        <tr>
+          <td style="padding:28px 40px 32px 40px;">
+            <p style="margin:0; font-size:13px; line-height:1.6; color:#64748d;">
+              Ha nem te kezdeményezted ezt a regisztrációt, nyugodtan hagyd figyelmen kívül ezt az e-mailt —
+              fiók nem jön létre a megerősítés nélkül.
+            </p>
+          </td>
+        </tr>
+      </table>
+
+      <!-- Kártyán kívüli mikroszöveg -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;">
+        <tr>
+          <td align="center" style="padding:20px 24px 0 24px;">
+            <p style="margin:0; font-size:12px; color:#61718a;">
+              Autó Állapotfelmérő — professzionális autóátvizsgálási riportok
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+<!-- SABLON vége -->
+
+<!-- ============================================================ -->
+<!-- SABLON 2 — Jelszó visszaállítás (Reset password)                -->
+<!-- Tárgysor (Subject heading): Jelszó visszaállítása - Autó Állapotfelmérő -->
+<!-- SABLON kezdete -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f6f9fc; padding:40px 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <tr>
+    <td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; background-color:#ffffff; border-radius:16px; border:1px solid #e3e8ee; overflow:hidden;">
+
+        <!-- Fejléc / branding sáv -->
+        <tr>
+          <td style="padding:32px 40px 0 40px;" align="left">
+            <span style="display:inline-block; font-size:20px; font-weight:600; letter-spacing:-0.26px; color:#0d253d;">
+              🚗 Autó Állapotfelmérő
+            </span>
+          </td>
+        </tr>
+
+        <!-- Fő tartalom -->
+        <tr>
+          <td style="padding:32px 40px 8px 40px;">
+            <h1 style="margin:0 0 16px 0; font-size:26px; font-weight:300; letter-spacing:-0.26px; line-height:1.2; color:#0d253d;">
+              Jelszó visszaállítása
+            </h1>
+            <p style="margin:0 0 20px 0; font-size:16px; line-height:1.6; font-weight:400; color:#273951;">
+              Azt kérted, hogy állítsuk vissza a fiókodhoz tartozó jelszót. Kattints az alábbi gombra,
+              és megadhatod az új jelszavadat. A link biztonsági okokból korlátozott ideig érvényes.
+            </p>
+          </td>
+        </tr>
+
+        <!-- CTA gomb -->
+        <tr>
+          <td style="padding:8px 40px 32px 40px;" align="left">
+            <table role="presentation" cellpadding="0" cellspacing="0">
+              <tr>
+                <td align="center" style="border-radius:999px; background-color:#533afd;">
+                  <a href="{{ .ConfirmationURL }}" target="_blank"
+                     style="display:inline-block; padding:14px 32px; font-size:15px; font-weight:500; color:#ffffff; text-decoration:none; border-radius:999px;">
+                    Új jelszó megadása
+                  </a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Elválasztó + alternatív link -->
+        <tr>
+          <td style="padding:0 40px;">
+            <div style="border-top:1px solid #e3e8ee; padding-top:20px;">
+              <p style="margin:0 0 6px 0; font-size:13px; color:#64748d;">
+                Ha a gomb nem működik, másold be az alábbi linket a böngésződbe:
+              </p>
+              <p style="margin:0; font-size:13px; word-break:break-all; color:#533afd;">
+                <a href="{{ .ConfirmationURL }}" style="color:#533afd; text-decoration:underline;">{{ .ConfirmationURL }}</a>
+              </p>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Lábléc -->
+        <tr>
+          <td style="padding:28px 40px 32px 40px;">
+            <p style="margin:0; font-size:13px; line-height:1.6; color:#64748d;">
+              Ha nem te kérted a jelszó visszaállítását, hagyd figyelmen kívül ezt az e-mailt —
+              a jelszavad változatlan marad, amíg a fenti linkre nem kattintasz.
+            </p>
+          </td>
+        </tr>
+      </table>
+
+      <!-- Kártyán kívüli mikroszöveg -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;">
+        <tr>
+          <td align="center" style="padding:20px 24px 0 24px;">
+            <p style="margin:0; font-size:12px; color:#61718a;">
+              Autó Állapotfelmérő — professzionális autóátvizsgálási riportok
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+<!-- SABLON vége -->

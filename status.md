@@ -1,6 +1,6 @@
 # Státusz — Autó Állapotfelmérő SaaS (MVP)
 
-_Utolsó frissítés: 2026-07-31 (VIN OCR v3 -- jelölt-alapú, konfidencia-súlyozott kinyerés + ISO 3779 ellenőrzőszám-bónusz + két menetes PSM felismerés, mert a "más adat is van a fotón" eset a korábbi "első találat a teljes szövegben" logikát megbízhatatlanná tette; korábbi lépésekből: Canvas kép-előfeldolgozás, Felszereltség modul Hibrid Okos-Lista)_
+_Utolsó frissítés: 2026-07-31 (Google OAuth ellenőrzés + magyar white-label Auth e-mail sablonok + regisztrációs UI visszajelzés javítása; korábbi lépésekből: VIN OCR v3, Canvas kép-előfeldolgozás, Felszereltség modul Hibrid Okos-Lista)_
 
 ## Kész funkciók
 
@@ -198,6 +198,29 @@ A `StepEquipment.tsx` (5. lépés, korábbi "Bővített felszereltség lista kat
 - **Katalógus kategória-címkék emoji-val** -- `EQUIPMENT_CATEGORY_LABEL` mostantól "🛠️ Műszaki & Asszisztensek" / "🪑 Beltér & Kényelem" / "🚗 Kültér & Világítás" / "📻 Multimédia & Navigáció" (korábban csak a puszta kategórianév).
 - **Nincs DB-/RPC-/típus-szintű változás** -- a `equipment` JSONB séma (`{ name, status }[]`) és a publikus riport `EquipmentMatrix.tsx` (csak `working`/`not_working` jelenik meg, `na` rejtve) változatlan; a négy réteg KIZÁRÓLAG UI-szűrés a wizard 4. lépésén, a `value` (állapot-tömb) maga nem változik réteg-váltáskor.
 - **Ellenőrzés:** `npx tsc --noEmit` hibamentes a teljes projektre; a katalógus-logika (elemszám, duplikátum-mentesség, kiemelt nevek megléte a katalógusban) `esbuild`-del lefordított, node-szkripttel futtatott assertion-ökkel ellenőrizve. A sandbox 45 másodperces parancs-timeout-ja miatt teljes `next build` NEM futtatható le végig ebben a munkamenetben (a cold build ennél tovább tart) -- ezt a usernek érdemes helyben (`npm run build`) leellenőriznie commit előtt.
+
+### 13. Google OAuth ellenőrzés + magyar white-label Auth e-mailek (2026-07-31)
+
+**Google OAuth -- kód átvizsgálva, HIBA NEM található, minden a helyes mintát követi:**
+- `GoogleAuthButton.tsx`: `signInWithOAuth({ provider: 'google', options: { redirectTo: \`${window.location.origin}/auth/callback?next=...\` } })` -- helyes, a `next` query-paraméterrel adja át, hova irányítson sikeres OAuth után (dashboard vagy a védett oldalról kidobó `redirectTo`).
+- `app/auth/callback/route.ts`: közös route az email-megerősítéshez ÉS a Google OAuth-hoz -- a `code` paramétert `exchangeCodeForSession(code)`-dal váltja munkamenetté, a `lib/supabase/server.ts` Next.js 15-kompatibilis (async `cookies()`, `@supabase/ssr`) klienssel; siker esetén `next`-re (alapértelmezett `/dashboard`) irányít, provider-oldali megszakításnál (`error`/`error_description` paraméter) vagy sikertelen code-cserénél `/login?error=oauth_failed` / `/login?error=confirmation_failed`-re.
+- `LoginForm.tsx` / `RegisterForm.tsx`: mindkettő megjeleníti a `CALLBACK_ERROR_MESSAGES` alapján a fenti két hibakódot magyarul.
+- **Nem volt szükség kódmódosításra ehhez a résszel** -- a folyamat korábbi lépésben már helyesen lett megépítve (lásd fenti 2. pont). Az egyetlen fennmaradó teendő Supabase/Google Cloud Console-konfiguráció, nem kód:
+
+**TEENDŐ (3 lépés, Supabase Dashboard + Google Cloud Console, NEM kód):**
+1. **Google Cloud Console** -- hozz létre (vagy nyiss meg egy meglévő) OAuth 2.0 Client ID-t (Web application típus) a `APIs & Services -> Credentials` alatt. Az "Authorized redirect URIs" listához add hozzá pontosan ezt: `https://nsejmkcwvksbwxscvrvb.supabase.co/auth/v1/callback` (a Supabase projekt saját callback URL-je, NEM az alkalmazás `/auth/callback` route-ja -- azt a Supabase hívja meg belülről).
+2. **Supabase Dashboard** -- `Authentication -> Providers -> Google`: kapcsold be a providert, és illeszd be az 1. lépésben kapott Client ID-t és Client Secret-et, majd mentsd.
+3. **Alkalmazás oldal (már kész, csak ellenőrzés):** a `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` env-változók éles/preview környezetben (Vercel) is be legyenek állítva, és a Vercel domain szerepeljen a Supabase `Authentication -> URL Configuration -> Redirect URLs` engedélyezett listáján (pl. `https://<vercel-domain>/auth/callback`), különben a `redirectTo` célt a Supabase elutasítja.
+
+**Magyar white-label Auth e-mail sablonok (`docs/email-templates.html`, ÚJ fájl):**
+- Két teljes, táblázat-alapú (levelezőkliens-kompatibilis), inline-stílusú HTML sablon: "Confirm signup" (tárgy: "Erősítsd meg a regisztrációdat - Autó Állapotfelmérő") és "Reset password" (tárgy: "Jelszó visszaállítása - Autó Állapotfelmérő"), mindkettő `{{ .ConfirmationURL }}` Supabase-változóval.
+- Design: stripe.md tokenek -- indigó (`#533afd`) pill-gomb (`border-radius:999px`), sötétkék (`#0d253d`) szöveg, `#f6f9fc` háttér, fehér kártya lekerekített sarkokkal, hairline szegély.
+- **TEENDŐ (nem kód):** Supabase Dashboard -> Authentication -> Emails -> Templates -> válaszd ki a megfelelő sablont -> a HTML forrás mezőbe másold be a `docs/email-templates.html`-ben a megfelelő `<!-- SABLON kezdete -->` / `<!-- SABLON vége -->` blokk közti táblázatot -> Subject heading mezőbe a fájlban jelzett tárgysort -> Mentés.
+
+**Regisztrációs UI visszajelzés (`components/auth/RegisterForm.tsx`):**
+- Sikeres regisztráció (megerősítő email kiküldve) utáni állapot szövege lecserélve a projekt-instrukció szerinti pontos magyar szövegre: "✉️ Visszaigazoló e-mailt küldtünk! Kérlek, ellenőrizd a postaládádat (és a Spam mappát) a regisztráció befejezéséhez." -- fehér kártyába (`rounded-stripe-md`, hairline border) rendezve, az email cím kiemelve.
+
+**Ellenőrzés:** `npx tsc --noEmit` hibamentes a teljes projektre (nincs új típushiba).
 
 **Megerősítve, hogy már korábban elkészült** (a mostani feladatlista 1/2/4/6 pontjai, lásd fenti 11. szakasz): wizard stepper `overflow-x-auto`-fix, dinamikus "Tovább" gomb-felirat (`WIZARD_STEP_META`), DOT szám szigorú validációja (hét 01-53, év max a futtatáskori év -- 2026-ban "26"), gumiabroncs-pozíciók kizárólag magyar felirattal ("Bal első"/"Jobb első"/"Bal hátsó"/"Jobb hátsó"), dashboard táblázat `minmax()`-alapú, squishing-mentes elrendezése. Ezekhez a mostani lépésben KÓD-SZINTŰ változtatás nem történt, csak felülvizsgálat.
 
