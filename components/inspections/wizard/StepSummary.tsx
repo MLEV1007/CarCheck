@@ -3,6 +3,7 @@
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { getPaintStatus } from '@/lib/inspections/constants';
 import { PaintStatusBadge } from '@/components/inspections/wizard/PaintStatusBadge';
+import { isVideoUrl } from '@/lib/reports/media';
 import type { CarInfoState, DefectState, PaintMeasurementState } from '@/lib/inspections/types';
 
 interface StepSummaryProps {
@@ -84,7 +85,7 @@ export function StepSummary({
             {defects.map((defect, index) => (
               <li key={defect.clientId} className="flex items-center gap-3 py-2.5">
                 {defect.previewUrl ? (
-                  defect.file?.type.startsWith('video/') ? (
+                  (defect.file ? defect.file.type.startsWith('video/') : isVideoUrl(defect.previewUrl)) ? (
                     <video src={defect.previewUrl} className="h-12 w-12 shrink-0 rounded-md object-cover" />
                   ) : (
                     // eslint-disable-next-line @next/next/no-img-element

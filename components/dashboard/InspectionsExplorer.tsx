@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Check, Copy, ExternalLink, Pencil, Plus, Search } from 'lucide-react';
+import { Check, Copy, ExternalLink, Eye, Pencil, Plus, Search } from 'lucide-react';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 
 export interface InspectionRow {
@@ -128,10 +128,12 @@ function InspectionRowItem({
 
   return (
     <li className="grid grid-cols-1 gap-3 px-5 py-4 sm:grid-cols-[1.6fr_1fr_0.7fr_1fr_0.9fr_auto] sm:items-center sm:gap-4">
-      <div className="min-w-0">
-        <p className="truncate text-[14px] font-medium text-linear-ink">{carLabel}</p>
+      <Link href={`/inspections/${inspection.id}`} className="min-w-0 group">
+        <p className="truncate text-[14px] font-medium text-linear-ink transition-colors group-hover:text-linear-primary-hover group-hover:underline">
+          {carLabel}
+        </p>
         {inspection.vin && <p className="truncate font-mono text-[12px] text-linear-ink-subtle">{inspection.vin}</p>}
-      </div>
+      </Link>
 
       <span className="font-mono text-[13px] text-linear-ink-muted">{inspection.license_plate ?? '—'}</span>
       <span className="text-[13px] text-linear-ink-muted">{inspection.year ?? '—'}</span>
@@ -152,6 +154,13 @@ function InspectionRowItem({
           </Link>
         ) : (
           <>
+            <Link
+              href={`/inspections/${inspection.id}`}
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-linear-hairline-strong bg-linear-surface-2 px-3 text-[13px] font-medium text-linear-ink transition-colors hover:bg-linear-surface-3"
+            >
+              <Eye className="h-3.5 w-3.5" />
+              Megtekintés
+            </Link>
             <a
               href={`/report/${inspection.public_token}`}
               target="_blank"

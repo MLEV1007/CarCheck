@@ -25,27 +25,49 @@ const STEP_LABELS: Record<WizardStep, string> = {
   4: 'Összegzés & Publikálás',
 };
 
+interface InspectionWizardProps {
+  /** Meglévő piszkozat folytatásakor a `/inspections/[id]` route adja át -- ha nincs megadva, új UUID generálódik (új vizsgálat). */
+  inspectionId?: string;
+  initialCarInfo?: CarInfoState;
+  initialPaintMeasurements?: PaintMeasurementState[];
+  initialDefects?: DefectState[];
+}
+
 /**
- * Több lépésből álló wizard az új vizsgálat rögzítéséhez
- * (PROJEKT_INSTRUKCIOK.md 5.B: Szakértői Dashboard & Űrlap -- Linear Dark Design Style).
+ * Több lépésből álló wizard az új vizsgálat rögzítéséhez ÉS egy meglévő piszkozat
+ * folytatásához/szerkesztéséhez (PROJEKT_INSTRUKCIOK.md 5.B: Szakértői Dashboard &
+ * Űrlap -- Linear Dark Design Style; a folytatás/szerkesztés a `/inspections/[id]`
+ * route-on keresztül éri el ezt a komponenst).
  *
- * Az `inspectionId`-t kliens-oldalon generáljuk (crypto.randomUUID()) már a wizard
- * megnyitásakor, hogy a 3. lépés média-feltöltései és a végleges mentés (4. lépés)
- * ugyanarra a sorra hivatkozzanak -- a tényleges INSERT csak a "Mentés piszkozatként"
- * / "Publikálás" gombnál történik meg, a lépések között minden állapot csak a
- * React state-ben él.
+ * Ha az `inspectionId` prop nincs megadva (új vizsgálat, `/inspections/new`), kliens-oldalon
+ * generálunk egy UUID-t (crypto.randomUUID()) már a wizard megnyitásakor, hogy a 3. lépés
+ * média-feltöltései és a végleges mentés (4. lépés) ugyanarra a sorra hivatkozzanak. Ha meg
+ * van adva (piszkozat folytatása), azt a sort frissítjük tovább -- a `handleSubmit` mindkét
+ * esetben ugyanazt az utat futja be: az `inspections` sor UPSERT-je (id-ütközésnél UPDATE),
+ * a `paint_measurements`/`defects` gyerek-sorok pedig előbb törlődnek `inspection_id` alapján,
+ * majd újra beszúródnak a jelenlegi state-ből -- ez új vizsgálatnál no-op törlés (nincs mit
+ * törölni), szerkesztésnél pedig biztonságosan felülírja a korábbi mérés-/hiba-listát
+ * duplikáció nélkül.
  */
-export function InspectionWizard() {
+export function InspectionWizard({
+  inspectionId: initialInspectionId,
+  initialCarInfo,
+  initialPaintMeasurements,
+  initialDefects,
+}: InspectionWizardProps = {}) {
   const router = useRouter();
   const [step, setStep] = useState<WizardStep>(1);
-  const [carInfo, setCarInfo] = useState<CarInfoState>(EMPTY_CAR_INFO);
+  const [carInfo, setCarInfo] = useState<CarInfoState>(initialCarInfo ?? EMPTY_CAR_INFO);
   const [paintMeasurements, setPaintMeasurements] = useState<PaintMeasurementState[]>(
-    PAINT_PANELS.map((elementName) => ({ elementName, micronValue: '' }))
+    initialPaintMeasurements ?? PAINT_PANELS.map((elementName) => ({ elementName, micronValue: '' }))
   );
-  const [defects, setDefects] = useState<DefectState[]>([EMPTY_DEFECT()]);
+  const [defects, setDefects] = useState<DefectState[]>(initialDefects ?? [EMPTY_DEFECT()]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [inspectionId] = useState<string>(() => crypto.randomUUID());
+  const [inspectionId] = useState<string>(() => initialInspectionId ?? crypto.randomUUID());
+  // Ha `initialInspectionId`-t kaptunk propként, ez egy MEGLÉVŐ piszkozat szerkesztése
+  // (`/inspections/[id]`) -- ez a különbségtétel a hibakezelésnél kritikus, lásd lent.
+  const isEditMode = Boolean(initialInspectionId);
 
   async function handleSubmit(status: 'draft' | 'completed') {
     setIsSubmitting(true);
@@ -83,6 +105,18 @@ export function InspectionWizard() {
 
       if (inspectionError) throw inspectionError;
 
+      // Piszkozat szerkesztésekor a korábbi mérés-/hiba-sorok a jelenlegi state-tel NEM
+      // egyeznek meg 1:1 (a wizard nem tartja nyilván az egyes DB row id-kat, csak a
+      // kliens-oldali `clientId`-t) -- ezért a legegyszerűbb és legbiztonságosabb út a
+      // teljes gyerek-sor-halmaz törlése, majd újbóli beszúrása. Új vizsgálatnál ez a
+      // törlés no-op (még nincs semmi az `inspectionId`-hez), szerkesztésnél pedig
+      // garantáltan nem hoz létre duplikátumokat.
+      const { error: paintDeleteError } = await supabase
+        .from('paint_measurements')
+        .delete()
+        .eq('inspection_id', inspectionId);
+      if (paintDeleteError) throw paintDeleteError;
+
       const filledPaint = paintMeasurements.filter((panel) => panel.micronValue.trim() !== '');
       if (filledPaint.length > 0) {
         const { error: paintError } = await supabase.from('paint_measurements').insert(
@@ -100,6 +134,12 @@ export function InspectionWizard() {
         if (paintError) throw paintError;
       }
 
+      const { error: defectsDeleteError } = await supabase
+        .from('defects')
+        .delete()
+        .eq('inspection_id', inspectionId);
+      if (defectsDeleteError) throw defectsDeleteError;
+
       if (relevantDefects.length > 0) {
         const defectRows = await Promise.all(
           relevantDefects.map(async (defect) => {
@@ -112,6 +152,11 @@ export function InspectionWizard() {
                 .upload(path, defect.file, { upsert: true });
               if (uploadError) throw uploadError;
               mediaUrl = supabase.storage.from('inspection-media').getPublicUrl(path).data.publicUrl;
+            } else if (defect.previewUrl && !defect.previewUrl.startsWith('blob:')) {
+              // Piszkozat szerkesztésekor a korábban már feltöltött médiát (a `previewUrl`
+              // ilyenkor a Storage publikus URL-je, NEM egy kliens-oldali `blob:` object URL)
+              // nem töltjük fel újra -- csak az URL-t hivatkozzuk az újra beszúrt sorban.
+              mediaUrl = defect.previewUrl;
             }
             return {
               inspection_id: inspectionId,
@@ -133,14 +178,27 @@ export function InspectionWizard() {
         router.push(`/dashboard?published=${inspectionRow?.public_token ?? ''}`);
       }
     } catch (err) {
-      // Best-effort rollback: ha bármelyik lépés elbukik, töröljük a már beszúrt
-      // sorokat, hogy a user hibaüzenet után ugyanazzal az adattal, duplikáció
-      // nélkül tudja újra megnyomni a mentés gombot.
-      await supabase.from('defects').delete().eq('inspection_id', inspectionId);
-      await supabase.from('paint_measurements').delete().eq('inspection_id', inspectionId);
-      await supabase.from('inspections').delete().eq('id', inspectionId);
+      // Best-effort rollback -- KIZÁRÓLAG új vizsgálatnál (nem szerkesztésnél)! Ha a wizard
+      // egy MEGLÉVŐ piszkozatot szerkeszt (`isEditMode`), a sorok már a mentési kísérlet
+      // előtt is léteztek -- ilyenkor a törlés nem "vissza", hanem VÉGLEGESEN elveszítené a
+      // korábban elmentett vizsgálatot egyetlen sikertelen mentési próbálkozás miatt. Új
+      // vizsgálatnál viszont biztonságos: az `inspectionId` ebben a munkamenetben született,
+      // szóval a törlés csak a most félbemaradt beszúrásokat takarítja el, hogy a user hibaüzenet
+      // után ugyanazzal az adattal, duplikáció nélkül tudja újra megnyomni a mentés gombot.
+      if (!isEditMode) {
+        await supabase.from('defects').delete().eq('inspection_id', inspectionId);
+        await supabase.from('paint_measurements').delete().eq('inspection_id', inspectionId);
+        await supabase.from('inspections').delete().eq('id', inspectionId);
+      }
 
-      setSubmitError(err instanceof Error ? err.message : 'Váratlan hiba történt a mentés közben. Próbáld újra.');
+      setSubmitError(
+        isEditMode
+          ? (err instanceof Error ? err.message : 'Váratlan hiba történt a mentés közben.') +
+              ' A korábban elmentett adatok megmaradtak -- próbáld újra menteni.'
+          : err instanceof Error
+            ? err.message
+            : 'Váratlan hiba történt a mentés közben. Próbáld újra.'
+      );
       setIsSubmitting(false);
     }
   }

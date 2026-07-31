@@ -2,6 +2,7 @@
 
 import { useRef } from 'react';
 import { ImagePlus, X } from 'lucide-react';
+import { isVideoUrl } from '@/lib/reports/media';
 
 interface DefectMediaUploadProps {
   file: File | null;
@@ -16,10 +17,15 @@ interface DefectMediaUploadProps {
  * (lásd InspectionWizard.tsx `handleSubmit`) -- itt csak a fájl kiválasztása és
  * kliens-oldali előnézete zajlik, hogy a felhasználó a lépések közti navigáció
  * közben ne generáljon felesleges storage-hívásokat.
+ *
+ * Piszkozat szerkesztésekor (`/inspections/[id]`) a `previewUrl` egy már meglévő
+ * Storage publikus URL is lehet `file` nélkül (a médiát korábban töltötték fel) --
+ * ilyenkor a `file.type` nem elérhető, a videó/fotó eldöntése az URL kiterjesztése
+ * alapján történik (`isVideoUrl`, ugyanaz a segédfüggvény, mint a publikus riportban).
  */
 export function DefectMediaUpload({ file, previewUrl, onSelect, onRemove }: DefectMediaUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const isVideo = file?.type.startsWith('video/');
+  const isVideo = file ? file.type.startsWith('video/') : previewUrl ? isVideoUrl(previewUrl) : false;
 
   if (previewUrl) {
     return (

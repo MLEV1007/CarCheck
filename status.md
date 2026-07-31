@@ -1,6 +1,6 @@
 # Státusz — Autó Állapotfelmérő SaaS (MVP)
 
-_Utolsó frissítés: 2026-07-31 (Cégbeállítások oldal + dinamikus márkaszín)_
+_Utolsó frissítés: 2026-07-31 (Vizsgálat szerkesztő/részletező oldal `/inspections/[id]`)_
 
 ## Kész funkciók
 
@@ -77,6 +77,19 @@ _Utolsó frissítés: 2026-07-31 (Cégbeállítások oldal + dinamikus márkasz�
   - `ReportHeader.tsx` logó-monogram háttérszíne (ha nincs feltöltve logó) + a "Nyomtatás / PDF" gomb hover keretszíne.
   - A `PaintMap.tsx` szín-kódolt gyári/újrafújt/gittelt jelvényei **szándékosan** megmaradtak a szemantikus zöld/sárga/piros BMW tokeneknél (`bmw-success`/`bmw-warning`/`bmw-error`) -- ezek státuszjelentést hordoznak, nem márka-akcentust, ezért nem a cég színét követik.
 
+### 7. Vizsgálat szerkesztő / részletező oldal (`/inspections/[id]`)
+[Linear Dark Design Style]
+- `app/inspections/[id]/page.tsx`: Server Component. A vizsgálatot `.eq('id', id).eq('user_id', user.id).maybeSingle()`-lel kérdezi le -- ez az `inspections_select_own` RLS policy (`auth.uid() = user_id`) mellett egy explicit, defenzív második védelmi vonal (PROJEKT_INSTRUKCIOK.md 3. pont). Ha a sor `null` (nem létezik VAGY nem a bejelentkezett usert illeti -- a két esetet SZÁNDÉKOSAN nem különböztetjük meg kifelé), a `components/inspections/detail/InspectionNotFound.tsx` egységes "nem található / nincs jogosultság" állapotot mutatja.
+- **Elágazás `inspection.status` alapján:**
+  - **`draft`**: a meglévő `paint_measurements`/`defects` sorokat a `PAINT_PANELS`/`DefectState` formára alakítva előtölti az `InspectionWizard`-ot, és onnan folytatható a rögzítés/publikálás -- ugyanaz a wizard komponens, mint az `/inspections/new`-nél.
+  - **`completed`**: `components/inspections/detail/InspectionDetailView.tsx` (Client Component) -- read-only szakértői adatlap (autó adatok, mérések `PaintStatusBadge`-dzsel, hibák média-thumbnaillel) + 3 akciógomb: "Publikus riport megtekintése" (`target="_blank"`), "Publikus link másolása" (`navigator.clipboard` + inline "Másolva" jelzés + felugró toast), "Visszaállítás piszkozatba / Szerkesztés" (`inspections.status` update `'draft'`-ra, majd `router.refresh()` -- ugyanez a Server Component ág mostantól a wizardot rendereli).
+- **`InspectionWizard.tsx` kiegészítve szerkesztő módra** (opcionális `inspectionId`, `initialCarInfo`, `initialPaintMeasurements`, `initialDefects` propokkal -- ha nincsenek megadva, a viselkedés 1:1 megegyezik a korábbi `/inspections/new` flow-val):
+  - A mentéskor (`handleSubmit`) a `paint_measurements`/`defects` gyerek-sorok mostantól előbb `DELETE ... WHERE inspection_id = ...`, majd újra `INSERT`-elődnek a jelenlegi state-ből -- új vizsgálatnál ez no-op törlés, szerkesztésnél biztonságosan felülírja a korábbi listát duplikáció nélkül (a wizard nem tart nyilván per-sor DB id-kat, csak kliens-oldali `clientId`-t).
+  - **Kritikus hibakezelési változás:** a korábbi "hiba esetén töröljük az egészet" rollback KIZÁRÓLAG új vizsgálatnál fut le mostantól (`isEditMode` flaggel őrizve). Szerkesztésnél a rollback ki van kapcsolva, mert egy MEGLÉVŐ, korábban már elmentett vizsgálatnál a teljes törlés adatvesztést okozna egyetlen sikertelen mentési kísérlet miatt -- ehelyett csak hibaüzenetet kap a user, a korábbi adatok érintetlenek maradnak.
+  - Létező hiba-média (már feltöltött Storage URL) nem töltődik fel újra mentéskor -- a `DefectState.previewUrl` `blob:` séma-ellenőrzésével dönti el a kód, hogy kliens-oldali új fájl-előnézetről (újra fel kell tölteni) vagy egy már létező távoli URL-ről (csak hivatkozni kell rá) van-e szó. `DefectMediaUpload.tsx` és `StepSummary.tsx` a videó/fotó megkülönböztetést is ugyanígy, `file` hiányában az URL kiterjesztéséből (`isVideoUrl`) végzi el létező média esetén.
+- **`get_public_report` RPC megerősítve** (Supabase migráció, `nsejmkcwvksbwxscvrvb` projekt, `restrict_public_report_to_completed_status`): mostantól csak `status = 'completed'` vizsgálatot ad vissza a `public_token` alapján -- korábban BÁRMILYEN státuszú vizsgálatot visszaadott. Erre a "Visszaállítás piszkozatba" funkció miatt volt szükség: enélkül egy korábban kiküldött ügyfél-link élőben mutatta volna a vizsgáló által épp szerkesztés alatt álló, félkész adatokat. Piszkozat állapotban a link mostantól `ReportNotFound` 404-et mutat, amíg a vizsgáló újra nem publikálja.
+- **Dashboard navigáció bekötve** (`components/dashboard/InspectionsExplorer.tsx`): az autó neve (teljes sor bal oldala) mostantól minden sorban `Link`-ként `/inspections/[id]`-re mutat; a piszkozat-soroknál a meglévő "Folytatás" gomb változatlanul, a befejezett soroknál egy új "Megtekintés" gomb (`Eye` ikon) is `/inspections/[id]`-re navigál, a "Riport" (`target="_blank"` a publikus oldalra) és "Link másolása" gombok változatlanul megmaradtak gyors-akcióként.
+
 ## Hibajavítások
 
 ### 2026-07-31: "new row violates row-level security policy" mentéskor (Storage feltöltés)
@@ -96,20 +109,24 @@ A tényleges hiba a **Supabase Storage `inspection-media` bucket `storage.object
 
 ## Verziókezelés
 - GitHub repó: `https://github.com/MLEV1007/CarCheck` (`main` ág).
-- A `/report/[public_token]` oldalt és a Storage RLS javítást tartalmazó commit (`71e3f01`) push-olva a `main`-re.
+- A `/report/[public_token]` oldalt és a Storage RLS javítást tartalmazó commit (`71e3f01`), valamint a `/settings` + dinamikus riport-branding commit (`ad12ac4`) push-olva a `main`-re.
+- A `/inspections/[id]` szerkesztő/részletező oldalt tartalmazó módosítások lokálisan commitolva vannak, de **NINCSENEK pusholva** -- lásd a "Következő lépés" pontnál a részleteket.
 - `test images/` mappa (helyi teszt-fotók a fájlfeltöltés kézi teszteléséhez) szándékosan NINCS commitolva/pusholva — nem projekt-fájl, csak lokális teszt-adat.
+- **Ismert sandbox-korlátozás:** a `git`-et futtató homokozó és a felhasználó Mac-jén lévő `CarCheck` mappa közötti FUSE-mount nem engedélyez `unlink` szisz­témhívást (a `git commit` belső lock-fájljainak/temp objektumainak törlése "Operation not permitted" hibával elszáll) -- viszont `rename`/`mv` működik rajta. Ha egy jövőbeli `git` parancs `Unable to create '.../index.lock': File exists` hibával áll le, a megoldás: `mv .git/index.lock .git/index.lock.bak<N>` (NEM `rm`), utána a parancs újra lefuttatható. A `git push` ebben a sandboxban emellett hitelesítés nélkül fut (`git config` nem tartalmaz tárolt GitHub credential-t, nincs `GITHUB_TOKEN` env változó) -- a push mindig manuálisan, a felhasználó saját gépéről/termináljából szükséges, amíg nincs beállítva egy credential helper vagy PAT.
 
 ## Ellenőrzés
-- `npx tsc --noEmit` — hibamentes (legutóbb ellenőrizve a `/settings` oldal + dinamikus márkaszín elkészülte után).
-- Supabase security advisor (`get_advisors`, `nsejmkcwvksbwxscvrvb` projekt) — újrafuttatva a `/settings` lépés után, nincs új figyelmeztetés (nem volt DB/RLS/migrációs változás, mert a `profiles` tábla és a Storage policy-k már korábban is tartalmazták a szükséges oszlopokat/jogosultságokat).
-- Adatbázis séma élesben ellenőrizve (`list_tables`, `nsejmkcwvksbwxscvrvb`): a `profiles` tábla már tartalmazta a `company_name`, `logo_url`, `primary_color`, `phone`, `email` oszlopokat és a teljes CRUD RLS policy-készletet (`profiles_select_own`, `profiles_insert_own`, `profiles_update_own`, `profiles_delete_own`, mind `auth.uid() = id` alapján) -- migráció nélkül megépíthető volt a `/settings` oldal.
+- `npx tsc --noEmit` — hibamentes (legutóbb ellenőrizve a `/inspections/[id]` oldal elkészülte után).
+- Supabase security advisor (`get_advisors`, `nsejmkcwvksbwxscvrvb` projekt) — újrafuttatva a `get_public_report` RPC megerősítése után, nincs új figyelmeztetés (a 3 ismert WARN változatlan, lásd lent).
+- Adatbázis séma + RLS policy-k élesben ellenőrizve (`list_tables`/`pg_policies`, `nsejmkcwvksbwxscvrvb`): az `inspections`/`paint_measurements`/`defects` táblák mindegyikén megvolt már a teljes SELECT/INSERT/UPDATE/DELETE RLS policy-készlet (`auth.uid() = user_id`) -- a wizard szerkesztő-módú DELETE+INSERT logikájához és a "Visszaállítás piszkozatba" UPDATE-jéhez nem kellett új migráció, csak a `get_public_report` RPC-hez (lásd fent, `restrict_public_report_to_completed_status`).
 - ESLint jelenleg nem futtatható a projektben (nincs `.eslintrc` konfiguráció felvéve) — ez korábbi lépések óta ismert hiányosság, nem az egyes lépésekhez kötődik.
 - Éles `next build` a szinkronizált projektmappában nem futtatható a sandboxból (fájltulajdonosi jogosultság — a felhasználó gépén fut egy élő `next dev` szerver ugyanerre a mappára), ezért a típusellenőrzés + kód-review + élő séma-ellenőrzés + Supabase advisor adja a validációt.
 
 ## Ismert, szándékosan nyitva hagyott TODO-k
-- `get_public_report` SECURITY DEFINER függvény `anon`/`authenticated` által futtatható (Supabase advisor warning) — szándékos, ez a publikus riport oldal alapja, de érdemes lehet külön átvizsgálni, hogy a függvény semmilyen más adatot nem szivárogtat a `public_token`-en kívül.
+- `get_public_report` SECURITY DEFINER függvény `anon`/`authenticated` által futtatható (Supabase advisor warning) — szándékos, ez a publikus riport oldal alapja; a függvény 2026-07-31 óta explicit `status = 'completed'` szűrést is tartalmaz, úgyhogy piszkozat állapotú vizsgálat adatait már nem szivárogtathatja a `public_token`-en keresztül sem.
 - Leaked password protection (HaveIBeenPwned ellenőrzés) ki van kapcsolva Supabase Auth-ban — bekapcsolása Supabase Dashboard beállítás, nem kód.
+- A wizard szerkesztő-módú mentése (`InspectionWizard.tsx`) a `paint_measurements`/`defects` gyerek-sorokat minden mentéskor törli és újra beszúrja -- ez funkcionálisan helyes és duplikáció-mentes, de a törölt/lecserélt hiba-médiák Storage-objektumai (`inspection-media` bucket) NEM törlődnek automatikusan, csak a rájuk mutató DB-sor szűnik meg. Hosszabb távon érdemes egy takarító job/RPC-t építeni az árva Storage-objektumok ellen -- MVP-szinten nem blokkoló, mert a bucket mérete egyelőre elhanyagolható.
 
 ## Következő lépés
-- `/inspections/[id]` — piszkozat vizsgálat szerkesztése/folytatása (jelenleg a dashboard "Folytatás" gombja erre a route-ra mutat, de még nincs megépítve).
-- Kézi funkcionális teszt élesben: logó feltöltés (nagy/hibás fájl elutasítása is), márkaszín mentése és megjelenése a `/report/[public_token]` oldalon, `email` mező mentése a `profiles` táblába (jelenleg csak a wizard/riport olvassa, más funkció még nem használja).
+- **Push a `/inspections/[id]` commit-nak:** a legutóbbi commit ("feat: /inspections/[id] edit & detail page") csak lokálisan létezik a felhasználó gépén (a sandbox nem tud hitelesíteni a GitHub felé) -- fusd le `git push`-t a saját terminálodból/Git klienseddel a `CarCheck` mappában, hogy a `main` ág naprakész legyen.
+- Kézi funkcionális teszt élesben: piszkozat folytatása meglévő méréssel/hibával (média nem töltődik fel újra feleslegesen), publikálás utáni "Visszaállítás piszkozatba" -> a publikus link tényleg 404-et mutat-e utána, majd újra-publikálás után helyreáll-e.
+- Logó feltöltés (nagy/hibás fájl elutasítása is), márkaszín mentése és megjelenése a `/report/[public_token]` oldalon, `email` mező mentése a `profiles` táblába -- a `/settings` lépésből maradt kézi tesztek, még nem futtattuk le élesben.
