@@ -18,9 +18,9 @@ import { createClient } from '@/lib/supabase/client';
 import { PaintStatusBadge } from '@/components/inspections/wizard/PaintStatusBadge';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { isVideoUrl } from '@/lib/reports/media';
-import { EQUIPMENT_STATUS_LABEL } from '@/lib/inspections/constants';
+import { EQUIPMENT_STATUS_LABEL, TIRE_POSITION_LABEL } from '@/lib/inspections/constants';
 import { decodeDot } from '@/lib/inspections/tireDot';
-import type { DiagnosticsState, EquipmentItemState, PaintStatus, TiresState } from '@/lib/inspections/types';
+import type { DiagnosticsState, EquipmentItemState, PaintStatus, TirePosition, TiresState } from '@/lib/inspections/types';
 
 interface DetailInspection {
   id: string;
@@ -322,7 +322,7 @@ export function InspectionDetailView({
                 const decoded = tire.dot.length === 4 ? decodeDot(tire.dot) : null;
                 return (
                   <li key={position} className="flex items-center justify-between gap-3 py-2">
-                    <span className="text-[13px] uppercase text-linear-ink">{position}</span>
+                    <span className="text-[13px] text-linear-ink">{TIRE_POSITION_LABEL[position as TirePosition]}</span>
                     <span className="flex items-center gap-3 text-[13px] text-linear-ink-muted">
                       {tire.mm && <span className="font-mono">{tire.mm} mm</span>}
                       {tire.dot && <span className="font-mono">DOT {tire.dot}</span>}

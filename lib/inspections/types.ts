@@ -112,6 +112,12 @@ export interface EquipmentItemState {
   status: EquipmentStatus;
 }
 
+/** Felszereltség-katalógus kategóriái (bővített lista, kategória-fülekkel + kereséssel
+ * a `StepEquipment.tsx`-ben) -- CSAK UI-szűréshez használt, NEM tárolt mező a DB-ben
+ * (a `equipment` JSONB oszlop továbbra is csak `{ name, status }` párokat tartalmaz,
+ * a kategória a névből a `EQUIPMENT_NAME_TO_CATEGORY` lookuppal derül ki igény szerint). */
+export type EquipmentCategory = 'muszaki' | 'belter' | 'kulter' | 'multimedia';
+
 /**
  * Gumiabroncsok állapota & DOT dekódoló modul (PROJEKT_INSTRUKCIOK.md, "Gumiabroncsok
  * Állapota & DOT Dekódoló Modul" lépés) -- 4 kerékpozíció, mindegyiknél profilmélység

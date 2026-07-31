@@ -9,6 +9,8 @@ interface StepGeneralPhotosProps {
   onChange: (value: GeneralPhotoState[]) => void;
   onBack: () => void;
   onNext: () => void;
+  /** A KÖVETKEZŐ lépés rövid címe -- lásd StepCarInfo.tsx ugyanerről a propról. */
+  nextLabel: string;
 }
 
 const SUGGESTED_ANGLES = ['elölről', 'hátulról', 'bal oldalról', 'jobb oldalról', 'beltér', 'műszerfal'];
@@ -24,7 +26,7 @@ const SUGGESTED_ANGLES = ['elölről', 'hátulról', 'bal oldalról', 'jobb olda
  * InspectionWizard.tsx `handleSubmit`) -- itt csak a kiválasztás és a kliens-oldali
  * előnézet (`URL.createObjectURL`) zajlik.
  */
-export function StepGeneralPhotos({ value, onChange, onBack, onNext }: StepGeneralPhotosProps) {
+export function StepGeneralPhotos({ value, onChange, onBack, onNext, nextLabel }: StepGeneralPhotosProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   function handleFilesSelected(files: FileList) {
@@ -104,7 +106,7 @@ export function StepGeneralPhotos({ value, onChange, onBack, onNext }: StepGener
           onClick={onNext}
           className="inline-flex h-10 items-center rounded-md bg-linear-primary px-5 text-[14px] font-medium text-white transition-colors hover:bg-linear-primary-hover"
         >
-          Tovább a festékvastagsághoz
+          Tovább – {nextLabel}
         </button>
       </div>
     </div>

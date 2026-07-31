@@ -1,7 +1,7 @@
 'use client';
 
 import { AlertTriangle, CheckCircle2, Loader2, MinusCircle, XCircle } from 'lucide-react';
-import { EQUIPMENT_STATUS_LABEL, getPaintStatus } from '@/lib/inspections/constants';
+import { EQUIPMENT_STATUS_LABEL, TIRE_POSITION_LABEL, getPaintStatus } from '@/lib/inspections/constants';
 import { decodeDot } from '@/lib/inspections/tireDot';
 import { PaintStatusBadge } from '@/components/inspections/wizard/PaintStatusBadge';
 import { isVideoUrl } from '@/lib/reports/media';
@@ -11,6 +11,7 @@ import type {
   DiagnosticsState,
   EquipmentItemState,
   PaintMeasurementState,
+  TirePosition,
   TiresState,
 } from '@/lib/inspections/types';
 
@@ -138,7 +139,7 @@ export function StepSummary({
               const decoded = tire.dot.length === 4 ? decodeDot(tire.dot) : null;
               return (
                 <li key={position} className="flex items-center justify-between gap-3 py-2">
-                  <span className="text-[13px] uppercase text-linear-ink">{position}</span>
+                  <span className="text-[13px] text-linear-ink">{TIRE_POSITION_LABEL[position as TirePosition]}</span>
                   <span className="flex items-center gap-3 text-[13px] text-linear-ink-muted">
                     {tire.mm && <span className="font-mono">{tire.mm} mm</span>}
                     {tire.dot && <span className="font-mono">DOT {tire.dot}</span>}

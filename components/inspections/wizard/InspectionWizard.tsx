@@ -12,7 +12,8 @@ import { StepTires } from '@/components/inspections/wizard/StepTires';
 import { StepPaintMeasurements } from '@/components/inspections/wizard/StepPaintMeasurements';
 import { StepDefects } from '@/components/inspections/wizard/StepDefects';
 import { StepSummary } from '@/components/inspections/wizard/StepSummary';
-import { EQUIPMENT_ITEMS, PAINT_PANELS, getPaintStatus } from '@/lib/inspections/constants';
+import { EQUIPMENT_ITEMS, PAINT_PANELS, TOTAL_WIZARD_STEPS, WIZARD_STEP_META, getPaintStatus } from '@/lib/inspections/constants';
+import { isValidDot } from '@/lib/inspections/tireDot';
 import {
   EMPTY_CAR_INFO,
   EMPTY_DEFECT,
@@ -28,18 +29,16 @@ import {
   type WizardStep,
 } from '@/lib/inspections/types';
 
-const STEP_LABELS: Record<WizardStep, string> = {
-  1: 'Autó adatok',
-  2: 'Általános fotók',
-  3: 'Diagnosztikai hibakódok',
-  4: 'Felszereltség állapota',
-  5: 'Gumiabroncsok állapota',
-  6: 'Festékvastagság-mérés',
-  7: 'Hibák & Média',
-  8: 'Összegzés & Publikálás',
-};
+/** A hosszú (mobil "X / 8 lépés · Cím" szöveghez) és rövid (Vissza/Tovább gomb-felirathoz)
+ * lépés-címkék EGYETLEN forrása -- lásd `WIZARD_STEP_META` a `constants.ts`-ben a teljes
+ * indoklásért ("Dinamikus Tovább gomb felirat" lépés). */
+const STEP_LABELS: Record<WizardStep, string> = Object.fromEntries(
+  WIZARD_STEP_META.map(({ step, longLabel }) => [step, longLabel])
+) as Record<WizardStep, string>;
 
-const TOTAL_STEPS = 8;
+const NEXT_STEP_SHORT_LABEL: Record<WizardStep, string> = Object.fromEntries(
+  WIZARD_STEP_META.map(({ step, shortLabel }) => [step, shortLabel])
+) as Record<WizardStep, string>;
 
 function defaultEquipment(): EquipmentItemState[] {
   return EQUIPMENT_ITEMS.map((name) => ({ name, status: 'na' as const }));
@@ -158,13 +157,17 @@ export function InspectionWizard({
       const equipmentPayload = equipment.map((item) => ({ name: item.name, status: item.status }));
 
       // Gumiabroncsok (C pont): mind a 4 pozíciót mentjük, üres/hiányos mezőknél `null`-lal --
-      // a `mm` numerikus, a `dot` csak akkor kerül be, ha a teljes 4 számjegyű kód meg van adva
-      // (a részlegesen kitöltött DOT nem dekódolható, feleslegesen tárolni sem érdemes).
+      // a `mm` numerikus, a `dot` KIZÁRÓLAG akkor kerül be, ha a 4 számjegyű kód formailag ÉS
+      // tartalmilag is érvényes (`isValidDot` -- hét 01-53, év a jelenlegi évig) -- lásd
+      // "DOT szám szigorú validációja" lépés: a `StepTires.tsx` már blokkolja a "Tovább"
+      // gombot érvénytelen DOT-nál, ez itt egy második, szerver felé induló védelmi vonal,
+      // hogy szerkesztés közbeni bármilyen state-anomália se juttathasson érvénytelen DOT-ot
+      // a DB-be.
       const tiresPayload = {
-        fl: { mm: tires.fl.mm.trim() === '' ? null : Number(tires.fl.mm), dot: tires.fl.dot.length === 4 ? tires.fl.dot : null },
-        fr: { mm: tires.fr.mm.trim() === '' ? null : Number(tires.fr.mm), dot: tires.fr.dot.length === 4 ? tires.fr.dot : null },
-        rl: { mm: tires.rl.mm.trim() === '' ? null : Number(tires.rl.mm), dot: tires.rl.dot.length === 4 ? tires.rl.dot : null },
-        rr: { mm: tires.rr.mm.trim() === '' ? null : Number(tires.rr.mm), dot: tires.rr.dot.length === 4 ? tires.rr.dot : null },
+        fl: { mm: tires.fl.mm.trim() === '' ? null : Number(tires.fl.mm), dot: isValidDot(tires.fl.dot) ? tires.fl.dot : null },
+        fr: { mm: tires.fr.mm.trim() === '' ? null : Number(tires.fr.mm), dot: isValidDot(tires.fr.dot) ? tires.fr.dot : null },
+        rl: { mm: tires.rl.mm.trim() === '' ? null : Number(tires.rl.mm), dot: isValidDot(tires.rl.dot) ? tires.rl.dot : null },
+        rr: { mm: tires.rr.mm.trim() === '' ? null : Number(tires.rr.mm), dot: isValidDot(tires.rr.dot) ? tires.rr.dot : null },
       };
 
       const { data: inspectionRow, error: inspectionError } = await supabase
@@ -291,17 +294,25 @@ export function InspectionWizard({
     <div className="mx-auto flex max-w-3xl flex-col gap-5 px-4 py-8 sm:px-6 sm:py-10">
       <StepIndicator current={step} />
       <p className="-mt-1 text-[13px] font-medium text-linear-ink-subtle sm:hidden">
-        {step}. lépés / {TOTAL_STEPS} · {STEP_LABELS[step]}
+        {step}. lépés / {TOTAL_WIZARD_STEPS} · {STEP_LABELS[step]}
       </p>
 
       <div className="rounded-lg border border-linear-hairline bg-linear-surface-1 p-5 sm:p-7">
-        {step === 1 && <StepCarInfo value={carInfo} onChange={setCarInfo} onNext={() => setStep(2)} />}
+        {step === 1 && (
+          <StepCarInfo
+            value={carInfo}
+            onChange={setCarInfo}
+            onNext={() => setStep(2)}
+            nextLabel={NEXT_STEP_SHORT_LABEL[2]}
+          />
+        )}
         {step === 2 && (
           <StepGeneralPhotos
             value={generalPhotos}
             onChange={setGeneralPhotos}
             onBack={() => setStep(1)}
             onNext={() => setStep(3)}
+            nextLabel={NEXT_STEP_SHORT_LABEL[3]}
           />
         )}
         {step === 3 && (
@@ -310,13 +321,26 @@ export function InspectionWizard({
             onChange={setDiagnostics}
             onBack={() => setStep(2)}
             onNext={() => setStep(4)}
+            nextLabel={NEXT_STEP_SHORT_LABEL[4]}
           />
         )}
         {step === 4 && (
-          <StepEquipment value={equipment} onChange={setEquipment} onBack={() => setStep(3)} onNext={() => setStep(5)} />
+          <StepEquipment
+            value={equipment}
+            onChange={setEquipment}
+            onBack={() => setStep(3)}
+            onNext={() => setStep(5)}
+            nextLabel={NEXT_STEP_SHORT_LABEL[5]}
+          />
         )}
         {step === 5 && (
-          <StepTires value={tires} onChange={setTires} onBack={() => setStep(4)} onNext={() => setStep(6)} />
+          <StepTires
+            value={tires}
+            onChange={setTires}
+            onBack={() => setStep(4)}
+            onNext={() => setStep(6)}
+            nextLabel={NEXT_STEP_SHORT_LABEL[6]}
+          />
         )}
         {step === 6 && (
           <StepPaintMeasurements
@@ -324,10 +348,17 @@ export function InspectionWizard({
             onChange={setPaintMeasurements}
             onBack={() => setStep(5)}
             onNext={() => setStep(7)}
+            nextLabel={NEXT_STEP_SHORT_LABEL[7]}
           />
         )}
         {step === 7 && (
-          <StepDefects value={defects} onChange={setDefects} onBack={() => setStep(6)} onNext={() => setStep(8)} />
+          <StepDefects
+            value={defects}
+            onChange={setDefects}
+            onBack={() => setStep(6)}
+            onNext={() => setStep(8)}
+            nextLabel={NEXT_STEP_SHORT_LABEL[8]}
+          />
         )}
         {step === 8 && (
           <StepSummary

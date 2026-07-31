@@ -3,7 +3,7 @@
 import { AlertTriangle } from 'lucide-react';
 import { TextField } from '@/components/inspections/wizard/FormControls';
 import { TIRE_POSITIONS } from '@/lib/inspections/constants';
-import { decodeDot } from '@/lib/inspections/tireDot';
+import { decodeDot, getMaxDotYearSuffix } from '@/lib/inspections/tireDot';
 import { sanitizeDotCode, sanitizeMm } from '@/lib/inspections/validation';
 import type { TirePosition, TiresState } from '@/lib/inspections/types';
 
@@ -12,18 +12,31 @@ interface StepTiresProps {
   onChange: (value: TiresState) => void;
   onBack: () => void;
   onNext: () => void;
+  /** A KÖVETKEZŐ lépés rövid címe -- lásd StepCarInfo.tsx ugyanerről a propról. */
+  nextLabel: string;
 }
 
 /**
  * LÉPÉS -- Gumiabroncsok Állapota & DOT Dekódoló Modul (PROJEKT_INSTRUKCIOK.md,
- * "3 új szakértői modul" lépés, C pont). A 4 számjegyű DOT kódból (WWYY formátum)
- * a `lib/inspections/tireDot.ts` `decodeDot()` élőben (minden billentyűleütésnél)
- * kiszámolja a gyártási hetet/évet, és 5+ éves kornál sárga "Koros gumiabroncs"
- * figyelmeztetést jelenít meg -- ez a kliens-oldali visszajelzés, a végleges
- * dekódolt érték a publikus riportban (get_public_report RPC) is újraszámolódik
- * a tárolt DOT kódból, nem a wizardból küldött értékből.
+ * "3 új szakértői modul" lépés, C pont + "DOT szám szigorú validációja" lépés). A 4
+ * számjegyű DOT kódból (WWYY formátum) a `lib/inspections/tireDot.ts` `decodeDot()`
+ * élőben (minden billentyűleütésnél) kiszámolja a gyártási hetet/évet, és 5+ éves
+ * kornál sárga "Koros gumiabroncs" figyelmeztetést jelenít meg -- ez a kliens-oldali
+ * visszajelzés, a végleges dekódolt érték a publikus riportban (get_public_report RPC)
+ * is újraszámolódik a tárolt DOT kódból, nem a wizardból küldött értékből.
+ *
+ * Szigorú validáció: a hét (WW) kizárólag 01-53, az év (YY) legfeljebb a JELENLEGI év
+ * lehet (`decodeDot()` már ezt a szabályt alkalmazza) -- 4 beírt, de érvénytelen
+ * számjegynél piros hibaüzenet jelenik meg, és a "Tovább" gomb letiltódik, amíg a user
+ * nem javítja vagy törli a hibás DOT-ot (ugyanaz a blokkolási minta, mint a Diagnosztika/
+ * Hibák lépéseknél).
  */
-export function StepTires({ value, onChange, onBack, onNext }: StepTiresProps) {
+export function StepTires({ value, onChange, onBack, onNext, nextLabel }: StepTiresProps) {
+  const maxYearSuffix = getMaxDotYearSuffix();
+  const hasInvalidDot = TIRE_POSITIONS.some(
+    ({ position }) => value[position].dot.length === 4 && !decodeDot(value[position].dot)
+  );
+
   function setField(position: TirePosition, field: 'mm' | 'dot', fieldValue: string) {
     onChange({ ...value, [position]: { ...value[position], [field]: fieldValue } });
   }
@@ -42,7 +55,7 @@ export function StepTires({ value, onChange, onBack, onNext }: StepTiresProps) {
         {TIRE_POSITIONS.map(({ position, label }) => {
           const tire = value[position];
           const decoded = tire.dot.length === 4 ? decodeDot(tire.dot) : null;
-          const showInvalidHint = tire.dot.length === 4 && !decoded;
+          const showInvalidError = tire.dot.length === 4 && !decoded;
 
           return (
             <div key={position} className="rounded-lg border border-linear-hairline bg-linear-surface-1 p-4">
@@ -65,16 +78,15 @@ export function StepTires({ value, onChange, onBack, onNext }: StepTiresProps) {
                   placeholder="pl. 1122"
                   maxLength={4}
                   className="font-mono tracking-wider"
+                  error={
+                    showInvalidError
+                      ? `Érvénytelen DOT szám! A hét 01-53, az év max ${maxYearSuffix} lehet.`
+                      : undefined
+                  }
                   value={tire.dot}
                   onChange={(e) => setField(position, 'dot', sanitizeDotCode(e.target.value))}
                 />
               </div>
-
-              {showInvalidHint && (
-                <p className="mt-3 text-[12px] text-linear-ink-subtle">
-                  Érvénytelen DOT kód -- ellenőrizd a hetet (01-53).
-                </p>
-              )}
 
               {decoded && (
                 <div
@@ -107,10 +119,12 @@ export function StepTires({ value, onChange, onBack, onNext }: StepTiresProps) {
         </button>
         <button
           type="button"
+          disabled={hasInvalidDot}
           onClick={onNext}
-          className="inline-flex h-10 items-center rounded-md bg-linear-primary px-5 text-[14px] font-medium text-white transition-colors hover:bg-linear-primary-hover"
+          title={hasInvalidDot ? 'Javítsd vagy töröld az érvénytelen DOT kódot a továbblépéshez.' : undefined}
+          className="inline-flex h-10 items-center rounded-md bg-linear-primary px-5 text-[14px] font-medium text-white transition-colors hover:bg-linear-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
         >
-          Tovább a festékvastagsághoz
+          Tovább – {nextLabel}
         </button>
       </div>
     </div>

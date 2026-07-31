@@ -1,4 +1,4 @@
-import type { EquipmentStatus, PaintStatus, TirePosition } from '@/lib/inspections/types';
+import type { EquipmentCategory, EquipmentStatus, PaintStatus, TirePosition, WizardStep } from '@/lib/inspections/types';
 
 /**
  * Előre definiált karosszéria elemek a festékvastagság-méréshez
@@ -37,36 +37,309 @@ export function getPaintStatus(micronValue: number): PaintStatus {
   return 'gittelt';
 }
 
-/**
- * Felszereltségi Elemek Állapota Modul (PROJEKT_INSTRUKCIOK.md, "3 új szakértői modul"
- * lépés, B pont) -- a leggyakoribb kényelmi/biztonsági extrák előre definiált listája.
- */
-export const EQUIPMENT_ITEMS: string[] = [
-  'Klímaberendezés',
-  'Távolságtartó tempomat',
-  'Tolatókamera / Radar',
-  'Ülésfűtés',
-  'Sávtartó asszisztens',
-  'Mátrix LED / Xenon fényszórók',
-  'Elektromos ablakok',
-  'Navigáció',
-];
-
 export const EQUIPMENT_STATUS_LABEL: Record<EquipmentStatus, string> = {
   working: 'Működik',
   not_working: 'Nem működik',
   na: 'Nem releváns',
 };
 
+/**
+ * Bővített, kategorizált felszereltség-katalógus (a "Bővített Felszereltség Lista"
+ * lépés alapján) -- 4 kategória, összesen ~200 elem. A `StepEquipment.tsx` ebből épít
+ * kategória-fülekkel + gyorskeresővel szűrhető listát, mert egyetlen lapos lista ennyi
+ * elemnél már áttekinthetetlen lenne.
+ */
+export const EQUIPMENT_CATEGORY_LABEL: Record<EquipmentCategory, string> = {
+  muszaki: 'Műszaki',
+  belter: 'Beltér',
+  kulter: 'Kültér',
+  multimedia: 'Multimédia',
+};
+
+export const EQUIPMENT_CATEGORY_ORDER: EquipmentCategory[] = ['muszaki', 'belter', 'kulter', 'multimedia'];
+
+const EQUIPMENT_CATALOG: Record<EquipmentCategory, string[]> = {
+  muszaki: [
+    'bekanyarodási asszisztens',
+    'éjjellátó asszisztens',
+    'fáradtságérzékelő',
+    'hátsó keresztirányú forgalomra figyelmeztetés',
+    'holttér-figyelő rendszer',
+    'koccanásgátló',
+    'lejtmenet asszisztens',
+    'parkolóasszisztens',
+    'radaros fékasszisztens',
+    'sávtartó rendszer',
+    'sávváltó asszisztens',
+    'távolságtartó tempomat',
+    'tempomat',
+    'vészfék asszisztens',
+    'visszagurulás-gátló',
+    'ABS (blokkolásgátló)',
+    'ADS (adaptív lengéscsillapító)',
+    'ARD (automatikus távolságtartó)',
+    'ASR (kipörgésgátló)',
+    'automatikus segélyhívó',
+    'EBD/EBV (elektronikus fékerő-elosztó)',
+    'EDS (elektronikus differenciálzár)',
+    'elektronikus rögzítőfék',
+    'ESP (menetstabilizátor)',
+    'fékasszisztens',
+    'GPS nyomkövető',
+    'guminyomás-ellenőrző rendszer',
+    'indításgátló (immobiliser)',
+    'MSR (motorféknyomaték szabályzás)',
+    'rablásgátló',
+    'tábla-felismerő funkció',
+    'ütközés veszélyre felkészítő rendszer',
+    '4WS (összkerékkormányzás)',
+    'állítható felfüggesztés',
+    'automatikus hengerlekapcsolás',
+    'centrálzár',
+    'chiptuning',
+    'EDC (elektronikus lengéscsillapítás vezérlés)',
+    'kerámia féktárcsák',
+    'pót üzemanyagtartály',
+    'részecskeszűrő',
+    'riasztó',
+    'sebességfüggő szervokormány',
+    'sperr differenciálmű',
+    'sportfutómű',
+    'start-stop/motormegállító rendszer',
+    'szervokormány',
+    'vonóhorog - elektromosan kihajtható',
+    'vonóhorog - levehető fejjel',
+    '230 V csatlakozó hátul',
+    '360 fokos kamerarendszer',
+    'elektronikus futómű hangolás',
+    'első-hátsó parkolóradar',
+    'kulcs nélküli indítás',
+    'kulcsnélküli nyitórendszer',
+    'távolsági fényszóró asszisztens',
+    'tolatókamera',
+    'tolatóradar',
+    'otthoni hálózati töltő',
+    'Type2 töltőkábel',
+  ],
+  belter: [
+    'függönylégzsák',
+    'hátsó oldal légzsák',
+    'kikapcsolható légzsák',
+    'középső légzsák elöl',
+    'oldallégzsák',
+    'térdlégzsák',
+    'utasoldali légzsák',
+    'vezetőoldali légzsák',
+    'beépített gyerekülés',
+    'bukócső',
+    'csomag rögzítő',
+    'hátsó fejtámlák',
+    'ISOFIX rendszer',
+    'sebességváltó zár',
+    'full extra',
+    'állófűtés',
+    'fűthető első és hátsó ülések',
+    'fűthető első ülés',
+    'fűthető kormány',
+    'álló helyzeti klíma',
+    'hűthető kartámasz',
+    'hűthető kesztyűtartó',
+    'üléshűtés/szellőztetés',
+    'bőr belső',
+    'műbőr-kárpit',
+    'velúr kárpit',
+    'Alcantara kárpit',
+    'állítható combtámasz',
+    'állítható hátsó ülések',
+    'automatikusan sötétedő belső tükör',
+    'bőr-szövet huzat',
+    'bőrkormány',
+    'deréktámasz',
+    'digitális műszeregység',
+    'dönthető utasülések',
+    'elektromos ülésállítás utasoldal',
+    'elektromos ülésállítás vezetőoldal',
+    'elektromosan állítható fejtámlák',
+    'faberakás',
+    'garázsajtó távirányító',
+    'gesztusvezérlés',
+    'hangvezérlés',
+    'középső kartámasz',
+    'masszírozós ülés',
+    'memóriás utasülés',
+    'memóriás vezetőülés',
+    'multifunkciós kormánykerék',
+    'plüss kárpit',
+    'távirányítással ledönthető hátsó üléstámla',
+    'ülésmagasság állítás',
+    'állítható kormány',
+    'fedélzeti komputer',
+    'HUD / Head-Up Display',
+    'HUD / Head-Up Display kiterjesztett valóság funkcióval',
+    'kormányváltó',
+    'sportülések',
+  ],
+  kulter: [
+    'gyalogos légzsák',
+    'automata fényszórókapcsolás',
+    'automata távfény',
+    'bekanyarodási segédfény',
+    'bi-xenon fényszóró',
+    'bukólámpa',
+    'fényszóró magasságállítás',
+    'fényszórómosó',
+    'kanyarkövető fényszóró',
+    'kiegészítő fényszóró',
+    'ködlámpa',
+    'LED fényszóró',
+    'LED mátrix fényszóró',
+    'menetfény',
+    'xenon fényszóró',
+    'defekttűrő abroncsok',
+    'esőszenzor',
+    'fűthető ablakmosó fúvókák',
+    'fűtőszálas szélvédő',
+    'ajtószervó',
+    'automatikusan sötétedő külső tükör',
+    'elektromos csomagtérajtó-mozgatás',
+    'elektromosan behajtható külső tükrök',
+    'defektjavító készlet',
+    'pótkerék',
+    'tetőcsomagtartó',
+    'tetőre szerelhető kerékpártartó',
+    'vonóhorgos kerékpártartó',
+    'elektromos ablak elöl',
+    'elektromos ablak hátul',
+    'elektromos tükör',
+    'fűthető tükör',
+    'kétoldali tolóajtó',
+    'könnyűfém felni',
+    'króm felni',
+    'színezett üveg',
+    'tolóajtó',
+    'tolótető - elektromos',
+    'tolótető (napfénytető)',
+    'vonóhorog',
+  ],
+  multimedia: [
+    'autótelefon',
+    'CD-s autórádió',
+    'DVD',
+    'GPS (navigáció)',
+    'Hi-Fi',
+    'rádió',
+    'rádiós magnó',
+    'TV',
+    '1 DIN',
+    '2 DIN',
+    '2 hangszóró',
+    '4 hangszóró',
+    '5 hangszóró',
+    '6 hangszóró',
+    '7 hangszóró',
+    '8 hangszóró',
+    '9 hangszóró',
+    '10 hangszóró',
+    '11 hangszóró',
+    '12 hangszóró',
+    'mélynyomó',
+    'CD tár',
+    'MP3 lejátszás',
+    'MP4 lejátszás',
+    'WMA lejátszás',
+    'analóg TV tuner',
+    'AUX csatlakozó',
+    'bluetooth-os kihangosító',
+    'DVB tuner',
+    'DVB-T tuner',
+    'erősítő kimenet',
+    'FM transzmitter',
+    'HDMI bemenet',
+    'iPhone/iPod csatlakozó',
+    'kihangosító',
+    'memóriakártya-olvasó',
+    'merevlemez',
+    'mikrofon bemenet',
+    'tolatókamera bemenet',
+    'USB csatlakozó',
+    'érintőkijelző',
+    'erősítő',
+    'fejtámlamonitor',
+    'gyári erősítő',
+    'kormányra szerelhető távirányító',
+    'távirányító',
+    'tetőmonitor',
+    'Android Auto',
+    'Apple CarPlay',
+    'kormányról vezérelhető hifi',
+    'multifunkcionális kijelző',
+    'vezeték nélküli telefontöltés',
+    'WiFi Hotspot',
+  ],
+};
+
+export interface EquipmentCatalogItem {
+  name: string;
+  category: EquipmentCategory;
+}
+
+/** Teljes, kategóriákkal ellátott, lapított felszereltség-katalógus -- ebből épül fel
+ * a `StepEquipment.tsx` kategória-fülekkel + kereséssel szűrhető listája. */
+export const EQUIPMENT_CATALOG_ITEMS: EquipmentCatalogItem[] = EQUIPMENT_CATEGORY_ORDER.flatMap((category) =>
+  EQUIPMENT_CATALOG[category].map((name) => ({ name, category }))
+);
+
+/** Sima név-lista (kategória nélkül) -- visszafelé kompatibilis a korábbi (nem
+ * kategorizált) `EQUIPMENT_ITEMS` felhasználásokkal: `InspectionWizard.tsx`
+ * `defaultEquipment()` és `app/inspections/[id]/page.tsx` `toInitialEquipment()`. */
+export const EQUIPMENT_ITEMS: string[] = EQUIPMENT_CATALOG_ITEMS.map((item) => item.name);
+
+/** Név -> kategória lookup a `StepEquipment.tsx` kereső-szűréséhez (kereséskor az
+ * összes kategóriában keresünk, a kategória-fülek csak üres keresésnél szűrnek). */
+export const EQUIPMENT_NAME_TO_CATEGORY: Record<string, EquipmentCategory> = Object.fromEntries(
+  EQUIPMENT_CATALOG_ITEMS.map((item) => [item.name, item.category])
+);
+
+/** Gumiabroncs kerékpozíciók magyar megnevezése -- KIZÁRÓLAG magyar szöveg, rövidítés
+ * (FL/FR/RL/RR) nélkül, sem a Wizardban, sem a publikus riportban. */
+export const TIRE_POSITION_LABEL: Record<TirePosition, string> = {
+  fl: 'Bal első',
+  fr: 'Jobb első',
+  rl: 'Bal hátsó',
+  rr: 'Jobb hátsó',
+};
+
 /** Gumiabroncsok Állapota modul (PROJEKT_INSTRUKCIOK.md, "3 új szakértői modul" lépés,
  * C pont) -- a 4 kerékpozíció megjelenítési sorrendje és felirata. */
 export const TIRE_POSITIONS: { position: TirePosition; label: string }[] = [
-  { position: 'fl', label: 'Bal első (FL)' },
-  { position: 'fr', label: 'Jobb első (FR)' },
-  { position: 'rl', label: 'Bal hátsó (RL)' },
-  { position: 'rr', label: 'Jobb hátsó (RR)' },
+  { position: 'fl', label: TIRE_POSITION_LABEL.fl },
+  { position: 'fr', label: TIRE_POSITION_LABEL.fr },
+  { position: 'rl', label: TIRE_POSITION_LABEL.rl },
+  { position: 'rr', label: TIRE_POSITION_LABEL.rr },
 ];
 
 /** A gumiabroncs "koros" figyelmeztetés küszöbe (PROJEKT_INSTRUKCIOK.md: "Ha a gumik
  * életkora meghaladja az 5 évet"), lásd `lib/inspections/tireDot.ts` `decodeDot()`. */
 export const TIRE_AGE_WARNING_YEARS = 5;
+
+/**
+ * Wizard lépés-metaadatok EGY helyen (szám, rövid cím a lépés-jelzőhöz/gombokhoz,
+ * hosszú cím a mobil "X / 8 lépés" feliratokhoz) -- ez a wizard "Wizard Stepper UI fix"
+ * és "Dinamikus Tovább gomb" lépés egyetlen forrása (`StepIndicator.tsx` és
+ * `InspectionWizard.tsx` is ebből olvas), hogy egy jövőbeli lépés-sorrend módosítás
+ * NE tudjon elavult, kézzel beégetett gombfeliratokat hagyni maga után (pontosan ez
+ * történt korábban: a 3 új szakértői modul lépés beszúrásakor a `StepGeneralPhotos.tsx`
+ * "Tovább" gombja elfelejtett frissülni, és rossz lépésre hivatkozott).
+ */
+export const WIZARD_STEP_META: { step: WizardStep; shortLabel: string; longLabel: string }[] = [
+  { step: 1, shortLabel: 'Autó adatok', longLabel: 'Autó adatok' },
+  { step: 2, shortLabel: 'Fotók', longLabel: 'Általános fotók' },
+  { step: 3, shortLabel: 'Diagnosztika', longLabel: 'Diagnosztikai hibakódok' },
+  { step: 4, shortLabel: 'Felszereltség', longLabel: 'Felszereltség állapota' },
+  { step: 5, shortLabel: 'Gumiabroncsok', longLabel: 'Gumiabroncsok állapota' },
+  { step: 6, shortLabel: 'Festékvastagság', longLabel: 'Festékvastagság-mérés' },
+  { step: 7, shortLabel: 'Hibák & Média', longLabel: 'Hibák & Média' },
+  { step: 8, shortLabel: 'Összegzés', longLabel: 'Összegzés & Publikálás' },
+];
+
+export const TOTAL_WIZARD_STEPS = WIZARD_STEP_META.length;

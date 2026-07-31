@@ -83,26 +83,38 @@ export function InspectionsExplorer({ inspections }: InspectionsExplorerProps) {
           Nincs a keresésnek megfelelő vizsgálat.
         </div>
       ) : (
+        // "Dashboard táblázat elrendezési javítás" lépés: a korábbi `fr`-alapú grid
+        // (1.6fr/1fr/0.7fr/...) köztes szélességeknél (kb. 640-900px, tablet táj-tájolás,
+        // kisebb laptop ablak) összenyomta az oszlopokat, amíg a szöveg/gombok átfedésbe
+        // nem kerültek. Megoldás: `minmax()` oszlopok, amik ALATTA nem mehetnek egy olvasható
+        // minimumnak -- ha a rendelkezésre álló hely ennél kevesebb, a `sm:overflow-x-auto`
+        // wrapper és a hozzá tartozó `sm:min-w-[...]` belső konténer helyett vízszintesen
+        // görgethetővé teszi a táblázatot, SOSEM engedve az oszlopokat összecsúszni. Mobilon
+        // (< sm) továbbra is 1 oszlopos, görgetés nélküli elrendezés marad.
         <div className="overflow-hidden rounded-lg border border-linear-hairline bg-linear-surface-1">
-          <div className="hidden grid-cols-[1.6fr_1fr_0.7fr_1fr_0.9fr_auto] gap-4 border-b border-linear-hairline px-5 py-3 text-[12px] font-medium uppercase tracking-[0.4px] text-linear-ink-subtle sm:grid">
-            <span>Autó</span>
-            <span>Rendszám</span>
-            <span>Évjárat</span>
-            <span>Létrehozva</span>
-            <span>Státusz</span>
-            <span className="text-right">Műveletek</span>
-          </div>
+          <div className="sm:overflow-x-auto">
+            <div className="sm:min-w-[840px]">
+              <div className="hidden grid-cols-[minmax(160px,1.6fr)_minmax(96px,1fr)_minmax(72px,0.6fr)_minmax(88px,1fr)_minmax(88px,0.9fr)_minmax(230px,auto)] gap-4 border-b border-linear-hairline px-5 py-3 text-[12px] font-medium uppercase tracking-[0.4px] text-linear-ink-subtle sm:grid">
+                <span>Autó</span>
+                <span>Rendszám</span>
+                <span className="text-right">Évjárat</span>
+                <span>Létrehozva</span>
+                <span>Státusz</span>
+                <span className="text-right">Műveletek</span>
+              </div>
 
-          <ul className="divide-y divide-linear-hairline">
-            {filtered.map((inspection) => (
-              <InspectionRowItem
-                key={inspection.id}
-                inspection={inspection}
-                isCopied={copiedId === inspection.id}
-                onCopyLink={() => handleCopyLink(inspection)}
-              />
-            ))}
-          </ul>
+              <ul className="divide-y divide-linear-hairline">
+                {filtered.map((inspection) => (
+                  <InspectionRowItem
+                    key={inspection.id}
+                    inspection={inspection}
+                    isCopied={copiedId === inspection.id}
+                    onCopyLink={() => handleCopyLink(inspection)}
+                  />
+                ))}
+              </ul>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -127,7 +139,7 @@ function InspectionRowItem({
   });
 
   return (
-    <li className="grid grid-cols-1 gap-3 px-5 py-4 sm:grid-cols-[1.6fr_1fr_0.7fr_1fr_0.9fr_auto] sm:items-center sm:gap-4">
+    <li className="grid grid-cols-1 gap-3 px-5 py-4 sm:grid-cols-[minmax(160px,1.6fr)_minmax(96px,1fr)_minmax(72px,0.6fr)_minmax(88px,1fr)_minmax(88px,0.9fr)_minmax(230px,auto)] sm:items-center sm:gap-4">
       <Link href={`/inspections/${inspection.id}`} className="min-w-0 group">
         <p className="truncate text-[14px] font-medium text-linear-ink transition-colors group-hover:text-linear-primary-hover group-hover:underline">
           {carLabel}
@@ -136,7 +148,7 @@ function InspectionRowItem({
       </Link>
 
       <span className="font-mono text-[13px] text-linear-ink-muted">{inspection.license_plate ?? '—'}</span>
-      <span className="text-[13px] text-linear-ink-muted">{inspection.year ?? '—'}</span>
+      <span className="text-[13px] text-linear-ink-muted sm:text-right">{inspection.year ?? '—'}</span>
       <span className="text-[13px] text-linear-ink-muted">{createdAt}</span>
 
       <div>

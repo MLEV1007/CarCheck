@@ -9,10 +9,12 @@ interface StepPaintMeasurementsProps {
   onChange: (value: PaintMeasurementState[]) => void;
   onBack: () => void;
   onNext: () => void;
+  /** A KÖVETKEZŐ lépés rövid címe -- lásd StepCarInfo.tsx ugyanerről a propról. */
+  nextLabel: string;
 }
 
-/** LÉPÉS 3 -- Festékvastagság-mérés (PROJEKT_INSTRUKCIOK.md 5.B.2). */
-export function StepPaintMeasurements({ value, onChange, onBack, onNext }: StepPaintMeasurementsProps) {
+/** LÉPÉS -- Festékvastagság-mérés (PROJEKT_INSTRUKCIOK.md 5.B.2). */
+export function StepPaintMeasurements({ value, onChange, onBack, onNext, nextLabel }: StepPaintMeasurementsProps) {
   function setMicronValue(index: number, micronValue: string) {
     const next = [...value];
     next[index] = { ...next[index], micronValue };
@@ -82,7 +84,7 @@ export function StepPaintMeasurements({ value, onChange, onBack, onNext }: StepP
           onClick={onNext}
           className="inline-flex h-10 items-center rounded-md bg-linear-primary px-5 text-[14px] font-medium text-white transition-colors hover:bg-linear-primary-hover"
         >
-          Tovább a hibákhoz
+          Tovább – {nextLabel}
         </button>
       </div>
     </div>

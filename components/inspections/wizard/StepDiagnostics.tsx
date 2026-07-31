@@ -10,6 +10,8 @@ interface StepDiagnosticsProps {
   onChange: (value: DiagnosticsState) => void;
   onBack: () => void;
   onNext: () => void;
+  /** A KÖVETKEZŐ lépés rövid címe -- lásd StepCarInfo.tsx ugyanerről a propról. */
+  nextLabel: string;
 }
 
 /**
@@ -18,7 +20,7 @@ interface StepDiagnosticsProps {
  * elrejtődik -- mentéskor (InspectionWizard.tsx) a `codes` ilyenkor figyelmen kívül
  * marad, függetlenül attól, hogy volt-e korábban beírt (majd elrejtett) sor.
  */
-export function StepDiagnostics({ value, onChange, onBack, onNext }: StepDiagnosticsProps) {
+export function StepDiagnostics({ value, onChange, onBack, onNext, nextLabel }: StepDiagnosticsProps) {
   const hasIncompleteCode = !value.noDtc && value.codes.some((entry) => entry.code.trim() === '');
 
   function toggleNoDtc(noDtc: boolean) {
@@ -133,7 +135,7 @@ export function StepDiagnostics({ value, onChange, onBack, onNext }: StepDiagnos
           title={hasIncompleteCode ? 'Tölts ki minden hibakód mezőt, vagy töröld az üreseket.' : undefined}
           className="inline-flex h-10 items-center rounded-md bg-linear-primary px-5 text-[14px] font-medium text-white transition-colors hover:bg-linear-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
         >
-          Tovább a felszereltséghez
+          Tovább – {nextLabel}
         </button>
       </div>
     </div>

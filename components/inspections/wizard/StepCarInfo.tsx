@@ -17,6 +17,10 @@ interface StepCarInfoProps {
   value: CarInfoState;
   onChange: (value: CarInfoState) => void;
   onNext: () => void;
+  /** A KÖVETKEZŐ lépés rövid címe (`WIZARD_STEP_META` a constants.ts-ben) -- a "Tovább"
+   * gomb felirata ebből épül fel dinamikusan, hogy egy jövőbeli lépés-sorrend módosítás
+   * ne hagyhasson elavult, kézzel beégetett szöveget (lásd "Dinamikus Tovább gomb" lépés). */
+  nextLabel: string;
 }
 
 /** A megadott márka/típus szerepel-e a katalógusban -- ha nem (vagy üres), az a "Egyéb / Más"
@@ -41,7 +45,7 @@ function isKnownModel(brand: string, model: string): boolean {
  * pedig "touched" mezőnél vagy a "Tovább" gombra kattintás után jelennek meg piros szöveggel --
  * érvénytelen adatnál a `onNext` nem hívódik meg.
  */
-export function StepCarInfo({ value, onChange, onNext }: StepCarInfoProps) {
+export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoProps) {
   const [isCustomBrand, setIsCustomBrand] = useState(() => value.carBrand !== '' && !isKnownBrand(value.carBrand));
   const [isCustomModel, setIsCustomModel] = useState(
     () => value.carModel !== '' && !isKnownModel(value.carBrand, value.carModel)
@@ -243,7 +247,7 @@ export function StepCarInfo({ value, onChange, onNext }: StepCarInfoProps) {
           onClick={handleNext}
           className="inline-flex h-10 items-center rounded-md bg-linear-primary px-5 text-[14px] font-medium text-white transition-colors hover:bg-linear-primary-hover"
         >
-          Tovább az általános fotókhoz
+          Tovább – {nextLabel}
         </button>
       </div>
     </div>

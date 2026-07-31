@@ -35,13 +35,18 @@ export function decodeDot(rawDot: string, referenceDate: Date = new Date()): Dot
 
   const week = Number(dot.slice(0, 2));
   const yearSuffix = Number(dot.slice(2, 4));
+  // Hét (WW): kizárólag 01-53 lehet -- pl. "78" (mint a "7822" kódban) érvénytelen.
   if (week < 1 || week > 53) return null;
 
   // A DOT kód csak 2 jegyű évet kódol -- 2000+ gyártásit feltételezünk (lásd fenti
   // megjegyzés a 2000 előtti, 3 jegyű formátumról).
   const year = 2000 + yearSuffix;
-  const manufactureDate = new Date(Date.UTC(year, 0, 1 + (week - 1) * 7));
+  // Év (YY): nem lehet a JELENLEGI évnél későbbi -- egy gumi nem gyárthatták a jövőben.
+  // Szándékosan a `referenceDate` (alapértelmezetten a mai nap) évéhez viszonyítunk
+  // hardkódolt "26" helyett, hogy 2027-ben/2028-ban stb. is automatikusan helyes maradjon.
+  if (year > referenceDate.getFullYear()) return null;
 
+  const manufactureDate = new Date(Date.UTC(year, 0, 1 + (week - 1) * 7));
   const ageYears = (referenceDate.getTime() - manufactureDate.getTime()) / MS_PER_YEAR;
 
   return {
@@ -52,4 +57,20 @@ export function decodeDot(rawDot: string, referenceDate: Date = new Date()): Dot
     isOld: ageYears >= TIRE_AGE_WARNING_YEARS,
     label: `${year}. ${week}. hét`,
   };
+}
+
+/** A DOT kód év-részének (YY) jelenleg még érvényes maximuma, 2 jegyű, nullával
+ * kitöltött formában (pl. "26" 2026-ban, "27" 2027-ben) -- a `decodeDot()`-tal azonos
+ * `referenceDate`-hez viszonyítva, hogy a hibaüzenet (`StepTires.tsx`) mindig a
+ * ténylegesen érvényes felső korlátot mutassa, nem egy évek múlva elavuló, beégetett
+ * "26"-ot. */
+export function getMaxDotYearSuffix(referenceDate: Date = new Date()): string {
+  return String(referenceDate.getFullYear() % 100).padStart(2, '0');
+}
+
+/** Igaz, ha a 4 karakteres DOT kód formailag ÉS tartalmilag érvényes (lásd `decodeDot()`
+ * szabályai) -- kényelmi wrapper, amikor csak a validitásra van szükség, nem a teljes
+ * dekódolt eredményre (pl. `StepTires.tsx` "Tovább" gomb letiltásához). */
+export function isValidDot(rawDot: string, referenceDate: Date = new Date()): boolean {
+  return decodeDot(rawDot, referenceDate) !== null;
 }

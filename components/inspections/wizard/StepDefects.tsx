@@ -11,10 +11,12 @@ interface StepDefectsProps {
   onChange: (value: DefectState[]) => void;
   onBack: () => void;
   onNext: () => void;
+  /** A KÖVETKEZŐ lépés rövid címe -- lásd StepCarInfo.tsx ugyanerről a propról. */
+  nextLabel: string;
 }
 
-/** LÉPÉS 4 -- Hibák és Média rögzítése (PROJEKT_INSTRUKCIOK.md 5.B.3). */
-export function StepDefects({ value, onChange, onBack, onNext }: StepDefectsProps) {
+/** LÉPÉS -- Hibák és Média rögzítése (PROJEKT_INSTRUKCIOK.md 5.B.3). */
+export function StepDefects({ value, onChange, onBack, onNext, nextLabel }: StepDefectsProps) {
   function updateDefect(clientId: string, patch: Partial<DefectState>) {
     onChange(value.map((defect) => (defect.clientId === clientId ? { ...defect, ...patch } : defect)));
   }
@@ -126,7 +128,7 @@ export function StepDefects({ value, onChange, onBack, onNext }: StepDefectsProp
           title={hasIncompleteRow ? 'Tölts ki minden hiba-kártyát, vagy töröld az üreseket.' : undefined}
           className="inline-flex h-10 items-center rounded-md bg-linear-primary px-5 text-[14px] font-medium text-white transition-colors hover:bg-linear-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
         >
-          Tovább az összegzéshez
+          Tovább – {nextLabel}
         </button>
       </div>
     </div>
