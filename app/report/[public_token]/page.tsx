@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import type { Metadata } from 'next';
 import { createClient } from '@/lib/supabase/server';
 import type { PublicReportData } from '@/lib/reports/types';
@@ -38,8 +39,17 @@ export default async function PublicReportPage({ params }: PublicReportPageProps
 
   const report = data as PublicReportData;
 
+  // Dinamikus márkaszín (PROJEKT_INSTRUKCIOK.md, "Cégbeállítások" lépés nyitott kérdése):
+  // a riport gombjai és akcentus-elemei elsősorban a cég saját `profiles.primary_color`
+  // értékét használják; ha az nincs beállítva, a BMW design system kék (#1c69d4) a fallback.
+  // A `--report-accent` CSS változót itt, egyetlen helyen állítjuk be, az azt felhasználó
+  // komponensek (SectionHeading, ReportHeader) `text-[var(--report-accent)]` / `bg-[var(--report-accent)]`
+  // arbitrary-value Tailwind osztályokkal olvassák -- így nem kell a company objektumot
+  // minden akcentus-elemig lefelé prop-drillelni.
+  const accentColor = report.company?.primary_color?.trim() || '#1c69d4';
+
   return (
-    <div className="min-h-screen bg-bmw-canvas">
+    <div className="min-h-screen bg-bmw-canvas" style={{ '--report-accent': accentColor } as CSSProperties}>
       <ReportHeader company={report.company} />
       <ReportHero inspection={report.inspection} />
 

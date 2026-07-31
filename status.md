@@ -1,6 +1,6 @@
 # Státusz — Autó Állapotfelmérő SaaS (MVP)
 
-_Utolsó frissítés: 2026-07-31_
+_Utolsó frissítés: 2026-07-31 (Cégbeállítások oldal + dinamikus márkaszín)_
 
 ## Kész funkciók
 
@@ -64,6 +64,19 @@ _Utolsó frissítés: 2026-07-31_
 - `app/layout.tsx`: az Inter fontcsalád súlyai kibővítve `700`-zal (korábban csak 300/400/500 volt) a BMW design drámai bold/light kontrasztjához — visszafelé kompatibilis, a Stripe/Linear felületek nem törnek el.
 - `app/globals.css`: `@media print` szabály (`print-color-adjust: exact`) hozzáadva, hogy a sötétkék hero sáv és a szín-kódolt festék-kártyák háttérszíne megmaradjon PDF exportnál/nyomtatáskor.
 
+### 6. Cégbeállítások (`/settings`)
+[Stripe Design Style]
+- `app/settings/page.tsx`: Server Component, `auth.getUser()` + `profiles` sor lekérdezése (`company_name, phone, email, logo_url, primary_color`) az `auth.uid()`-ra épülő `profiles_select_own` RLS policy mögött. Fejléc: "← Dashboard" pill gomb + "Cégbeállítások" cím, fehér `top-nav`, `#f6f9fc` háttér a `<main>`-en.
+- `components/settings/SettingsForm.tsx` (Client Component): a form minden mezője kliens-oldali state-ben él, a tényleges Supabase írás a "Módosítások mentése" gombra egyetlen `profiles.upsert({ id: userId, ... })` hívással történik (a `profiles_update_own` / `profiles_insert_own` RLS policy-k `auth.uid() = id` alapján védik).
+  - Cég neve, céges telefonszám, céges email cím (`Input` komponens, alapértelmezett email: `profiles.email`, ha üres, akkor a regisztrált `auth.users.email`).
+  - `components/settings/LogoUploader.tsx`: fájlválasztó gomb + meglévő logó előnézete. A feltöltés AZONNAL történik fájlválasztáskor (nem várja meg a mentés gombot) -- ugyanabba az `inspection-media` Storage bucket-be kerül, mint a hiba-fotók, a user saját mappájába (`{user_id}/logo/{uuid}.{ext}`), így a meglévő, a wizard hibajavításánál (lásd lent) már kikényszerített RLS policy-k (`(storage.foldername(name))[1] = auth.uid()`) további migráció nélkül védik. Kliens-oldali validáció: csak kép MIME-type, max 5 MB.
+  - `components/settings/BrandColorPicker.tsx`: natív `<input type="color">` picker + szabadszöveges hex mező (`tabular-nums-stripe` osztállyal, a Stripe `tnum` előírás szerint) + 4 preset gomb (BMW kék `#1c69d4`, Elegáns fekete `#18181b`, Versenypiros `#da291c`, Profi zöld `#16a34a`). Érvénytelen hex esetén piros keret + hibaüzenet, de a mentést nem blokkolja kliens-oldalon (a `primary_color` egyszerű `text` oszlop, nincs DB-szintű formátum-kényszer).
+  - `components/settings/SuccessToast.tsx`: zöld toast ("A cégbeállítások sikeresen frissültek!") sikeres mentés után, jobb felül, 4 másodperc után automatikusan eltűnik, kézzel is bezárható.
+- **Dinamikus márkaszín a publikus riportban:** a `/report/[public_token]` (`app/report/[public_token]/page.tsx`) a `report.company.primary_color` értékét egyetlen `--report-accent` CSS változóba teszi a legfelső wrapper `style` attribútumán (fallback: BMW kék `#1c69d4`, ha a mező `null`/üres). Az akcentus-elemek ezt a változót olvassák `text-[var(--report-accent)]` / `bg-[var(--report-accent)]` / inline `style` formában, prop-drilling nélkül:
+  - `SectionHeading.tsx` eyebrow szövegszíne.
+  - `ReportHeader.tsx` logó-monogram háttérszíne (ha nincs feltöltve logó) + a "Nyomtatás / PDF" gomb hover keretszíne.
+  - A `PaintMap.tsx` szín-kódolt gyári/újrafújt/gittelt jelvényei **szándékosan** megmaradtak a szemantikus zöld/sárga/piros BMW tokeneknél (`bmw-success`/`bmw-warning`/`bmw-error`) -- ezek státuszjelentést hordoznak, nem márka-akcentust, ezért nem a cég színét követik.
+
 ## Hibajavítások
 
 ### 2026-07-31: "new row violates row-level security policy" mentéskor (Storage feltöltés)
@@ -87,17 +100,16 @@ A tényleges hiba a **Supabase Storage `inspection-media` bucket `storage.object
 - `test images/` mappa (helyi teszt-fotók a fájlfeltöltés kézi teszteléséhez) szándékosan NINCS commitolva/pusholva — nem projekt-fájl, csak lokális teszt-adat.
 
 ## Ellenőrzés
-- `npx tsc --noEmit` — hibamentes (legutóbb ellenőrizve a riport oldal elkészülte után).
-- Supabase security advisor (`get_advisors`, `nsejmkcwvksbwxscvrvb` projekt) — nincs RLS-hiányosság; a fennmaradó két figyelmeztetés (`get_public_report` SECURITY DEFINER + leaked password protection) ismert és szándékos, külön TODO (lásd lent).
-- Adatbázis séma élesben ellenőrizve (`list_tables`, `nsejmkcwvksbwxscvrvb`): `inspections`, `paint_measurements`, `defects` oszlopai, valamint az `inspection-media` publikus Storage bucket policy-i megegyeznek a kódban feltételezett sémával.
+- `npx tsc --noEmit` — hibamentes (legutóbb ellenőrizve a `/settings` oldal + dinamikus márkaszín elkészülte után).
+- Supabase security advisor (`get_advisors`, `nsejmkcwvksbwxscvrvb` projekt) — újrafuttatva a `/settings` lépés után, nincs új figyelmeztetés (nem volt DB/RLS/migrációs változás, mert a `profiles` tábla és a Storage policy-k már korábban is tartalmazták a szükséges oszlopokat/jogosultságokat).
+- Adatbázis séma élesben ellenőrizve (`list_tables`, `nsejmkcwvksbwxscvrvb`): a `profiles` tábla már tartalmazta a `company_name`, `logo_url`, `primary_color`, `phone`, `email` oszlopokat és a teljes CRUD RLS policy-készletet (`profiles_select_own`, `profiles_insert_own`, `profiles_update_own`, `profiles_delete_own`, mind `auth.uid() = id` alapján) -- migráció nélkül megépíthető volt a `/settings` oldal.
 - ESLint jelenleg nem futtatható a projektben (nincs `.eslintrc` konfiguráció felvéve) — ez korábbi lépések óta ismert hiányosság, nem az egyes lépésekhez kötődik.
 - Éles `next build` a szinkronizált projektmappában nem futtatható a sandboxból (fájltulajdonosi jogosultság — a felhasználó gépén fut egy élő `next dev` szerver ugyanerre a mappára), ezért a típusellenőrzés + kód-review + élő séma-ellenőrzés + Supabase advisor adja a validációt.
 
 ## Ismert, szándékosan nyitva hagyott TODO-k
 - `get_public_report` SECURITY DEFINER függvény `anon`/`authenticated` által futtatható (Supabase advisor warning) — szándékos, ez a publikus riport oldal alapja, de érdemes lehet külön átvizsgálni, hogy a függvény semmilyen más adatot nem szivárogtat a `public_token`-en kívül.
 - Leaked password protection (HaveIBeenPwned ellenőrzés) ki van kapcsolva Supabase Auth-ban — bekapcsolása Supabase Dashboard beállítás, nem kód.
-- A `/report/[public_token]` oldalon a cég `primary_color` mezője (settings-ből) jelenleg nincs bekötve az akcentszínbe — a BMW kék (`bmw-primary`) fixen van használva. Ha a "márkaszín" funkció elkészül a `/settings` oldalon, el kell dönteni, hogy a riport akcentszíne kövesse-e dinamikusan, vagy maradjon a BMW kék a design rendszer konzisztenciája miatt.
 
 ## Következő lépés
 - `/inspections/[id]` — piszkozat vizsgálat szerkesztése/folytatása (jelenleg a dashboard "Folytatás" gombja erre a route-ra mutat, de még nincs megépítve).
-- `/settings` — céglogó, cégnév, telefonszám, márkaszín feltöltése a `profiles` táblába.
+- Kézi funkcionális teszt élesben: logó feltöltés (nagy/hibás fájl elutasítása is), márkaszín mentése és megjelenése a `/report/[public_token]` oldalon, `email` mező mentése a `profiles` táblába (jelenleg csak a wizard/riport olvassa, más funkció még nem használja).

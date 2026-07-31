@@ -12,6 +12,10 @@ interface ReportHeaderProps {
  * táblából érkezik a `get_public_report` RPC-n keresztül. A "Nyomtatás / PDF letöltés"
  * gomb a böngésző natív `window.print()`-jét hívja -- nyomtatáskor `print:hidden`-nel
  * eltűnik, hogy ne szerepeljen a kimenetben.
+ *
+ * A logó-monogram háttere és a nyomtatás gomb hover-akcentusa a `--report-accent`
+ * CSS változót olvassa (a cég `primary_color`-ja, BMW kék fallback-kel) -- lásd
+ * `app/report/[public_token]/page.tsx`.
  */
 export function ReportHeader({ company }: ReportHeaderProps) {
   const companyName = company?.company_name?.trim() || 'Autó Állapotfelmérő';
@@ -29,7 +33,10 @@ export function ReportHeader({ company }: ReportHeaderProps) {
               className="h-10 w-auto shrink-0 rounded-none object-contain"
             />
           ) : (
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-none bg-bmw-surface-dark text-[14px] font-bold text-bmw-on-dark">
+            <div
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-none text-[14px] font-bold text-bmw-on-dark"
+              style={{ backgroundColor: 'var(--report-accent)' }}
+            >
               {companyName.slice(0, 2).toUpperCase()}
             </div>
           )}
@@ -44,7 +51,7 @@ export function ReportHeader({ company }: ReportHeaderProps) {
         <button
           type="button"
           onClick={() => window.print()}
-          className="h-12 shrink-0 rounded-none border border-bmw-hairline-strong bg-bmw-canvas px-6 text-[14px] font-bold uppercase tracking-[0.5px] text-bmw-ink transition-colors hover:bg-bmw-surface-soft print:hidden"
+          className="h-12 shrink-0 rounded-none border border-bmw-hairline-strong bg-bmw-canvas px-6 text-[14px] font-bold uppercase tracking-[0.5px] text-bmw-ink transition-colors hover:border-[var(--report-accent)] hover:bg-bmw-surface-soft print:hidden"
         >
           Nyomtatás / PDF
         </button>
