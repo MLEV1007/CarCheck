@@ -136,3 +136,18 @@ export function sanitizeMm(raw: string): string {
 export function sanitizeMicron(raw: string): string {
   return raw.replace(/\D/g, '').slice(0, 4);
 }
+
+/** Szervizmúlt bejegyzés dátuma (`ServiceHistoryEntryState.date`): "YYYY" vagy "YYYY-MM-DD"
+ * -- csak számjegy és kötőjel engedélyezett beírás közben, max 10 karakter (a "YYYY-MM-DD"
+ * hossza). Nincs itt szigorú naptári validáció (pl. hónap 01-12) -- a mező szándékosan
+ * lazább, mint a strukturált VIN/DOT mezők, mert a user gyakran csak évet tud/akar megadni
+ * egy régi számláról. */
+export function sanitizeServiceDate(raw: string): string {
+  return raw.replace(/[^0-9-]/g, '').slice(0, 10);
+}
+
+/** Szervizmúlt bejegyzés km óra állása -- ugyanaz a szabály, mint az "Autó adatok" lépés
+ * km óra állás mezőjénél (`sanitizeOdometer`), csak számjegyek. */
+export function sanitizeServiceMileage(raw: string): string {
+  return raw.replace(/\D/g, '');
+}

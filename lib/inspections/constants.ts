@@ -4,6 +4,7 @@ import type {
   PaintPointState,
   PaintStatus,
   RimType,
+  ServiceHistoryStatus,
   TirePosition,
   WizardStep,
 } from '@/lib/inspections/types';
@@ -408,22 +409,66 @@ export const TIRE_BRAND_OTHER = 'Egyéb';
 
 /**
  * Wizard lépés-metaadatok EGY helyen (szám, rövid cím a lépés-jelzőhöz/gombokhoz,
- * hosszú cím a mobil "X / 8 lépés" feliratokhoz) -- ez a wizard "Wizard Stepper UI fix"
+ * hosszú cím a mobil "X / 9 lépés" feliratokhoz) -- ez a wizard "Wizard Stepper UI fix"
  * és "Dinamikus Tovább gomb" lépés egyetlen forrása (`StepIndicator.tsx` és
  * `InspectionWizard.tsx` is ebből olvas), hogy egy jövőbeli lépés-sorrend módosítás
  * NE tudjon elavult, kézzel beégetett gombfeliratokat hagyni maga után (pontosan ez
  * történt korábban: a 3 új szakértői modul lépés beszúrásakor a `StepGeneralPhotos.tsx`
  * "Tovább" gombja elfelejtett frissülni, és rossz lépésre hivatkozott).
+ *
+ * "Szervizmúlt & Dokumentumok" modul: az Általános fotók UTÁN, a Diagnosztika ELŐTT kapott
+ * helyet (3. lépés) -- ugyanaz az elv, mint a publikus riport szekció-sorrendjénél: az
+ * általános, dokumentum-jellegű infó a részletes szakértői vizsgálatok (diagnosztika/
+ * felszereltség/gumik/festék/hibák) előtt jelenik meg. Minden utána következő lépés száma
+ * eggyel eltolódott (8 -> 9 lépés összesen).
  */
 export const WIZARD_STEP_META: { step: WizardStep; shortLabel: string; longLabel: string }[] = [
   { step: 1, shortLabel: 'Autó adatok', longLabel: 'Autó adatok' },
   { step: 2, shortLabel: 'Fotók', longLabel: 'Általános fotók' },
-  { step: 3, shortLabel: 'Diagnosztika', longLabel: 'Diagnosztikai hibakódok' },
-  { step: 4, shortLabel: 'Felszereltség', longLabel: 'Felszereltség állapota' },
-  { step: 5, shortLabel: 'Gumiabroncsok', longLabel: 'Gumiabroncsok állapota' },
-  { step: 6, shortLabel: 'Festékvastagság', longLabel: 'Festékvastagság-mérés' },
-  { step: 7, shortLabel: 'Hibák & Média', longLabel: 'Hibák & Média' },
-  { step: 8, shortLabel: 'Összegzés', longLabel: 'Összegzés & Publikálás' },
+  { step: 3, shortLabel: 'Szervizmúlt', longLabel: 'Szervizmúlt & Dokumentumok' },
+  { step: 4, shortLabel: 'Diagnosztika', longLabel: 'Diagnosztikai hibakódok' },
+  { step: 5, shortLabel: 'Felszereltség', longLabel: 'Felszereltség állapota' },
+  { step: 6, shortLabel: 'Gumiabroncsok', longLabel: 'Gumiabroncsok állapota' },
+  { step: 7, shortLabel: 'Festékvastagság', longLabel: 'Festékvastagság-mérés' },
+  { step: 8, shortLabel: 'Hibák & Média', longLabel: 'Hibák & Média' },
+  { step: 9, shortLabel: 'Összegzés', longLabel: 'Összegzés & Publikálás' },
 ];
 
 export const TOTAL_WIZARD_STEPS = WIZARD_STEP_META.length;
+
+/** Szervizmúlt & Dokumentumok modul -- "Általános státusz" pillér (A pont): a 4 lehetséges
+ * választás felirata, `StepServiceHistory.tsx` rádiógomb-kártyáihoz és a publikus riport
+ * `ServiceHistoryCard.tsx` jelvényéhez. */
+export const SERVICE_HISTORY_STATUS_LABEL: Record<ServiceHistoryStatus, string> = {
+  full: 'Teljes szervizkönyv',
+  partial: 'Részleges szervizmúlt',
+  digital: 'Digitális szervizkönyv',
+  none: 'Nincs szervizmúlt / Nem ismert',
+};
+
+/** Rövidebb kiegészítő leírás a rádiógomb-kártyákon (`StepServiceHistory.tsx`). */
+export const SERVICE_HISTORY_STATUS_DESCRIPTION: Record<ServiceHistoryStatus, string> = {
+  full: 'Minden szerviz esemény dokumentálva van (szervizkönyv/számlák).',
+  partial: 'Néhány szerviz esemény hiányzik vagy nem dokumentált.',
+  digital: 'A szervizmúlt online/gyártói rendszerben követhető.',
+  none: 'Nincs elérhető szervizdokumentáció, vagy a múlt ismeretlen.',
+};
+
+/** Szervizmúlt & Dokumentumok modul -- "Manuális Idővonal" pillér (C pont): a bejegyzés
+ * "Típus" mezőjéhez javasolt, leggyakoribb szerviz-események listája (datalist, nem zárt
+ * enum -- a user szabad szöveget is beírhat, lásd `StepServiceHistory.tsx`). */
+export const SERVICE_ENTRY_TYPE_SUGGESTIONS: string[] = [
+  'Olajcsere',
+  'Nagyszerviz',
+  'Kisszerviz',
+  'Vezérműszíj / Vezérlánc csere',
+  'Fékbetét csere',
+  'Fékfolyadék csere',
+  'Gumiabroncs csere',
+  'Akkumulátor csere',
+  'Klíma szerviz',
+  'Futómű javítás',
+  'Garanciális javítás',
+  'Műszaki vizsga',
+  'Egyéb',
+];

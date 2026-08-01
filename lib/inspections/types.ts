@@ -176,4 +176,55 @@ export interface TireGeneralInfoState {
 
 export const EMPTY_TIRE_GENERAL_INFO: TireGeneralInfoState = { rimType: '', brand: '', customBrand: '' };
 
-export type WizardStep = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+/**
+ * Szervizmúlt & Dokumentumok modul (PROJEKT_INSTRUKCIOK.md, "Szervizmúlt & Dokumentumok
+ * modul" lépés) -- 3 alappillér: A) Általános státusz, B) Fotófeltöltés (a szervizkönyv/
+ * számlák lefotózva), C) Manuális Idővonal (kézzel rögzített szerviz-bejegyzések).
+ * A `status` `null`, amíg a user nem választ -- a wizard nem kényszerít ki alapértelmezett
+ * választ, mert egy "véletlenül otthagyott" alapérték téves benyomást keltene a riportban.
+ */
+export type ServiceHistoryStatus = 'full' | 'partial' | 'digital' | 'none';
+
+/**
+ * Egy manuálisan rögzített szerviz-bejegyzés. `id` kliens-oldalon generált
+ * (`crypto.randomUUID()`) stabil azonosító -- mivel a `service_history` NEM gyerek-tábla,
+ * hanem egyetlen JSONB oszlop (ugyanaz a minta, mint a `diagnostics.codes`/`equipment`/
+ * `tires`-nél), az `id` csak a UI (React key, szerkesztés/törlés) stabilitásához kell,
+ * DB-szintű idegen kulcs/egyediség-kényszer nincs rajta.
+ */
+export interface ServiceHistoryEntryState {
+  id: string;
+  /** YYYY-MM-DD vagy csak YYYY -- lásd `lib/inspections/validation.ts` `sanitizeServiceDate`. */
+  date: string;
+  mileage: string;
+  /** pl. "Olajcsere" -- szabad szöveges, `SERVICE_ENTRY_TYPE_SUGGESTIONS`-szal datalist-javaslattal. */
+  type: string;
+  notes: string;
+}
+
+export const EMPTY_SERVICE_HISTORY_ENTRY = (): ServiceHistoryEntryState => ({
+  id:
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `svc-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  date: '',
+  mileage: '',
+  type: '',
+  notes: '',
+});
+
+/**
+ * `photos` ugyanazt a `GeneralPhotoState` mintát követi, mint az "Általános autó fotók"
+ * modul (`file`/`previewUrl`, piszkozat szerkesztésekor `file` nélkül is lehet egy már
+ * feltöltött Storage URL) -- mentéskor a `service_history.photos` egy egyszerű string-tömb
+ * lesz, ugyanúgy, mint az `inspections.general_photos` (lásd InspectionWizard.tsx `handleSubmit`).
+ */
+export interface ServiceHistoryState {
+  status: ServiceHistoryStatus | null;
+  photos: GeneralPhotoState[];
+  entries: ServiceHistoryEntryState[];
+}
+
+export const EMPTY_SERVICE_HISTORY: ServiceHistoryState = { status: null, photos: [], entries: [] };
+
+export type WizardStep = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;

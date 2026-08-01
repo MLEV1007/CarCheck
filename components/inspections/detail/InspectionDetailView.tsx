@@ -21,6 +21,7 @@ import { isVideoUrl } from '@/lib/reports/media';
 import {
   EQUIPMENT_STATUS_LABEL,
   RIM_TYPE_LABEL,
+  SERVICE_HISTORY_STATUS_LABEL,
   TIRE_BRAND_OTHER,
   TIRE_POSITION_LABEL,
   getOverallPaintAverage,
@@ -30,6 +31,7 @@ import { decodeDot } from '@/lib/inspections/tireDot';
 import type {
   DiagnosticsState,
   EquipmentItemState,
+  ServiceHistoryState,
   TireGeneralInfoState,
   TirePosition,
   TiresState,
@@ -66,6 +68,7 @@ interface InspectionDetailViewProps {
   paintMeasurements: DetailPaintMeasurement[];
   defects: DetailDefect[];
   generalPhotos: string[];
+  serviceHistory: ServiceHistoryState;
   diagnostics: DiagnosticsState;
   equipment: EquipmentItemState[];
   tires: TiresState;
@@ -95,6 +98,7 @@ export function InspectionDetailView({
   paintMeasurements,
   defects,
   generalPhotos,
+  serviceHistory,
   diagnostics,
   equipment,
   tires,
@@ -279,6 +283,51 @@ export function InspectionDetailView({
                 </a>
               ))}
             </div>
+          )}
+        </div>
+
+        <div className="rounded-lg border border-linear-hairline bg-linear-surface-1 p-5">
+          <p className="text-[13px] font-semibold uppercase tracking-[0.4px] text-linear-ink-subtle">
+            Szervizmúlt & Dokumentumok
+          </p>
+          <p className="mt-2 text-[13px] text-linear-ink">
+            {serviceHistory.status ? SERVICE_HISTORY_STATUS_LABEL[serviceHistory.status] : 'Nincs kiválasztva státusz'}
+          </p>
+          {serviceHistory.photos.length > 0 && (
+            <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
+              {serviceHistory.photos.map((photo, index) => (
+                <a
+                  key={photo.clientId}
+                  href={photo.previewUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="aspect-square overflow-hidden rounded-md border border-linear-hairline bg-linear-surface-2"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={photo.previewUrl}
+                    alt={`Szerviz dokumentum ${index + 1}`}
+                    className="h-full w-full object-cover transition-opacity hover:opacity-80"
+                  />
+                </a>
+              ))}
+            </div>
+          )}
+          {serviceHistory.entries.length === 0 ? (
+            <p className="mt-3 text-[13px] text-linear-ink-subtle">Nincs rögzített idővonal-bejegyzés.</p>
+          ) : (
+            <ul className="mt-3 flex flex-col divide-y divide-linear-hairline">
+              {serviceHistory.entries.map((entry) => (
+                <li key={entry.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
+                  <span className="font-mono text-[13px] text-linear-ink-muted">{entry.date || '—'}</span>
+                  <span className="text-[13px] font-medium text-linear-ink">{entry.type || 'Egyéb'}</span>
+                  {entry.mileage && (
+                    <span className="font-mono text-[13px] text-linear-ink-subtle">{entry.mileage} km</span>
+                  )}
+                  {entry.notes && <span className="text-[12px] text-linear-ink-subtle">{entry.notes}</span>}
+                </li>
+              ))}
+            </ul>
           )}
         </div>
 

@@ -4,6 +4,7 @@ import { AlertTriangle, CheckCircle2, Loader2, MinusCircle, XCircle } from 'luci
 import {
   EQUIPMENT_STATUS_LABEL,
   RIM_TYPE_LABEL,
+  SERVICE_HISTORY_STATUS_LABEL,
   TIRE_BRAND_OTHER,
   TIRE_POSITION_LABEL,
   getOverallPaintAverage,
@@ -18,6 +19,7 @@ import type {
   DiagnosticsState,
   EquipmentItemState,
   PaintPointState,
+  ServiceHistoryState,
   TireGeneralInfoState,
   TirePosition,
   TiresState,
@@ -26,6 +28,7 @@ import type {
 interface StepSummaryProps {
   carInfo: CarInfoState;
   generalPhotoCount: number;
+  serviceHistory: ServiceHistoryState;
   diagnostics: DiagnosticsState;
   equipment: EquipmentItemState[];
   tires: TiresState;
@@ -50,6 +53,7 @@ const EQUIPMENT_ICON_CLASS = {
 export function StepSummary({
   carInfo,
   generalPhotoCount,
+  serviceHistory,
   diagnostics,
   equipment,
   tires,
@@ -91,6 +95,19 @@ export function StepSummary({
           <SummaryField label="Alvázszám (VIN)" value={carInfo.vin || '—'} mono fullWidth />
           <SummaryField label="Általános fotók" value={generalPhotoCount > 0 ? `${generalPhotoCount} db` : '—'} />
         </dl>
+      </div>
+
+      <div className="rounded-lg border border-linear-hairline bg-linear-surface-1 p-5">
+        <p className="text-[13px] font-semibold uppercase tracking-[0.4px] text-linear-ink-subtle">
+          Szervizmúlt & Dokumentumok
+        </p>
+        <p className="mt-2 text-[13px] text-linear-ink">
+          {serviceHistory.status ? SERVICE_HISTORY_STATUS_LABEL[serviceHistory.status] : 'Nincs kiválasztva státusz'}
+        </p>
+        <p className="mt-1 text-[13px] text-linear-ink-subtle">
+          {serviceHistory.photos.length > 0 ? `${serviceHistory.photos.length} dokumentum-fotó` : 'Nincs dokumentum-fotó'} ·{' '}
+          {serviceHistory.entries.length > 0 ? `${serviceHistory.entries.length} idővonal-bejegyzés` : 'Nincs idővonal-bejegyzés'}
+        </p>
       </div>
 
       <div className="rounded-lg border border-linear-hairline bg-linear-surface-1 p-5">

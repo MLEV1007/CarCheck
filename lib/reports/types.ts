@@ -1,4 +1,4 @@
-import type { EquipmentStatus, RimType, TirePosition } from '@/lib/inspections/types';
+import type { EquipmentStatus, RimType, ServiceHistoryStatus, TirePosition } from '@/lib/inspections/types';
 
 /**
  * A `public.get_public_report(p_token uuid)` Postgres RPC (SECURITY DEFINER)
@@ -31,8 +31,25 @@ export interface PublicReportInspection {
    * A `rim_type`/`brand` ÁLTALÁNOS mezők (Gumiabroncs & Felni modul bővítése, A pont) --
    * ugyanabban a `tires` JSONB objektumban élnek, a kerékpozíciók testvéreiként. */
   tires: PublicReportTiresData;
+  /** Szervizmúlt & Dokumentumok modul -- `status` `null` lehet, ha a vizsgáló még nem
+   * választott (a `get_public_report` RPC 2026-08-01-es kiegészítése óta tartalmazza). */
+  service_history: PublicReportServiceHistory;
   created_at: string;
   updated_at: string;
+}
+
+export interface PublicReportServiceHistoryEntry {
+  id: string;
+  date: string;
+  mileage: number;
+  type: string;
+  notes?: string;
+}
+
+export interface PublicReportServiceHistory {
+  status: ServiceHistoryStatus | null;
+  photos: string[];
+  entries: PublicReportServiceHistoryEntry[];
 }
 
 export interface PublicReportDiagnosticCode {

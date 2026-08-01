@@ -15,6 +15,8 @@ import type {
   GeneralPhotoState,
   PaintPointState,
   RimType,
+  ServiceHistoryState,
+  ServiceHistoryStatus,
   TireGeneralInfoState,
   TiresState,
 } from '@/lib/inspections/types';
@@ -65,6 +67,37 @@ function toInitialTires(raw: unknown): TiresState {
     };
   }
   return result;
+}
+
+/** DB (JSONB) -> wizard state konverzió a Szervizmúlt & Dokumentumok modulhoz. A `photos`
+ * (tárolt string-tömb) itt alakul vissza `GeneralPhotoState[]`-re (`file: null`, a tárolt
+ * URL a `previewUrl`) -- ugyanaz a minta, mint az `initialGeneralPhotos` konverziónál lentebb,
+ * hogy a `StepServiceHistory.tsx` (piszkozat) és az `InspectionDetailView.tsx` (befejezett)
+ * egyaránt a wizard-state formát kapja. */
+function toInitialServiceHistory(raw: unknown): ServiceHistoryState {
+  const value = (raw ?? {}) as {
+    status?: string | null;
+    photos?: string[];
+    entries?: Array<{ id?: string; date?: string; mileage?: number | null; type?: string; notes?: string }>;
+  };
+  const VALID_STATUSES: ServiceHistoryStatus[] = ['full', 'partial', 'digital', 'none'];
+  const status =
+    typeof value.status === 'string' && VALID_STATUSES.includes(value.status as ServiceHistoryStatus)
+      ? (value.status as ServiceHistoryStatus)
+      : null;
+  const photos = Array.isArray(value.photos) ? value.photos : [];
+  const entries = Array.isArray(value.entries) ? value.entries : [];
+  return {
+    status,
+    photos: photos.map((url) => ({ clientId: url, file: null, previewUrl: url })),
+    entries: entries.map((entry, index) => ({
+      id: entry.id ?? `svc-${index}`,
+      date: entry.date ?? '',
+      mileage: entry.mileage != null ? String(entry.mileage) : '',
+      type: entry.type ?? '',
+      notes: entry.notes ?? '',
+    })),
+  };
 }
 
 /** DB (JSONB `tires.rim_type`/`tires.brand`, a `fl`/`fr`/`rl`/`rr` kulcsok TESTVÉREI) ->
@@ -126,7 +159,7 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
   const { data: inspection } = await supabase
     .from('inspections')
     .select(
-      'id, car_brand, car_model, year, vin, license_plate, odometer, status, public_token, general_photos, diagnostics, equipment, tires, created_at'
+      'id, car_brand, car_model, year, vin, license_plate, odometer, status, public_token, general_photos, service_history, diagnostics, equipment, tires, created_at'
     )
     .eq('id', id)
     .eq('user_id', user.id)
@@ -201,6 +234,7 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
           inspectionId={inspection.id}
           initialCarInfo={initialCarInfo}
           initialGeneralPhotos={initialGeneralPhotos.length > 0 ? initialGeneralPhotos : undefined}
+          initialServiceHistory={toInitialServiceHistory(inspection.service_history)}
           initialDiagnostics={toInitialDiagnostics(inspection.diagnostics)}
           initialEquipment={toInitialEquipment(inspection.equipment)}
           initialTires={toInitialTires(inspection.tires)}
@@ -218,6 +252,7 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
       paintMeasurements={paintMeasurements ?? []}
       defects={defects ?? []}
       generalPhotos={inspection.general_photos ?? []}
+      serviceHistory={toInitialServiceHistory(inspection.service_history)}
       diagnostics={toInitialDiagnostics(inspection.diagnostics)}
       equipment={toInitialEquipment(inspection.equipment)}
       tires={toInitialTires(inspection.tires)}

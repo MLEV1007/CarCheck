@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import { StepIndicator } from '@/components/inspections/wizard/StepIndicator';
 import { StepCarInfo } from '@/components/inspections/wizard/StepCarInfo';
 import { StepGeneralPhotos } from '@/components/inspections/wizard/StepGeneralPhotos';
+import { StepServiceHistory } from '@/components/inspections/wizard/StepServiceHistory';
 import { StepDiagnostics } from '@/components/inspections/wizard/StepDiagnostics';
 import { StepEquipment } from '@/components/inspections/wizard/StepEquipment';
 import { StepTires } from '@/components/inspections/wizard/StepTires';
@@ -23,6 +24,7 @@ import {
   EMPTY_CAR_INFO,
   EMPTY_DEFECT,
   EMPTY_DIAGNOSTICS,
+  EMPTY_SERVICE_HISTORY,
   EMPTY_TIRE_GENERAL_INFO,
   EMPTY_TIRES,
   type CarInfoState,
@@ -31,6 +33,7 @@ import {
   type EquipmentItemState,
   type GeneralPhotoState,
   type PaintPointState,
+  type ServiceHistoryState,
   type TireGeneralInfoState,
   type TiresState,
   type WizardStep,
@@ -56,6 +59,7 @@ interface InspectionWizardProps {
   inspectionId?: string;
   initialCarInfo?: CarInfoState;
   initialGeneralPhotos?: GeneralPhotoState[];
+  initialServiceHistory?: ServiceHistoryState;
   initialDiagnostics?: DiagnosticsState;
   initialEquipment?: EquipmentItemState[];
   initialTires?: TiresState;
@@ -84,6 +88,7 @@ export function InspectionWizard({
   inspectionId: initialInspectionId,
   initialCarInfo,
   initialGeneralPhotos,
+  initialServiceHistory,
   initialDiagnostics,
   initialEquipment,
   initialTires,
@@ -95,6 +100,7 @@ export function InspectionWizard({
   const [step, setStep] = useState<WizardStep>(1);
   const [carInfo, setCarInfo] = useState<CarInfoState>(initialCarInfo ?? EMPTY_CAR_INFO);
   const [generalPhotos, setGeneralPhotos] = useState<GeneralPhotoState[]>(initialGeneralPhotos ?? []);
+  const [serviceHistory, setServiceHistory] = useState<ServiceHistoryState>(initialServiceHistory ?? EMPTY_SERVICE_HISTORY);
   const [diagnostics, setDiagnostics] = useState<DiagnosticsState>(initialDiagnostics ?? EMPTY_DIAGNOSTICS);
   const [equipment, setEquipment] = useState<EquipmentItemState[]>(initialEquipment ?? defaultEquipment());
   const [tires, setTires] = useState<TiresState>(initialTires ?? EMPTY_TIRES);
@@ -149,6 +155,46 @@ export function InspectionWizard({
           return photo.previewUrl;
         })
       );
+
+      // Szervizmúlt & Dokumentumok modul -- fotók feltöltése: PONTOSAN ugyanaz a minta, mint
+      // az általános autó fotóknál fentebb (külön Storage almappa, `service/`, hogy ne
+      // keveredjen a `general/` képekkel), csak most a `service_history.photos` state-ből.
+      const serviceHistoryPhotoUrls = await Promise.all(
+        serviceHistory.photos.map(async (photo) => {
+          if (photo.file) {
+            const safeName = photo.file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+            const path = `${user.id}/${inspectionId}/service/${crypto.randomUUID()}-${safeName}`;
+            const { error: uploadError } = await supabase.storage
+              .from('inspection-media')
+              .upload(path, photo.file, { upsert: true });
+            if (uploadError) throw uploadError;
+            return supabase.storage.from('inspection-media').getPublicUrl(path).data.publicUrl;
+          }
+          return photo.previewUrl;
+        })
+      );
+
+      // Csak a ténylegesen kitöltött (legalább dátum/km óra állás/típus valamelyike megadott)
+      // idővonal-bejegyzések kerülnek mentésre -- egy üresen otthagyott "+ Új bejegyzés"
+      // kártya nem hoz létre üres sort a JSONB tömbben.
+      const serviceHistoryPayload = {
+        status: serviceHistory.status,
+        photos: serviceHistoryPhotoUrls,
+        entries: serviceHistory.entries
+          .filter(
+            (entry) =>
+              entry.date.trim() !== '' || entry.mileage.trim() !== '' || entry.type.trim() !== '' || entry.notes.trim() !== ''
+          )
+          .map((entry) => ({
+            id: entry.id,
+            date: entry.date,
+            // A megadott ServiceHistory TS típus szerint `mileage: number` (nem opcionális) --
+            // ha a user üresen hagyta, 0-val mentjük, hogy a mező mindig szám maradjon.
+            mileage: entry.mileage.trim() === '' ? 0 : Number(entry.mileage),
+            type: entry.type,
+            notes: entry.notes || undefined,
+          })),
+      };
 
       // Diagnosztika (3 új szakértői modul, A pont): ha "OBD Tiszta" be van pipálva, a
       // `codes` mentéskor MINDIG üresen kerül be, függetlenül attól, hogy a checkbox
@@ -205,6 +251,7 @@ export function InspectionWizard({
           license_plate: carInfo.licensePlate || null,
           odometer: carInfo.odometer ? Number(carInfo.odometer) : null,
           general_photos: generalPhotoUrls,
+          service_history: serviceHistoryPayload,
           diagnostics: diagnosticsPayload,
           equipment: equipmentPayload,
           tires: tiresPayload,
@@ -341,56 +388,66 @@ export function InspectionWizard({
           />
         )}
         {step === 3 && (
-          <StepDiagnostics
-            value={diagnostics}
-            onChange={setDiagnostics}
+          <StepServiceHistory
+            value={serviceHistory}
+            onChange={setServiceHistory}
             onBack={() => setStep(2)}
             onNext={() => setStep(4)}
             nextLabel={NEXT_STEP_SHORT_LABEL[4]}
           />
         )}
         {step === 4 && (
-          <StepEquipment
-            value={equipment}
-            onChange={setEquipment}
+          <StepDiagnostics
+            value={diagnostics}
+            onChange={setDiagnostics}
             onBack={() => setStep(3)}
             onNext={() => setStep(5)}
             nextLabel={NEXT_STEP_SHORT_LABEL[5]}
           />
         )}
         {step === 5 && (
-          <StepTires
-            value={tires}
-            onChange={setTires}
-            generalInfo={tireGeneralInfo}
-            onGeneralInfoChange={setTireGeneralInfo}
+          <StepEquipment
+            value={equipment}
+            onChange={setEquipment}
             onBack={() => setStep(4)}
             onNext={() => setStep(6)}
             nextLabel={NEXT_STEP_SHORT_LABEL[6]}
           />
         )}
         {step === 6 && (
-          <StepPaintMeasurements
-            value={paintMeasurements}
-            onChange={setPaintMeasurements}
+          <StepTires
+            value={tires}
+            onChange={setTires}
+            generalInfo={tireGeneralInfo}
+            onGeneralInfoChange={setTireGeneralInfo}
             onBack={() => setStep(5)}
             onNext={() => setStep(7)}
             nextLabel={NEXT_STEP_SHORT_LABEL[7]}
           />
         )}
         {step === 7 && (
-          <StepDefects
-            value={defects}
-            onChange={setDefects}
+          <StepPaintMeasurements
+            value={paintMeasurements}
+            onChange={setPaintMeasurements}
             onBack={() => setStep(6)}
             onNext={() => setStep(8)}
             nextLabel={NEXT_STEP_SHORT_LABEL[8]}
           />
         )}
         {step === 8 && (
+          <StepDefects
+            value={defects}
+            onChange={setDefects}
+            onBack={() => setStep(7)}
+            onNext={() => setStep(9)}
+            nextLabel={NEXT_STEP_SHORT_LABEL[9]}
+          />
+        )}
+        {step === 9 && (
           <StepSummary
             carInfo={carInfo}
             generalPhotoCount={generalPhotos.length}
+            serviceHistory={serviceHistory}
             diagnostics={diagnostics}
             equipment={equipment}
             tires={tires}
@@ -401,7 +458,7 @@ export function InspectionWizard({
             )}
             isSubmitting={isSubmitting}
             submitError={submitError}
-            onBack={() => setStep(7)}
+            onBack={() => setStep(8)}
             onSaveDraft={() => handleSubmit('draft')}
             onPublish={() => handleSubmit('completed')}
           />
