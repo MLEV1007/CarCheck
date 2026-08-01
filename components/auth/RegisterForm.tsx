@@ -8,12 +8,16 @@ import { AuthDivider } from '@/components/auth/AuthDivider';
 
 /**
  * Jelszómentes regisztráció (PROJEKT_INSTRUKCIOK.md "Átállás Jelszómentes hitelesítésre"
- * lépés): NINCS jelszó mező és NINCS Google OAuth gomb. Új felhasználónak nincs még
- * regisztrált passkey-je, ezért a valódi "regisztráció" a Magic Link útján történik --
- * a Supabase alapértelmezetten létrehozza a fiókot az e-mail linkre kattintáskor
- * (`signInWithOtp` `shouldCreateUser` alapértéke `true`). A Passkey gomb itt is megjelenik
- * (elsődleges akció, ugyanaz a komponens, mint a Login oldalon) arra az esetre, ha valaki
- * tévedésből a Regisztráció oldalra jött, pedig már van fiókja és passkey-je.
+ * lépés): NINCS jelszó mező és NINCS Google OAuth gomb.
+ *
+ * FONTOS ELTÉRÉS a Login oldalhoz képest: itt a Magic Link az ELSŐDLEGES (és egyetlen ténylegesen
+ * működő) akció, NEM a Passkey gomb. Indoklás: egy vadonatúj felhasználónak per definíció még
+ * nincs regisztrált passkey-je, ezért a `signInWithPasskey()` MINDIG hibával tér vissza neki --
+ * ha ez lenne a legfeltűnőbb gomb a regisztrációs oldalon, az minden új usernek úgy tűnne, mintha
+ * "a regisztráció nem működne". A tényleges fiók-létrehozás a Magic Linken keresztül történik (a
+ * Supabase alapértelmezetten létrehozza a fiókot az e-mail linkre kattintáskor -- `signInWithOtp`
+ * `shouldCreateUser` alapértéke `true`); a Passkey gomb itt csak másodlagos, halkabb link marad
+ * azoknak, akik tévedésből a Regisztráció oldalra jöttek, pedig már van fiókjuk és passkey-jük.
  */
 export function RegisterForm() {
   const [error, setError] = useState<string | null>(null);
@@ -43,9 +47,6 @@ export function RegisterForm() {
 
   return (
     <div className="flex flex-col gap-5">
-      <PasskeyButton redirectTo="/dashboard" onError={setError} />
-      <AuthDivider label="vagy" />
-
       {error && (
         <p
           role="alert"
@@ -55,7 +56,16 @@ export function RegisterForm() {
         </p>
       )}
 
-      <MagicLinkForm redirectTo="/dashboard" onSent={setMagicLinkSentTo} onError={setError} />
+      <MagicLinkForm
+        redirectTo="/dashboard"
+        onSent={setMagicLinkSentTo}
+        onError={setError}
+        variant="primary"
+      />
+
+      <AuthDivider label="már van fiókod és passkey-d?" />
+
+      <PasskeyButton redirectTo="/dashboard" onError={setError} variant="secondary" />
 
       <p className="text-center font-sohne text-[14px] font-light text-stripe-ink-mute">
         Már van fiókod?{' '}

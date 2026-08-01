@@ -310,6 +310,51 @@ Passkey a Relying Party ID-hoz kötött) a `https://car-check-peach.vercel.app` 
 kipróbálni, NEM localhoston, hacsak a Supabase Dashboardon külön hozzá nem adod a localhost
 origint a Passkeys beállításokhoz.
 
+### 15. Hibajavítás: "a regisztráció nem működik" a Passkey-átállás óta (2026-08-01)
+
+**Diagnózis a Supabase Auth logokból (`get_logs`, `auth` service):** két konkrét, valós dolog
+derült ki, miután élesben is kipróbáltuk a 14. pontban leírt jelszómentes flow-t:
+
+1. A meglévő `test@buildmysite.hu` teszt-fiókkal a Magic Link + Passkey regisztráció és az azt
+   követő Passkey bejelentkezések is HIBÁTLANUL lefutottak élesben (`/otp` 200, `/verify` 303,
+   `passkey_created` esemény, majd több sikeres `login_method: passkey` esemény egészen a
+   legutóbbi, néhány perccel ezelőttiig) -- a Passkey/Magic Link KÓD önmagában helyesen működik.
+2. Egy VALÓDI új regisztráció (`shadiness4584@gmail.com`, "Krisztián Sipos") viszont kétszer
+   egymás után `429: email rate limit exceeded` (`over_email_send_rate_limit`) hibát kapott az
+   `/otp` hívásra. **Ez a Supabase beépített, `noreply@mail.app.supabase.io` teszt email-küldő
+   szolgáltatásának szigorú, óránkénti korlátja** -- ez a szolgáltatás KIFEJEZETTEN fejlesztési
+   célra való, nem éles regisztrációs forgalomra méretezett.
+3. Emellett architekturális UX-hiba is volt a 14. pontban leírt elrendezésben: a `/register`
+   oldalon a Passkey gomb volt az ELSŐDLEGES, legfeltűnőbb akció -- de egy vadonatúj usernek
+   per definíció NINCS még regisztrált passkey-je, ezért az a gomb NÁLA MINDIG hibát dob. Ez
+   pontosan úgy nézhetett ki egy első látogató szemével, mintha "a regisztráció nem működne",
+   miközben a ténylegesen működő Magic Link csak másodlagos, kevésbé feltűnő helyen volt.
+
+**Javítások:**
+- **`RegisterForm.tsx` átrendezve:** a Magic Link (`MagicLinkForm variant="primary"`) mostantól
+  az ELSŐDLEGES, legfeltűnőbb akció a Regisztráció oldalon (ez az EGYETLEN mód, ami ténylegesen
+  új fiókot hoz létre) -- a Passkey gomb (`PasskeyButton variant="secondary"`) lejjebb, egy
+  "már van fiókod és passkey-d?" elválasztó alatt jelenik meg, azoknak, akik tévedésből ide
+  jöttek. A `/login` oldal VÁLTOZATLAN maradt (ott a Passkey marad elsődleges -- egy visszatérő,
+  már regisztrált usernek ez a leggyorsabb út).
+- **`PasskeyButton.tsx` / `MagicLinkForm.tsx` kiegészítve `variant?: 'primary' | 'secondary'`
+  propttal**, hogy ugyanaz a két komponens újrafelhasználható legyen mindkét elrendezésben
+  (`Button` komponens már eleve támogatta mindkét vizuális stílust).
+- **`MagicLinkForm.tsx` hibaüzenete pontosított:** `describeOtpError()` mostantól az
+  `AuthError.code`/`status` mezőket nézi (nem a törékeny üzenetszöveg-egyezést) -- a
+  `over_email_send_rate_limit` / HTTP 429 esetén EXPLICIT, érthető magyar üzenetet ad ("Túl sok
+  belépési linket kértél... vagy szólj a rendszergazdának, hogy állítson be egyedi email-küldő
+  szolgáltatást"), a korábbi általános "ellenőrizd az email címet" szöveg helyett, ami
+  félrevezető lett volna egy rate-limit helyzetben.
+
+**TEENDŐ (nem kód, Supabase Dashboard -- ÉLESZTÉSHEZ KRITIKUS):** az éles regisztrációs
+forgalomhoz KÖTELEZŐ egyedi SMTP szolgáltatót beállítani (Authentication -> Settings -> SMTP
+Settings -- pl. Resend, Postmark, SendGrid). A beépített teszt-küldő órán belül csak néhány
+emailt enged ki, ami valós felhasználói regisztrációknál újra és újra ki fog esni, pont úgy,
+ahogy ma a teszt közben is történt.
+
+**Ellenőrzés:** `npx tsc --noEmit` hibamentes a teljes projektre.
+
 **Megerősítve, hogy már korábban elkészült** (a mostani feladatlista 1/2/4/6 pontjai, lásd fenti 11. szakasz): wizard stepper `overflow-x-auto`-fix, dinamikus "Tovább" gomb-felirat (`WIZARD_STEP_META`), DOT szám szigorú validációja (hét 01-53, év max a futtatáskori év -- 2026-ban "26"), gumiabroncs-pozíciók kizárólag magyar felirattal ("Bal első"/"Jobb első"/"Bal hátsó"/"Jobb hátsó"), dashboard táblázat `minmax()`-alapú, squishing-mentes elrendezése. Ezekhez a mostani lépésben KÓD-SZINTŰ változtatás nem történt, csak felülvizsgálat.
 
 ### 13. Ingyenes, kliens-oldali VIN (Alvázszám) OCR beolvasó -- Tesseract.js (2026-07-31)

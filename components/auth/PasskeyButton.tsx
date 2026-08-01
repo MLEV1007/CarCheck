@@ -11,6 +11,9 @@ interface PasskeyButtonProps {
   redirectTo?: string;
   /** A szülő form ide kapja meg a hibaüzenetet (diszkrét, nem dobja el a saját state-jét). */
   onError: (message: string | null) => void;
+  /** 'secondary' -- pl. a Regisztráció oldalon, ahol ez CSAK a már meglévő fiókkal
+   * rendelkezőknek releváns, ezért vizuálisan alárendelt a Magic Linkhez képest. */
+  variant?: 'primary' | 'secondary';
 }
 
 /**
@@ -23,7 +26,11 @@ interface PasskeyButtonProps {
  * PasskeyCard.tsx) -- új usernél ez a gomb "nincs ilyen credential" jellegű hibát ad,
  * ezért a form másodlagos, mindig működő fallbackja a Magic Link (lásd MagicLinkForm.tsx).
  */
-export function PasskeyButton({ redirectTo = '/dashboard', onError }: PasskeyButtonProps) {
+export function PasskeyButton({
+  redirectTo = '/dashboard',
+  onError,
+  variant = 'primary',
+}: PasskeyButtonProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -51,7 +58,7 @@ export function PasskeyButton({ redirectTo = '/dashboard', onError }: PasskeyBut
   }
 
   return (
-    <Button type="button" onClick={handleClick} isLoading={isLoading} fullWidth>
+    <Button type="button" variant={variant} onClick={handleClick} isLoading={isLoading} fullWidth>
       {!isLoading && <Fingerprint className="h-[18px] w-[18px]" />}
       👆 Belépés Face ID / Touch ID-val
     </Button>
