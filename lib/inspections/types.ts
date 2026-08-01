@@ -27,26 +27,21 @@ export const EMPTY_CAR_INFO: CarInfoState = {
 export type PaintStatus = 'gyari' | 'ujrafujt' | 'gittelt';
 
 /**
- * Elemenkénti 3 Mérési Pont & Átlag (PROJEKT_INSTRUKCIOK.md, "Rétegvastagság-mérő modul
- * újratervezése" lépés, A pont) -- minden karosszéria elemhez 3 külön beviteli mező
- * tartozik (µm), az elem átlaga ebből számolódik (lásd `constants.ts`
- * `getPaintPanelAverage`). Az átlag KIZÁRÓLAG akkor számolható, ha mindhárom pont ki
- * van töltve -- részlegesen kitöltött elem nem kerül be a riportba/mentésbe (ugyanaz az
- * elv, mint a korábbi, egy-mezős verziónál: az üresen hagyott elemek nem mentődnek).
+ * Szabadkézi (free-form) rétegvastagság-mérési pont (PROJEKT_INSTRUKCIOK.md,
+ * "Rétegvastagság-mérő Szabadkézi (Free-form Canvas) átalakítása" lépés) -- NINCS előre
+ * definiált karosszéria-elem, a felhasználó a referenciakép TETSZŐLEGES pontjára
+ * kattinthat. `x`/`y` a kattintás relatív pozíciója SZÁZALÉKBAN (0-100) a kép bal
+ * széle/teteje szerint, hogy a pont a kép tetszőleges reszponzív méreténél ugyanott
+ * maradjon. `id` kliens-oldalon generált (`crypto.randomUUID()`) stabil azonosító --
+ * ugyanaz az id kerül a `paint_measurements.id` oszlopba mentéskor is, hogy a UI (React
+ * key, szerkesztés/törlés) és a DB sor 1:1 megfeleljen.
  */
-export interface PaintMeasurementState {
-  elementName: string;
-  p1: string;
-  p2: string;
-  p3: string;
+export interface PaintPointState {
+  id: string;
+  x: number;
+  y: number;
+  value: number;
 }
-
-export const EMPTY_PAINT_MEASUREMENT = (elementName: string): PaintMeasurementState => ({
-  elementName,
-  p1: '',
-  p2: '',
-  p3: '',
-});
 
 export interface DefectState {
   clientId: string;

@@ -1,14 +1,13 @@
 'use client';
 
-import { useMemo } from 'react';
-import { getOverallPaintAverage, getPaintPanelAverage, getPaintStatus } from '@/lib/inspections/constants';
-import { ImageHotspotDiagram, type CarDiagramPanelData } from '@/components/inspections/ImageHotspotDiagram';
+import { getOverallPaintAverage, getPaintStatus } from '@/lib/inspections/constants';
+import { PaintCanvas } from '@/components/inspections/PaintCanvas';
 import { PaintStatusBadge } from '@/components/inspections/wizard/PaintStatusBadge';
-import type { PaintMeasurementState } from '@/lib/inspections/types';
+import type { PaintPointState } from '@/lib/inspections/types';
 
 interface StepPaintMeasurementsProps {
-  value: PaintMeasurementState[];
-  onChange: (value: PaintMeasurementState[]) => void;
+  value: PaintPointState[];
+  onChange: (value: PaintPointState[]) => void;
   onBack: () => void;
   onNext: () => void;
   /** A KÖVETKEZŐ lépés rövid címe -- lásd StepCarInfo.tsx ugyanerről a propról. */
@@ -16,53 +15,28 @@ interface StepPaintMeasurementsProps {
 }
 
 /**
- * LÉPÉS -- Rétegvastagság-mérő modul (PROJEKT_INSTRUKCIOK.md, "Vizualizált autó-diagram
- * a Rétegvastagság-mérő modulban" lépés). A korábbi sima kártyás lista helyett egy
- * interaktív, színkódolt autó-diagramon (`CarDiagram`, `mode="edit"`) koppintva nyílik
- * meg egy elem 3 mérési pontja -- az elem-átlag és a hozzá tartozó zöld/sárga/piros szín
- * élőben frissül minden billentyűleütésnél. A lépés tetején egy kiemelt kártya mutatja a
- * TELJES AUTÓ ÁTLAGÁT (a kitöltött elemek átlagainak átlaga).
+ * LÉPÉS -- Rétegvastagság-mérő "Szabadkézi" (Free-form Canvas) modul
+ * (PROJEKT_INSTRUKCIOK.md, "Rétegvastagság-mérő Szabadkézi (Free-form Canvas)
+ * átalakítása" lépés). NINCS előre definiált karosszéria-elem -- a felhasználó a kép
+ * TETSZŐLEGES pontjára kattinthat, hogy ott felvegyen egy mérési pontot (`PaintCanvas`,
+ * `mode="edit"`). Egy meglévő, színes buborékra kattintva a pont módosítható vagy
+ * törölhető. A lépés tetején egy kiemelt kártya mutatja a TELJES AUTÓ ÁTLAGÁT (az
+ * összes felvett pont egyszerű matematikai átlaga) és a felvett pontok számát.
  */
 export function StepPaintMeasurements({ value, onChange, onBack, onNext, nextLabel }: StepPaintMeasurementsProps) {
-  function setPoint(elementName: string, field: 'p1' | 'p2' | 'p3', raw: string) {
-    const index = value.findIndex((panel) => panel.elementName === elementName);
-    if (index === -1) return;
-    const next = [...value];
-    next[index] = { ...next[index], [field]: raw };
-    onChange(next);
-  }
-
-  const diagramData: Record<string, CarDiagramPanelData> = useMemo(
-    () =>
-      Object.fromEntries(
-        value.map((panel) => {
-          const average = getPaintPanelAverage(panel);
-          return [
-            panel.elementName,
-            {
-              average,
-              status: average !== null ? getPaintStatus(average) : null,
-              points: [panel.p1, panel.p2, panel.p3] as [string, string, string],
-            },
-          ];
-        })
-      ),
-    [value]
-  );
-
   const overallAverage = getOverallPaintAverage(value);
   const overallStatus = overallAverage !== null ? getPaintStatus(overallAverage) : null;
-  const measuredCount = value.filter((panel) => getPaintPanelAverage(panel) !== null).length;
 
   return (
     <div className="flex flex-col gap-6">
       <div>
         <h2 className="text-[18px] font-semibold tracking-[-0.3px] text-linear-ink">Festékvastagság-mérés</h2>
         <p className="mt-1 text-[13px] text-linear-ink-subtle">
-          Koppints az autó-képen egy pontra (üres, pulzáló körök) a 3 mérési pont (µm) megadásához. Az
-          elem átlaga csak akkor számolódik, ha mind a 3 pont ki van töltve -- ekkor a pont színes
-          buborékká alakul. Státusz: 80–150 µm Gyári, 151–250 µm Újrafújt / Javított, 250 µm felett
-          Gittelt / Sérült.
+          Kattints az autó-képen BÁRHOVA egy mérési pont (µm) felvételéhez -- nincs előre
+          megadott elem, szabadon annyi pontot vehetsz fel, amennyire szükséged van. Egy
+          meglévő buborékra kattintva módosíthatod az értékét, vagy törölheted a pontot.
+          Státusz: 80–150 µm Gyári, 151–250 µm Újrafújt / Javított, 250 µm felett Gittelt
+          / Sérült.
         </p>
       </div>
 
@@ -70,20 +44,18 @@ export function StepPaintMeasurements({ value, onChange, onBack, onNext, nextLab
       <div className="flex flex-col gap-3 rounded-lg border border-linear-hairline-strong bg-linear-surface-2 p-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-[12px] font-semibold uppercase tracking-[0.5px] text-linear-ink-subtle">
-            Összes elem átlaga
+            Teljes autó átlaga
           </p>
           <p className="mt-1 text-[28px] font-semibold tabular-nums text-linear-ink">
             {overallAverage !== null ? overallAverage : '—'}
             {overallAverage !== null && <span className="ml-1 text-[16px] font-normal text-linear-ink-subtle">µm</span>}
           </p>
-          <p className="mt-0.5 text-[12px] text-linear-ink-subtle">
-            {measuredCount} / {value.length} elem mérve
-          </p>
+          <p className="mt-0.5 text-[12px] text-linear-ink-subtle">{value.length} pont mérve</p>
         </div>
         {overallStatus && <PaintStatusBadge status={overallStatus} />}
       </div>
 
-      <ImageHotspotDiagram data={diagramData} mode="edit" onChangePoint={setPoint} theme="dark" />
+      <PaintCanvas points={value} mode="edit" onChange={onChange} theme="dark" />
 
       <div className="flex flex-wrap justify-between gap-3 border-t border-linear-hairline pt-5">
         <button

@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { InspectionWizard } from '@/components/inspections/wizard/InspectionWizard';
 import { InspectionDetailView } from '@/components/inspections/detail/InspectionDetailView';
 import { InspectionNotFound } from '@/components/inspections/detail/InspectionNotFound';
-import { EQUIPMENT_ITEMS, PAINT_PANELS, TIRE_BRANDS } from '@/lib/inspections/constants';
+import { EQUIPMENT_ITEMS, TIRE_BRANDS } from '@/lib/inspections/constants';
 import type {
   CarInfoState,
   DefectState,
@@ -13,12 +13,12 @@ import type {
   EquipmentItemState,
   EquipmentStatus,
   GeneralPhotoState,
-  PaintMeasurementState,
+  PaintPointState,
   RimType,
   TireGeneralInfoState,
   TiresState,
 } from '@/lib/inspections/types';
-import { EMPTY_PAINT_MEASUREMENT, EMPTY_TIRE_GENERAL_INFO, EMPTY_TIRES } from '@/lib/inspections/types';
+import { EMPTY_TIRE_GENERAL_INFO, EMPTY_TIRES } from '@/lib/inspections/types';
 
 /** DB (JSONB) -> wizard state konverzió a 3 új szakértői modulhoz (PROJEKT_INSTRUKCIOK.md,
  * "3 új szakértői modul" lépés). Külön, oldal-szintű helperek, mert csak itt (piszkozat
@@ -139,7 +139,7 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
   const [{ data: paintMeasurements }, { data: defects }] = await Promise.all([
     supabase
       .from('paint_measurements')
-      .select('id, element_name, micron_value, point_1, point_2, point_3, status')
+      .select('id, x, y, value')
       .eq('inspection_id', inspection.id)
       .eq('user_id', user.id),
     supabase
@@ -160,25 +160,15 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
       odometer: inspection.odometer ? String(inspection.odometer) : '',
     };
 
-    const measurementsByElement = new Map((paintMeasurements ?? []).map((row) => [row.element_name, row]));
-    // Elemenkénti 3 mérési pont visszatöltése -- ha egy MEGLÉVŐ (a 3-pontos átalakítás
-    // ELŐTT mentett) sornál a `point_1/2/3` mind `null` (csak a régi, egy-mezős
-    // `micron_value` van kitöltve), a mindhárom pontot a korábbi átlaggal töltjük elő --
-    // így a user szerkesztheti tovább, az átlag pedig változatlan marad, amíg nem ír át
-    // valamelyik pontot.
-    const initialPaintMeasurements: PaintMeasurementState[] = PAINT_PANELS.map((elementName) => {
-      const row = measurementsByElement.get(elementName);
-      if (!row) return EMPTY_PAINT_MEASUREMENT(elementName);
-      const hasPoints = row.point_1 != null && row.point_2 != null && row.point_3 != null;
-      if (hasPoints) {
-        return { elementName, p1: String(row.point_1), p2: String(row.point_2), p3: String(row.point_3) };
-      }
-      if (row.micron_value != null) {
-        const legacyValue = String(row.micron_value);
-        return { elementName, p1: legacyValue, p2: legacyValue, p3: legacyValue };
-      }
-      return EMPTY_PAINT_MEASUREMENT(elementName);
-    });
+    // Szabadkézi (free-form) mérési pontok visszatöltése -- egyszerű 1:1 leképezés, nincs
+    // többé fix elem-lista/hátrafelé-kompatibilis "3 pontra szétosztott régi átlag" logika
+    // (Rétegvastagság-mérő "Szabadkézi (Free-form Canvas)" átalakítása lépés).
+    const initialPaintMeasurements: PaintPointState[] = (paintMeasurements ?? []).map((row) => ({
+      id: row.id,
+      x: row.x,
+      y: row.y,
+      value: row.value,
+    }));
 
     const initialDefects: DefectState[] = (defects ?? []).map((row) => ({
       clientId: row.id,

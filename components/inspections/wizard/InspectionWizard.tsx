@@ -14,19 +14,15 @@ import { StepDefects } from '@/components/inspections/wizard/StepDefects';
 import { StepSummary } from '@/components/inspections/wizard/StepSummary';
 import {
   EQUIPMENT_ITEMS,
-  PAINT_PANELS,
   TIRE_BRAND_OTHER,
   TOTAL_WIZARD_STEPS,
   WIZARD_STEP_META,
-  getPaintPanelAverage,
-  getPaintStatus,
 } from '@/lib/inspections/constants';
 import { isValidDot } from '@/lib/inspections/tireDot';
 import {
   EMPTY_CAR_INFO,
   EMPTY_DEFECT,
   EMPTY_DIAGNOSTICS,
-  EMPTY_PAINT_MEASUREMENT,
   EMPTY_TIRE_GENERAL_INFO,
   EMPTY_TIRES,
   type CarInfoState,
@@ -34,7 +30,7 @@ import {
   type DiagnosticsState,
   type EquipmentItemState,
   type GeneralPhotoState,
-  type PaintMeasurementState,
+  type PaintPointState,
   type TireGeneralInfoState,
   type TiresState,
   type WizardStep,
@@ -64,7 +60,7 @@ interface InspectionWizardProps {
   initialEquipment?: EquipmentItemState[];
   initialTires?: TiresState;
   initialTireGeneralInfo?: TireGeneralInfoState;
-  initialPaintMeasurements?: PaintMeasurementState[];
+  initialPaintMeasurements?: PaintPointState[];
   initialDefects?: DefectState[];
 }
 
@@ -105,9 +101,7 @@ export function InspectionWizard({
   const [tireGeneralInfo, setTireGeneralInfo] = useState<TireGeneralInfoState>(
     initialTireGeneralInfo ?? EMPTY_TIRE_GENERAL_INFO
   );
-  const [paintMeasurements, setPaintMeasurements] = useState<PaintMeasurementState[]>(
-    initialPaintMeasurements ?? PAINT_PANELS.map((elementName) => EMPTY_PAINT_MEASUREMENT(elementName))
-  );
+  const [paintMeasurements, setPaintMeasurements] = useState<PaintPointState[]>(initialPaintMeasurements ?? []);
   const [defects, setDefects] = useState<DefectState[]>(initialDefects ?? [EMPTY_DEFECT()]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -233,27 +227,20 @@ export function InspectionWizard({
         .eq('inspection_id', inspectionId);
       if (paintDeleteError) throw paintDeleteError;
 
-      // Elemenkénti 3 mérési pont & átlag (Rétegvastagság-mérő modul újratervezése, A pont)
-      // -- KIZÁRÓLAG a mindhárom ponttal rendelkező elemek kerülnek mentésre, ugyanúgy,
-      // ahogy korábban az üresen hagyott (egy-mezős) elemek sem kerültek be. A `micron_value`
-      // oszlop az elem ÁTLAGÁT tárolja (a `status` is ebből számolódik), a 3 nyers pont
-      // (`point_1`/`point_2`/`point_3`) külön oszlopokban -- így a riport mindkét szintet
-      // (átlag + részletes pontok) meg tudja jeleníteni.
-      const filledPaint = paintMeasurements
-        .map((panel) => ({ panel, average: getPaintPanelAverage(panel) }))
-        .filter((entry): entry is { panel: PaintMeasurementState; average: number } => entry.average !== null);
-
-      if (filledPaint.length > 0) {
+      // Szabadkézi (free-form) mérési pontok (Rétegvastagság-mérő "Szabadkézi (Free-form
+      // Canvas)" átalakítása) -- minden felvett pont egy önálló sor `id`/`x`/`y`/`value`
+      // mezőkkel, nincs többé fix karosszéria-elem/3-pontos átlagolás. Az `id`-t a
+      // kliens generálja (`crypto.randomUUID()`, lásd `PaintCanvas.tsx`), és a beszúráskor
+      // is ugyanaz az érték kerül a sorba, hogy a UI és a DB sor 1:1 megfeleljen.
+      if (paintMeasurements.length > 0) {
         const { error: paintError } = await supabase.from('paint_measurements').insert(
-          filledPaint.map(({ panel, average }) => ({
+          paintMeasurements.map((point) => ({
+            id: point.id,
             inspection_id: inspectionId,
             user_id: user.id,
-            element_name: panel.elementName,
-            micron_value: average,
-            point_1: Number(panel.p1),
-            point_2: Number(panel.p2),
-            point_3: Number(panel.p3),
-            status: getPaintStatus(average),
+            x: point.x,
+            y: point.y,
+            value: point.value,
           }))
         );
         if (paintError) throw paintError;

@@ -1,26 +1,12 @@
 import type {
   EquipmentCategory,
   EquipmentStatus,
-  PaintMeasurementState,
+  PaintPointState,
   PaintStatus,
   RimType,
   TirePosition,
   WizardStep,
 } from '@/lib/inspections/types';
-import { CAR_IMAGE_PANEL_NAMES } from '@/lib/inspections/carImageMap';
-
-/**
- * Előre definiált karosszéria elemek a festékvastagság-méréshez
- * (PROJEKT_INSTRUKCIOK.md 5.B.2: "Karosszéria elemek listája értékmegadással" + a
- * "Rétegvastagság-mérő modul újratervezése" lépés kibővített listája: A/B/C oszlopok
- * és küszöbök is mérési pontok, oldalanként külön elemként). A "Képalapú interaktív
- * rétegvastagság-mérő hőtérkép" lépés óta ez a lista a `lib/inspections/carImageMap.ts`
- * `CAR_IMAGE_HOTSPOTS` koordináta-térképéből származik -- EGYETLEN forrás mind a
- * névlistának, mind a `cars.webp` referenciaképen elhelyezett hotspot-pozícióknak, hogy a
- * kettő SOSE csússzon szét egymástól. (A korábbi, SVG-alapú generált autó-diagram
- * geometriája -- `carDiagram.ts`/`CarDiagram.tsx` -- ezzel a lépéssel leváltásra került.)
- */
-export const PAINT_PANELS: string[] = CAR_IMAGE_PANEL_NAMES;
 
 /** Hiba-kategóriák (PROJEKT_INSTRUKCIOK.md 5.B.3). */
 export const DEFECT_CATEGORIES: string[] = ['Motor', 'Váltó', 'Karosszéria', 'Beltér', 'Fék/Futómű', 'Egyéb'];
@@ -43,38 +29,16 @@ export function getPaintStatus(micronValue: number): PaintStatus {
   return 'gittelt';
 }
 
-/** Egy elem 3 mérési pontjából a kitöltött (nem üres, valós szám) értékek, sorrendben. */
-function getPaintPanelPoints(panel: PaintMeasurementState): number[] {
-  return [panel.p1, panel.p2, panel.p3]
-    .map((v) => v.trim())
-    .filter((v) => v !== '')
-    .map(Number)
-    .filter((v) => !Number.isNaN(v));
-}
-
 /**
- * Elem Átlag = (P1 + P2 + P3) / 3 (PROJEKT_INSTRUKCIOK.md, A pont) -- KIZÁRÓLAG akkor
- * számolható, ha mindhárom pont ki van töltve; részlegesen kitöltött elemnél `null`-t ad
- * vissza (a UI ilyenkor "–"-t mutat, és mentéskor sem kerül be a riportba). Egy
- * tizedesjegyre kerekítve.
+ * TELJES AUTÓ ÁTLAGA (PROJEKT_INSTRUKCIOK.md, "Rétegvastagság-mérő Szabadkézi (Free-form
+ * Canvas) átalakítása" lépés, 4. pont) -- a szabadon felvett mérési pontok EGYSZERŰ
+ * matematikai átlaga (nincs többé elemenkénti csoportosítás/3-pontos részátlag). `null`,
+ * ha egyetlen pont sincs felvéve. Egy tizedesjegyre kerekítve.
  */
-export function getPaintPanelAverage(panel: PaintMeasurementState): number | null {
-  const points = getPaintPanelPoints(panel);
-  if (points.length !== 3) return null;
-  const avg = (points[0] + points[1] + points[2]) / 3;
-  return Math.round(avg * 10) / 10;
-}
-
-export function isPaintPanelFilled(panel: PaintMeasurementState): boolean {
-  return getPaintPanelAverage(panel) !== null;
-}
-
-/** A TELJES AUTÓ ÁTLAGA (PROJEKT_INSTRUKCIOK.md, A pont) -- a kitöltött (mindhárom
- * ponttal rendelkező) elemek átlagainak átlaga. `null`, ha egyetlen elem sincs kitöltve. */
-export function getOverallPaintAverage(panels: PaintMeasurementState[]): number | null {
-  const averages = panels.map(getPaintPanelAverage).filter((v): v is number => v !== null);
-  if (averages.length === 0) return null;
-  return Math.round((averages.reduce((sum, v) => sum + v, 0) / averages.length) * 10) / 10;
+export function getOverallPaintAverage(points: PaintPointState[]): number | null {
+  if (points.length === 0) return null;
+  const sum = points.reduce((total, point) => total + point.value, 0);
+  return Math.round((sum / points.length) * 10) / 10;
 }
 
 export const EQUIPMENT_STATUS_LABEL: Record<EquipmentStatus, string> = {

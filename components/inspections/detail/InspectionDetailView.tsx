@@ -18,12 +18,18 @@ import { createClient } from '@/lib/supabase/client';
 import { PaintStatusBadge } from '@/components/inspections/wizard/PaintStatusBadge';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { isVideoUrl } from '@/lib/reports/media';
-import { EQUIPMENT_STATUS_LABEL, RIM_TYPE_LABEL, TIRE_BRAND_OTHER, TIRE_POSITION_LABEL } from '@/lib/inspections/constants';
+import {
+  EQUIPMENT_STATUS_LABEL,
+  RIM_TYPE_LABEL,
+  TIRE_BRAND_OTHER,
+  TIRE_POSITION_LABEL,
+  getOverallPaintAverage,
+  getPaintStatus,
+} from '@/lib/inspections/constants';
 import { decodeDot } from '@/lib/inspections/tireDot';
 import type {
   DiagnosticsState,
   EquipmentItemState,
-  PaintStatus,
   TireGeneralInfoState,
   TirePosition,
   TiresState,
@@ -43,12 +49,9 @@ interface DetailInspection {
 
 interface DetailPaintMeasurement {
   id: string;
-  element_name: string;
-  micron_value: number;
-  point_1: number | null;
-  point_2: number | null;
-  point_3: number | null;
-  status: string;
+  x: number;
+  y: number;
+  value: number;
 }
 
 interface DetailDefect {
@@ -98,6 +101,8 @@ export function InspectionDetailView({
   tireGeneralInfo,
 }: InspectionDetailViewProps) {
   const router = useRouter();
+  const overallPaintAverage = getOverallPaintAverage(paintMeasurements);
+  const overallPaintStatus = overallPaintAverage !== null ? getPaintStatus(overallPaintAverage) : null;
   const diagnosticCodes = diagnostics.codes.filter((entry) => entry.code.trim() !== '');
   const relevantEquipment = equipment.filter((item) => item.status !== 'na');
   const filledTirePositions = Object.entries(tires).filter(
@@ -361,27 +366,27 @@ export function InspectionDetailView({
         </div>
 
         <div className="rounded-lg border border-linear-hairline bg-linear-surface-1 p-5">
-          <p className="text-[13px] font-semibold uppercase tracking-[0.4px] text-linear-ink-subtle">
-            Festékvastagság-mérés ({paintMeasurements.length} elem rögzítve)
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[13px] font-semibold uppercase tracking-[0.4px] text-linear-ink-subtle">
+              Festékvastagság-mérés ({paintMeasurements.length} pont mérve)
+            </p>
+            {overallPaintAverage !== null && overallPaintStatus && (
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-[13px] text-linear-ink-muted">Teljes autó átlaga: {overallPaintAverage} µm</span>
+                <PaintStatusBadge status={overallPaintStatus} />
+              </div>
+            )}
+          </div>
           {paintMeasurements.length === 0 ? (
             <p className="mt-2 text-[13px] text-linear-ink-subtle">Nincs rögzített mérés.</p>
           ) : (
             <ul className="mt-3 flex flex-col divide-y divide-linear-hairline">
-              {paintMeasurements.map((measurement) => (
-                <li
-                  key={measurement.id}
-                  className="flex flex-col gap-1 py-2 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <span className="text-[13px] text-linear-ink">{measurement.element_name}</span>
+              {paintMeasurements.map((measurement, index) => (
+                <li key={measurement.id} className="flex items-center justify-between gap-3 py-2">
+                  <span className="text-[13px] text-linear-ink">{index + 1}. pont</span>
                   <div className="flex items-center gap-3">
-                    {measurement.point_1 != null && measurement.point_2 != null && measurement.point_3 != null && (
-                      <span className="font-mono text-[12px] text-linear-ink-subtle">
-                        {measurement.point_1}/{measurement.point_2}/{measurement.point_3} µm
-                      </span>
-                    )}
-                    <span className="font-mono text-[13px] text-linear-ink-muted">Átlag: {measurement.micron_value} µm</span>
-                    <PaintStatusBadge status={measurement.status as PaintStatus} />
+                    <span className="font-mono text-[13px] text-linear-ink-muted">{measurement.value} µm</span>
+                    <PaintStatusBadge status={getPaintStatus(measurement.value)} />
                   </div>
                 </li>
               ))}

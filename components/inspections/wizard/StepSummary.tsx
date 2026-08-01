@@ -7,7 +7,6 @@ import {
   TIRE_BRAND_OTHER,
   TIRE_POSITION_LABEL,
   getOverallPaintAverage,
-  getPaintPanelAverage,
   getPaintStatus,
 } from '@/lib/inspections/constants';
 import { decodeDot } from '@/lib/inspections/tireDot';
@@ -18,7 +17,7 @@ import type {
   DefectState,
   DiagnosticsState,
   EquipmentItemState,
-  PaintMeasurementState,
+  PaintPointState,
   TireGeneralInfoState,
   TirePosition,
   TiresState,
@@ -31,7 +30,7 @@ interface StepSummaryProps {
   equipment: EquipmentItemState[];
   tires: TiresState;
   tireGeneralInfo: TireGeneralInfoState;
-  paintMeasurements: PaintMeasurementState[];
+  paintMeasurements: PaintPointState[];
   defects: DefectState[];
   isSubmitting: boolean;
   submitError: string | null;
@@ -63,9 +62,6 @@ export function StepSummary({
   onSaveDraft,
   onPublish,
 }: StepSummaryProps) {
-  const filledPaint = paintMeasurements
-    .map((panel) => ({ panel, average: getPaintPanelAverage(panel) }))
-    .filter((entry): entry is { panel: PaintMeasurementState; average: number } => entry.average !== null);
   const overallPaintAverage = getOverallPaintAverage(paintMeasurements);
   const overallPaintStatus = overallPaintAverage !== null ? getPaintStatus(overallPaintAverage) : null;
   const resolvedTireBrand =
@@ -183,28 +179,25 @@ export function StepSummary({
       <div className="rounded-lg border border-linear-hairline bg-linear-surface-1 p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-[13px] font-semibold uppercase tracking-[0.4px] text-linear-ink-subtle">
-            Festékvastagság-mérés ({filledPaint.length} elem rögzítve)
+            Festékvastagság-mérés ({paintMeasurements.length} pont mérve)
           </p>
           {overallPaintAverage !== null && overallPaintStatus && (
             <div className="flex items-center gap-2">
-              <span className="font-mono text-[13px] text-linear-ink-muted">Összes elem átlaga: {overallPaintAverage} µm</span>
+              <span className="font-mono text-[13px] text-linear-ink-muted">Teljes autó átlaga: {overallPaintAverage} µm</span>
               <PaintStatusBadge status={overallPaintStatus} />
             </div>
           )}
         </div>
-        {filledPaint.length === 0 ? (
+        {paintMeasurements.length === 0 ? (
           <p className="mt-2 text-[13px] text-linear-ink-subtle">Nincs rögzített mérés.</p>
         ) : (
           <ul className="mt-3 flex flex-col divide-y divide-linear-hairline">
-            {filledPaint.map(({ panel, average }) => (
-              <li key={panel.elementName} className="flex flex-col gap-1 py-2 sm:flex-row sm:items-center sm:justify-between">
-                <span className="text-[13px] text-linear-ink">{panel.elementName}</span>
+            {paintMeasurements.map((point, index) => (
+              <li key={point.id} className="flex items-center justify-between gap-3 py-2">
+                <span className="text-[13px] text-linear-ink">{index + 1}. pont</span>
                 <div className="flex items-center gap-3">
-                  <span className="font-mono text-[12px] text-linear-ink-subtle">
-                    {panel.p1}/{panel.p2}/{panel.p3} µm
-                  </span>
-                  <span className="font-mono text-[13px] text-linear-ink-muted">Átlag: {average} µm</span>
-                  <PaintStatusBadge status={getPaintStatus(average)} />
+                  <span className="font-mono text-[13px] text-linear-ink-muted">{point.value} µm</span>
+                  <PaintStatusBadge status={getPaintStatus(point.value)} />
                 </div>
               </li>
             ))}

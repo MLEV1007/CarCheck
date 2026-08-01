@@ -1,4 +1,4 @@
-import type { EquipmentStatus, PaintStatus, RimType, TirePosition } from '@/lib/inspections/types';
+import type { EquipmentStatus, RimType, TirePosition } from '@/lib/inspections/types';
 
 /**
  * A `public.get_public_report(p_token uuid)` Postgres RPC (SECURITY DEFINER)
@@ -60,17 +60,19 @@ export type PublicReportTiresData = Partial<Record<TirePosition, PublicReportTir
   brand?: string | null;
 };
 
+/**
+ * Szabadkézi (free-form) rétegvastagság-mérési pont (PROJEKT_INSTRUKCIOK.md,
+ * "Rétegvastagság-mérő Szabadkézi (Free-form Canvas) átalakítása" lépés) -- NINCS
+ * előre definiált karosszéria-elem, `x`/`y` a kép bal szélétől/tetejétől mért
+ * SZÁZALÉKOS relatív pozíció, `value` a mért érték (µm). A `status` (zöld/sárga/piros)
+ * a `value`-ból a `getPaintStatus()`-szal számolódik ki mindkét helyen (Wizard +
+ * publikus riport), nincs külön tárolva.
+ */
 export interface PublicReportPaintMeasurement {
   id: string;
-  element_name: string;
-  /** Az elem ÁTLAGA (P1+P2+P3)/3 -- lásd `lib/inspections/constants.ts` `getPaintStatus`.
-   * A régi (3-pontos átalakítás előtti) mentéseknél ez az eredeti, egyetlen mért érték. */
-  micron_value: number;
-  /** A 3 nyers mérési pont -- `null`, ha egy régi, egy-mezős mentésről van szó. */
-  point_1: number | null;
-  point_2: number | null;
-  point_3: number | null;
-  status: PaintStatus;
+  x: number;
+  y: number;
+  value: number;
   created_at: string;
 }
 
