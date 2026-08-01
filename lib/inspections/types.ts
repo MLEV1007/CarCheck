@@ -12,6 +12,13 @@ export interface CarInfoState {
   year: string;
   vin: string;
   licensePlate: string;
+  /** Rendszám felségjelzés betűkódja (pl. "H", "D", "SK") -- lásd
+   * `lib/inspections/constants.ts` `LICENSE_PLATE_COUNTRIES`. Új vizsgálatnál a bejelentkezett
+   * felhasználó `user_metadata.default_license_country` értékéből töltődik elő (Settings
+   * oldalon testre szabható, "H" a fallback), piszkozat szerkesztésekor pedig az ADOTT
+   * vizsgálathoz korábban mentett érték (`inspections.license_plate_country`) érvényesül --
+   * lásd `InspectionWizard.tsx` és `app/inspections/new/page.tsx` / `app/inspections/[id]/page.tsx`. */
+  licensePlateCountry: string;
   odometer: string;
 }
 
@@ -21,6 +28,7 @@ export const EMPTY_CAR_INFO: CarInfoState = {
   year: '',
   vin: '',
   licensePlate: '',
+  licensePlateCountry: 'H',
   odometer: '',
 };
 

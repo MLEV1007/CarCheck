@@ -1,6 +1,6 @@
 # Státusz — Autó Állapotfelmérő SaaS (MVP)
 
-_Utolsó frissítés: 2026-08-01 (4 UX/funkcionális fejlesztés: Km-állás ezres elválasztó formázás, Naptár választó a Szervizmúlt dátum mezőn, CarVertical PDF feltöltés, Rendszám felségjelzés; közvetlenül előtte: Új "Szervizmúlt & Dokumentumok" modul megépítése -- adatbázis bővítés, wizard lépés + publikus riport kártya; korábbi lépésekből: Rétegvastagság-mérő "Szabadkézi" (Free-form Canvas) átalakítása -- a fix, előre definiált karosszéria-elemekre épülő hotspot-modellt egy szabadon kattintható, tetszőleges (x%, y%) koordinátájú mérési pont modell váltotta le; korábbi lépésekből: Képalapú (image-based) interaktív rétegvastagság hőtérkép a `cars.webp` referenciaképpel, buborék-hotspotokkal, Rétegvastagság-mérő modul újratervezése 3 mérési pont + átlag alapján, Gumiabroncs/Felni modul bővítése, Átállás Jelszómentes / Passkey hitelesítésre, Google OAuth ellenőrzés, magyar white-label Auth e-mail sablonok, VIN OCR v3, Felszereltség modul Hibrid Okos-Lista)_
+_Utolsó frissítés: 2026-08-01 (Rendszám felségjelzés dropdown + profilhoz kötött alapértelmezés a Settings oldalon; közvetlenül előtte: 4 UX/funkcionális fejlesztés: Km-állás ezres elválasztó formázás, Naptár választó a Szervizmúlt dátum mezőn, CarVertical PDF feltöltés, Rendszám felségjelzés (statikus "H"); korábbi lépésekből: Új "Szervizmúlt & Dokumentumok" modul megépítése -- adatbázis bővítés, wizard lépés + publikus riport kártya; korábbi lépésekből: Rétegvastagság-mérő "Szabadkézi" (Free-form Canvas) átalakítása -- a fix, előre definiált karosszéria-elemekre épülő hotspot-modellt egy szabadon kattintható, tetszőleges (x%, y%) koordinátájú mérési pont modell váltotta le; korábbi lépésekből: Képalapú (image-based) interaktív rétegvastagság hőtérkép a `cars.webp` referenciaképpel, buborék-hotspotokkal, Rétegvastagság-mérő modul újratervezése 3 mérési pont + átlag alapján, Gumiabroncs/Felni modul bővítése, Átállás Jelszómentes / Passkey hitelesítésre, Google OAuth ellenőrzés, magyar white-label Auth e-mail sablonok, VIN OCR v3, Felszereltség modul Hibrid Okos-Lista)_
 
 ## Kész funkciók
 
@@ -581,6 +581,37 @@ A 15. szakaszban bevezetett fix, előre definiált 18-elemes hotspot-modellt (`C
 **Ellenőrzés:** `npx tsc --noEmit` (a `.tsbuildinfo` cache eltávolításával -- ugyanaz a `mv`-re való kényszerülés, mint a `rm`-nél, lásd fent) hibamentes, exit code 0. `grep`-pel ellenőrizve: nincs több élő (`.old`-on kívüli) hivatkozás `element_name`/`micron_value`/`point_1/2/3`/`PAINT_PANELS`/`PaintMeasurementState`/`ImageHotspotDiagram`/`CAR_IMAGE_HOTSPOTS` azonosítókra a kódbázisban.
 
 **Kézi teszt még nem történt** (a sandboxban nincs böngésző): a kattintás-pozíció pontossága éles böngészőben (a `getBoundingClientRect()`-alapú számítás elméletben pontos, de a `next/image` `fill`+`object-contain` esetleges belső eltolásait még nem láttuk élesben), a popover megnyitása/bezárása mobilon (touch esemény, nem csak `onClick`), a meglévő buborékra kattintás VS. új pont felvétele közötti megkülönböztetés (`stopPropagation`) tényleges viselkedése, és a publikus riport `mode="view"` popoverének viselkedése.
+
+### 15. Rendszám felségjelzés dropdown + profilhoz kötött alapértelmezés (2026-08-01)
+
+A korábbi (14. szakasz, 4. pont) statikusan "H"-ra hardkódolt rendszám-felségjelzést egy 9 opciós dropdown váltotta fel (H/D/A/SK/RO/PL/I/NL/Egyéb), a felhasználó saját Settings oldalán testre szabható alapértelmezett értékkel.
+
+**Adatbázis & RPC (Supabase migrációk, `nsejmkcwvksbwxscvrvb` projekt):**
+- `add_license_plate_country_to_inspections` -- új `license_plate_country text not null default 'H'` oszlop az `inspections` táblán, VIZSGÁLATONKÉNT tárolva (nem csak a felhasználói profilon) -- így egy vizsgáló, aki eseti jelleggel külföldi rendszámú autót vizsgál, felülírhatja az alapértelmezett értéket anélkül, hogy az a jövőbeli vizsgálatokra is hatna.
+- `add_license_plate_country_to_public_report_rpc` -- a `get_public_report` RPC kiegészítve a mezővel, ugyanabban a `jsonb_build_object('inspection', ...)` blokkban, mint a `license_plate`. `get_advisors` (security) újrafuttatva -- nincs új figyelmeztetés.
+
+**Típusok, konstansok:**
+- `lib/inspections/constants.ts`: `LICENSE_PLATE_COUNTRIES` (9 elemes `{ code, label }` lista) + `DEFAULT_LICENSE_PLATE_COUNTRY = 'H'` -- EGYETLEN forrás, amit MINDKÉT dropdown (Settings + Wizard) használ, hogy a két hely sose térhessen el egymástól.
+- `lib/inspections/types.ts`: `CarInfoState` kiegészítve `licensePlateCountry: string` mezővel, `EMPTY_CAR_INFO.licensePlateCountry` alapértéke `'H'`.
+
+**`components/ui/LicensePlateBadge.tsx` -- ÁTALAKÍTVA statikus "H"-ról dinamikus kódra:** a korábbi függőlegesen egymásra rakott csillag+"H" elrendezés helyett egy VÍZSZINTES sor (csillag + betűkód), mert a kód mostantól 1-5 karakter hosszú is lehet ("H"-tól "Egyéb"-ig) -- egy függőleges stack a hosszabb kódoknál kicsorbult/tördelődött volna a kis badge-ben. Új `countryCode?: string | null` prop (fallback: `DEFAULT_LICENSE_PLATE_COUNTRY`, csak a modul bevezetése ELŐTTI adatoknál fordulhat elő ténylegesen, mert a DB oszlop `not null default 'H'`).
+
+**1. Settings oldal (`/settings`) -- új "Alapértelmezett értékek" kártya:**
+- `components/settings/DefaultPreferencesCard.tsx` (új, önálló komponens, a `PasskeyCard.tsx` mintájára) -- egyetlen dropdown ("Alapértelmezett rendszám felségjelzés", a 9 `LICENSE_PLATE_COUNTRIES` opcióval). **FONTOS ELTÉRÉS a `SettingsForm.tsx` többi mezőjétől:** ez NEM a `profiles` táblába, hanem a Supabase AUTH `user_metadata`-jába kerül (`supabase.auth.updateUser({ data: { default_license_country } })`), és NEM a fő "Módosítások mentése" gombra vár -- a dropdown módosításakor AZONNAL, önállóan mentődik (ugyanaz az UX-elv, mint a `LogoUploader.tsx`-nél), inline pipa/spinner visszajelzéssel, hiba esetén a dropdown visszaáll az előző értékre.
+- `app/settings/page.tsx`: a már meglévő `supabase.auth.getUser()` hívásból kiolvassa a `user.user_metadata.default_license_country`-t (nincs szükség külön lekérdezésre), `DEFAULT_LICENSE_PLATE_COUNTRY` ("H") fallback-kel.
+
+**2. Wizard 1. lépés (Autó adatok) -- kompakt dropdown a Rendszám mező mellett:**
+- `StepCarInfo.tsx`: a korábbi sima `TextField` helyett egy vizuális "Input Group" -- egy közös kerettel/fókusz-gyűrűvel rendelkező `<div>`-en belül egy szűk `<select>` (csak a betűkódok, `LICENSE_PLATE_COUNTRIES.map(c => c.code)`) DOKKOLVA a rendszám szöveges mező bal oldalára (`border-r` elválasztóval), alatta élő `LicensePlateBadge` előnézettel.
+- `InspectionWizard.tsx`: új `defaultLicensePlateCountry?: string` prop -- ÚJ vizsgálatnál (amikor `initialCarInfo` NINCS megadva) ez tölti elő a `carInfo.licensePlateCountry` kezdőértékét. Mentéskor (`handleSubmit`) a `license_plate_country: carInfo.licensePlateCountry || DEFAULT_LICENSE_PLATE_COUNTRY` bekerül az `inspections` UPSERT payloadjába.
+- `app/inspections/new/page.tsx`: Client Component-ből Server Component-té alakítva (a korábbi verzió nem kérdezett le semmit) -- kiolvassa a bejelentkezett user `user_metadata.default_license_country`-ját, és átadja a wizardnak `defaultLicensePlateCountry` propként, MÉG a wizard első renderelése előtt (nincs "villanás" egy alapértelmezett, majd a valós értékre váltó dropdown-nal).
+- `app/inspections/[id]/page.tsx`: a select-lista kiegészítve `license_plate_country`-vel -- piszkozat szerkesztésekor az ADOTT vizsgálathoz korábban mentett kód tölti elő a dropdown-ot (NEM a user aktuális profil-alapértelmezése, hiszen az menet közben változhatott, a vizsgálat viszont a saját, korábban rögzített értékét kell hogy megtartsa).
+
+**3. Megjelenítés mindenhol, ahol a rendszám látszik -- a korábbi statikus "H" helyett a tényleges, vizsgálathoz/karInfo-hoz tartozó kódot mutatja:**
+- `StepSummary.tsx` és `InspectionDetailView.tsx` -- a `LicensePlateBadge` `countryCode` propja `carInfo.licensePlateCountry` / `inspection.license_plate_country`-ra kötve.
+- `components/dashboard/InspectionsExplorer.tsx` + `app/dashboard/page.tsx` -- a lista lekérdezése kiegészítve `license_plate_country`-vel, `InspectionRow` típus bővítve.
+- `lib/reports/types.ts` (`PublicReportInspection`) + `components/report/ReportHero.tsx` -- a Publikus Riport hero "Rendszám" mezője a `license_plate_country`-t mutatja a kék sávban, NEM hardkódolt "H"-t.
+
+**Ellenőrzés:** `npx tsc --noEmit` hibamentes a teljes projektre. A `license_plate_country` oszlop és a bővített `get_public_report` RPC élesben, `execute_sql`-lel ellenőrizve. Böngészős manuális teszt (Settings dropdown azonnali mentése, Wizard input group vizuális megjelenése, régi -- e modul előtti -- vizsgálatok "H" fallback-je) NEM futott le ebben a munkamenetben -- ezt a usernek érdemes helyben leellenőriznie.
 
 ## Hibajavítások
 

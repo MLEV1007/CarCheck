@@ -14,6 +14,7 @@ import { StepPaintMeasurements } from '@/components/inspections/wizard/StepPaint
 import { StepDefects } from '@/components/inspections/wizard/StepDefects';
 import { StepSummary } from '@/components/inspections/wizard/StepSummary';
 import {
+  DEFAULT_LICENSE_PLATE_COUNTRY,
   EQUIPMENT_ITEMS,
   TIRE_BRAND_OTHER,
   TOTAL_WIZARD_STEPS,
@@ -58,6 +59,13 @@ interface InspectionWizardProps {
   /** Meglévő piszkozat folytatásakor a `/inspections/[id]` route adja át -- ha nincs megadva, új UUID generálódik (új vizsgálat). */
   inspectionId?: string;
   initialCarInfo?: CarInfoState;
+  /** ÚJ vizsgálatnál (`/inspections/new`) a bejelentkezett user `user_metadata.
+   * default_license_country` értéke (Settings oldalon testre szabható) -- ez tölti elő a
+   * Rendszám felségjelzés dropdown kezdeti értékét, ha `initialCarInfo` NINCS megadva.
+   * Piszkozat szerkesztésekor irreleváns, mert az `initialCarInfo.licensePlateCountry` már
+   * az ADOTT vizsgálathoz korábban mentett kódot tartalmazza -- lásd
+   * `app/inspections/new/page.tsx` / `app/inspections/[id]/page.tsx`. */
+  defaultLicensePlateCountry?: string;
   initialGeneralPhotos?: GeneralPhotoState[];
   initialServiceHistory?: ServiceHistoryState;
   initialDiagnostics?: DiagnosticsState;
@@ -87,6 +95,7 @@ interface InspectionWizardProps {
 export function InspectionWizard({
   inspectionId: initialInspectionId,
   initialCarInfo,
+  defaultLicensePlateCountry,
   initialGeneralPhotos,
   initialServiceHistory,
   initialDiagnostics,
@@ -98,7 +107,10 @@ export function InspectionWizard({
 }: InspectionWizardProps = {}) {
   const router = useRouter();
   const [step, setStep] = useState<WizardStep>(1);
-  const [carInfo, setCarInfo] = useState<CarInfoState>(initialCarInfo ?? EMPTY_CAR_INFO);
+  const [carInfo, setCarInfo] = useState<CarInfoState>(
+    initialCarInfo ??
+      (defaultLicensePlateCountry ? { ...EMPTY_CAR_INFO, licensePlateCountry: defaultLicensePlateCountry } : EMPTY_CAR_INFO)
+  );
   const [generalPhotos, setGeneralPhotos] = useState<GeneralPhotoState[]>(initialGeneralPhotos ?? []);
   const [serviceHistory, setServiceHistory] = useState<ServiceHistoryState>(initialServiceHistory ?? EMPTY_SERVICE_HISTORY);
   const [diagnostics, setDiagnostics] = useState<DiagnosticsState>(initialDiagnostics ?? EMPTY_DIAGNOSTICS);
@@ -267,6 +279,7 @@ export function InspectionWizard({
           year: carInfo.year ? Number(carInfo.year) : null,
           vin: carInfo.vin || null,
           license_plate: carInfo.licensePlate || null,
+          license_plate_country: carInfo.licensePlateCountry || DEFAULT_LICENSE_PLATE_COUNTRY,
           odometer: carInfo.odometer ? Number(carInfo.odometer) : null,
           general_photos: generalPhotoUrls,
           service_history: serviceHistoryPayload,

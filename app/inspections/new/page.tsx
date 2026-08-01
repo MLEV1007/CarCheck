@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import { createClient } from '@/lib/supabase/server';
 import { InspectionWizard } from '@/components/inspections/wizard/InspectionWizard';
+import { DEFAULT_LICENSE_PLATE_COUNTRY } from '@/lib/inspections/constants';
 
 export const metadata: Metadata = {
   title: 'Új vizsgálat | Autó Állapotfelmérő',
@@ -11,7 +13,21 @@ export const metadata: Metadata = {
 // Client Component (InspectionWizard.tsx), mert a lépésváltás és a Supabase
 // insert/upload logika kliens-oldali állapotot és böngésző-kliens hívásokat igényel.
 // A middleware.ts (PROTECTED_PREFIXES) már véd minden /inspections route-ot.
-export default function NewInspectionPage() {
+//
+// Server Component -- azért, hogy a bejelentkezett user `user_metadata.default_license_country`
+// értékét (Settings oldalon testre szabható "Alapértelmezett rendszám felségjelzés") már a
+// wizard ELSŐ renderelésekor átadhassuk a Rendszám felségjelzés dropdown kezdeti értékének
+// (`InspectionWizard.tsx` `defaultLicensePlateCountry` propja) -- lásd "Rendszám felségjelzés
+// dropdown és profilhoz kötött alapértelmezés" lépés.
+export default async function NewInspectionPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const defaultLicensePlateCountry =
+    (user?.user_metadata?.default_license_country as string | undefined) || DEFAULT_LICENSE_PLATE_COUNTRY;
+
   return (
     <div className="min-h-screen bg-linear-canvas">
       <header className="flex h-16 items-center gap-3 border-b border-linear-hairline px-4 sm:px-6">
@@ -25,7 +41,7 @@ export default function NewInspectionPage() {
         <span className="text-[14px] font-medium text-linear-ink">Új vizsgálat indítása</span>
       </header>
 
-      <InspectionWizard />
+      <InspectionWizard defaultLicensePlateCountry={defaultLicensePlateCountry} />
     </div>
   );
 }

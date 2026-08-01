@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { AlertTriangle, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { SelectField, TextField } from '@/components/inspections/wizard/FormControls';
 import { VinScanToast, type VinScanToastVariant } from '@/components/inspections/wizard/VinScanToast';
 import { CAR_BRANDS, CAR_CATALOG, OTHER_OPTION, getModelsForBrand } from '@/lib/inspections/carCatalog';
@@ -15,6 +16,7 @@ import {
 import { recognizeVinFromImage } from '@/lib/inspections/vinOcr';
 import { formatKmInput } from '@/lib/format';
 import { LicensePlateBadge } from '@/components/ui/LicensePlateBadge';
+import { LICENSE_PLATE_COUNTRIES } from '@/lib/inspections/constants';
 import type { CarInfoState } from '@/lib/inspections/types';
 
 const VIN_SCAN_FAILURE_MESSAGE =
@@ -298,18 +300,57 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <TextField
-            label="Rendszám"
-            name="licensePlate"
-            placeholder="pl. AABB123"
-            required
-            className="font-mono uppercase tracking-wider"
-            error={showError('licensePlate')}
-            value={value.licensePlate}
-            onChange={(e) => set('licensePlate', sanitizeLicensePlate(e.target.value))}
-            onBlur={() => markTouched('licensePlate')}
-          />
-          {value.licensePlate && <LicensePlateBadge value={value.licensePlate} size="sm" />}
+          <div className="flex items-baseline justify-between">
+            <label htmlFor="licensePlate" className="text-[13px] font-medium text-linear-ink-muted">
+              Rendszám
+            </label>
+          </div>
+          {/* Rendszám felségjelzés dropdown (PROJEKT_INSTRUKCIOK.md, "Rendszám felségjelzés
+              dropdown és profilhoz kötött alapértelmezés" lépés) -- egyetlen vizuális "Input
+              Group"-ba csatolva a rendszám mező elé, közös kerettel. Az alapértelmezett érték
+              a bejelentkezett user Settings oldalon beállított `default_license_country`
+              metaadatából töltődik elő (`InspectionWizard.tsx` `defaultLicensePlateCountry`
+              propja), piszkozat szerkesztésekor pedig az ADOTT vizsgálathoz korábban mentett
+              kód érvényesül. */}
+          <div
+            className={cn(
+              'flex h-11 w-full overflow-hidden rounded-md border bg-linear-surface-1 transition-colors',
+              'focus-within:border-linear-primary focus-within:ring-2 focus-within:ring-linear-primary/30',
+              showError('licensePlate') ? 'border-linear-danger' : 'border-linear-hairline'
+            )}
+          >
+            <select
+              aria-label="Rendszám felségjelzés"
+              value={value.licensePlateCountry}
+              onChange={(e) => set('licensePlateCountry', e.target.value)}
+              className="shrink-0 border-r border-linear-hairline bg-linear-surface-2 px-2 font-mono text-[13px] font-semibold text-linear-ink focus:outline-none"
+            >
+              {LICENSE_PLATE_COUNTRIES.map((country) => (
+                <option key={country.code} value={country.code}>
+                  {country.code}
+                </option>
+              ))}
+            </select>
+            <input
+              id="licensePlate"
+              name="licensePlate"
+              placeholder="pl. AABB123"
+              required
+              aria-invalid={!!showError('licensePlate')}
+              className="min-w-0 flex-1 bg-transparent px-3 font-mono text-[14px] uppercase tracking-wider text-linear-ink placeholder:text-linear-ink-subtle focus:outline-none"
+              value={value.licensePlate}
+              onChange={(e) => set('licensePlate', sanitizeLicensePlate(e.target.value))}
+              onBlur={() => markTouched('licensePlate')}
+            />
+          </div>
+          {showError('licensePlate') && (
+            <span role="alert" className="text-[12px] text-linear-danger">
+              {showError('licensePlate')}
+            </span>
+          )}
+          {value.licensePlate && (
+            <LicensePlateBadge value={value.licensePlate} countryCode={value.licensePlateCountry} size="sm" />
+          )}
         </div>
       </div>
 

@@ -4,6 +4,8 @@ import { ArrowLeft } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { SettingsForm } from '@/components/settings/SettingsForm';
 import { PasskeyCard } from '@/components/settings/PasskeyCard';
+import { DefaultPreferencesCard } from '@/components/settings/DefaultPreferencesCard';
+import { DEFAULT_LICENSE_PLATE_COUNTRY } from '@/lib/inspections/constants';
 
 export const metadata: Metadata = {
   title: 'Cégbeállítások | Autó Állapotfelmérő',
@@ -38,6 +40,9 @@ export default async function SettingsPage() {
     .eq('id', user.id)
     .maybeSingle();
 
+  const initialDefaultLicenseCountry =
+    (user.user_metadata?.default_license_country as string | undefined) || DEFAULT_LICENSE_PLATE_COUNTRY;
+
   return (
     <div className="min-h-screen bg-stripe-canvas-soft">
       <header className="border-b border-stripe-hairline bg-white">
@@ -62,6 +67,7 @@ export default async function SettingsPage() {
           initialLogoUrl={profile?.logo_url ?? null}
           initialPrimaryColor={profile?.primary_color ?? '#1c69d4'}
         />
+        <DefaultPreferencesCard initialDefaultLicenseCountry={initialDefaultLicenseCountry} />
         <PasskeyCard />
       </main>
     </div>

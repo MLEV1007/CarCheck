@@ -28,7 +28,9 @@ function buildSpecs(inspection: PublicReportInspection): SpecItem[] {
     {
       label: 'Rendszám',
       value: inspection.license_plate || '—',
-      valueNode: inspection.license_plate ? <LicensePlateBadge value={inspection.license_plate} /> : undefined,
+      valueNode: inspection.license_plate ? (
+        <LicensePlateBadge value={inspection.license_plate} countryCode={inspection.license_plate_country} />
+      ) : undefined,
     },
     { label: 'Alvázszám (VIN)', value: inspection.vin || '—', fullWidth: true },
     {

@@ -11,6 +11,7 @@ export interface InspectionRow {
   car_brand: string | null;
   car_model: string | null;
   license_plate: string | null;
+  license_plate_country: string | null;
   vin: string | null;
   year: number | null;
   status: string;
@@ -148,7 +149,12 @@ function InspectionRowItem({
         {inspection.vin && <p className="truncate font-mono text-[12px] text-linear-ink-subtle">{inspection.vin}</p>}
       </Link>
 
-      <LicensePlateBadge value={inspection.license_plate} size="sm" className="font-mono text-[13px] text-linear-ink-muted" />
+      <LicensePlateBadge
+        value={inspection.license_plate}
+        countryCode={inspection.license_plate_country}
+        size="sm"
+        className="font-mono text-[13px] text-linear-ink-muted"
+      />
       <span className="text-[13px] text-linear-ink-muted sm:text-right">{inspection.year ?? '—'}</span>
       <span className="text-[13px] text-linear-ink-muted">{createdAt}</span>
 

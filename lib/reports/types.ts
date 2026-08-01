@@ -16,6 +16,9 @@ export interface PublicReportInspection {
   year: number | null;
   vin: string | null;
   license_plate: string | null;
+  /** Rendszám felségjelzés betűkódja (pl. "H", "SK") -- lásd
+   * `lib/inspections/constants.ts` `LICENSE_PLATE_COUNTRIES`. */
+  license_plate_country: string | null;
   odometer: number | null;
   status: 'draft' | 'completed' | string;
   /** Általános autó fotók (elölről/hátulról/oldalról/beltér/műszerfal stb.) -- a

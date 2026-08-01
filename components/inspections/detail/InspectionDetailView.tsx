@@ -47,6 +47,7 @@ interface DetailInspection {
   year: number | null;
   vin: string | null;
   license_plate: string | null;
+  license_plate_country: string | null;
   odometer: number | null;
   public_token: string;
   created_at: string;
@@ -255,7 +256,15 @@ export function InspectionDetailView({
             <DetailField
               label="Rendszám"
               value={inspection.license_plate || '—'}
-              valueNode={inspection.license_plate ? <LicensePlateBadge value={inspection.license_plate} size="sm" /> : undefined}
+              valueNode={
+                inspection.license_plate ? (
+                  <LicensePlateBadge
+                    value={inspection.license_plate}
+                    countryCode={inspection.license_plate_country}
+                    size="sm"
+                  />
+                ) : undefined
+              }
             />
             <DetailField
               label="Km óra állás"

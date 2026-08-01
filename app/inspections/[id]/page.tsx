@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { InspectionWizard } from '@/components/inspections/wizard/InspectionWizard';
 import { InspectionDetailView } from '@/components/inspections/detail/InspectionDetailView';
 import { InspectionNotFound } from '@/components/inspections/detail/InspectionNotFound';
-import { EQUIPMENT_ITEMS, TIRE_BRANDS } from '@/lib/inspections/constants';
+import { DEFAULT_LICENSE_PLATE_COUNTRY, EQUIPMENT_ITEMS, TIRE_BRANDS } from '@/lib/inspections/constants';
 import type {
   CarInfoState,
   DefectState,
@@ -166,7 +166,7 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
   const { data: inspection } = await supabase
     .from('inspections')
     .select(
-      'id, car_brand, car_model, year, vin, license_plate, odometer, status, public_token, general_photos, service_history, diagnostics, equipment, tires, created_at'
+      'id, car_brand, car_model, year, vin, license_plate, license_plate_country, odometer, status, public_token, general_photos, service_history, diagnostics, equipment, tires, created_at'
     )
     .eq('id', id)
     .eq('user_id', user.id)
@@ -197,6 +197,7 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
       year: inspection.year ? String(inspection.year) : '',
       vin: inspection.vin ?? '',
       licensePlate: inspection.license_plate ?? '',
+      licensePlateCountry: inspection.license_plate_country || DEFAULT_LICENSE_PLATE_COUNTRY,
       odometer: inspection.odometer ? String(inspection.odometer) : '',
     };
 

@@ -355,6 +355,36 @@ export const FEATURED_EQUIPMENT: FeaturedEquipmentItem[] = [
  * sor (a kiemelt kártya és a lenti lista UGYANAZT az állapotot módosítja). */
 export const FEATURED_EQUIPMENT_NAMES = new Set(FEATURED_EQUIPMENT.map((item) => item.name));
 
+export interface LicensePlateCountryOption {
+  /** A kék sávban megjelenő betűkód (pl. "H", "SK", "Egyéb"). */
+  code: string;
+  label: string;
+}
+
+/**
+ * Rendszám felségjelzés opciók (PROJEKT_INSTRUKCIOK.md, "Rendszám felségjelzés dropdown
+ * és profilhoz kötött alapértelmezés" lépés) -- MINDKÉT dropdown (Settings "Alapértelmezett
+ * rendszám felségjelzés" + Wizard kompakt kód-választó) ugyanezt a listát használja, hogy
+ * a kettő sose térhessen el egymástól.
+ */
+export const LICENSE_PLATE_COUNTRIES: LicensePlateCountryOption[] = [
+  { code: 'H', label: 'Magyarország' },
+  { code: 'D', label: 'Németország' },
+  { code: 'A', label: 'Ausztria' },
+  { code: 'SK', label: 'Szlovákia' },
+  { code: 'RO', label: 'Románia' },
+  { code: 'PL', label: 'Lengyelország' },
+  { code: 'I', label: 'Olaszország' },
+  { code: 'NL', label: 'Hollandia' },
+  { code: 'Egyéb', label: 'Egyéb' },
+];
+
+/** Fallback, ha a felhasználónak még nincs mentett `user_metadata.default_license_country`-ja
+ * (Settings), VAGY egy vizsgálatnak nincs (régebbi, e modul előtti) `license_plate_country`
+ * oszlopértéke -- utóbbi eset a DB-szintű `not null default 'H'` miatt gyakorlatban nem
+ * fordulhat elő, de a kliens-oldali fallback-lánc végén is itt landol. */
+export const DEFAULT_LICENSE_PLATE_COUNTRY = 'H';
+
 /** Gumiabroncs kerékpozíciók magyar megnevezése -- KIZÁRÓLAG magyar szöveg, rövidítés
  * (FL/FR/RL/RR) nélkül, sem a Wizardban, sem a publikus riportban. */
 export const TIRE_POSITION_LABEL: Record<TirePosition, string> = {

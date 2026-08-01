@@ -96,7 +96,11 @@ export function StepSummary({
           <SummaryField
             label="Rendszám"
             value={carInfo.licensePlate || '—'}
-            valueNode={carInfo.licensePlate ? <LicensePlateBadge value={carInfo.licensePlate} size="sm" /> : undefined}
+            valueNode={
+              carInfo.licensePlate ? (
+                <LicensePlateBadge value={carInfo.licensePlate} countryCode={carInfo.licensePlateCountry} size="sm" />
+              ) : undefined
+            }
           />
           <SummaryField label="Km óra állás" value={carInfo.odometer ? formatKm(carInfo.odometer) : '—'} />
           <SummaryField label="Alvázszám (VIN)" value={carInfo.vin || '—'} mono fullWidth />

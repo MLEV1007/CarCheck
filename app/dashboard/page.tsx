@@ -37,7 +37,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     supabase.from('profiles').select('company_name, logo_url').eq('id', user.id).maybeSingle(),
     supabase
       .from('inspections')
-      .select('id, car_brand, car_model, license_plate, vin, year, status, created_at, public_token')
+      .select('id, car_brand, car_model, license_plate, license_plate_country, vin, year, status, created_at, public_token')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false }),
   ]);
