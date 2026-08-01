@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { getOverallPaintAverage, getPaintPanelAverage, getPaintStatus } from '@/lib/inspections/constants';
-import { CarDiagram, type CarDiagramPanelData } from '@/components/inspections/CarDiagram';
+import { ImageHotspotDiagram, type CarDiagramPanelData } from '@/components/inspections/ImageHotspotDiagram';
 import { PaintStatusBadge } from '@/components/inspections/wizard/PaintStatusBadge';
 import type { PaintMeasurementState } from '@/lib/inspections/types';
 
@@ -59,9 +59,10 @@ export function StepPaintMeasurements({ value, onChange, onBack, onNext, nextLab
       <div>
         <h2 className="text-[18px] font-semibold tracking-[-0.3px] text-linear-ink">Festékvastagság-mérés</h2>
         <p className="mt-1 text-[13px] text-linear-ink-subtle">
-          Koppints az autó-ábra egy eleméré a 3 mérési pont (µm) megadásához. Az elem átlaga csak akkor
-          számolódik, ha mind a 3 pont ki van töltve. Státusz: 80–150 µm Gyári, 151–250 µm Újrafújt /
-          Javított, 250 µm felett Gittelt / Sérült.
+          Koppints az autó-képen egy pontra (üres, pulzáló körök) a 3 mérési pont (µm) megadásához. Az
+          elem átlaga csak akkor számolódik, ha mind a 3 pont ki van töltve -- ekkor a pont színes
+          buborékká alakul. Státusz: 80–150 µm Gyári, 151–250 µm Újrafújt / Javított, 250 µm felett
+          Gittelt / Sérült.
         </p>
       </div>
 
@@ -82,7 +83,7 @@ export function StepPaintMeasurements({ value, onChange, onBack, onNext, nextLab
         {overallStatus && <PaintStatusBadge status={overallStatus} />}
       </div>
 
-      <CarDiagram data={diagramData} mode="edit" onChangePoint={setPoint} theme="dark" />
+      <ImageHotspotDiagram data={diagramData} mode="edit" onChangePoint={setPoint} theme="dark" />
 
       <div className="flex flex-wrap justify-between gap-3 border-t border-linear-hairline pt-5">
         <button

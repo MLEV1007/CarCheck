@@ -1,21 +1,21 @@
-import { CAR_PANEL_NAMES } from '@/lib/inspections/carDiagram';
-import { CarDiagram, type CarDiagramPanelData } from '@/components/inspections/CarDiagram';
+import { CAR_IMAGE_PANEL_NAMES } from '@/lib/inspections/carImageMap';
+import { ImageHotspotDiagram, type CarDiagramPanelData } from '@/components/inspections/ImageHotspotDiagram';
 import type { PublicReportPaintMeasurement } from '@/lib/reports/types';
 import { SectionHeading } from '@/components/report/SectionHeading';
 
 /**
- * Karosszéria & festékvastagság térkép (PROJEKT_INSTRUKCIOK.md 5.C + "Vizualizált
- * autó-diagram a Rétegvastagság-mérő modulban" lépés): UGYANAZ az interaktív
- * `CarDiagram` komponens fut itt, mint a Wizard 6. lépésében (`mode="view"`,
- * `theme="light"` -- BMW design tokenek), hogy az ügyfél PONTOSAN ugyanazt a
- * színkódolt hőtérképet lássa, amit a vizsgáló a helyszínen rögzített. Elemre
- * koppintva a pontos µm értékek (átlag + a 3 mérési pont, ha elérhető) is
- * megtekinthetők egy alatta megnyíló, csak olvasható panelen.
+ * Karosszéria & festékvastagság térkép (PROJEKT_INSTRUKCIOK.md 5.C + "Képalapú
+ * interaktív rétegvastagság-mérő hőtérkép" lépés): UGYANAZ a `cars.webp` referenciaképre
+ * épülő `ImageHotspotDiagram` komponens fut itt, mint a Wizard 6. lépésében
+ * (`mode="view"`, `theme="light"` -- BMW design tokenek), hogy az ügyfél PONTOSAN
+ * ugyanazt a színkódolt buborékos hőtérképet lássa, amit a vizsgáló a helyszínen
+ * rögzített. Egy buborékra koppintva a pontos µm értékek (átlag + a 3 mérési pont, ha
+ * elérhető) is megtekinthetők egy popover-ben.
  *
- * A TELJES AUTÓ ÁTLAGA egy kiemelt kártyában látszik a diagram fölött, a `CarDiagram`
- * pedig minden zónát megjelenít (a nem mért elemeket semleges szürkével), nem csak a
- * ténylegesen rögzített `measurements` sorokat -- így a diagram mindig a teljes autót
- * mutatja, akkor is, ha csak néhány elem lett megmérve.
+ * A TELJES AUTÓ ÁTLAGA egy kiemelt kártyában látszik a diagram fölött, az
+ * `ImageHotspotDiagram` pedig minden hotspotot megjelenít (a nem mért elemeket üres,
+ * pulzáló körrel), nem csak a ténylegesen rögzített `measurements` sorokat -- így a
+ * diagram mindig a teljes autót mutatja, akkor is, ha csak néhány elem lett megmérve.
  */
 export function PaintMap({ measurements }: { measurements: PublicReportPaintMeasurement[] }) {
   if (measurements.length === 0) return null;
@@ -23,7 +23,7 @@ export function PaintMap({ measurements }: { measurements: PublicReportPaintMeas
   const measurementsByElement = new Map(measurements.map((m) => [m.element_name, m]));
 
   const diagramData: Record<string, CarDiagramPanelData> = Object.fromEntries(
-    CAR_PANEL_NAMES.map((elementName) => {
+    CAR_IMAGE_PANEL_NAMES.map((elementName) => {
       const row = measurementsByElement.get(elementName);
       if (!row) {
         return [elementName, { average: null, status: null }];
@@ -61,7 +61,7 @@ export function PaintMap({ measurements }: { measurements: PublicReportPaintMeas
       </div>
 
       <div className="mt-8">
-        <CarDiagram data={diagramData} mode="view" theme="light" />
+        <ImageHotspotDiagram data={diagramData} mode="view" theme="light" />
       </div>
     </section>
   );

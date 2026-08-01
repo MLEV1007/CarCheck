@@ -7,18 +7,20 @@ import type {
   TirePosition,
   WizardStep,
 } from '@/lib/inspections/types';
-import { CAR_PANEL_NAMES } from '@/lib/inspections/carDiagram';
+import { CAR_IMAGE_PANEL_NAMES } from '@/lib/inspections/carImageMap';
 
 /**
  * Előre definiált karosszéria elemek a festékvastagság-méréshez
  * (PROJEKT_INSTRUKCIOK.md 5.B.2: "Karosszéria elemek listája értékmegadással" + a
  * "Rétegvastagság-mérő modul újratervezése" lépés kibővített listája: A/B/C oszlopok
- * és küszöbök is mérési pontok, oldalanként külön elemként). A "Vizualizált autó-diagram"
- * lépés óta ez a lista a `lib/inspections/carDiagram.ts` `CAR_PANEL_ZONES` geometriájából
- * származik -- EGYETLEN forrás mind a névlistának, mind a diagram-koordinátáknak, hogy a
- * kettő SOSE csússzon szét egymástól.
+ * és küszöbök is mérési pontok, oldalanként külön elemként). A "Képalapú interaktív
+ * rétegvastagság-mérő hőtérkép" lépés óta ez a lista a `lib/inspections/carImageMap.ts`
+ * `CAR_IMAGE_HOTSPOTS` koordináta-térképéből származik -- EGYETLEN forrás mind a
+ * névlistának, mind a `cars.webp` referenciaképen elhelyezett hotspot-pozícióknak, hogy a
+ * kettő SOSE csússzon szét egymástól. (A korábbi, SVG-alapú generált autó-diagram
+ * geometriája -- `carDiagram.ts`/`CarDiagram.tsx` -- ezzel a lépéssel leváltásra került.)
  */
-export const PAINT_PANELS: string[] = CAR_PANEL_NAMES;
+export const PAINT_PANELS: string[] = CAR_IMAGE_PANEL_NAMES;
 
 /** Hiba-kategóriák (PROJEKT_INSTRUKCIOK.md 5.B.3). */
 export const DEFECT_CATEGORIES: string[] = ['Motor', 'Váltó', 'Karosszéria', 'Beltér', 'Fék/Futómű', 'Egyéb'];
