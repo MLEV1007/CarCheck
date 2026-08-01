@@ -1,10 +1,13 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Check, Copy, ExternalLink, Eye, Pencil, Plus, Search } from 'lucide-react';
+import { ExternalLink, Pencil, Plus, Search } from 'lucide-react';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { LicensePlateBadge } from '@/components/ui/LicensePlateBadge';
+import { InspectionActionsMenu } from '@/components/dashboard/InspectionActionsMenu';
+import { createClient } from '@/lib/supabase/client';
 
 export interface InspectionRow {
   id: string;
@@ -24,14 +27,32 @@ interface InspectionsExplorerProps {
 }
 
 /**
- * Kereső + akció sáv + vizsgálatok listája -- Client Component, mert a keresés
- * kliens-oldali szűrés a már betöltött listán, és a "Link másolása" a `navigator.clipboard`-ot
- * használja. Linear design system: surface-1 lista-konténer, hairline elválasztók a sorok között,
- * mobilon (mobile-first) a sorok egy oszlopba rendeződnek.
+ * Fix arányú (nem tartalom-alapú `fr`) rács-oszlopok -- a "Dashboard táblázat teljes UX/UI
+ * újratervezése" lépés kérése szerint AUTÓ&VIN 28% / RENDSZÁM 18% / ÉVJÁRAT 10% / DÁTUM 16% /
+ * STÁTUSZ 14% / MŰVELETEK 14%. SZÁNDÉKOSAN `fr` egységekkel (28fr...14fr), NEM literal `%`-kal:
+ * a `gap-4` (16px * 5 rés) egy tisztán %-alapú rácsnál a konténer szélessége FÖLÉ adódna hozzá
+ * (100% oszlop + rögzített gap-pixelek túlcsordulást okozna) -- az `fr` egység a rács motorja
+ * által a `gap`-ek levonása UTÁN, arányosan osztja szét a maradék helyet, így a kért 28:18:10:
+ * 16:14:14 arány garantáltan megmarad, de sosem okoz vízszintes túlcsordulást a gap miatt.
+ * Header és sor UGYANEZT a konstanst használja, hogy a két rács sosem csúszhat el egymástól.
  */
-export function InspectionsExplorer({ inspections }: InspectionsExplorerProps) {
+const GRID_COLS = 'sm:grid-cols-[28fr_18fr_10fr_16fr_14fr_14fr]';
+
+/**
+ * Kereső + akció sáv + vizsgálatok listája -- Client Component, mert a keresés
+ * kliens-oldali szűrés a már betöltött listán, a "Link másolása" a `navigator.clipboard`-ot
+ * használja, a törlés pedig közvetlen Supabase-hívás (RLS `inspections_delete_own`,
+ * `auth.uid() = user_id`, védi a bérlők közti izolációt). Linear design system: surface-1
+ * lista-konténer, hairline elválasztók a sorok között, mobilon (mobile-first) a sorok egy
+ * oszlopba rendeződnek.
+ */
+export function InspectionsExplorer({ inspections: initialInspections }: InspectionsExplorerProps) {
+  const router = useRouter();
+  const [inspections, setInspections] = useState(initialInspections);
   const [query, setQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -57,10 +78,41 @@ export function InspectionsExplorer({ inspections }: InspectionsExplorerProps) {
     }
   }
 
+  async function handleDelete(inspection: InspectionRow) {
+    const carLabel = [inspection.car_brand, inspection.car_model].filter(Boolean).join(' ') || 'Ismeretlen autó';
+    const confirmed = window.confirm(
+      `Biztosan törlöd a(z) "${carLabel}" (${inspection.license_plate ?? 'rendszám nélkül'}) vizsgálatot? Ez a művelet nem vonható vissza, a hozzá tartozó mérések és hibák is törlődnek.`
+    );
+    if (!confirmed) return;
+
+    setDeleteError(null);
+    setDeletingId(inspection.id);
+    try {
+      const supabase = createClient();
+      // Az `.eq('id', ...)` mellett nincs szükség explicit `user_id` szűrésre kliens-oldalon --
+      // az `inspections_delete_own` RLS policy (`auth.uid() = user_id`) enélkül is garantálja,
+      // hogy csak a saját sorát törölheti a user; a `paint_measurements`/`defects` gyerek-sorok
+      // `ON DELETE CASCADE`-del automatikusan törlődnek.
+      const { error } = await supabase.from('inspections').delete().eq('id', inspection.id);
+      if (error) throw error;
+
+      setInspections((current) => current.filter((item) => item.id !== inspection.id));
+      // A `StatsBar`/`DashboardHeader` a Server Component `app/dashboard/page.tsx` saját
+      // lekérdezéséből kapja az összesítő számokat -- a kliens-oldali listától függetlenül,
+      // ezért egy `router.refresh()` szükséges, hogy a számok és (ha ez volt az utolsó
+      // vizsgálat) az `EmptyState` is szinkronban maradjon a törlés után.
+      router.refresh();
+    } catch {
+      setDeleteError('A vizsgálat törlése sikertelen. Kérlek, próbáld újra.');
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <div className="relative w-full flex-1 min-w-0">
+        <div className="relative w-full min-w-0 flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-linear-ink-subtle" />
           <input
             type="text"
@@ -80,28 +132,28 @@ export function InspectionsExplorer({ inspections }: InspectionsExplorerProps) {
         </Link>
       </div>
 
+      {deleteError && (
+        <div className="rounded-md border border-linear-danger/30 bg-linear-danger-soft px-4 py-2.5 text-[13px] text-linear-danger">
+          {deleteError}
+        </div>
+      )}
+
       {filtered.length === 0 ? (
         <div className="rounded-lg border border-linear-hairline bg-linear-surface-1 px-6 py-10 text-center text-[14px] text-linear-ink-subtle">
           Nincs a keresésnek megfelelő vizsgálat.
         </div>
       ) : (
-        // "Dashboard táblázat elrendezési javítás" lépés: a korábbi `fr`-alapú grid
-        // (1.6fr/1fr/0.7fr/...) köztes szélességeknél (kb. 640-900px, tablet táj-tájolás,
-        // kisebb laptop ablak) összenyomta az oszlopokat, amíg a szöveg/gombok átfedésbe
-        // nem kerültek. Megoldás: `minmax()` oszlopok, amik ALATTA nem mehetnek egy olvasható
-        // minimumnak -- ha a rendelkezésre álló hely ennél kevesebb, a `sm:overflow-x-auto`
-        // wrapper és a hozzá tartozó `sm:min-w-[...]` belső konténer helyett vízszintesen
-        // görgethetővé teszi a táblázatot, SOSEM engedve az oszlopokat összecsúszni. Mobilon
-        // (< sm) továbbra is 1 oszlopos, görgetés nélküli elrendezés marad.
         <div className="overflow-hidden rounded-xl border border-linear-hairline bg-linear-surface-1 shadow-sm">
           <div className="overflow-x-auto">
-            <div className="sm:min-w-[840px]">
-              <div className="hidden grid-cols-[minmax(160px,1.6fr)_minmax(96px,1fr)_minmax(72px,0.6fr)_minmax(88px,1fr)_minmax(88px,0.9fr)_minmax(230px,auto)] gap-4 border-b border-linear-hairline px-5 py-3 text-[12px] font-medium uppercase tracking-[0.4px] text-linear-ink-subtle sm:grid">
+            <div className="sm:min-w-[760px]">
+              <div
+                className={`hidden gap-4 border-b border-linear-hairline px-5 py-3 text-[12px] font-medium uppercase tracking-[0.4px] text-linear-ink-subtle sm:grid ${GRID_COLS}`}
+              >
                 <span>Autó</span>
                 <span>Rendszám</span>
-                <span className="text-right">Évjárat</span>
-                <span>Létrehozva</span>
-                <span>Státusz</span>
+                <span className="text-center">Évjárat</span>
+                <span className="text-center">Létrehozva</span>
+                <span className="text-center">Státusz</span>
                 <span className="text-right">Műveletek</span>
               </div>
 
@@ -111,7 +163,9 @@ export function InspectionsExplorer({ inspections }: InspectionsExplorerProps) {
                     key={inspection.id}
                     inspection={inspection}
                     isCopied={copiedId === inspection.id}
+                    isDeleting={deletingId === inspection.id}
                     onCopyLink={() => handleCopyLink(inspection)}
+                    onDelete={() => handleDelete(inspection)}
                   />
                 ))}
               </ul>
@@ -126,11 +180,15 @@ export function InspectionsExplorer({ inspections }: InspectionsExplorerProps) {
 function InspectionRowItem({
   inspection,
   isCopied,
+  isDeleting,
   onCopyLink,
+  onDelete,
 }: {
   inspection: InspectionRow;
   isCopied: boolean;
+  isDeleting: boolean;
   onCopyLink: () => void;
+  onDelete: () => void;
 }) {
   const isDraft = inspection.status === 'draft';
   const carLabel = [inspection.car_brand, inspection.car_model].filter(Boolean).join(' ') || 'Ismeretlen autó';
@@ -141,73 +199,57 @@ function InspectionRowItem({
   });
 
   return (
-    <li className="grid grid-cols-1 gap-3 px-5 py-4 sm:grid-cols-[minmax(160px,1.6fr)_minmax(96px,1fr)_minmax(72px,0.6fr)_minmax(88px,1fr)_minmax(88px,0.9fr)_minmax(230px,auto)] sm:items-center sm:gap-4">
+    <li
+      className={`grid grid-cols-1 gap-3 px-5 py-3.5 transition-colors hover:bg-linear-surface-2/80 sm:items-center sm:gap-4 ${GRID_COLS} ${
+        isDeleting ? 'pointer-events-none opacity-50' : ''
+      }`}
+    >
       <Link href={`/inspections/${inspection.id}`} className="min-w-0 group">
         <p className="truncate text-[14px] font-semibold text-linear-ink transition-colors group-hover:text-linear-primary-hover group-hover:underline">
           {carLabel}
         </p>
-        {inspection.vin && (
-          <p className="mt-0.5 truncate font-mono text-[12px] text-linear-ink-subtle">VIN: {inspection.vin}</p>
-        )}
+        {/* Mindig renderelődik (VIN hiányában is "VIN: —"), hogy a sormagasság egységes
+            maradjon minden sornál -- lásd a lépés "SOROK EGYENLETES MAGASSÁGA" kérése. */}
+        <p className="mt-0.5 truncate font-mono text-[12px] text-linear-ink-subtle">VIN: {inspection.vin ?? '—'}</p>
       </Link>
 
-      <LicensePlateBadge
-        value={inspection.license_plate}
-        countryCode={inspection.license_plate_country}
-        size="sm"
-        className="max-w-full"
-      />
-      <span className="text-[13px] text-linear-ink-muted sm:text-right">{inspection.year ?? '—'}</span>
-      <span className="text-[13px] text-linear-ink-muted">{createdAt}</span>
+      <div className="flex sm:justify-start">
+        <LicensePlateBadge value={inspection.license_plate} countryCode={inspection.license_plate_country} size="sm" />
+      </div>
 
-      <div>
+      <span className="text-[13px] text-linear-ink-muted sm:text-center">{inspection.year ?? '—'}</span>
+      <span className="text-[13px] text-linear-ink-muted sm:text-center">{createdAt}</span>
+
+      <div className="flex sm:justify-center">
         <StatusBadge isDraft={isDraft} />
       </div>
 
-      <div className="flex flex-wrap items-center gap-1.5 sm:justify-end">
+      <div className="flex items-center gap-2 sm:justify-end">
         {isDraft ? (
           <Link
             href={`/inspections/${inspection.id}`}
-            className="inline-flex items-center gap-1.5 rounded-md border border-linear-hairline-strong bg-linear-surface-2 px-2.5 py-1.5 text-xs font-medium text-linear-ink transition-colors hover:bg-linear-surface-3"
+            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-linear-hairline-strong bg-linear-surface-2 px-2.5 py-1.5 text-xs font-medium text-linear-ink transition-colors hover:bg-linear-surface-3"
           >
             <Pencil className="h-3.5 w-3.5" />
             Folytatás
           </Link>
         ) : (
           <>
-            <Link
-              href={`/inspections/${inspection.id}`}
-              className="inline-flex items-center gap-1.5 rounded-md border border-linear-hairline-strong bg-linear-surface-2 px-2.5 py-1.5 text-xs font-medium text-linear-ink transition-colors hover:bg-linear-surface-3"
-            >
-              <Eye className="h-3.5 w-3.5" />
-              Megtekintés
-            </Link>
             <a
               href={`/report/${inspection.public_token}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-md border border-linear-hairline-strong bg-linear-surface-2 px-2.5 py-1.5 text-xs font-medium text-linear-ink transition-colors hover:bg-linear-surface-3"
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-linear-hairline-strong bg-linear-surface-2 px-2.5 py-1.5 text-xs font-medium text-linear-ink transition-colors hover:bg-linear-surface-3"
             >
               <ExternalLink className="h-3.5 w-3.5" />
               Riport
             </a>
-            <button
-              type="button"
-              onClick={onCopyLink}
-              className="inline-flex items-center gap-1.5 rounded-md border border-linear-hairline-strong bg-linear-surface-2 px-2.5 py-1.5 text-xs font-medium text-linear-ink transition-colors hover:bg-linear-surface-3"
-            >
-              {isCopied ? (
-                <>
-                  <Check className="h-3.5 w-3.5 text-linear-success" />
-                  Másolva
-                </>
-              ) : (
-                <>
-                  <Copy className="h-3.5 w-3.5" />
-                  Link másolása
-                </>
-              )}
-            </button>
+            <InspectionActionsMenu
+              inspectionId={inspection.id}
+              isCopied={isCopied}
+              onCopyLink={onCopyLink}
+              onDelete={onDelete}
+            />
           </>
         )}
       </div>
