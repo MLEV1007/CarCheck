@@ -1,4 +1,4 @@
-import type { EquipmentStatus, PaintStatus, TirePosition } from '@/lib/inspections/types';
+import type { EquipmentStatus, PaintStatus, RimType, TirePosition } from '@/lib/inspections/types';
 
 /**
  * A `public.get_public_report(p_token uuid)` Postgres RPC (SECURITY DEFINER)
@@ -27,8 +27,10 @@ export interface PublicReportInspection {
   /** Felszereltségi elemek állapota modul. */
   equipment: PublicReportEquipmentItem[];
   /** Gumiabroncsok állapota modul -- kerékpozíciónként opcionális, mert egy régi
-   * (e modul előtti) vizsgálatnál vagy részlegesen kitöltött piszkozatnál hiányozhat. */
-  tires: Partial<Record<TirePosition, PublicReportTireMeasurement>>;
+   * (e modul előtti) vizsgálatnál vagy részlegesen kitöltött piszkozatnál hiányozhat.
+   * A `rim_type`/`brand` ÁLTALÁNOS mezők (Gumiabroncs & Felni modul bővítése, A pont) --
+   * ugyanabban a `tires` JSONB objektumban élnek, a kerékpozíciók testvéreiként. */
+  tires: PublicReportTiresData;
   created_at: string;
   updated_at: string;
 }
@@ -53,10 +55,21 @@ export interface PublicReportTireMeasurement {
   dot: string | null;
 }
 
+export type PublicReportTiresData = Partial<Record<TirePosition, PublicReportTireMeasurement>> & {
+  rim_type?: RimType | null;
+  brand?: string | null;
+};
+
 export interface PublicReportPaintMeasurement {
   id: string;
   element_name: string;
+  /** Az elem ÁTLAGA (P1+P2+P3)/3 -- lásd `lib/inspections/constants.ts` `getPaintStatus`.
+   * A régi (3-pontos átalakítás előtti) mentéseknél ez az eredeti, egyetlen mért érték. */
   micron_value: number;
+  /** A 3 nyers mérési pont -- `null`, ha egy régi, egy-mezős mentésről van szó. */
+  point_1: number | null;
+  point_2: number | null;
+  point_3: number | null;
   status: PaintStatus;
   created_at: string;
 }

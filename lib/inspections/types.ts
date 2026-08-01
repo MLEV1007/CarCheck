@@ -26,10 +26,27 @@ export const EMPTY_CAR_INFO: CarInfoState = {
 
 export type PaintStatus = 'gyari' | 'ujrafujt' | 'gittelt';
 
+/**
+ * Elemenkénti 3 Mérési Pont & Átlag (PROJEKT_INSTRUKCIOK.md, "Rétegvastagság-mérő modul
+ * újratervezése" lépés, A pont) -- minden karosszéria elemhez 3 külön beviteli mező
+ * tartozik (µm), az elem átlaga ebből számolódik (lásd `constants.ts`
+ * `getPaintPanelAverage`). Az átlag KIZÁRÓLAG akkor számolható, ha mindhárom pont ki
+ * van töltve -- részlegesen kitöltött elem nem kerül be a riportba/mentésbe (ugyanaz az
+ * elv, mint a korábbi, egy-mezős verziónál: az üresen hagyott elemek nem mentődnek).
+ */
 export interface PaintMeasurementState {
   elementName: string;
-  micronValue: string;
+  p1: string;
+  p2: string;
+  p3: string;
 }
+
+export const EMPTY_PAINT_MEASUREMENT = (elementName: string): PaintMeasurementState => ({
+  elementName,
+  p1: '',
+  p2: '',
+  p3: '',
+});
 
 export interface DefectState {
   clientId: string;
@@ -141,5 +158,27 @@ export const EMPTY_TIRES: TiresState = {
   rl: { ...EMPTY_TIRE_MEASUREMENT },
   rr: { ...EMPTY_TIRE_MEASUREMENT },
 };
+
+/**
+ * Felni típusa & Gumiabroncs márkája -- ÁLTALÁNOS mezők (nem kerékpozíciónkénti), a
+ * Gumiabroncsok lépés elején (PROJEKT_INSTRUKCIOK.md, "Gumiabroncs & Felni modul
+ * bővítése" lépés, A pont). Szándékosan KÜLÖN state a `TiresState`-től (nem annak
+ * mezője) -- így minden meglévő `TIRE_POSITIONS`/`tires[position]` hivatkozás
+ * változatlan marad, nincs szükség egyetlen kerék-pozíciós ciklus átírására sem.
+ * Mentéskor a `tires` JSONB oszlop `fl`/`fr`/`rl`/`rr` kulcsai MELLÉ, testvér
+ * kulcsokként kerül be (`rim_type`, `brand`) -- lásd InspectionWizard.tsx `handleSubmit`.
+ */
+export type RimType = 'alloy' | 'steel';
+
+export interface TireGeneralInfoState {
+  rimType: RimType | '';
+  /** A kiválasztott márka -- vagy egy `TIRE_BRANDS` preset, vagy `'Egyéb'`, ha a user
+   * szabad szöveges mezőt választott (lásd `customBrand`). */
+  brand: string;
+  /** Szabad szöveges márkanév, KIZÁRÓLAG ha `brand === 'Egyéb'`. */
+  customBrand: string;
+}
+
+export const EMPTY_TIRE_GENERAL_INFO: TireGeneralInfoState = { rimType: '', brand: '', customBrand: '' };
 
 export type WizardStep = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;

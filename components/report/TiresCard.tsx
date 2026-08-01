@@ -1,12 +1,11 @@
 import { AlertTriangle } from 'lucide-react';
 import { SectionHeading } from '@/components/report/SectionHeading';
-import { TIRE_AGE_WARNING_YEARS, TIRE_POSITIONS } from '@/lib/inspections/constants';
+import { RIM_TYPE_LABEL, TIRE_AGE_WARNING_YEARS, TIRE_POSITIONS } from '@/lib/inspections/constants';
 import { decodeDot } from '@/lib/inspections/tireDot';
-import type { PublicReportTireMeasurement } from '@/lib/reports/types';
-import type { TirePosition } from '@/lib/inspections/types';
+import type { PublicReportTiresData } from '@/lib/reports/types';
 
 interface TiresCardProps {
-  tires: Partial<Record<TirePosition, PublicReportTireMeasurement>>;
+  tires: PublicReportTiresData;
 }
 
 /**
@@ -26,9 +25,28 @@ export function TiresCard({ tires }: TiresCardProps) {
 
   if (!hasAnyData) return null;
 
+  const hasGeneralInfo = Boolean(tires.rim_type || tires.brand);
+
   return (
     <section className="border-t border-bmw-hairline py-16 first:border-t-0 first:pt-0">
       <SectionHeading eyebrow="Kerekek" title="Gumiabroncsok állapota" />
+
+      {hasGeneralInfo && (
+        <div className="mt-6 flex flex-wrap gap-x-8 gap-y-2 border-b border-bmw-hairline pb-6">
+          {tires.rim_type && (
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.5px] text-bmw-muted">Felni típusa</p>
+              <p className="mt-0.5 text-[15px] font-bold text-bmw-ink">{RIM_TYPE_LABEL[tires.rim_type]}</p>
+            </div>
+          )}
+          {tires.brand && (
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.5px] text-bmw-muted">Gumiabroncs márkája</p>
+              <p className="mt-0.5 text-[15px] font-bold text-bmw-ink">{tires.brand}</p>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
         {TIRE_POSITIONS.map(({ position, label }) => {

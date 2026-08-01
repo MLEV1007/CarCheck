@@ -1,8 +1,18 @@
-import type { EquipmentCategory, EquipmentStatus, PaintStatus, TirePosition, WizardStep } from '@/lib/inspections/types';
+import type {
+  EquipmentCategory,
+  EquipmentStatus,
+  PaintMeasurementState,
+  PaintStatus,
+  RimType,
+  TirePosition,
+  WizardStep,
+} from '@/lib/inspections/types';
 
 /**
  * Előre definiált karosszéria elemek a festékvastagság-méréshez
- * (PROJEKT_INSTRUKCIOK.md 5.B.2: "Karosszéria elemek listája értékmegadással").
+ * (PROJEKT_INSTRUKCIOK.md 5.B.2: "Karosszéria elemek listája értékmegadással" + a
+ * "Rétegvastagság-mérő modul újratervezése" lépés kibővített listája: A/B/C oszlopok
+ * és küszöbök is mérési pontok, oldalanként külön elemként).
  */
 export const PAINT_PANELS: string[] = [
   'Motorháztető',
@@ -16,6 +26,14 @@ export const PAINT_PANELS: string[] = [
   'Jobb első ajtó',
   'Bal hátsó ajtó',
   'Jobb hátsó ajtó',
+  'A-oszlop (bal)',
+  'A-oszlop (jobb)',
+  'B-oszlop (bal)',
+  'B-oszlop (jobb)',
+  'C-oszlop (bal)',
+  'C-oszlop (jobb)',
+  'Bal küszöb',
+  'Jobb küszöb',
 ];
 
 /** Hiba-kategóriák (PROJEKT_INSTRUKCIOK.md 5.B.3). */
@@ -23,18 +41,54 @@ export const DEFECT_CATEGORIES: string[] = ['Motor', 'Váltó', 'Karosszéria', 
 
 export const PAINT_STATUS_LABEL: Record<PaintStatus, string> = {
   gyari: 'Gyári',
-  ujrafujt: 'Újrafújt',
+  ujrafujt: 'Újrafújt / Javított',
   gittelt: 'Gittelt / Sérült',
 };
 
 /**
- * Mikron érték -> státusz besorolás (PROJEKT_INSTRUKCIOK.md 5.B.2):
- * 0-160 -> Gyári, 161-300 -> Újrafújt, 300 felett -> Gittelt/Sérült.
+ * Mikron érték -> státusz besorolás (PROJEKT_INSTRUKCIOK.md, "Rétegvastagság-mérő modul
+ * újratervezése" lépés, B pont): 80-150 -> Gyári, 151-250 -> Újrafújt/Javított, 250
+ * felett -> Gittelt/Sérült. (80 alatti érték -- gyakorlatban ritka mérési hiba -- is
+ * Gyáriként van besorolva, mert a specifikáció csak felső küszöböket ad meg.)
  */
 export function getPaintStatus(micronValue: number): PaintStatus {
-  if (micronValue <= 160) return 'gyari';
-  if (micronValue <= 300) return 'ujrafujt';
+  if (micronValue <= 150) return 'gyari';
+  if (micronValue <= 250) return 'ujrafujt';
   return 'gittelt';
+}
+
+/** Egy elem 3 mérési pontjából a kitöltött (nem üres, valós szám) értékek, sorrendben. */
+function getPaintPanelPoints(panel: PaintMeasurementState): number[] {
+  return [panel.p1, panel.p2, panel.p3]
+    .map((v) => v.trim())
+    .filter((v) => v !== '')
+    .map(Number)
+    .filter((v) => !Number.isNaN(v));
+}
+
+/**
+ * Elem Átlag = (P1 + P2 + P3) / 3 (PROJEKT_INSTRUKCIOK.md, A pont) -- KIZÁRÓLAG akkor
+ * számolható, ha mindhárom pont ki van töltve; részlegesen kitöltött elemnél `null`-t ad
+ * vissza (a UI ilyenkor "–"-t mutat, és mentéskor sem kerül be a riportba). Egy
+ * tizedesjegyre kerekítve.
+ */
+export function getPaintPanelAverage(panel: PaintMeasurementState): number | null {
+  const points = getPaintPanelPoints(panel);
+  if (points.length !== 3) return null;
+  const avg = (points[0] + points[1] + points[2]) / 3;
+  return Math.round(avg * 10) / 10;
+}
+
+export function isPaintPanelFilled(panel: PaintMeasurementState): boolean {
+  return getPaintPanelAverage(panel) !== null;
+}
+
+/** A TELJES AUTÓ ÁTLAGA (PROJEKT_INSTRUKCIOK.md, A pont) -- a kitöltött (mindhárom
+ * ponttal rendelkező) elemek átlagainak átlaga. `null`, ha egyetlen elem sincs kitöltve. */
+export function getOverallPaintAverage(panels: PaintMeasurementState[]): number | null {
+  const averages = panels.map(getPaintPanelAverage).filter((v): v is number => v !== null);
+  if (averages.length === 0) return null;
+  return Math.round((averages.reduce((sum, v) => sum + v, 0) / averages.length) * 10) / 10;
 }
 
 export const EQUIPMENT_STATUS_LABEL: Record<EquipmentStatus, string> = {
@@ -371,6 +425,36 @@ export const TIRE_POSITIONS: { position: TirePosition; label: string }[] = [
 /** A gumiabroncs "koros" figyelmeztetés küszöbe (PROJEKT_INSTRUKCIOK.md: "Ha a gumik
  * életkora meghaladja az 5 évet"), lásd `lib/inspections/tireDot.ts` `decodeDot()`. */
 export const TIRE_AGE_WARNING_YEARS = 5;
+
+/** Felni típusa (PROJEKT_INSTRUKCIOK.md, "Gumiabroncs & Felni modul bővítése" lépés, A
+ * pont) -- Segmented Control / Toggle a Gumiabroncsok lépés tetején. */
+export const RIM_TYPE_LABEL: Record<RimType, string> = {
+  alloy: 'Alufelni (Könnyűfém)',
+  steel: 'Acélfelni',
+};
+
+export const RIM_TYPES: RimType[] = ['alloy', 'steel'];
+
+/** Gumiabroncs márkák gördülőmenüje -- a leggyakoribb márkák + "Egyéb" (szabad szöveges
+ * mező jelenik meg, ha ezt választja a user, lásd StepTires.tsx). */
+export const TIRE_BRANDS: string[] = [
+  'Michelin',
+  'Continental',
+  'Bridgestone',
+  'Pirelli',
+  'Goodyear',
+  'Hankook',
+  'Dunlop',
+  'Nokian',
+  'Kumho',
+  'Yokohama',
+  'Falken',
+  'Kleber',
+  'Matador',
+  'Egyéb',
+];
+
+export const TIRE_BRAND_OTHER = 'Egyéb';
 
 /**
  * Wizard lépés-metaadatok EGY helyen (szám, rövid cím a lépés-jelzőhöz/gombokhoz,

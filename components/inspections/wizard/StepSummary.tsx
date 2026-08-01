@@ -1,7 +1,15 @@
 'use client';
 
 import { AlertTriangle, CheckCircle2, Loader2, MinusCircle, XCircle } from 'lucide-react';
-import { EQUIPMENT_STATUS_LABEL, TIRE_POSITION_LABEL, getPaintStatus } from '@/lib/inspections/constants';
+import {
+  EQUIPMENT_STATUS_LABEL,
+  RIM_TYPE_LABEL,
+  TIRE_BRAND_OTHER,
+  TIRE_POSITION_LABEL,
+  getOverallPaintAverage,
+  getPaintPanelAverage,
+  getPaintStatus,
+} from '@/lib/inspections/constants';
 import { decodeDot } from '@/lib/inspections/tireDot';
 import { PaintStatusBadge } from '@/components/inspections/wizard/PaintStatusBadge';
 import { isVideoUrl } from '@/lib/reports/media';
@@ -11,6 +19,7 @@ import type {
   DiagnosticsState,
   EquipmentItemState,
   PaintMeasurementState,
+  TireGeneralInfoState,
   TirePosition,
   TiresState,
 } from '@/lib/inspections/types';
@@ -21,6 +30,7 @@ interface StepSummaryProps {
   diagnostics: DiagnosticsState;
   equipment: EquipmentItemState[];
   tires: TiresState;
+  tireGeneralInfo: TireGeneralInfoState;
   paintMeasurements: PaintMeasurementState[];
   defects: DefectState[];
   isSubmitting: boolean;
@@ -44,6 +54,7 @@ export function StepSummary({
   diagnostics,
   equipment,
   tires,
+  tireGeneralInfo,
   paintMeasurements,
   defects,
   isSubmitting,
@@ -52,7 +63,13 @@ export function StepSummary({
   onSaveDraft,
   onPublish,
 }: StepSummaryProps) {
-  const filledPaint = paintMeasurements.filter((panel) => panel.micronValue.trim() !== '');
+  const filledPaint = paintMeasurements
+    .map((panel) => ({ panel, average: getPaintPanelAverage(panel) }))
+    .filter((entry): entry is { panel: PaintMeasurementState; average: number } => entry.average !== null);
+  const overallPaintAverage = getOverallPaintAverage(paintMeasurements);
+  const overallPaintStatus = overallPaintAverage !== null ? getPaintStatus(overallPaintAverage) : null;
+  const resolvedTireBrand =
+    tireGeneralInfo.brand === TIRE_BRAND_OTHER ? tireGeneralInfo.customBrand : tireGeneralInfo.brand;
   const diagnosticCodes = diagnostics.codes.filter((entry) => entry.code.trim() !== '');
   const relevantEquipment = equipment.filter((item) => item.status !== 'na');
   const filledTirePositions = Object.entries(tires).filter(
@@ -131,6 +148,12 @@ export function StepSummary({
         <p className="text-[13px] font-semibold uppercase tracking-[0.4px] text-linear-ink-subtle">
           Gumiabroncsok ({filledTirePositions.length}/4 pozíció kitöltve)
         </p>
+        {(tireGeneralInfo.rimType || resolvedTireBrand.trim() !== '') && (
+          <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-linear-ink-muted">
+            {tireGeneralInfo.rimType && <span>Felni: {RIM_TYPE_LABEL[tireGeneralInfo.rimType]}</span>}
+            {resolvedTireBrand.trim() !== '' && <span>Márka: {resolvedTireBrand}</span>}
+          </p>
+        )}
         {filledTirePositions.length === 0 ? (
           <p className="mt-2 text-[13px] text-linear-ink-subtle">Nincs rögzített gumiabroncs-adat.</p>
         ) : (
@@ -158,25 +181,33 @@ export function StepSummary({
       </div>
 
       <div className="rounded-lg border border-linear-hairline bg-linear-surface-1 p-5">
-        <p className="text-[13px] font-semibold uppercase tracking-[0.4px] text-linear-ink-subtle">
-          Festékvastagság-mérés ({filledPaint.length} elem rögzítve)
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[13px] font-semibold uppercase tracking-[0.4px] text-linear-ink-subtle">
+            Festékvastagság-mérés ({filledPaint.length} elem rögzítve)
+          </p>
+          {overallPaintAverage !== null && overallPaintStatus && (
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-[13px] text-linear-ink-muted">Összes elem átlaga: {overallPaintAverage} µm</span>
+              <PaintStatusBadge status={overallPaintStatus} />
+            </div>
+          )}
+        </div>
         {filledPaint.length === 0 ? (
           <p className="mt-2 text-[13px] text-linear-ink-subtle">Nincs rögzített mérés.</p>
         ) : (
           <ul className="mt-3 flex flex-col divide-y divide-linear-hairline">
-            {filledPaint.map((panel) => {
-              const micron = Number(panel.micronValue);
-              return (
-                <li key={panel.elementName} className="flex items-center justify-between gap-3 py-2">
-                  <span className="text-[13px] text-linear-ink">{panel.elementName}</span>
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono text-[13px] text-linear-ink-muted">{micron} µm</span>
-                    <PaintStatusBadge status={getPaintStatus(micron)} />
-                  </div>
-                </li>
-              );
-            })}
+            {filledPaint.map(({ panel, average }) => (
+              <li key={panel.elementName} className="flex flex-col gap-1 py-2 sm:flex-row sm:items-center sm:justify-between">
+                <span className="text-[13px] text-linear-ink">{panel.elementName}</span>
+                <div className="flex items-center gap-3">
+                  <span className="font-mono text-[12px] text-linear-ink-subtle">
+                    {panel.p1}/{panel.p2}/{panel.p3} µm
+                  </span>
+                  <span className="font-mono text-[13px] text-linear-ink-muted">Átlag: {average} µm</span>
+                  <PaintStatusBadge status={getPaintStatus(average)} />
+                </div>
+              </li>
+            ))}
           </ul>
         )}
       </div>

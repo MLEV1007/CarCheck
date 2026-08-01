@@ -18,9 +18,16 @@ import { createClient } from '@/lib/supabase/client';
 import { PaintStatusBadge } from '@/components/inspections/wizard/PaintStatusBadge';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { isVideoUrl } from '@/lib/reports/media';
-import { EQUIPMENT_STATUS_LABEL, TIRE_POSITION_LABEL } from '@/lib/inspections/constants';
+import { EQUIPMENT_STATUS_LABEL, RIM_TYPE_LABEL, TIRE_BRAND_OTHER, TIRE_POSITION_LABEL } from '@/lib/inspections/constants';
 import { decodeDot } from '@/lib/inspections/tireDot';
-import type { DiagnosticsState, EquipmentItemState, PaintStatus, TirePosition, TiresState } from '@/lib/inspections/types';
+import type {
+  DiagnosticsState,
+  EquipmentItemState,
+  PaintStatus,
+  TireGeneralInfoState,
+  TirePosition,
+  TiresState,
+} from '@/lib/inspections/types';
 
 interface DetailInspection {
   id: string;
@@ -38,6 +45,9 @@ interface DetailPaintMeasurement {
   id: string;
   element_name: string;
   micron_value: number;
+  point_1: number | null;
+  point_2: number | null;
+  point_3: number | null;
   status: string;
 }
 
@@ -56,6 +66,7 @@ interface InspectionDetailViewProps {
   diagnostics: DiagnosticsState;
   equipment: EquipmentItemState[];
   tires: TiresState;
+  tireGeneralInfo: TireGeneralInfoState;
 }
 
 const EQUIPMENT_ICON = { working: CheckCircle2, not_working: XCircle, na: MinusCircle } as const;
@@ -84,6 +95,7 @@ export function InspectionDetailView({
   diagnostics,
   equipment,
   tires,
+  tireGeneralInfo,
 }: InspectionDetailViewProps) {
   const router = useRouter();
   const diagnosticCodes = diagnostics.codes.filter((entry) => entry.code.trim() !== '');
@@ -91,6 +103,8 @@ export function InspectionDetailView({
   const filledTirePositions = Object.entries(tires).filter(
     ([, tire]) => tire.mm.trim() !== '' || tire.dot.trim() !== ''
   );
+  const resolvedTireBrand =
+    tireGeneralInfo.brand === TIRE_BRAND_OTHER ? tireGeneralInfo.customBrand : tireGeneralInfo.brand;
   const [copied, setCopied] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [isReverting, setIsReverting] = useState(false);
@@ -314,6 +328,12 @@ export function InspectionDetailView({
           <p className="text-[13px] font-semibold uppercase tracking-[0.4px] text-linear-ink-subtle">
             Gumiabroncsok ({filledTirePositions.length}/4 pozíció kitöltve)
           </p>
+          {(tireGeneralInfo.rimType || resolvedTireBrand.trim() !== '') && (
+            <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-linear-ink-muted">
+              {tireGeneralInfo.rimType && <span>Felni: {RIM_TYPE_LABEL[tireGeneralInfo.rimType]}</span>}
+              {resolvedTireBrand.trim() !== '' && <span>Márka: {resolvedTireBrand}</span>}
+            </p>
+          )}
           {filledTirePositions.length === 0 ? (
             <p className="mt-2 text-[13px] text-linear-ink-subtle">Nincs rögzített gumiabroncs-adat.</p>
           ) : (
@@ -349,10 +369,18 @@ export function InspectionDetailView({
           ) : (
             <ul className="mt-3 flex flex-col divide-y divide-linear-hairline">
               {paintMeasurements.map((measurement) => (
-                <li key={measurement.id} className="flex items-center justify-between gap-3 py-2">
+                <li
+                  key={measurement.id}
+                  className="flex flex-col gap-1 py-2 sm:flex-row sm:items-center sm:justify-between"
+                >
                   <span className="text-[13px] text-linear-ink">{measurement.element_name}</span>
                   <div className="flex items-center gap-3">
-                    <span className="font-mono text-[13px] text-linear-ink-muted">{measurement.micron_value} µm</span>
+                    {measurement.point_1 != null && measurement.point_2 != null && measurement.point_3 != null && (
+                      <span className="font-mono text-[12px] text-linear-ink-subtle">
+                        {measurement.point_1}/{measurement.point_2}/{measurement.point_3} µm
+                      </span>
+                    )}
+                    <span className="font-mono text-[13px] text-linear-ink-muted">Átlag: {measurement.micron_value} µm</span>
                     <PaintStatusBadge status={measurement.status as PaintStatus} />
                   </div>
                 </li>

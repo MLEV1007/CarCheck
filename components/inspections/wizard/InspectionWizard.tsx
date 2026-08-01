@@ -12,12 +12,22 @@ import { StepTires } from '@/components/inspections/wizard/StepTires';
 import { StepPaintMeasurements } from '@/components/inspections/wizard/StepPaintMeasurements';
 import { StepDefects } from '@/components/inspections/wizard/StepDefects';
 import { StepSummary } from '@/components/inspections/wizard/StepSummary';
-import { EQUIPMENT_ITEMS, PAINT_PANELS, TOTAL_WIZARD_STEPS, WIZARD_STEP_META, getPaintStatus } from '@/lib/inspections/constants';
+import {
+  EQUIPMENT_ITEMS,
+  PAINT_PANELS,
+  TIRE_BRAND_OTHER,
+  TOTAL_WIZARD_STEPS,
+  WIZARD_STEP_META,
+  getPaintPanelAverage,
+  getPaintStatus,
+} from '@/lib/inspections/constants';
 import { isValidDot } from '@/lib/inspections/tireDot';
 import {
   EMPTY_CAR_INFO,
   EMPTY_DEFECT,
   EMPTY_DIAGNOSTICS,
+  EMPTY_PAINT_MEASUREMENT,
+  EMPTY_TIRE_GENERAL_INFO,
   EMPTY_TIRES,
   type CarInfoState,
   type DefectState,
@@ -25,6 +35,7 @@ import {
   type EquipmentItemState,
   type GeneralPhotoState,
   type PaintMeasurementState,
+  type TireGeneralInfoState,
   type TiresState,
   type WizardStep,
 } from '@/lib/inspections/types';
@@ -52,6 +63,7 @@ interface InspectionWizardProps {
   initialDiagnostics?: DiagnosticsState;
   initialEquipment?: EquipmentItemState[];
   initialTires?: TiresState;
+  initialTireGeneralInfo?: TireGeneralInfoState;
   initialPaintMeasurements?: PaintMeasurementState[];
   initialDefects?: DefectState[];
 }
@@ -79,6 +91,7 @@ export function InspectionWizard({
   initialDiagnostics,
   initialEquipment,
   initialTires,
+  initialTireGeneralInfo,
   initialPaintMeasurements,
   initialDefects,
 }: InspectionWizardProps = {}) {
@@ -89,8 +102,11 @@ export function InspectionWizard({
   const [diagnostics, setDiagnostics] = useState<DiagnosticsState>(initialDiagnostics ?? EMPTY_DIAGNOSTICS);
   const [equipment, setEquipment] = useState<EquipmentItemState[]>(initialEquipment ?? defaultEquipment());
   const [tires, setTires] = useState<TiresState>(initialTires ?? EMPTY_TIRES);
+  const [tireGeneralInfo, setTireGeneralInfo] = useState<TireGeneralInfoState>(
+    initialTireGeneralInfo ?? EMPTY_TIRE_GENERAL_INFO
+  );
   const [paintMeasurements, setPaintMeasurements] = useState<PaintMeasurementState[]>(
-    initialPaintMeasurements ?? PAINT_PANELS.map((elementName) => ({ elementName, micronValue: '' }))
+    initialPaintMeasurements ?? PAINT_PANELS.map((elementName) => EMPTY_PAINT_MEASUREMENT(elementName))
   );
   const [defects, setDefects] = useState<DefectState[]>(initialDefects ?? [EMPTY_DEFECT()]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -163,7 +179,20 @@ export function InspectionWizard({
       // gombot érvénytelen DOT-nál, ez itt egy második, szerver felé induló védelmi vonal,
       // hogy szerkesztés közbeni bármilyen state-anomália se juttathasson érvénytelen DOT-ot
       // a DB-be.
+      // Felni típusa & Gumiabroncs márkája (Gumiabroncs & Felni modul bővítése, A pont) --
+      // ÁLTALÁNOS mezők, a `fl`/`fr`/`rl`/`rr` kulcsok TESTVÉREKÉNT kerülnek be ugyanabba
+      // a `tires` JSONB oszlopba (nincs szükség séma-migrációra, a JSONB rugalmas). A
+      // `brand` mindig a VÉGLEGES, megjelenítendő márkanevet tárolja (preset VAGY a
+      // szabad szöveges "Egyéb" érték) -- betöltéskor (app/inspections/[id]/page.tsx
+      // `toInitialTireGeneralInfo`) ismét szétválik `brand`/`customBrand`-re.
+      const resolvedTireBrand =
+        tireGeneralInfo.brand === TIRE_BRAND_OTHER
+          ? tireGeneralInfo.customBrand.trim() || null
+          : tireGeneralInfo.brand.trim() || null;
+
       const tiresPayload = {
+        rim_type: tireGeneralInfo.rimType || null,
+        brand: resolvedTireBrand,
         fl: { mm: tires.fl.mm.trim() === '' ? null : Number(tires.fl.mm), dot: isValidDot(tires.fl.dot) ? tires.fl.dot : null },
         fr: { mm: tires.fr.mm.trim() === '' ? null : Number(tires.fr.mm), dot: isValidDot(tires.fr.dot) ? tires.fr.dot : null },
         rl: { mm: tires.rl.mm.trim() === '' ? null : Number(tires.rl.mm), dot: isValidDot(tires.rl.dot) ? tires.rl.dot : null },
@@ -204,19 +233,28 @@ export function InspectionWizard({
         .eq('inspection_id', inspectionId);
       if (paintDeleteError) throw paintDeleteError;
 
-      const filledPaint = paintMeasurements.filter((panel) => panel.micronValue.trim() !== '');
+      // Elemenkénti 3 mérési pont & átlag (Rétegvastagság-mérő modul újratervezése, A pont)
+      // -- KIZÁRÓLAG a mindhárom ponttal rendelkező elemek kerülnek mentésre, ugyanúgy,
+      // ahogy korábban az üresen hagyott (egy-mezős) elemek sem kerültek be. A `micron_value`
+      // oszlop az elem ÁTLAGÁT tárolja (a `status` is ebből számolódik), a 3 nyers pont
+      // (`point_1`/`point_2`/`point_3`) külön oszlopokban -- így a riport mindkét szintet
+      // (átlag + részletes pontok) meg tudja jeleníteni.
+      const filledPaint = paintMeasurements
+        .map((panel) => ({ panel, average: getPaintPanelAverage(panel) }))
+        .filter((entry): entry is { panel: PaintMeasurementState; average: number } => entry.average !== null);
+
       if (filledPaint.length > 0) {
         const { error: paintError } = await supabase.from('paint_measurements').insert(
-          filledPaint.map((panel) => {
-            const micron = Number(panel.micronValue);
-            return {
-              inspection_id: inspectionId,
-              user_id: user.id,
-              element_name: panel.elementName,
-              micron_value: micron,
-              status: getPaintStatus(micron),
-            };
-          })
+          filledPaint.map(({ panel, average }) => ({
+            inspection_id: inspectionId,
+            user_id: user.id,
+            element_name: panel.elementName,
+            micron_value: average,
+            point_1: Number(panel.p1),
+            point_2: Number(panel.p2),
+            point_3: Number(panel.p3),
+            status: getPaintStatus(average),
+          }))
         );
         if (paintError) throw paintError;
       }
@@ -337,6 +375,8 @@ export function InspectionWizard({
           <StepTires
             value={tires}
             onChange={setTires}
+            generalInfo={tireGeneralInfo}
+            onGeneralInfoChange={setTireGeneralInfo}
             onBack={() => setStep(4)}
             onNext={() => setStep(6)}
             nextLabel={NEXT_STEP_SHORT_LABEL[6]}
@@ -367,6 +407,7 @@ export function InspectionWizard({
             diagnostics={diagnostics}
             equipment={equipment}
             tires={tires}
+            tireGeneralInfo={tireGeneralInfo}
             paintMeasurements={paintMeasurements}
             defects={defects.filter(
               (defect) => defect.category.trim() !== '' || defect.description.trim() !== '' || defect.file

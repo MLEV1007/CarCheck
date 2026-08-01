@@ -130,3 +130,9 @@ export function sanitizeMm(raw: string): string {
   }
   return value.slice(0, 5);
 }
+
+/** Festékvastagság mérési pont (µm): csak számjegyek, max 4 karakter (0-2000 µm bőven
+ * elég reális tartomány) -- lásd StepPaintMeasurements.tsx 3 pontos beviteli mezői. */
+export function sanitizeMicron(raw: string): string {
+  return raw.replace(/\D/g, '').slice(0, 4);
+}

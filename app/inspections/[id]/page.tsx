@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { InspectionWizard } from '@/components/inspections/wizard/InspectionWizard';
 import { InspectionDetailView } from '@/components/inspections/detail/InspectionDetailView';
 import { InspectionNotFound } from '@/components/inspections/detail/InspectionNotFound';
-import { EQUIPMENT_ITEMS, PAINT_PANELS } from '@/lib/inspections/constants';
+import { EQUIPMENT_ITEMS, PAINT_PANELS, TIRE_BRANDS } from '@/lib/inspections/constants';
 import type {
   CarInfoState,
   DefectState,
@@ -14,9 +14,11 @@ import type {
   EquipmentStatus,
   GeneralPhotoState,
   PaintMeasurementState,
+  RimType,
+  TireGeneralInfoState,
   TiresState,
 } from '@/lib/inspections/types';
-import { EMPTY_TIRES } from '@/lib/inspections/types';
+import { EMPTY_PAINT_MEASUREMENT, EMPTY_TIRE_GENERAL_INFO, EMPTY_TIRES } from '@/lib/inspections/types';
 
 /** DB (JSONB) -> wizard state konverzió a 3 új szakértői modulhoz (PROJEKT_INSTRUKCIOK.md,
  * "3 új szakértői modul" lépés). Külön, oldal-szintű helperek, mert csak itt (piszkozat
@@ -63,6 +65,24 @@ function toInitialTires(raw: unknown): TiresState {
     };
   }
   return result;
+}
+
+/** DB (JSONB `tires.rim_type`/`tires.brand`, a `fl`/`fr`/`rl`/`rr` kulcsok TESTVÉREI) ->
+ * wizard state konverzió (Gumiabroncs & Felni modul bővítése, A pont). Ha a tárolt
+ * `brand` pontosan megegyezik egy `TIRE_BRANDS` preset-tel, azt választjuk ki --
+ * egyébként (szabad szöveges korábbi mentés) "Egyéb"-re esik vissza, a tárolt szöveg
+ * a `customBrand` mezőbe kerül, hogy a UI-ban is helyesen jelenjen meg. */
+function toInitialTireGeneralInfo(raw: unknown): TireGeneralInfoState {
+  const value = (raw ?? {}) as { rim_type?: string | null; brand?: string | null };
+  const rimType: RimType | '' = value.rim_type === 'alloy' || value.rim_type === 'steel' ? value.rim_type : '';
+  const storedBrand = value.brand?.trim() ?? '';
+  if (storedBrand === '') return { ...EMPTY_TIRE_GENERAL_INFO, rimType };
+  const isPreset = TIRE_BRANDS.includes(storedBrand) && storedBrand !== 'Egyéb';
+  return {
+    rimType,
+    brand: isPreset ? storedBrand : 'Egyéb',
+    customBrand: isPreset ? '' : storedBrand,
+  };
 }
 
 interface InspectionDetailPageProps {
@@ -119,7 +139,7 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
   const [{ data: paintMeasurements }, { data: defects }] = await Promise.all([
     supabase
       .from('paint_measurements')
-      .select('id, element_name, micron_value, status')
+      .select('id, element_name, micron_value, point_1, point_2, point_3, status')
       .eq('inspection_id', inspection.id)
       .eq('user_id', user.id),
     supabase
@@ -140,13 +160,25 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
       odometer: inspection.odometer ? String(inspection.odometer) : '',
     };
 
-    const measurementsByElement = new Map(
-      (paintMeasurements ?? []).map((row) => [row.element_name, row.micron_value])
-    );
-    const initialPaintMeasurements: PaintMeasurementState[] = PAINT_PANELS.map((elementName) => ({
-      elementName,
-      micronValue: measurementsByElement.has(elementName) ? String(measurementsByElement.get(elementName)) : '',
-    }));
+    const measurementsByElement = new Map((paintMeasurements ?? []).map((row) => [row.element_name, row]));
+    // Elemenkénti 3 mérési pont visszatöltése -- ha egy MEGLÉVŐ (a 3-pontos átalakítás
+    // ELŐTT mentett) sornál a `point_1/2/3` mind `null` (csak a régi, egy-mezős
+    // `micron_value` van kitöltve), a mindhárom pontot a korábbi átlaggal töltjük elő --
+    // így a user szerkesztheti tovább, az átlag pedig változatlan marad, amíg nem ír át
+    // valamelyik pontot.
+    const initialPaintMeasurements: PaintMeasurementState[] = PAINT_PANELS.map((elementName) => {
+      const row = measurementsByElement.get(elementName);
+      if (!row) return EMPTY_PAINT_MEASUREMENT(elementName);
+      const hasPoints = row.point_1 != null && row.point_2 != null && row.point_3 != null;
+      if (hasPoints) {
+        return { elementName, p1: String(row.point_1), p2: String(row.point_2), p3: String(row.point_3) };
+      }
+      if (row.micron_value != null) {
+        const legacyValue = String(row.micron_value);
+        return { elementName, p1: legacyValue, p2: legacyValue, p3: legacyValue };
+      }
+      return EMPTY_PAINT_MEASUREMENT(elementName);
+    });
 
     const initialDefects: DefectState[] = (defects ?? []).map((row) => ({
       clientId: row.id,
@@ -182,6 +214,7 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
           initialDiagnostics={toInitialDiagnostics(inspection.diagnostics)}
           initialEquipment={toInitialEquipment(inspection.equipment)}
           initialTires={toInitialTires(inspection.tires)}
+          initialTireGeneralInfo={toInitialTireGeneralInfo(inspection.tires)}
           initialPaintMeasurements={initialPaintMeasurements}
           initialDefects={initialDefects.length > 0 ? initialDefects : undefined}
         />
@@ -198,6 +231,7 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
       diagnostics={toInitialDiagnostics(inspection.diagnostics)}
       equipment={toInitialEquipment(inspection.equipment)}
       tires={toInitialTires(inspection.tires)}
+      tireGeneralInfo={toInitialTireGeneralInfo(inspection.tires)}
     />
   );
 }
