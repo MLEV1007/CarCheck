@@ -59,8 +59,8 @@ export function InspectionsExplorer({ inspections }: InspectionsExplorerProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full sm:max-w-xs">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+        <div className="relative w-full flex-1 min-w-0">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-linear-ink-subtle" />
           <input
             type="text"
@@ -93,8 +93,8 @@ export function InspectionsExplorer({ inspections }: InspectionsExplorerProps) {
         // wrapper és a hozzá tartozó `sm:min-w-[...]` belső konténer helyett vízszintesen
         // görgethetővé teszi a táblázatot, SOSEM engedve az oszlopokat összecsúszni. Mobilon
         // (< sm) továbbra is 1 oszlopos, görgetés nélküli elrendezés marad.
-        <div className="overflow-hidden rounded-lg border border-linear-hairline bg-linear-surface-1">
-          <div className="sm:overflow-x-auto">
+        <div className="overflow-hidden rounded-xl border border-linear-hairline bg-linear-surface-1 shadow-sm">
+          <div className="overflow-x-auto">
             <div className="sm:min-w-[840px]">
               <div className="hidden grid-cols-[minmax(160px,1.6fr)_minmax(96px,1fr)_minmax(72px,0.6fr)_minmax(88px,1fr)_minmax(88px,0.9fr)_minmax(230px,auto)] gap-4 border-b border-linear-hairline px-5 py-3 text-[12px] font-medium uppercase tracking-[0.4px] text-linear-ink-subtle sm:grid">
                 <span>Autó</span>
@@ -143,17 +143,19 @@ function InspectionRowItem({
   return (
     <li className="grid grid-cols-1 gap-3 px-5 py-4 sm:grid-cols-[minmax(160px,1.6fr)_minmax(96px,1fr)_minmax(72px,0.6fr)_minmax(88px,1fr)_minmax(88px,0.9fr)_minmax(230px,auto)] sm:items-center sm:gap-4">
       <Link href={`/inspections/${inspection.id}`} className="min-w-0 group">
-        <p className="truncate text-[14px] font-medium text-linear-ink transition-colors group-hover:text-linear-primary-hover group-hover:underline">
+        <p className="truncate text-[14px] font-semibold text-linear-ink transition-colors group-hover:text-linear-primary-hover group-hover:underline">
           {carLabel}
         </p>
-        {inspection.vin && <p className="truncate font-mono text-[12px] text-linear-ink-subtle">{inspection.vin}</p>}
+        {inspection.vin && (
+          <p className="mt-0.5 truncate font-mono text-[12px] text-linear-ink-subtle">VIN: {inspection.vin}</p>
+        )}
       </Link>
 
       <LicensePlateBadge
         value={inspection.license_plate}
         countryCode={inspection.license_plate_country}
         size="sm"
-        className="font-mono text-[13px] text-linear-ink-muted"
+        className="max-w-full"
       />
       <span className="text-[13px] text-linear-ink-muted sm:text-right">{inspection.year ?? '—'}</span>
       <span className="text-[13px] text-linear-ink-muted">{createdAt}</span>
@@ -162,11 +164,11 @@ function InspectionRowItem({
         <StatusBadge isDraft={isDraft} />
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+      <div className="flex flex-wrap items-center gap-1.5 sm:justify-end">
         {isDraft ? (
           <Link
             href={`/inspections/${inspection.id}`}
-            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-linear-hairline-strong bg-linear-surface-2 px-3 text-[13px] font-medium text-linear-ink transition-colors hover:bg-linear-surface-3"
+            className="inline-flex items-center gap-1.5 rounded-md border border-linear-hairline-strong bg-linear-surface-2 px-2.5 py-1.5 text-xs font-medium text-linear-ink transition-colors hover:bg-linear-surface-3"
           >
             <Pencil className="h-3.5 w-3.5" />
             Folytatás
@@ -175,7 +177,7 @@ function InspectionRowItem({
           <>
             <Link
               href={`/inspections/${inspection.id}`}
-              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-linear-hairline-strong bg-linear-surface-2 px-3 text-[13px] font-medium text-linear-ink transition-colors hover:bg-linear-surface-3"
+              className="inline-flex items-center gap-1.5 rounded-md border border-linear-hairline-strong bg-linear-surface-2 px-2.5 py-1.5 text-xs font-medium text-linear-ink transition-colors hover:bg-linear-surface-3"
             >
               <Eye className="h-3.5 w-3.5" />
               Megtekintés
@@ -184,7 +186,7 @@ function InspectionRowItem({
               href={`/report/${inspection.public_token}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-linear-hairline-strong bg-linear-surface-2 px-3 text-[13px] font-medium text-linear-ink transition-colors hover:bg-linear-surface-3"
+              className="inline-flex items-center gap-1.5 rounded-md border border-linear-hairline-strong bg-linear-surface-2 px-2.5 py-1.5 text-xs font-medium text-linear-ink transition-colors hover:bg-linear-surface-3"
             >
               <ExternalLink className="h-3.5 w-3.5" />
               Riport
@@ -192,7 +194,7 @@ function InspectionRowItem({
             <button
               type="button"
               onClick={onCopyLink}
-              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-linear-hairline-strong bg-linear-surface-2 px-3 text-[13px] font-medium text-linear-ink transition-colors hover:bg-linear-surface-3"
+              className="inline-flex items-center gap-1.5 rounded-md border border-linear-hairline-strong bg-linear-surface-2 px-2.5 py-1.5 text-xs font-medium text-linear-ink transition-colors hover:bg-linear-surface-3"
             >
               {isCopied ? (
                 <>

@@ -60,7 +60,7 @@ export function LicensePlateBadge({ value, className, countryCode, size = 'md' }
       </span>
       <span
         className={cn(
-          'bg-white font-mono font-bold leading-none text-black',
+          'min-w-0 truncate bg-white font-mono font-bold leading-none tracking-wider text-black',
           isCompact ? 'px-1.5 py-0.5 text-[11px]' : 'px-2 py-1 text-[14px] tracking-wide'
         )}
       >
