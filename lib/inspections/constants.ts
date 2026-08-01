@@ -7,34 +7,18 @@ import type {
   TirePosition,
   WizardStep,
 } from '@/lib/inspections/types';
+import { CAR_PANEL_NAMES } from '@/lib/inspections/carDiagram';
 
 /**
  * Előre definiált karosszéria elemek a festékvastagság-méréshez
  * (PROJEKT_INSTRUKCIOK.md 5.B.2: "Karosszéria elemek listája értékmegadással" + a
  * "Rétegvastagság-mérő modul újratervezése" lépés kibővített listája: A/B/C oszlopok
- * és küszöbök is mérési pontok, oldalanként külön elemként).
+ * és küszöbök is mérési pontok, oldalanként külön elemként). A "Vizualizált autó-diagram"
+ * lépés óta ez a lista a `lib/inspections/carDiagram.ts` `CAR_PANEL_ZONES` geometriájából
+ * származik -- EGYETLEN forrás mind a névlistának, mind a diagram-koordinátáknak, hogy a
+ * kettő SOSE csússzon szét egymástól.
  */
-export const PAINT_PANELS: string[] = [
-  'Motorháztető',
-  'Tető',
-  'Csomagtérfedél',
-  'Bal első sárvédő',
-  'Jobb első sárvédő',
-  'Bal hátsó sárvédő',
-  'Jobb hátsó sárvédő',
-  'Bal első ajtó',
-  'Jobb első ajtó',
-  'Bal hátsó ajtó',
-  'Jobb hátsó ajtó',
-  'A-oszlop (bal)',
-  'A-oszlop (jobb)',
-  'B-oszlop (bal)',
-  'B-oszlop (jobb)',
-  'C-oszlop (bal)',
-  'C-oszlop (jobb)',
-  'Bal küszöb',
-  'Jobb küszöb',
-];
+export const PAINT_PANELS: string[] = CAR_PANEL_NAMES;
 
 /** Hiba-kategóriák (PROJEKT_INSTRUKCIOK.md 5.B.3). */
 export const DEFECT_CATEGORIES: string[] = ['Motor', 'Váltó', 'Karosszéria', 'Beltér', 'Fék/Futómű', 'Egyéb'];
