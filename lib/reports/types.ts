@@ -1,4 +1,4 @@
-import type { EquipmentStatus, RimType, ServiceHistoryStatus, TirePosition } from '@/lib/inspections/types';
+import type { DamageType, EquipmentStatus, RimType, ServiceHistoryStatus, TirePosition } from '@/lib/inspections/types';
 
 /**
  * A `public.get_public_report(p_token uuid)` Postgres RPC (SECURITY DEFINER)
@@ -37,8 +37,26 @@ export interface PublicReportInspection {
   /** Szervizmúlt & Dokumentumok modul -- `status` `null` lehet, ha a vizsgáló még nem
    * választott (a `get_public_report` RPC 2026-08-01-es kiegészítése óta tartalmazza). */
   service_history: PublicReportServiceHistory;
+  /** Sérülés- és Hibatérkép modul -- ugyanaz a `general_photos`/`diagnostics`/`equipment`/
+   * `tires` minta: egyetlen JSONB oszlop az `inspections` sorban, nincs külön gyerek-tábla. */
+  damages: PublicReportDamage[];
   created_at: string;
   updated_at: string;
+}
+
+/**
+ * Sérülés- és Hibatérkép modul -- egy szabadkézi pont a `cars.webp` referenciaképen
+ * (ugyanaz az `x`/`y` százalékos-relatív-pozíció elv, mint a `PublicReportPaintMeasurement`-
+ * nél). Lásd `lib/inspections/types.ts` `DamagePointState` a wizard-oldali megfelelőjéért.
+ */
+export interface PublicReportDamage {
+  id: string;
+  x: number;
+  y: number;
+  type: DamageType;
+  title: string;
+  description: string;
+  photo_url: string | null;
 }
 
 export interface PublicReportServiceHistoryEntry {

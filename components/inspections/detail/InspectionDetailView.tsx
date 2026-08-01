@@ -31,7 +31,9 @@ import {
 import { decodeDot } from '@/lib/inspections/tireDot';
 import { formatKm, formatServiceDate } from '@/lib/format';
 import { LicensePlateBadge } from '@/components/ui/LicensePlateBadge';
+import { DamageCanvas } from '@/components/inspections/DamageCanvas';
 import type {
+  DamagePointState,
   DiagnosticsState,
   EquipmentItemState,
   ServiceHistoryState,
@@ -77,6 +79,7 @@ interface InspectionDetailViewProps {
   equipment: EquipmentItemState[];
   tires: TiresState;
   tireGeneralInfo: TireGeneralInfoState;
+  damages: DamagePointState[];
 }
 
 const EQUIPMENT_ICON = { working: CheckCircle2, not_working: XCircle, na: MinusCircle } as const;
@@ -107,6 +110,7 @@ export function InspectionDetailView({
   equipment,
   tires,
   tireGeneralInfo,
+  damages,
 }: InspectionDetailViewProps) {
   const router = useRouter();
   const overallPaintAverage = getOverallPaintAverage(paintMeasurements);
@@ -467,6 +471,19 @@ export function InspectionDetailView({
                 </li>
               ))}
             </ul>
+          )}
+        </div>
+
+        <div className="rounded-lg border border-linear-hairline bg-linear-surface-1 p-5">
+          <p className="text-[13px] font-semibold uppercase tracking-[0.4px] text-linear-ink-subtle">
+            Sérülés- és Hibatérkép ({damages.length} pont rögzítve)
+          </p>
+          {damages.length === 0 ? (
+            <p className="mt-2 text-[13px] text-linear-ink-subtle">Nincs rögzített sérülés/hiba.</p>
+          ) : (
+            <div className="mt-4">
+              <DamageCanvas points={damages} mode="view" theme="dark" />
+            </div>
           )}
         </div>
 

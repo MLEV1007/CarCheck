@@ -11,6 +11,7 @@ import { StepDiagnostics } from '@/components/inspections/wizard/StepDiagnostics
 import { StepEquipment } from '@/components/inspections/wizard/StepEquipment';
 import { StepTires } from '@/components/inspections/wizard/StepTires';
 import { StepPaintMeasurements } from '@/components/inspections/wizard/StepPaintMeasurements';
+import { StepDamageMap } from '@/components/inspections/wizard/StepDamageMap';
 import { StepDefects } from '@/components/inspections/wizard/StepDefects';
 import { StepSummary } from '@/components/inspections/wizard/StepSummary';
 import {
@@ -29,6 +30,7 @@ import {
   EMPTY_TIRE_GENERAL_INFO,
   EMPTY_TIRES,
   type CarInfoState,
+  type DamagePointState,
   type DefectState,
   type DiagnosticsState,
   type EquipmentItemState,
@@ -40,7 +42,7 @@ import {
   type WizardStep,
 } from '@/lib/inspections/types';
 
-/** A hosszú (mobil "X / 8 lépés · Cím" szöveghez) és rövid (Vissza/Tovább gomb-felirathoz)
+/** A hosszú (mobil "X / 10 lépés · Cím" szöveghez) és rövid (Vissza/Tovább gomb-felirathoz)
  * lépés-címkék EGYETLEN forrása -- lásd `WIZARD_STEP_META` a `constants.ts`-ben a teljes
  * indoklásért ("Dinamikus Tovább gomb felirat" lépés). */
 const STEP_LABELS: Record<WizardStep, string> = Object.fromEntries(
@@ -73,6 +75,7 @@ interface InspectionWizardProps {
   initialTires?: TiresState;
   initialTireGeneralInfo?: TireGeneralInfoState;
   initialPaintMeasurements?: PaintPointState[];
+  initialDamages?: DamagePointState[];
   initialDefects?: DefectState[];
 }
 
@@ -103,6 +106,7 @@ export function InspectionWizard({
   initialTires,
   initialTireGeneralInfo,
   initialPaintMeasurements,
+  initialDamages,
   initialDefects,
 }: InspectionWizardProps = {}) {
   const router = useRouter();
@@ -120,6 +124,7 @@ export function InspectionWizard({
     initialTireGeneralInfo ?? EMPTY_TIRE_GENERAL_INFO
   );
   const [paintMeasurements, setPaintMeasurements] = useState<PaintPointState[]>(initialPaintMeasurements ?? []);
+  const [damages, setDamages] = useState<DamagePointState[]>(initialDamages ?? []);
   const [defects, setDefects] = useState<DefectState[]>(initialDefects ?? [EMPTY_DEFECT()]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -260,6 +265,40 @@ export function InspectionWizard({
           ? tireGeneralInfo.customBrand.trim() || null
           : tireGeneralInfo.brand.trim() || null;
 
+      // Sérülés- és Hibatérkép modul -- fotó feltöltés pontonként: PONTOSAN ugyanaz a
+      // "blob vs. már feltöltött Storage URL" minta, mint a hiba-médiánál lentebb -- csak a
+      // most kiválasztott (`file !== null`) fotók töltődnek fel most, piszkozat
+      // szerkesztésekor a már meglévő Storage URL-eket (`previewUrl`, NEM `blob:`) csak
+      // megtartjuk. A `damages` egyetlen JSONB oszlop az `inspections` sorban (nincs
+      // gyerek-tábla, ugyanaz az elv, mint a `general_photos`/`diagnostics`/`equipment`/
+      // `tires`-nél), ezért nincs szükség külön törlés+beszúrás ciklusra -- az UPSERT
+      // egyszerűen felülírja a teljes tömböt a jelenlegi state-nek megfelelően.
+      const damagesPayload = await Promise.all(
+        damages.map(async (damage) => {
+          let photoUrl: string | null = null;
+          if (damage.file) {
+            const safeName = damage.file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+            const path = `${user.id}/${inspectionId}/damages/${crypto.randomUUID()}-${safeName}`;
+            const { error: uploadError } = await supabase.storage
+              .from('inspection-media')
+              .upload(path, damage.file, { upsert: true });
+            if (uploadError) throw uploadError;
+            photoUrl = supabase.storage.from('inspection-media').getPublicUrl(path).data.publicUrl;
+          } else if (damage.previewUrl && !damage.previewUrl.startsWith('blob:')) {
+            photoUrl = damage.previewUrl;
+          }
+          return {
+            id: damage.id,
+            x: damage.x,
+            y: damage.y,
+            type: damage.type,
+            title: damage.title,
+            description: damage.description,
+            photo_url: photoUrl,
+          };
+        })
+      );
+
       const tiresPayload = {
         rim_type: tireGeneralInfo.rimType || null,
         brand: resolvedTireBrand,
@@ -286,6 +325,7 @@ export function InspectionWizard({
           diagnostics: diagnosticsPayload,
           equipment: equipmentPayload,
           tires: tiresPayload,
+          damages: damagesPayload,
           status,
         })
         .select('public_token')
@@ -466,15 +506,24 @@ export function InspectionWizard({
           />
         )}
         {step === 8 && (
-          <StepDefects
-            value={defects}
-            onChange={setDefects}
+          <StepDamageMap
+            value={damages}
+            onChange={setDamages}
             onBack={() => setStep(7)}
             onNext={() => setStep(9)}
             nextLabel={NEXT_STEP_SHORT_LABEL[9]}
           />
         )}
         {step === 9 && (
+          <StepDefects
+            value={defects}
+            onChange={setDefects}
+            onBack={() => setStep(8)}
+            onNext={() => setStep(10)}
+            nextLabel={NEXT_STEP_SHORT_LABEL[10]}
+          />
+        )}
+        {step === 10 && (
           <StepSummary
             carInfo={carInfo}
             generalPhotoCount={generalPhotos.length}
@@ -484,12 +533,13 @@ export function InspectionWizard({
             tires={tires}
             tireGeneralInfo={tireGeneralInfo}
             paintMeasurements={paintMeasurements}
+            damages={damages}
             defects={defects.filter(
               (defect) => defect.category.trim() !== '' || defect.description.trim() !== '' || defect.file
             )}
             isSubmitting={isSubmitting}
             submitError={submitError}
-            onBack={() => setStep(8)}
+            onBack={() => setStep(9)}
             onSaveDraft={() => handleSubmit('draft')}
             onPublish={() => handleSubmit('completed')}
           />

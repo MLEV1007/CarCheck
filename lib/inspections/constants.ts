@@ -1,4 +1,5 @@
 import type {
+  DamageType,
   EquipmentCategory,
   EquipmentStatus,
   PaintPointState,
@@ -41,6 +42,35 @@ export function getOverallPaintAverage(points: PaintPointState[]): number | null
   const sum = points.reduce((total, point) => total + point.value, 0);
   return Math.round((sum / points.length) * 10) / 10;
 }
+
+/**
+ * "Sérülés- és Hibatérkép" modul -- 6 rögzíthető kategória, magyar felirattal ÉS egy
+ * dedikált színnel (marker + jelmagyarázat a `DamageCanvas.tsx`-ben, Wizard ÉS publikus
+ * riport egyaránt). A színek SZÁNDÉKOSAN eltérnek a festékvastagság-mérő zöld/sárga/piros
+ * státusz-színeitől (`STATUS_FILL` a `PaintCanvas.tsx`-ben) -- itt nincs "jó/rossz"
+ * sorrend, csak kategorizálás, ezért egy semleges, egymástól jól megkülönböztethető
+ * színskála (amber/kék/barna/sárga/piros/szürke) a helyes választás, nem egy
+ * zöld-sárga-piros "állapot-jelző" skála.
+ */
+export const DAMAGE_TYPE_LABEL: Record<DamageType, string> = {
+  scratch: 'Karcolás',
+  dent: 'Horpadás',
+  rust: 'Rozsda',
+  chip: 'Kavicsfelverődés',
+  crack: 'Repedés',
+  other: 'Egyéb',
+};
+
+export const DAMAGE_TYPE_COLOR: Record<DamageType, string> = {
+  scratch: '#f59e0b',
+  dent: '#3b82f6',
+  rust: '#a16207',
+  chip: '#eab308',
+  crack: '#dc2626',
+  other: '#6b7280',
+};
+
+export const DAMAGE_TYPES: DamageType[] = ['scratch', 'dent', 'rust', 'chip', 'crack', 'other'];
 
 export const EQUIPMENT_STATUS_LABEL: Record<EquipmentStatus, string> = {
   working: 'Működik',
@@ -460,8 +490,9 @@ export const WIZARD_STEP_META: { step: WizardStep; shortLabel: string; longLabel
   { step: 5, shortLabel: 'Felszereltség', longLabel: 'Felszereltség állapota' },
   { step: 6, shortLabel: 'Gumiabroncsok', longLabel: 'Gumiabroncsok állapota' },
   { step: 7, shortLabel: 'Festékvastagság', longLabel: 'Festékvastagság-mérés' },
-  { step: 8, shortLabel: 'Hibák & Média', longLabel: 'Hibák & Média' },
-  { step: 9, shortLabel: 'Összegzés', longLabel: 'Összegzés & Publikálás' },
+  { step: 8, shortLabel: 'Sérülések', longLabel: 'Sérülés- és Hibatérkép' },
+  { step: 9, shortLabel: 'Hibák & Média', longLabel: 'Hibák & Média' },
+  { step: 10, shortLabel: 'Összegzés', longLabel: 'Összegzés & Publikálás' },
 ];
 
 export const TOTAL_WIZARD_STEPS = WIZARD_STEP_META.length;

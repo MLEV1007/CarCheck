@@ -263,4 +263,53 @@ export const EMPTY_SERVICE_HISTORY: ServiceHistoryState = {
   carVerticalPdf: EMPTY_SERVICE_DOCUMENT,
 };
 
-export type WizardStep = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+/**
+ * Sérülés-/hibatípus a "Sérülés- és Hibatérkép" modulhoz (PROJEKT_INSTRUKCIOK.md, "Új
+ * Sérülés- és Hibatérkép modul" lépés).
+ */
+export type DamageType = 'scratch' | 'dent' | 'rust' | 'chip' | 'crack' | 'other';
+
+/**
+ * Egy szabadkézi (free-form) sérülés-/esztétikai hiba pont a `public/cars.webp`
+ * referenciaképen -- UGYANAZ az elv, mint a `PaintPointState`-nél (`x`/`y` a kép bal
+ * széle/teteje szerinti SZÁZALÉKOS relatív pozíció, hogy a pont a kép tetszőleges
+ * reszponzív méreténél ugyanott maradjon), de itt minden ponthoz kategória (`type`),
+ * kötelező rövid cím (`title`), opcionális leírás és opcionális fotó is tartozik --
+ * ezért NEM a `PaintPointState`-et bővítettük, hanem önálló típus, mert a popover/modal
+ * UI és a mentési logika (fotó-feltöltés pontonként) érdemben eltér az egyetlen szám
+ * mezőt tartalmazó festékvastagság-ponttól.
+ */
+export interface DamagePointState {
+  id: string;
+  x: number;
+  y: number;
+  type: DamageType;
+  title: string;
+  description: string;
+  file: File | null;
+  /** `blob:` object URL egy most kiválasztott, még fel nem töltött fotónál, VAGY egy
+   * már feltöltött Supabase Storage publikus URL piszkozat szerkesztésekor -- ugyanaz
+   * a "blob vs. már feltöltött Storage URL" minta, mint a `DefectState`/
+   * `GeneralPhotoState`-nél (lásd InspectionWizard.tsx `handleSubmit`). `null`, ha a
+   * ponthoz nincs fotó csatolva. */
+  previewUrl: string | null;
+}
+
+/** Új pont létrehozása a kattintás relatív pozíciójából (`x`/`y` százalék) --
+ * `crypto.randomUUID()` generálja a stabil kliens-oldali (és mentéskor DB-) azonosítót,
+ * ugyanúgy, mint a többi `EMPTY_*`/`CREATE_*` helyernél ebben a fájlban. */
+export const EMPTY_DAMAGE_POINT = (x: number, y: number): DamagePointState => ({
+  id:
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `damage-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  x,
+  y,
+  type: 'scratch',
+  title: '',
+  description: '',
+  file: null,
+  previewUrl: null,
+});
+
+export type WizardStep = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;

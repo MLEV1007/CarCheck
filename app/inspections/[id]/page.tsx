@@ -5,9 +5,11 @@ import { createClient } from '@/lib/supabase/server';
 import { InspectionWizard } from '@/components/inspections/wizard/InspectionWizard';
 import { InspectionDetailView } from '@/components/inspections/detail/InspectionDetailView';
 import { InspectionNotFound } from '@/components/inspections/detail/InspectionNotFound';
-import { DEFAULT_LICENSE_PLATE_COUNTRY, EQUIPMENT_ITEMS, TIRE_BRANDS } from '@/lib/inspections/constants';
+import { DAMAGE_TYPES, DEFAULT_LICENSE_PLATE_COUNTRY, EQUIPMENT_ITEMS, TIRE_BRANDS } from '@/lib/inspections/constants';
 import type {
   CarInfoState,
+  DamagePointState,
+  DamageType,
   DefectState,
   DiagnosticsState,
   EquipmentItemState,
@@ -125,6 +127,35 @@ function toInitialTireGeneralInfo(raw: unknown): TireGeneralInfoState {
   };
 }
 
+/** DB (JSONB) -> wizard state konverzió a Sérülés- és Hibatérkép modulhoz -- a `file`
+ * mindig `null` (piszkozat szerkesztésekor a fotó már a Storage-ban van, a `photo_url`
+ * a `previewUrl`-be kerül, ugyanaz a minta, mint a `defects`/`general_photos` fotóknál).
+ * Érvénytelen/ismeretlen `type` esetén (pl. egy jövőbeli kategória-bővítés utáni, régebbi
+ * mentés) `'other'`-re esik vissza, hogy sose kerüljön be egy TypeScript-en kívüli érték. */
+function toInitialDamages(raw: unknown): DamagePointState[] {
+  const stored = Array.isArray(raw)
+    ? (raw as Array<{
+        id?: string;
+        x?: number;
+        y?: number;
+        type?: string;
+        title?: string;
+        description?: string;
+        photo_url?: string | null;
+      }>)
+    : [];
+  return stored.map((entry, index) => ({
+    id: entry.id ?? `damage-${index}`,
+    x: entry.x ?? 0,
+    y: entry.y ?? 0,
+    type: (DAMAGE_TYPES as string[]).includes(entry.type ?? '') ? (entry.type as DamageType) : 'other',
+    title: entry.title ?? '',
+    description: entry.description ?? '',
+    file: null,
+    previewUrl: entry.photo_url ?? null,
+  }));
+}
+
 interface InspectionDetailPageProps {
   params: Promise<{ id: string }>;
 }
@@ -166,7 +197,7 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
   const { data: inspection } = await supabase
     .from('inspections')
     .select(
-      'id, car_brand, car_model, year, vin, license_plate, license_plate_country, odometer, status, public_token, general_photos, service_history, diagnostics, equipment, tires, created_at'
+      'id, car_brand, car_model, year, vin, license_plate, license_plate_country, odometer, status, public_token, general_photos, service_history, diagnostics, equipment, tires, damages, created_at'
     )
     .eq('id', id)
     .eq('user_id', user.id)
@@ -248,6 +279,7 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
           initialTires={toInitialTires(inspection.tires)}
           initialTireGeneralInfo={toInitialTireGeneralInfo(inspection.tires)}
           initialPaintMeasurements={initialPaintMeasurements}
+          initialDamages={toInitialDamages(inspection.damages)}
           initialDefects={initialDefects.length > 0 ? initialDefects : undefined}
         />
       </div>
@@ -265,6 +297,7 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
       equipment={toInitialEquipment(inspection.equipment)}
       tires={toInitialTires(inspection.tires)}
       tireGeneralInfo={toInitialTireGeneralInfo(inspection.tires)}
+      damages={toInitialDamages(inspection.damages)}
     />
   );
 }

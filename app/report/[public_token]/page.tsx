@@ -10,6 +10,7 @@ import { DiagnosticsCard } from '@/components/report/DiagnosticsCard';
 import { EquipmentMatrix } from '@/components/report/EquipmentMatrix';
 import { TiresCard } from '@/components/report/TiresCard';
 import { PaintMap } from '@/components/report/PaintMap';
+import { DamageMapCard } from '@/components/report/DamageMapCard';
 import { DefectsGallery } from '@/components/report/DefectsGallery';
 import { ReportNotFound } from '@/components/report/ReportNotFound';
 
@@ -65,6 +66,7 @@ export default async function PublicReportPage({ params }: PublicReportPageProps
         <EquipmentMatrix equipment={report.inspection.equipment} />
         <TiresCard tires={report.inspection.tires} />
         <PaintMap measurements={report.paint_measurements} />
+        <DamageMapCard damages={report.inspection.damages} />
         <DefectsGallery defects={report.defects} />
       </main>
 

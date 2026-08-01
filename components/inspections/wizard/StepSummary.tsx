@@ -16,8 +16,10 @@ import { formatKm } from '@/lib/format';
 import { LicensePlateBadge } from '@/components/ui/LicensePlateBadge';
 import { PaintStatusBadge } from '@/components/inspections/wizard/PaintStatusBadge';
 import { isVideoUrl } from '@/lib/reports/media';
+import { DAMAGE_TYPE_LABEL } from '@/lib/inspections/constants';
 import type {
   CarInfoState,
+  DamagePointState,
   DefectState,
   DiagnosticsState,
   EquipmentItemState,
@@ -37,6 +39,7 @@ interface StepSummaryProps {
   tires: TiresState;
   tireGeneralInfo: TireGeneralInfoState;
   paintMeasurements: PaintPointState[];
+  damages: DamagePointState[];
   defects: DefectState[];
   isSubmitting: boolean;
   submitError: string | null;
@@ -62,6 +65,7 @@ export function StepSummary({
   tires,
   tireGeneralInfo,
   paintMeasurements,
+  damages,
   defects,
   isSubmitting,
   submitError,
@@ -227,6 +231,37 @@ export function StepSummary({
                 <div className="flex items-center gap-3">
                   <span className="font-mono text-[13px] text-linear-ink-muted">{point.value} µm</span>
                   <PaintStatusBadge status={getPaintStatus(point.value)} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="rounded-lg border border-linear-hairline bg-linear-surface-1 p-5">
+        <p className="text-[13px] font-semibold uppercase tracking-[0.4px] text-linear-ink-subtle">
+          Sérülés- és Hibatérkép ({damages.length} pont rögzítve)
+        </p>
+        {damages.length === 0 ? (
+          <p className="mt-2 text-[13px] text-linear-ink-subtle">Nincs rögzített sérülés/hiba.</p>
+        ) : (
+          <ul className="mt-3 flex flex-col divide-y divide-linear-hairline">
+            {damages.map((damage, index) => (
+              <li key={damage.id} className="flex items-center gap-3 py-2.5">
+                {damage.previewUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={damage.previewUrl} alt="" className="h-12 w-12 shrink-0 rounded-md object-cover" />
+                ) : (
+                  <div className="h-12 w-12 shrink-0 rounded-md bg-linear-surface-2" />
+                )}
+                <div className="min-w-0">
+                  <p className="text-[13px] font-medium text-linear-ink">
+                    #{index + 1} · {damage.title || 'Névtelen'}
+                  </p>
+                  <p className="truncate text-[12px] text-linear-ink-subtle">
+                    {DAMAGE_TYPE_LABEL[damage.type]}
+                    {damage.description ? ` · ${damage.description}` : ''}
+                  </p>
                 </div>
               </li>
             ))}
