@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { SettingsForm } from '@/components/settings/SettingsForm';
+import { PasskeyCard } from '@/components/settings/PasskeyCard';
 
 export const metadata: Metadata = {
   title: 'Cégbeállítások | Autó Állapotfelmérő',
@@ -52,7 +53,7 @@ export default async function SettingsPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+      <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-10 sm:px-6">
         <SettingsForm
           userId={user.id}
           initialCompanyName={profile?.company_name ?? ''}
@@ -61,6 +62,7 @@ export default async function SettingsPage() {
           initialLogoUrl={profile?.logo_url ?? null}
           initialPrimaryColor={profile?.primary_color ?? '#1c69d4'}
         />
+        <PasskeyCard />
       </main>
     </div>
   );

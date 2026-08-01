@@ -1,63 +1,59 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
-import { Input } from '@/components/ui/Input';
-import { Button } from '@/components/ui/Button';
-import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
+import { useSearchParams } from 'next/navigation';
+import { PasskeyButton } from '@/components/auth/PasskeyButton';
+import { MagicLinkForm } from '@/components/auth/MagicLinkForm';
 import { AuthDivider } from '@/components/auth/AuthDivider';
 
-// Az /auth/callback route ezekkel a kódokkal irányít ide vissza, ha a Google OAuth
-// vagy az email-megerősítő link folyamata elakadt.
+// Az /auth/callback route ezekkel a kódokkal irányít ide vissza, ha a Magic Link
+// vagy egy korábbi belépési kísérlet folyamata elakadt.
 const CALLBACK_ERROR_MESSAGES: Record<string, string> = {
-  oauth_failed: 'A Google bejelentkezés megszakadt vagy sikertelen volt. Próbáld újra.',
-  confirmation_failed: 'A megerősítő link érvénytelen vagy lejárt.',
+  oauth_failed: 'A bejelentkezés megszakadt vagy sikertelen volt. Próbáld újra.',
+  confirmation_failed: 'A belépési link érvénytelen vagy lejárt. Kérj egy újat.',
 };
 
+/**
+ * Jelszómentes belépés (PROJEKT_INSTRUKCIOK.md "Átállás Jelszómentes hitelesítésre" lépés):
+ * NINCS jelszó mező és NINCS Google OAuth gomb -- kizárólag Passkey (elsődleges) és Magic
+ * Link (másodlagos, fallback) belépési mód. Lásd PasskeyButton.tsx / MagicLinkForm.tsx.
+ */
 export function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get('redirectTo') ?? '/dashboard';
   const callbackError = searchParams.get('error');
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(
     callbackError ? CALLBACK_ERROR_MESSAGES[callbackError] ?? 'Váratlan hiba történt. Próbáld újra.' : null
   );
-  const [isLoading, setIsLoading] = useState(false);
+  const [magicLinkSentTo, setMagicLinkSentTo] = useState<string | null>(null);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError(null);
-    setIsLoading(true);
-
-    const supabase = createClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (signInError) {
-      setError(
-        signInError.message === 'Invalid login credentials'
-          ? 'Hibás email cím vagy jelszó.'
-          : signInError.message
-      );
-      setIsLoading(false);
-      return;
-    }
-
-    router.push(redirectTo);
-    router.refresh();
+  if (magicLinkSentTo) {
+    return (
+      <div className="flex flex-col gap-4 rounded-stripe-md border border-stripe-hairline bg-white p-6 text-center">
+        <p className="font-sohne text-[16px] font-normal text-stripe-ink">
+          ✉️ Ellenőrizd a postaládádat!
+        </p>
+        <p className="font-sohne text-[15px] font-light text-stripe-ink">
+          Elküldtük a biztonsági belépési linket a(z) <span className="font-normal">{magicLinkSentTo}</span>{' '}
+          címre.
+        </p>
+        <button
+          type="button"
+          onClick={() => setMagicLinkSentTo(null)}
+          className="font-sohne text-[14px] font-normal text-stripe-primary hover:underline"
+        >
+          Vissza
+        </button>
+      </div>
+    );
   }
 
   return (
     <div className="flex flex-col gap-5">
-      <GoogleAuthButton redirectTo={redirectTo} />
-      <AuthDivider />
+      <PasskeyButton redirectTo={redirectTo} onError={setError} />
+      <AuthDivider label="vagy" />
 
       {error && (
         <p
@@ -68,39 +64,14 @@ export function LoginForm() {
         </p>
       )}
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
-        <Input
-          label="Email cím"
-          type="email"
-          name="email"
-          autoComplete="email"
-          placeholder="nev@ceged.hu"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <Input
-          label="Jelszó"
-          type="password"
-          name="password"
-          autoComplete="current-password"
-          placeholder="••••••••"
-          required
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+      <MagicLinkForm redirectTo={redirectTo} onSent={setMagicLinkSentTo} onError={setError} />
 
-        <Button type="submit" isLoading={isLoading} fullWidth>
-          Bejelentkezés
-        </Button>
-
-        <p className="text-center font-sohne text-[14px] font-light text-stripe-ink-mute">
-          Még nincs fiókod?{' '}
-          <Link href="/register" className="font-normal text-stripe-primary hover:underline">
-            Regisztrálj itt
-          </Link>
-        </p>
-      </form>
+      <p className="text-center font-sohne text-[14px] font-light text-stripe-ink-mute">
+        Még nincs fiókod?{' '}
+        <Link href="/register" className="font-normal text-stripe-primary hover:underline">
+          Regisztrálj itt
+        </Link>
+      </p>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 # Státusz — Autó Állapotfelmérő SaaS (MVP)
 
-_Utolsó frissítés: 2026-07-31 (Google OAuth ellenőrzés + magyar white-label Auth e-mail sablonok + regisztrációs UI visszajelzés javítása; korábbi lépésekből: VIN OCR v3, Canvas kép-előfeldolgozás, Felszereltség modul Hibrid Okos-Lista)_
+_Utolsó frissítés: 2026-08-01 (Átállás Jelszómentes / Passkey (Face ID, Touch ID) hitelesítésre -- jelszó + Google OAuth eltávolítva a Login/Register felületről; korábbi lépésekből: Google OAuth ellenőrzés, magyar white-label Auth e-mail sablonok, VIN OCR v3, Felszereltség modul Hibrid Okos-Lista)_
 
 ## Kész funkciók
 
@@ -221,6 +221,94 @@ A `StepEquipment.tsx` (5. lépés, korábbi "Bővített felszereltség lista kat
 - Sikeres regisztráció (megerősítő email kiküldve) utáni állapot szövege lecserélve a projekt-instrukció szerinti pontos magyar szövegre: "✉️ Visszaigazoló e-mailt küldtünk! Kérlek, ellenőrizd a postaládádat (és a Spam mappát) a regisztráció befejezéséhez." -- fehér kártyába (`rounded-stripe-md`, hairline border) rendezve, az email cím kiemelve.
 
 **Ellenőrzés:** `npx tsc --noEmit` hibamentes a teljes projektre (nincs új típushiba).
+
+### 14. Átállás Jelszómentes (Passwordless) + Passkey (Face ID / Touch ID) hitelesítésre (2026-08-01)
+
+A Supabase Dashboardon engedélyezve lett a Passkey (WebAuthn) támogatás (Relying Party ID:
+`car-check-peach.vercel.app`). Ehhez igazítva a teljes auth modul jelszómentes működésre állt át.
+
+**Csomagfrissítés (kritikus előfeltétel):**
+- A Passkey API-hoz `@supabase/supabase-js` **>=2.111.0** szükséges (a korábbi `^2.47.0` NEM
+  tartalmazza még `registerPasskey`/`signInWithPasskey`-t) -- frissítve `^2.111.0`-ra, ezzel
+  együtt `@supabase/ssr` is `^0.12.4`-re (a 0.12.4 peer dependency-je pontosan `^2.111.0`-t kér).
+- Az `@supabase/supabase-js@2.111.0` `engines.node` mezője `>=22.0.0`-t ír elő -- a `package.json`
+  gyökerébe felvéve egy `"engines": { "node": ">=22.0.0" }` bejegyzés. **TEENDŐ (nem kód):**
+  ellenőrizd a Vercel projekt Settings -> General -> Node.js Version beállítást, legyen 22.x
+  (vagy újabb), különben a build/deploy hibázhat a régebbi Node verzióval.
+- `npm install` lokálisan lefuttatva, `node_modules` frissítve (`2.111.0` / `0.12.4` a
+  ténylegesen telepített verziók, ellenőrizve).
+
+**Supabase browser kliens (`lib/supabase/client.ts`):**
+- `auth: { experimental: { passkey: true } }` hozzáadva a `createBrowserClient(...)` hívásához --
+  ez teszi elérhetővé a `supabase.auth.registerPasskey()` / `supabase.auth.signInWithPasskey()`
+  metódusokat. **KIZÁRÓLAG a böngésző-kliensen** (nem a `lib/supabase/server.ts` Server
+  Component/Route Handler kliensén, mert a WebAuthn ceremónia `navigator.credentials` böngésző
+  API-t igényel, szerver oldalon nincs értelme).
+- **FONTOS localhost-korlátozás:** a passkey kriptográfiailag a Relying Party ID-hoz (jelenleg
+  `car-check-peach.vercel.app`) van kötve -- helyi fejlesztésnél (`npm run dev`,
+  `http://localhost:3000`) a Passkey regisztráció/bejelentkezés NEM fog működni, amíg a Supabase
+  Dashboardon (Authentication -> Passkeys -> Relying Party Origins) a `localhost` külön fel nincs
+  véve (max 5 origin engedélyezett). Ez dokumentálva a `client.ts` kódkommentben is.
+
+**Passkey regisztráció a Beállítások oldalon (`components/settings/PasskeyCard.tsx`, ÚJ fájl):**
+- "Biometrikus azonosítás (Face ID / Touch ID)" kártya, beillesztve az `app/settings/page.tsx`-be
+  a `SettingsForm` alá (Stripe design system, ugyanaz a `card-feature-light` minta).
+- "➕ Új eszköz / Face ID hozzáadása" gomb -> `supabase.auth.registerPasskey()` -- ez a hívás
+  MEGLÉVŐ, bejelentkezett munkamenetet igényel (a Supabase dokumentáció szerint anonim/nem-
+  bejelentkezett userhez nem regisztrálható passkey), ami mindig teljesül, mert a `/settings`
+  route védett (middleware).
+- Sikeres regisztráció után zöld `SuccessToast` (a meglévő, Cégbeállítások-mentésnél is használt
+  komponens): "Face ID / Touch ID sikeresen rögzítve ehhez a fiókhoz!" -- plusz a frissen
+  regisztrált eszköz megjelenik egy egyszerű listában (`friendly_name`, amit a Supabase az
+  authenticator AAGUID-jából derivál, pl. "iCloud Keychain", "Google Password Manager").
+- Hibakezelés: a `registerPasskey()` hibája `WebAuthnError` (böngésző-oldali WebAuthn ceremónia
+  hiba) vagy `AuthError` (szerver oldali) lehet -- a `WebAuthnError.code === 'ERROR_CEREMONY_ABORTED'`
+  esetet (user megszakította a Face ID/Touch ID beolvasást) külön, barátságos szöveggel kezeljük,
+  minden más esetben diszkrét piros hibasáv jelenik meg a kártyán belül (nem toast/alert popup).
+
+**Login/Register jelszómentes átalakítás:**
+- **Eltávolítva:** jelszó + jelszó-megerősítés mezők, és a Google OAuth gomb (`GoogleAuthButton.tsx`
+  komponens fájlja MEGMARADT a repóban, de mostantól sehol nincs importálva -- szándékosan nem
+  töröltük, hogy könnyen visszaállítható legyen, ha a projekt később mégis szeretné mindkét módot
+  kínálni).
+- **Új megosztott komponensek** (`components/auth/`):
+  - `PasskeyButton.tsx` -- elsődleges CTA ("👆 Belépés Face ID / Touch ID-val"),
+    `supabase.auth.signInWithPasskey()` hívással. Ez egy discoverable-credential ceremónia --
+    NEM kér előre email címet, a böngésző saját Face ID/Touch ID/biztonsági kulcs UI-ja old fel
+    egyet a regisztrált passkey-k közül. Siker esetén `router.push(redirectTo)` +
+    `router.refresh()`. Hiba esetén (pl. nincs még regisztrált passkey ezen a fiókon/eszközön,
+    vagy a user megszakította a beolvasást) diszkrét hibaüzenetet ad a szülő formnak.
+  - `MagicLinkForm.tsx` -- másodlagos, fallback belépési mód: egyetlen email mező +
+    "✉️ Belépési link küldése e-mailben" gomb, `supabase.auth.signInWithOtp({ email, options:
+    { emailRedirectTo: \`${origin}/auth/callback?next=...\` } })` hívással. **Ez az EGYETLEN
+    mód, ami ÚJ userre is működik** -- a Supabase alapértelmezetten létrehozza a fiókot a linkre
+    kattintáskor (`shouldCreateUser` alapértéke `true`), ezért ez szolgál a jelszómentes
+    regisztráció tényleges belépőjeként is.
+  - `AuthDivider.tsx` label frissítve "vagy email címmel" -> "vagy" (a "email címmel" rész már
+    félrevezető lenne, mert alatta most Magic Link van, nem jelszavas email/jelszó form).
+- `LoginForm.tsx` / `RegisterForm.tsx` teljesen újraírva: `PasskeyButton` (elsődleges) +
+  `AuthDivider` + `MagicLinkForm` (másodlagos) + "Már van fiókod? / Nincs még fiókod?" kereszt-link
+  -- a két oldal emiatt vizuálisan és funkcionálisan szinte azonos, ez SZÁNDÉKOS (a Passkey +
+  Magic Link páros önmagában nem tesz különbséget "belépés" és "regisztráció" között, ahogy a
+  Supabase dokumentáció is javasolja).
+- Magic Link elküldése után mindkét form a teljes űrlapot (Passkey gomb + elválasztó + email
+  form) lecseréli egy áttekinthető kártyára: "✉️ Ellenőrizd a postaládádat!" + a megadott email
+  cím kiemelve + "Vissza" link (állapot-resetelés, hogy más email címmel is lehessen próbálkozni).
+- `app/auth/callback/route.ts` -- **nem igényelt módosítást**: a Magic Link (`signInWithOtp`) a
+  böngésző-kliens alapértelmezett PKCE folyamatával ugyanazt a `?code=...` paramétert küldi, mint
+  a korábbi email-megerősítés/Google OAuth, amit a meglévő route már generikusan kezel
+  (`exchangeCodeForSession`).
+
+**Fontos működési megjegyzés (nem kód, hanem termékdöntés következménye):** a jelszó és a Google
+OAuth login MÓDJA eltűnt a FELÜLETRŐL, de a Supabase backend-en a korábban jelszóval regisztrált
+felhasználók fiókja és jelszava változatlanul létezik -- ők a Magic Linkkel (a saját email
+címükkel) tudnak belépni, utána a Beállítások oldalon rögzíthetik a Face ID/Touch ID-jukat a
+jövőbeli gyors beléptetéshez.
+
+**Ellenőrzés:** `npx tsc --noEmit` hibamentes a teljes projektre. Éles teszteléshez (mivel a
+Passkey a Relying Party ID-hoz kötött) a `https://car-check-peach.vercel.app` domainen kell
+kipróbálni, NEM localhoston, hacsak a Supabase Dashboardon külön hozzá nem adod a localhost
+origint a Passkeys beállításokhoz.
 
 **Megerősítve, hogy már korábban elkészült** (a mostani feladatlista 1/2/4/6 pontjai, lásd fenti 11. szakasz): wizard stepper `overflow-x-auto`-fix, dinamikus "Tovább" gomb-felirat (`WIZARD_STEP_META`), DOT szám szigorú validációja (hét 01-53, év max a futtatáskori év -- 2026-ban "26"), gumiabroncs-pozíciók kizárólag magyar felirattal ("Bal első"/"Jobb első"/"Bal hátsó"/"Jobb hátsó"), dashboard táblázat `minmax()`-alapú, squishing-mentes elrendezése. Ezekhez a mostani lépésben KÓD-SZINTŰ változtatás nem történt, csak felülvizsgálat.
 

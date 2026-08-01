@@ -3,10 +3,10 @@ interface AuthDividerProps {
 }
 
 /**
- * Letisztult elválasztó vonal a Google OAuth gomb és az email/jelszó form között.
+ * Letisztult elválasztó vonal a Passkey gomb és a Magic Link (email) form között.
  * Stripe design system: `{colors.hairline}` vonal, `{typography.micro-cap}` felirat.
  */
-export function AuthDivider({ label = 'vagy email címmel' }: AuthDividerProps) {
+export function AuthDivider({ label = 'vagy' }: AuthDividerProps) {
   return (
     <div className="flex items-center gap-3" role="separator">
       <div className="h-px flex-1 bg-stripe-hairline" />
