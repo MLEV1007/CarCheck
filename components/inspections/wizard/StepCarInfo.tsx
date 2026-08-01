@@ -13,6 +13,8 @@ import {
   sanitizeYear,
 } from '@/lib/inspections/validation';
 import { recognizeVinFromImage } from '@/lib/inspections/vinOcr';
+import { formatKmInput } from '@/lib/format';
+import { LicensePlateBadge } from '@/components/ui/LicensePlateBadge';
 import type { CarInfoState } from '@/lib/inspections/types';
 
 const VIN_SCAN_FAILURE_MESSAGE =
@@ -253,7 +255,7 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
           inputMode="numeric"
           placeholder="pl. 84000"
           error={showError('odometer')}
-          value={value.odometer}
+          value={formatKmInput(value.odometer)}
           onChange={(e) => set('odometer', sanitizeOdometer(e.target.value))}
           onBlur={() => markTouched('odometer')}
         />
@@ -295,17 +297,20 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
           </button>
         </div>
 
-        <TextField
-          label="Rendszám"
-          name="licensePlate"
-          placeholder="pl. AABB123"
-          required
-          className="font-mono uppercase tracking-wider"
-          error={showError('licensePlate')}
-          value={value.licensePlate}
-          onChange={(e) => set('licensePlate', sanitizeLicensePlate(e.target.value))}
-          onBlur={() => markTouched('licensePlate')}
-        />
+        <div className="flex flex-col gap-1.5">
+          <TextField
+            label="Rendszám"
+            name="licensePlate"
+            placeholder="pl. AABB123"
+            required
+            className="font-mono uppercase tracking-wider"
+            error={showError('licensePlate')}
+            value={value.licensePlate}
+            onChange={(e) => set('licensePlate', sanitizeLicensePlate(e.target.value))}
+            onBlur={() => markTouched('licensePlate')}
+          />
+          {value.licensePlate && <LicensePlateBadge value={value.licensePlate} size="sm" />}
+        </div>
       </div>
 
       {attemptedNext && Object.keys(errors).length > 0 && (

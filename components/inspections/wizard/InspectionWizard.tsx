@@ -174,12 +174,30 @@ export function InspectionWizard({
         })
       );
 
+      // CarVertical (vagy hasonló autó-előéleti szolgáltatás) PDF riport -- EGYETLEN fájl,
+      // ezért nincs Promise.all/tömb, mint a fotóknál. Ugyanaz a "blob vs. már feltöltött
+      // Storage URL" logika: ha `file` van, most töltjük fel; ha nincs, de `url` már megvan
+      // (piszkozat szerkesztése), azt tartjuk meg; ha egyik sincs, `null` kerül a payloadba.
+      let carVerticalPdfUrl: string | null = serviceHistory.carVerticalPdf.url;
+      if (serviceHistory.carVerticalPdf.file) {
+        const pdfFile = serviceHistory.carVerticalPdf.file;
+        const safeName = pdfFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const path = `${user.id}/${inspectionId}/service/carvertical-${crypto.randomUUID()}-${safeName}`;
+        const { error: pdfUploadError } = await supabase.storage
+          .from('inspection-media')
+          .upload(path, pdfFile, { upsert: true });
+        if (pdfUploadError) throw pdfUploadError;
+        carVerticalPdfUrl = supabase.storage.from('inspection-media').getPublicUrl(path).data.publicUrl;
+      }
+
       // Csak a ténylegesen kitöltött (legalább dátum/km óra állás/típus valamelyike megadott)
       // idővonal-bejegyzések kerülnek mentésre -- egy üresen otthagyott "+ Új bejegyzés"
       // kártya nem hoz létre üres sort a JSONB tömbben.
       const serviceHistoryPayload = {
         status: serviceHistory.status,
         photos: serviceHistoryPhotoUrls,
+        carvertical_pdf_url: carVerticalPdfUrl,
+        carvertical_pdf_name: carVerticalPdfUrl ? serviceHistory.carVerticalPdf.fileName : null,
         entries: serviceHistory.entries
           .filter(
             (entry) =>

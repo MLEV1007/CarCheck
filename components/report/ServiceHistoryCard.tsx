@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { AlertTriangle, CheckCircle2, HelpCircle, Wrench } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, FileText, HelpCircle, Wrench } from 'lucide-react';
 import { SectionHeading } from '@/components/report/SectionHeading';
 import { MediaLightbox } from '@/components/report/MediaLightbox';
 import { SERVICE_HISTORY_STATUS_LABEL } from '@/lib/inspections/constants';
+import { formatKm, formatServiceDate } from '@/lib/format';
 import type { PublicReportServiceHistory } from '@/lib/reports/types';
 
 interface ServiceHistoryCardProps {
@@ -35,8 +36,9 @@ export function ServiceHistoryCard({ serviceHistory }: ServiceHistoryCardProps) 
   const hasStatus = serviceHistory.status !== null;
   const hasPhotos = serviceHistory.photos.length > 0;
   const hasEntries = serviceHistory.entries.length > 0;
+  const hasCarVerticalPdf = Boolean(serviceHistory.carvertical_pdf_url);
 
-  if (!hasStatus && !hasPhotos && !hasEntries) return null;
+  if (!hasStatus && !hasPhotos && !hasEntries && !hasCarVerticalPdf) return null;
 
   const tone = serviceHistory.status ? STATUS_TONE[serviceHistory.status] : null;
   const StatusIcon = tone?.icon;
@@ -76,6 +78,20 @@ export function ServiceHistoryCard({ serviceHistory }: ServiceHistoryCardProps) 
         </div>
       )}
 
+      {hasCarVerticalPdf && (
+        <div className="mt-8">
+          <a
+            href={serviceHistory.carvertical_pdf_url!}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 border border-bmw-hairline-strong bg-bmw-surface-card px-5 py-3 text-[14px] font-bold text-bmw-ink transition-colors hover:bg-bmw-surface-strong"
+          >
+            <FileText className="h-4 w-4 text-[var(--report-accent)]" />
+            {serviceHistory.carvertical_pdf_name || 'CarVertical riport letöltése (PDF)'}
+          </a>
+        </div>
+      )}
+
       {hasEntries && (
         <div className="mt-8">
           <p className="text-[13px] font-bold uppercase tracking-[1px] text-bmw-muted">Idővonal</p>
@@ -84,14 +100,14 @@ export function ServiceHistoryCard({ serviceHistory }: ServiceHistoryCardProps) 
               <div key={entry.id} className="flex flex-col gap-2 p-5 sm:flex-row sm:items-center sm:gap-6">
                 <span className="inline-flex w-fit shrink-0 items-center gap-1.5 border border-bmw-hairline-strong px-3 py-1.5 font-mono text-[13px] font-bold text-bmw-body-strong">
                   <Wrench className="h-3.5 w-3.5 text-[var(--report-accent)]" />
-                  {entry.date || '—'}
+                  {formatServiceDate(entry.date) || '—'}
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="text-[15px] font-bold text-bmw-ink">{entry.type || 'Egyéb szerviz esemény'}</p>
                   {entry.notes && <p className="mt-0.5 text-[14px] font-light leading-relaxed text-bmw-body">{entry.notes}</p>}
                 </div>
                 {entry.mileage > 0 && (
-                  <span className="shrink-0 font-mono text-[13px] text-bmw-muted">{entry.mileage.toLocaleString('hu-HU')} km</span>
+                  <span className="shrink-0 font-mono text-[13px] text-bmw-muted">{formatKm(entry.mileage)}</span>
                 )}
               </div>
             ))}

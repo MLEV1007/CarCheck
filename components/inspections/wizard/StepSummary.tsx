@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { AlertTriangle, CheckCircle2, Loader2, MinusCircle, XCircle } from 'lucide-react';
 import {
   EQUIPMENT_STATUS_LABEL,
@@ -11,6 +12,8 @@ import {
   getPaintStatus,
 } from '@/lib/inspections/constants';
 import { decodeDot } from '@/lib/inspections/tireDot';
+import { formatKm } from '@/lib/format';
+import { LicensePlateBadge } from '@/components/ui/LicensePlateBadge';
 import { PaintStatusBadge } from '@/components/inspections/wizard/PaintStatusBadge';
 import { isVideoUrl } from '@/lib/reports/media';
 import type {
@@ -90,8 +93,12 @@ export function StepSummary({
         <p className="text-[15px] font-semibold text-linear-ink">{carLabel}</p>
         <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-[13px] sm:grid-cols-3">
           <SummaryField label="Évjárat" value={carInfo.year || '—'} />
-          <SummaryField label="Rendszám" value={carInfo.licensePlate || '—'} mono />
-          <SummaryField label="Km óra állás" value={carInfo.odometer ? `${carInfo.odometer} km` : '—'} />
+          <SummaryField
+            label="Rendszám"
+            value={carInfo.licensePlate || '—'}
+            valueNode={carInfo.licensePlate ? <LicensePlateBadge value={carInfo.licensePlate} size="sm" /> : undefined}
+          />
+          <SummaryField label="Km óra állás" value={carInfo.odometer ? formatKm(carInfo.odometer) : '—'} />
           <SummaryField label="Alvázszám (VIN)" value={carInfo.vin || '—'} mono fullWidth />
           <SummaryField label="Általános fotók" value={generalPhotoCount > 0 ? `${generalPhotoCount} db` : '—'} />
         </dl>
@@ -106,7 +113,8 @@ export function StepSummary({
         </p>
         <p className="mt-1 text-[13px] text-linear-ink-subtle">
           {serviceHistory.photos.length > 0 ? `${serviceHistory.photos.length} dokumentum-fotó` : 'Nincs dokumentum-fotó'} ·{' '}
-          {serviceHistory.entries.length > 0 ? `${serviceHistory.entries.length} idővonal-bejegyzés` : 'Nincs idővonal-bejegyzés'}
+          {serviceHistory.entries.length > 0 ? `${serviceHistory.entries.length} idővonal-bejegyzés` : 'Nincs idővonal-bejegyzés'} ·{' '}
+          {serviceHistory.carVerticalPdf.fileName ? 'CarVertical riport feltöltve' : 'Nincs CarVertical riport'}
         </p>
       </div>
 
@@ -308,6 +316,7 @@ function SummaryField({
   value,
   mono,
   fullWidth,
+  valueNode,
 }: {
   label: string;
   value: string;
@@ -316,11 +325,15 @@ function SummaryField({
    * csússzon/lógjon bele a szomszédos mezőbe (`col-span-full` a legszűkebb, `grid-cols-2`
    * nézeten -- `sm:` felett már mindenképp elfér a saját cellájában). */
   fullWidth?: boolean;
+  /** Ha meg van adva, ez jelenik meg a `value` sima szövege HELYETT (pl. a Rendszám mezőnél
+   * a `LicensePlateBadge` -- lásd "Rendszám felségjelzés" lépés) -- a `value` ilyenkor is
+   * kötelező marad, csak a screen reader szöveges tartalmához (nincs `aria-label` duplikálva). */
+  valueNode?: ReactNode;
 }) {
   return (
     <div className={fullWidth ? 'col-span-2 sm:col-span-1' : undefined}>
       <dt className="text-[11px] uppercase tracking-[0.4px] text-linear-ink-subtle">{label}</dt>
-      <dd className={'mt-0.5 text-linear-ink ' + (mono ? 'font-mono break-all' : '')}>{value}</dd>
+      <dd className={'mt-0.5 text-linear-ink ' + (mono ? 'font-mono break-all' : '')}>{valueNode ?? value}</dd>
     </div>
   );
 }

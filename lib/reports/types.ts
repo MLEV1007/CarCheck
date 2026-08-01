@@ -49,6 +49,10 @@ export interface PublicReportServiceHistoryEntry {
 export interface PublicReportServiceHistory {
   status: ServiceHistoryStatus | null;
   photos: string[];
+  /** CarVertical (vagy hasonló autó-előéleti szolgáltatás) PDF riport -- mindkét mező
+   * `null`, ha a vizsgáló nem töltött fel ilyet. */
+  carvertical_pdf_url: string | null;
+  carvertical_pdf_name: string | null;
   entries: PublicReportServiceHistoryEntry[];
 }
 

@@ -1,11 +1,12 @@
 'use client';
 
 import { useRef } from 'react';
-import { FileText, ImagePlus, Plus, Trash2, X } from 'lucide-react';
+import { ExternalLink, FileText, ImagePlus, Plus, Trash2, UploadCloud, X } from 'lucide-react';
 import { TextField, TextareaField } from '@/components/inspections/wizard/FormControls';
 import { SERVICE_ENTRY_TYPE_SUGGESTIONS, SERVICE_HISTORY_STATUS_DESCRIPTION, SERVICE_HISTORY_STATUS_LABEL } from '@/lib/inspections/constants';
-import { sanitizeServiceDate, sanitizeServiceMileage } from '@/lib/inspections/validation';
-import { CREATE_GENERAL_PHOTO, EMPTY_SERVICE_HISTORY_ENTRY, type ServiceHistoryState, type ServiceHistoryStatus } from '@/lib/inspections/types';
+import { sanitizeServiceMileage } from '@/lib/inspections/validation';
+import { formatKmInput } from '@/lib/format';
+import { CREATE_GENERAL_PHOTO, EMPTY_SERVICE_DOCUMENT, EMPTY_SERVICE_HISTORY_ENTRY, type ServiceHistoryState, type ServiceHistoryStatus } from '@/lib/inspections/types';
 
 interface StepServiceHistoryProps {
   value: ServiceHistoryState;
@@ -30,6 +31,7 @@ const STATUS_OPTIONS: ServiceHistoryStatus[] = ['full', 'partial', 'digital', 'n
  */
 export function StepServiceHistory({ value, onChange, onBack, onNext, nextLabel }: StepServiceHistoryProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
 
   function setStatus(status: ServiceHistoryStatus) {
     onChange({ ...value, status });
@@ -46,6 +48,15 @@ export function StepServiceHistory({ value, onChange, onBack, onNext, nextLabel 
     const target = value.photos.find((photo) => photo.clientId === clientId);
     if (target?.file && target.previewUrl.startsWith('blob:')) URL.revokeObjectURL(target.previewUrl);
     onChange({ ...value, photos: value.photos.filter((photo) => photo.clientId !== clientId) });
+  }
+
+  function handlePdfSelected(file: File) {
+    if (file.type !== 'application/pdf') return;
+    onChange({ ...value, carVerticalPdf: { file, url: null, fileName: file.name } });
+  }
+
+  function handleRemovePdf() {
+    onChange({ ...value, carVerticalPdf: EMPTY_SERVICE_DOCUMENT });
   }
 
   function addEntry() {
@@ -149,6 +160,59 @@ export function StepServiceHistory({ value, onChange, onBack, onNext, nextLabel 
         </div>
       </div>
 
+      {/* CarVertical (vagy hasonló autó-előéleti szolgáltatás) PDF riport -- a Dokumentumok
+          fotói után, a Manuális Idővonal előtt, mert szintén "dokumentum-jellegű" adat, de
+          egyetlen PDF fájl, nem képgaléria. */}
+      <div className="flex flex-col gap-3">
+        <p className="text-[13px] font-semibold uppercase tracking-[0.4px] text-linear-ink-subtle">
+          CarVertical riport (PDF)
+        </p>
+        {value.carVerticalPdf.fileName ? (
+          <div className="flex items-center gap-3 rounded-lg border border-linear-hairline bg-linear-surface-1 p-4">
+            <FileText className="h-5 w-5 shrink-0 text-linear-primary" />
+            <span className="min-w-0 flex-1 truncate text-[13px] text-linear-ink">{value.carVerticalPdf.fileName}</span>
+            {value.carVerticalPdf.url && (
+              <a
+                href={value.carVerticalPdf.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="PDF megnyitása"
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-linear-ink-subtle transition-colors hover:bg-linear-surface-2 hover:text-linear-ink"
+              >
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            )}
+            <button
+              type="button"
+              onClick={handleRemovePdf}
+              aria-label="PDF eltávolítása"
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-linear-ink-subtle transition-colors hover:bg-linear-surface-2 hover:text-linear-danger"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => pdfInputRef.current?.click()}
+            className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-linear-hairline-strong bg-linear-surface-1 px-4 py-4 text-[13px] font-medium text-linear-ink-subtle transition-colors hover:border-linear-primary hover:text-linear-ink"
+          >
+            <UploadCloud className="h-4 w-4" />
+            CarVertical PDF feltöltése
+            <input
+              ref={pdfInputRef}
+              type="file"
+              accept="application/pdf"
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files?.[0]) handlePdfSelected(e.target.files[0]);
+                e.target.value = '';
+              }}
+            />
+          </button>
+        )}
+      </div>
+
       {/* C) Manuális Idővonal */}
       <div className="flex flex-col gap-4">
         <p className="text-[13px] font-semibold uppercase tracking-[0.4px] text-linear-ink-subtle">
@@ -175,16 +239,18 @@ export function StepServiceHistory({ value, onChange, onBack, onNext, nextLabel 
               <TextField
                 label="Dátum"
                 name={`svc-date-${entry.id}`}
-                placeholder="pl. 2024 vagy 2024-06-15"
+                type="date"
+                max={new Date().toISOString().slice(0, 10)}
+                className="[color-scheme:dark]"
                 value={entry.date}
-                onChange={(e) => updateEntry(entry.id, { date: sanitizeServiceDate(e.target.value) })}
+                onChange={(e) => updateEntry(entry.id, { date: e.target.value })}
               />
               <TextField
                 label="Km óra állás"
                 name={`svc-mileage-${entry.id}`}
                 inputMode="numeric"
-                placeholder="pl. 84000"
-                value={entry.mileage}
+                placeholder="pl. 84 000"
+                value={formatKmInput(entry.mileage)}
                 onChange={(e) => updateEntry(entry.id, { mileage: sanitizeServiceMileage(e.target.value) })}
               />
               <div className="sm:col-span-2">

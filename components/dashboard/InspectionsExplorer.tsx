@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Check, Copy, ExternalLink, Eye, Pencil, Plus, Search } from 'lucide-react';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
+import { LicensePlateBadge } from '@/components/ui/LicensePlateBadge';
 
 export interface InspectionRow {
   id: string;
@@ -147,7 +148,7 @@ function InspectionRowItem({
         {inspection.vin && <p className="truncate font-mono text-[12px] text-linear-ink-subtle">{inspection.vin}</p>}
       </Link>
 
-      <span className="font-mono text-[13px] text-linear-ink-muted">{inspection.license_plate ?? '—'}</span>
+      <LicensePlateBadge value={inspection.license_plate} size="sm" className="font-mono text-[13px] text-linear-ink-muted" />
       <span className="text-[13px] text-linear-ink-muted sm:text-right">{inspection.year ?? '—'}</span>
       <span className="text-[13px] text-linear-ink-muted">{createdAt}</span>
 

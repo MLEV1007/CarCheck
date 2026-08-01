@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Copy,
   ExternalLink,
+  FileText,
   Loader2,
   MinusCircle,
   Pencil,
@@ -28,6 +29,8 @@ import {
   getPaintStatus,
 } from '@/lib/inspections/constants';
 import { decodeDot } from '@/lib/inspections/tireDot';
+import { formatKm, formatServiceDate } from '@/lib/format';
+import { LicensePlateBadge } from '@/components/ui/LicensePlateBadge';
 import type {
   DiagnosticsState,
   EquipmentItemState,
@@ -249,10 +252,14 @@ export function InspectionDetailView({
           <p className="text-[15px] font-semibold text-linear-ink">{carLabel}</p>
           <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 text-[13px] sm:grid-cols-4">
             <DetailField label="Évjárat" value={inspection.year ? String(inspection.year) : '—'} />
-            <DetailField label="Rendszám" value={inspection.license_plate || '—'} mono />
+            <DetailField
+              label="Rendszám"
+              value={inspection.license_plate || '—'}
+              valueNode={inspection.license_plate ? <LicensePlateBadge value={inspection.license_plate} size="sm" /> : undefined}
+            />
             <DetailField
               label="Km óra állás"
-              value={typeof inspection.odometer === 'number' ? `${inspection.odometer.toLocaleString('hu-HU')} km` : '—'}
+              value={typeof inspection.odometer === 'number' ? formatKm(inspection.odometer) : '—'}
             />
             <DetailField label="Alvázszám (VIN)" value={inspection.vin || '—'} mono fullWidth />
           </dl>
@@ -313,16 +320,27 @@ export function InspectionDetailView({
               ))}
             </div>
           )}
+          {serviceHistory.carVerticalPdf.url && (
+            <a
+              href={serviceHistory.carVerticalPdf.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-linear-hairline-strong bg-linear-surface-2 px-3 py-1.5 text-[13px] font-medium text-linear-ink transition-colors hover:bg-linear-surface-3"
+            >
+              <FileText className="h-3.5 w-3.5" />
+              CarVertical riport megnyitása (PDF)
+            </a>
+          )}
           {serviceHistory.entries.length === 0 ? (
             <p className="mt-3 text-[13px] text-linear-ink-subtle">Nincs rögzített idővonal-bejegyzés.</p>
           ) : (
             <ul className="mt-3 flex flex-col divide-y divide-linear-hairline">
               {serviceHistory.entries.map((entry) => (
                 <li key={entry.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
-                  <span className="font-mono text-[13px] text-linear-ink-muted">{entry.date || '—'}</span>
+                  <span className="font-mono text-[13px] text-linear-ink-muted">{formatServiceDate(entry.date) || '—'}</span>
                   <span className="text-[13px] font-medium text-linear-ink">{entry.type || 'Egyéb'}</span>
                   {entry.mileage && (
-                    <span className="font-mono text-[13px] text-linear-ink-subtle">{entry.mileage} km</span>
+                    <span className="font-mono text-[13px] text-linear-ink-subtle">{formatKm(entry.mileage)}</span>
                   )}
                   {entry.notes && <span className="text-[12px] text-linear-ink-subtle">{entry.notes}</span>}
                 </li>
@@ -489,6 +507,7 @@ function DetailField({
   value,
   mono,
   fullWidth,
+  valueNode,
 }: {
   label: string;
   value: string;
@@ -497,11 +516,14 @@ function DetailField({
    * szélességű sort kap, hogy ne csússzon/lógjon bele a szomszédos mezőbe -- `sm:` felett a
    * 4-oszlopos elrendezésben már mindenképp elfér a saját cellájában. */
   fullWidth?: boolean;
+  /** Ha meg van adva, ez jelenik meg a `value` sima szövege HELYETT (pl. a Rendszám mezőnél
+   * a `LicensePlateBadge` -- lásd "Rendszám felségjelzés" lépés). */
+  valueNode?: ReactNode;
 }) {
   return (
     <div className={fullWidth ? 'col-span-2 sm:col-span-1' : undefined}>
       <dt className="text-[11px] uppercase tracking-[0.4px] text-linear-ink-subtle">{label}</dt>
-      <dd className={'mt-0.5 break-all text-linear-ink ' + (mono ? 'font-mono' : '')}>{value}</dd>
+      <dd className={'mt-0.5 break-all text-linear-ink ' + (mono ? 'font-mono' : '')}>{valueNode ?? value}</dd>
     </div>
   );
 }

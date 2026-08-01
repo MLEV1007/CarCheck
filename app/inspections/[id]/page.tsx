@@ -78,6 +78,8 @@ function toInitialServiceHistory(raw: unknown): ServiceHistoryState {
   const value = (raw ?? {}) as {
     status?: string | null;
     photos?: string[];
+    carvertical_pdf_url?: string | null;
+    carvertical_pdf_name?: string | null;
     entries?: Array<{ id?: string; date?: string; mileage?: number | null; type?: string; notes?: string }>;
   };
   const VALID_STATUSES: ServiceHistoryStatus[] = ['full', 'partial', 'digital', 'none'];
@@ -90,6 +92,11 @@ function toInitialServiceHistory(raw: unknown): ServiceHistoryState {
   return {
     status,
     photos: photos.map((url) => ({ clientId: url, file: null, previewUrl: url })),
+    carVerticalPdf: {
+      file: null,
+      url: value.carvertical_pdf_url ?? null,
+      fileName: value.carvertical_pdf_name ?? null,
+    },
     entries: entries.map((entry, index) => ({
       id: entry.id ?? `svc-${index}`,
       date: entry.date ?? '',

@@ -194,7 +194,12 @@ export type ServiceHistoryStatus = 'full' | 'partial' | 'digital' | 'none';
  */
 export interface ServiceHistoryEntryState {
   id: string;
-  /** YYYY-MM-DD vagy csak YYYY -- lásd `lib/inspections/validation.ts` `sanitizeServiceDate`. */
+  /** "YYYY-MM-DD" -- natív HTML5 `<input type="date">`-ből (`StepServiceHistory.tsx`,
+   * "Naptár választó" lépés). Régebbi, a naptár-választó bevezetése ELŐTT rögzített
+   * bejegyzéseknél kivételesen "YYYY" (csak év) formában is előfordulhat -- ezeket a
+   * `lib/format.ts` `formatServiceDate()` változatlanul jeleníti meg, a natív dátum-mező
+   * pedig üresen nyílik meg rájuk (nem érvényes "YYYY-MM-DD"), így szerkesztéskor a user
+   * kényszerül teljes dátumot választani. */
   date: string;
   mileage: string;
   /** pl. "Olajcsere" -- szabad szöveges, `SERVICE_ENTRY_TYPE_SUGGESTIONS`-szal datalist-javaslattal. */
@@ -214,6 +219,22 @@ export const EMPTY_SERVICE_HISTORY_ENTRY = (): ServiceHistoryEntryState => ({
 });
 
 /**
+ * CarVertical (vagy hasonló autó-előéleti szolgáltatás) PDF riport -- a Szervizmúlt &
+ * Dokumentumok modul negyedik, önálló eleme. EGYETLEN PDF fájl (nem tömb, mint a
+ * `photos`), ezért külön típus, NEM a `GeneralPhotoState` mintája: `file` egy most
+ * kiválasztott, még fel nem töltött PDF; `url`/`fileName` piszkozat szerkesztésekor egy
+ * már feltöltött Storage fájlra mutat `file` nélkül -- ugyanaz a "blob vs. Storage URL"
+ * elv, mint a többi médiatípusnál (lásd InspectionWizard.tsx `handleSubmit`).
+ */
+export interface ServiceDocumentState {
+  file: File | null;
+  url: string | null;
+  fileName: string | null;
+}
+
+export const EMPTY_SERVICE_DOCUMENT: ServiceDocumentState = { file: null, url: null, fileName: null };
+
+/**
  * `photos` ugyanazt a `GeneralPhotoState` mintát követi, mint az "Általános autó fotók"
  * modul (`file`/`previewUrl`, piszkozat szerkesztésekor `file` nélkül is lehet egy már
  * feltöltött Storage URL) -- mentéskor a `service_history.photos` egy egyszerű string-tömb
@@ -223,8 +244,15 @@ export interface ServiceHistoryState {
   status: ServiceHistoryStatus | null;
   photos: GeneralPhotoState[];
   entries: ServiceHistoryEntryState[];
+  /** CarVertical (vagy hasonló) autó-előéleti PDF riport -- lásd `ServiceDocumentState`. */
+  carVerticalPdf: ServiceDocumentState;
 }
 
-export const EMPTY_SERVICE_HISTORY: ServiceHistoryState = { status: null, photos: [], entries: [] };
+export const EMPTY_SERVICE_HISTORY: ServiceHistoryState = {
+  status: null,
+  photos: [],
+  entries: [],
+  carVerticalPdf: EMPTY_SERVICE_DOCUMENT,
+};
 
 export type WizardStep = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;

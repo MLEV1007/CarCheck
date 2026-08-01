@@ -1,3 +1,6 @@
+import type { ReactNode } from 'react';
+import { formatKm } from '@/lib/format';
+import { LicensePlateBadge } from '@/components/ui/LicensePlateBadge';
 import type { PublicReportInspection } from '@/lib/reports/types';
 
 interface ReportHeroProps {
@@ -10,6 +13,9 @@ interface SpecItem {
   /** 17 karakteres VIN-hez: mobilon (`grid-cols-2`) teljes szélességű sort kap és
    * `break-all`/monospace stílust, hogy ne csússzon bele a szomszédos mezőbe. */
   fullWidth?: boolean;
+  /** Ha meg van adva, ez jelenik meg a `value` sima szövege HELYETT (Rendszám mezőnél a
+   * `LicensePlateBadge` -- lásd "Rendszám felségjelzés" lépés). */
+  valueNode?: ReactNode;
 }
 
 function formatDate(iso: string): string {
@@ -19,11 +25,15 @@ function formatDate(iso: string): string {
 function buildSpecs(inspection: PublicReportInspection): SpecItem[] {
   return [
     { label: 'Évjárat', value: inspection.year ? String(inspection.year) : '—' },
-    { label: 'Rendszám', value: inspection.license_plate || '—' },
+    {
+      label: 'Rendszám',
+      value: inspection.license_plate || '—',
+      valueNode: inspection.license_plate ? <LicensePlateBadge value={inspection.license_plate} /> : undefined,
+    },
     { label: 'Alvázszám (VIN)', value: inspection.vin || '—', fullWidth: true },
     {
       label: 'Km óra állás',
-      value: typeof inspection.odometer === 'number' ? `${inspection.odometer.toLocaleString('hu-HU')} km` : '—',
+      value: typeof inspection.odometer === 'number' ? formatKm(inspection.odometer) : '—',
     },
   ];
 }
@@ -60,7 +70,7 @@ export function ReportHero({ inspection }: ReportHeroProps) {
                   (spec.fullWidth ? 'break-all font-mono text-[17px] sm:text-[20px]' : '')
                 }
               >
-                {spec.value}
+                {spec.valueNode ?? spec.value}
               </dd>
             </div>
           ))}
