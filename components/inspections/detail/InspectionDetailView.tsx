@@ -21,6 +21,7 @@ import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { isVideoUrl } from '@/lib/reports/media';
 import {
   EQUIPMENT_STATUS_LABEL,
+  FINAL_ASSESSMENT_RECOMMENDATION_LABEL,
   RIM_TYPE_LABEL,
   SERVICE_HISTORY_STATUS_LABEL,
   TIRE_BRAND_OTHER,
@@ -29,13 +30,14 @@ import {
   getPaintStatus,
 } from '@/lib/inspections/constants';
 import { decodeDot } from '@/lib/inspections/tireDot';
-import { formatKm, formatServiceDate } from '@/lib/format';
+import { formatHuf, formatKm, formatServiceDate } from '@/lib/format';
 import { LicensePlateBadge } from '@/components/ui/LicensePlateBadge';
 import { DamageCanvas } from '@/components/inspections/DamageCanvas';
 import type {
   DamagePointState,
   DiagnosticsState,
   EquipmentItemState,
+  FinalAssessmentState,
   ServiceHistoryState,
   TireGeneralInfoState,
   TirePosition,
@@ -80,6 +82,7 @@ interface InspectionDetailViewProps {
   tires: TiresState;
   tireGeneralInfo: TireGeneralInfoState;
   damages: DamagePointState[];
+  finalAssessment: FinalAssessmentState;
 }
 
 const EQUIPMENT_ICON = { working: CheckCircle2, not_working: XCircle, na: MinusCircle } as const;
@@ -111,6 +114,7 @@ export function InspectionDetailView({
   tires,
   tireGeneralInfo,
   damages,
+  finalAssessment,
 }: InspectionDetailViewProps) {
   const router = useRouter();
   const overallPaintAverage = getOverallPaintAverage(paintMeasurements);
@@ -521,6 +525,40 @@ export function InspectionDetailView({
                 </li>
               ))}
             </ul>
+          )}
+        </div>
+
+        <div className="rounded-lg border border-linear-hairline bg-linear-surface-1 p-5">
+          <p className="text-[13px] font-semibold uppercase tracking-[0.4px] text-linear-ink-subtle">
+            Végső Szakvélemény & Várható Költségek
+          </p>
+          {!finalAssessment.recommendation &&
+          finalAssessment.estimatedCostMin.trim() === '' &&
+          finalAssessment.estimatedCostMax.trim() === '' &&
+          finalAssessment.costNotes.trim() === '' &&
+          finalAssessment.summaryText.trim() === '' ? (
+            <p className="mt-2 text-[13px] text-linear-ink-subtle">
+              Nincs megadva -- ez a szekció opcionális, üresen a publikus riporton nem jelenik meg.
+            </p>
+          ) : (
+            <div className="mt-2 flex flex-col gap-2 text-[13px]">
+              {finalAssessment.recommendation && (
+                <p className="text-linear-ink">{FINAL_ASSESSMENT_RECOMMENDATION_LABEL[finalAssessment.recommendation]}</p>
+              )}
+              {(finalAssessment.estimatedCostMin.trim() !== '' || finalAssessment.estimatedCostMax.trim() !== '') && (
+                <p className="font-mono text-linear-ink-muted">
+                  {finalAssessment.estimatedCostMin.trim() !== '' ? formatHuf(finalAssessment.estimatedCostMin) : '—'}
+                  {' – '}
+                  {finalAssessment.estimatedCostMax.trim() !== '' ? formatHuf(finalAssessment.estimatedCostMax) : '—'}
+                </p>
+              )}
+              {finalAssessment.costNotes.trim() !== '' && (
+                <p className="text-linear-ink-subtle">{finalAssessment.costNotes}</p>
+              )}
+              {finalAssessment.summaryText.trim() !== '' && (
+                <p className="text-linear-ink-subtle">{finalAssessment.summaryText}</p>
+              )}
+            </div>
           )}
         </div>
       </main>

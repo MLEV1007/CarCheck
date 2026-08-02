@@ -12,6 +12,7 @@ import { TiresCard } from '@/components/report/TiresCard';
 import { PaintMap } from '@/components/report/PaintMap';
 import { DamageMapCard } from '@/components/report/DamageMapCard';
 import { DefectsGallery } from '@/components/report/DefectsGallery';
+import { FinalAssessmentCard } from '@/components/report/FinalAssessmentCard';
 import { ReportNotFound } from '@/components/report/ReportNotFound';
 
 interface PublicReportPageProps {
@@ -68,6 +69,7 @@ export default async function PublicReportPage({ params }: PublicReportPageProps
         <PaintMap measurements={report.paint_measurements} />
         <DamageMapCard damages={report.inspection.damages} />
         <DefectsGallery defects={report.defects} />
+        <FinalAssessmentCard finalAssessment={report.inspection.final_assessment} />
       </main>
 
       <footer className="border-t border-bmw-hairline bg-bmw-surface-soft px-4 py-10 sm:px-8 lg:px-12 print:hidden">

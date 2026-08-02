@@ -50,6 +50,31 @@ export function formatKmInput(km: string | null | undefined): string {
  * változatlanul, évszámként jelenítjük meg, hogy ne vesszen el/torzuljon a korábban
  * rögzített adat. Bármilyen más (nem felismert) formátum esetén a nyers érték jelenik meg.
  */
+/**
+ * Forint (HUF) összeg megjelenítése ezres elválasztóval + "Ft" felirattal (pl.
+ * `1 250 000 Ft`) -- a Végső Szakvélemény & Várható Költségek modul min/max becsült
+ * szervizköltség mezőihez, ugyanaz az elv, mint a `formatKm`-nél. `null`/`undefined`/üres
+ * string esetén üres stringet ad vissza (a hívó dönti el, mit jelenít meg helyette, pl. "—").
+ */
+export function formatHuf(amount: number | string | null | undefined): string {
+  if (!amount && amount !== 0) return '';
+  const num = typeof amount === 'string' ? parseInt(amount.replace(/\D/g, ''), 10) : amount;
+  if (isNaN(num)) return '';
+  return new Intl.NumberFormat('hu-HU').format(num) + ' Ft';
+}
+
+/** Ugyanaz, mint a `formatKmInput` -- "Ft" felirat NÉLKÜL, a Végső Szakvélemény wizard-lépés
+ * min/max költség beviteli mezőinek élő, ezres-elválasztós megjelenítéséhez, amíg a mögöttes
+ * React state továbbra is a nyers számjegy-string marad (`sanitizeCostAmount`). */
+export function formatHufInput(amount: string | null | undefined): string {
+  if (!amount) return '';
+  const digits = amount.replace(/\D/g, '');
+  if (digits === '') return '';
+  const num = parseInt(digits, 10);
+  if (isNaN(num)) return '';
+  return new Intl.NumberFormat('hu-HU').format(num);
+}
+
 export function formatServiceDate(raw: string | null | undefined): string {
   if (!raw) return '';
   if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {

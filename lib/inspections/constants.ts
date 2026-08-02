@@ -2,6 +2,7 @@ import type {
   DamageType,
   EquipmentCategory,
   EquipmentStatus,
+  FinalAssessmentRecommendation,
   PaintPointState,
   PaintStatus,
   RimType,
@@ -492,7 +493,8 @@ export const WIZARD_STEP_META: { step: WizardStep; shortLabel: string; longLabel
   { step: 7, shortLabel: 'Festékvastagság', longLabel: 'Festékvastagság-mérés' },
   { step: 8, shortLabel: 'Sérülések', longLabel: 'Sérülés- és Hibatérkép' },
   { step: 9, shortLabel: 'Hibák & Média', longLabel: 'Hibák & Média' },
-  { step: 10, shortLabel: 'Összegzés', longLabel: 'Összegzés & Publikálás' },
+  { step: 10, shortLabel: 'Szakvélemény', longLabel: 'Végső Szakvélemény & Várható Költségek' },
+  { step: 11, shortLabel: 'Összegzés', longLabel: 'Összegzés & Publikálás' },
 ];
 
 export const TOTAL_WIZARD_STEPS = WIZARD_STEP_META.length;
@@ -533,3 +535,22 @@ export const SERVICE_ENTRY_TYPE_SUGGESTIONS: string[] = [
   'Műszaki vizsga',
   'Egyéb',
 ];
+
+/**
+ * Végső Szakvélemény & Várható Költségek modul -- a 3 választható javaslat felirata
+ * (`StepFinalAssessment.tsx` rádiógomb-kártyáihoz, ugyanaz a minta, mint a
+ * `SERVICE_HISTORY_STATUS_LABEL`-nél) + a publikus riport `FinalAssessmentCard.tsx`
+ * jelvényéhez.
+ */
+export const FINAL_ASSESSMENT_RECOMMENDATION_LABEL: Record<FinalAssessmentRecommendation, string> = {
+  recommended: 'Ajánlott megvásárlásra',
+  conditional: 'Feltételekkel ajánlott',
+  not_recommended: 'Nem ajánlott megvásárlásra',
+};
+
+/** Rövidebb kiegészítő leírás a rádiógomb-kártyákon (`StepFinalAssessment.tsx`). */
+export const FINAL_ASSESSMENT_RECOMMENDATION_DESCRIPTION: Record<FinalAssessmentRecommendation, string> = {
+  recommended: 'A jármű összességében jó állapotban van, komolyabb probléma nem merült fel.',
+  conditional: 'A jármű megvásárolható, de a felsorolt hibák javítása/ellenőrzése javasolt.',
+  not_recommended: 'A feltárt hibák/kockázatok miatt a vásárlás jelen állapotban nem javasolt.',
+};

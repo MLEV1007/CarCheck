@@ -1,4 +1,11 @@
-import type { DamageType, EquipmentStatus, RimType, ServiceHistoryStatus, TirePosition } from '@/lib/inspections/types';
+import type {
+  DamageType,
+  EquipmentStatus,
+  FinalAssessmentRecommendation,
+  RimType,
+  ServiceHistoryStatus,
+  TirePosition,
+} from '@/lib/inspections/types';
 
 /**
  * A `public.get_public_report(p_token uuid)` Postgres RPC (SECURITY DEFINER)
@@ -40,8 +47,20 @@ export interface PublicReportInspection {
   /** Sérülés- és Hibatérkép modul -- ugyanaz a `general_photos`/`diagnostics`/`equipment`/
    * `tires` minta: egyetlen JSONB oszlop az `inspections` sorban, nincs külön gyerek-tábla. */
   damages: PublicReportDamage[];
+  /** Végső Szakvélemény & Várható Költségek modul -- TELJESEN OPCIONÁLIS, minden mező
+   * `null` lehet (a `get_public_report` RPC 2026-08-02-es kiegészítése óta tartalmazza).
+   * Ha minden mező `null`/üres, a `FinalAssessmentCard.tsx` a teljes szekciót elrejti. */
+  final_assessment: PublicReportFinalAssessment;
   created_at: string;
   updated_at: string;
+}
+
+export interface PublicReportFinalAssessment {
+  recommendation: FinalAssessmentRecommendation | null;
+  estimated_cost_min: number | null;
+  estimated_cost_max: number | null;
+  cost_notes: string | null;
+  summary_text: string | null;
 }
 
 /**

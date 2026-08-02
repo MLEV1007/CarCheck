@@ -312,4 +312,39 @@ export const EMPTY_DAMAGE_POINT = (x: number, y: number): DamagePointState => ({
   previewUrl: null,
 });
 
-export type WizardStep = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+/**
+ * Végső Szakvélemény & Várható Költségek modul -- OPCIONÁLIS wizard-lépés a Hibák & Média
+ * UTÁN, az Összegzés & Publikálás ELŐTT (a vizsgálatot lezáró szakértői vélemény + egy
+ * durva, tájékoztató jellegű szervizköltség-becslés). MINDEN mező opcionális -- ha a
+ * vizsgáló egyiket sem tölti ki, a `final_assessment` JSONB oszlop az üres alapértelmezett
+ * struktúrával kerül mentésre, és a publikus riporton a teljes szekció rejtve marad
+ * (lásd `FinalAssessmentCard.tsx` a `components/report/`-ban -- `return null`, ha minden
+ * mező üres, ugyanaz a minta, mint a `GeneralPhotosGallery`/`EquipmentMatrix`/
+ * `ServiceHistoryCard`-nál).
+ */
+export type FinalAssessmentRecommendation = 'recommended' | 'conditional' | 'not_recommended';
+
+/**
+ * Wizard-oldali state -- a `recommendation` `null`, amíg a vizsgáló nem választ (nincs
+ * kikényszerített alapérték, ugyanaz az elv, mint a `ServiceHistoryState.status`-nál). A
+ * két költség-mező és a `costNotes`/`summaryText` szabad szöveges/string mezők a
+ * beviteli mezők élő szerkesztéséhez -- mentéskor alakulnak számmá/`null`-lá (lásd
+ * `InspectionWizard.tsx` `handleSubmit`).
+ */
+export interface FinalAssessmentState {
+  recommendation: FinalAssessmentRecommendation | null;
+  estimatedCostMin: string;
+  estimatedCostMax: string;
+  costNotes: string;
+  summaryText: string;
+}
+
+export const EMPTY_FINAL_ASSESSMENT: FinalAssessmentState = {
+  recommendation: null,
+  estimatedCostMin: '',
+  estimatedCostMax: '',
+  costNotes: '',
+  summaryText: '',
+};
+
+export type WizardStep = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11;

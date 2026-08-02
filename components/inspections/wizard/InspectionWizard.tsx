@@ -13,6 +13,7 @@ import { StepTires } from '@/components/inspections/wizard/StepTires';
 import { StepPaintMeasurements } from '@/components/inspections/wizard/StepPaintMeasurements';
 import { StepDamageMap } from '@/components/inspections/wizard/StepDamageMap';
 import { StepDefects } from '@/components/inspections/wizard/StepDefects';
+import { StepFinalAssessment } from '@/components/inspections/wizard/StepFinalAssessment';
 import { StepSummary } from '@/components/inspections/wizard/StepSummary';
 import {
   DEFAULT_LICENSE_PLATE_COUNTRY,
@@ -26,6 +27,7 @@ import {
   EMPTY_CAR_INFO,
   EMPTY_DEFECT,
   EMPTY_DIAGNOSTICS,
+  EMPTY_FINAL_ASSESSMENT,
   EMPTY_SERVICE_HISTORY,
   EMPTY_TIRE_GENERAL_INFO,
   EMPTY_TIRES,
@@ -34,6 +36,7 @@ import {
   type DefectState,
   type DiagnosticsState,
   type EquipmentItemState,
+  type FinalAssessmentState,
   type GeneralPhotoState,
   type PaintPointState,
   type ServiceHistoryState,
@@ -77,6 +80,7 @@ interface InspectionWizardProps {
   initialPaintMeasurements?: PaintPointState[];
   initialDamages?: DamagePointState[];
   initialDefects?: DefectState[];
+  initialFinalAssessment?: FinalAssessmentState;
 }
 
 /**
@@ -108,6 +112,7 @@ export function InspectionWizard({
   initialPaintMeasurements,
   initialDamages,
   initialDefects,
+  initialFinalAssessment,
 }: InspectionWizardProps = {}) {
   const router = useRouter();
   const [step, setStep] = useState<WizardStep>(1);
@@ -126,6 +131,9 @@ export function InspectionWizard({
   const [paintMeasurements, setPaintMeasurements] = useState<PaintPointState[]>(initialPaintMeasurements ?? []);
   const [damages, setDamages] = useState<DamagePointState[]>(initialDamages ?? []);
   const [defects, setDefects] = useState<DefectState[]>(initialDefects ?? [EMPTY_DEFECT()]);
+  const [finalAssessment, setFinalAssessment] = useState<FinalAssessmentState>(
+    initialFinalAssessment ?? EMPTY_FINAL_ASSESSMENT
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [inspectionId] = useState<string>(() => initialInspectionId ?? crypto.randomUUID());
@@ -308,6 +316,21 @@ export function InspectionWizard({
         rr: { mm: tires.rr.mm.trim() === '' ? null : Number(tires.rr.mm), dot: isValidDot(tires.rr.dot) ? tires.rr.dot : null },
       };
 
+      // Végső Szakvélemény & Várható Költségek modul -- TELJESEN OPCIONÁLIS, minden mező
+      // `null`/üres marad, ha a vizsgáló nem töltötte ki. A két költség-mező üres stringnél
+      // `null`-lá alakul (NEM 0-vá, mert a 0 Ft egy valós, félrevezető érték lenne egy
+      // "nincs megadva" állapotra) -- ellentétben pl. a Szervizmúlt idővonal `mileage`
+      // mezőjével, aminél a megadott TS típus `number` (nem opcionális). Nincs szükség
+      // külön törlés+beszúrás ciklusra, mint a `paint_measurements`/`defects` gyerek-
+      // tábláknál -- ez is egyetlen JSONB oszlop, az UPSERT egyszerűen felülírja.
+      const finalAssessmentPayload = {
+        recommendation: finalAssessment.recommendation,
+        estimated_cost_min: finalAssessment.estimatedCostMin.trim() === '' ? null : Number(finalAssessment.estimatedCostMin),
+        estimated_cost_max: finalAssessment.estimatedCostMax.trim() === '' ? null : Number(finalAssessment.estimatedCostMax),
+        cost_notes: finalAssessment.costNotes.trim() === '' ? null : finalAssessment.costNotes,
+        summary_text: finalAssessment.summaryText.trim() === '' ? null : finalAssessment.summaryText,
+      };
+
       const { data: inspectionRow, error: inspectionError } = await supabase
         .from('inspections')
         .upsert({
@@ -326,6 +349,7 @@ export function InspectionWizard({
           equipment: equipmentPayload,
           tires: tiresPayload,
           damages: damagesPayload,
+          final_assessment: finalAssessmentPayload,
           status,
         })
         .select('public_token')
@@ -524,6 +548,15 @@ export function InspectionWizard({
           />
         )}
         {step === 10 && (
+          <StepFinalAssessment
+            value={finalAssessment}
+            onChange={setFinalAssessment}
+            onBack={() => setStep(9)}
+            onNext={() => setStep(11)}
+            nextLabel={NEXT_STEP_SHORT_LABEL[11]}
+          />
+        )}
+        {step === 11 && (
           <StepSummary
             carInfo={carInfo}
             generalPhotoCount={generalPhotos.length}
@@ -537,9 +570,10 @@ export function InspectionWizard({
             defects={defects.filter(
               (defect) => defect.category.trim() !== '' || defect.description.trim() !== '' || defect.file
             )}
+            finalAssessment={finalAssessment}
             isSubmitting={isSubmitting}
             submitError={submitError}
-            onBack={() => setStep(9)}
+            onBack={() => setStep(10)}
             onSaveDraft={() => handleSubmit('draft')}
             onPublish={() => handleSubmit('completed')}
           />

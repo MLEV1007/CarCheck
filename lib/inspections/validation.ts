@@ -142,3 +142,10 @@ export function sanitizeMicron(raw: string): string {
 export function sanitizeServiceMileage(raw: string): string {
   return raw.replace(/\D/g, '');
 }
+
+/** Végső Szakvélemény & Várható Költségek modul -- min/max várható szervizköltség (HUF):
+ * csak számjegyek, max 9 karakter (bőven elég egy reális, forintban megadott összeghez,
+ * 999 999 999 Ft-ig) -- ugyanaz az elv, mint a `sanitizeOdometer`-nél. */
+export function sanitizeCostAmount(raw: string): string {
+  return raw.replace(/\D/g, '').slice(0, 9);
+}

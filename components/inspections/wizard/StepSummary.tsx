@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { AlertTriangle, CheckCircle2, Loader2, MinusCircle, XCircle } from 'lucide-react';
 import {
   EQUIPMENT_STATUS_LABEL,
+  FINAL_ASSESSMENT_RECOMMENDATION_LABEL,
   RIM_TYPE_LABEL,
   SERVICE_HISTORY_STATUS_LABEL,
   TIRE_BRAND_OTHER,
@@ -12,7 +13,7 @@ import {
   getPaintStatus,
 } from '@/lib/inspections/constants';
 import { decodeDot } from '@/lib/inspections/tireDot';
-import { formatKm } from '@/lib/format';
+import { formatHuf, formatKm } from '@/lib/format';
 import { LicensePlateBadge } from '@/components/ui/LicensePlateBadge';
 import { PaintStatusBadge } from '@/components/inspections/wizard/PaintStatusBadge';
 import { isVideoUrl } from '@/lib/reports/media';
@@ -23,6 +24,7 @@ import type {
   DefectState,
   DiagnosticsState,
   EquipmentItemState,
+  FinalAssessmentState,
   PaintPointState,
   ServiceHistoryState,
   TireGeneralInfoState,
@@ -41,6 +43,7 @@ interface StepSummaryProps {
   paintMeasurements: PaintPointState[];
   damages: DamagePointState[];
   defects: DefectState[];
+  finalAssessment: FinalAssessmentState;
   isSubmitting: boolean;
   submitError: string | null;
   onBack: () => void;
@@ -67,6 +70,7 @@ export function StepSummary({
   paintMeasurements,
   damages,
   defects,
+  finalAssessment,
   isSubmitting,
   submitError,
   onBack,
@@ -302,6 +306,40 @@ export function StepSummary({
               </li>
             ))}
           </ul>
+        )}
+      </div>
+
+      <div className="rounded-lg border border-linear-hairline bg-linear-surface-1 p-5">
+        <p className="text-[13px] font-semibold uppercase tracking-[0.4px] text-linear-ink-subtle">
+          Végső Szakvélemény & Várható Költségek
+        </p>
+        {!finalAssessment.recommendation &&
+        finalAssessment.estimatedCostMin.trim() === '' &&
+        finalAssessment.estimatedCostMax.trim() === '' &&
+        finalAssessment.costNotes.trim() === '' &&
+        finalAssessment.summaryText.trim() === '' ? (
+          <p className="mt-2 text-[13px] text-linear-ink-subtle">
+            Nincs megadva -- ez a szekció opcionális, üresen a publikus riporton nem jelenik meg.
+          </p>
+        ) : (
+          <div className="mt-2 flex flex-col gap-2 text-[13px]">
+            {finalAssessment.recommendation && (
+              <p className="text-linear-ink">{FINAL_ASSESSMENT_RECOMMENDATION_LABEL[finalAssessment.recommendation]}</p>
+            )}
+            {(finalAssessment.estimatedCostMin.trim() !== '' || finalAssessment.estimatedCostMax.trim() !== '') && (
+              <p className="font-mono text-linear-ink-muted">
+                {finalAssessment.estimatedCostMin.trim() !== '' ? formatHuf(finalAssessment.estimatedCostMin) : '—'}
+                {' – '}
+                {finalAssessment.estimatedCostMax.trim() !== '' ? formatHuf(finalAssessment.estimatedCostMax) : '—'}
+              </p>
+            )}
+            {finalAssessment.costNotes.trim() !== '' && (
+              <p className="text-linear-ink-subtle">{finalAssessment.costNotes}</p>
+            )}
+            {finalAssessment.summaryText.trim() !== '' && (
+              <p className="text-linear-ink-subtle">{finalAssessment.summaryText}</p>
+            )}
+          </div>
         )}
       </div>
 

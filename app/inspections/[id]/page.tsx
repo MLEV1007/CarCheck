@@ -14,6 +14,8 @@ import type {
   DiagnosticsState,
   EquipmentItemState,
   EquipmentStatus,
+  FinalAssessmentRecommendation,
+  FinalAssessmentState,
   GeneralPhotoState,
   PaintPointState,
   RimType,
@@ -156,6 +158,33 @@ function toInitialDamages(raw: unknown): DamagePointState[] {
   }));
 }
 
+/** DB (JSONB) -> wizard state konverzió a Végső Szakvélemény & Várható Költségek modulhoz --
+ * ugyanaz a minta, mint a többi helpernél ebben a fájlban. A két költség-mező `number|null`-ból
+ * lesz beviteli-mező-string (`String(...)` vagy üres string), a `recommendation` ismeretlen/
+ * érvénytelen érték esetén `null`-ra esik vissza, hogy sose kerüljön TS-en kívüli érték a state-be. */
+function toInitialFinalAssessment(raw: unknown): FinalAssessmentState {
+  const value = (raw ?? {}) as {
+    recommendation?: string | null;
+    estimated_cost_min?: number | null;
+    estimated_cost_max?: number | null;
+    cost_notes?: string | null;
+    summary_text?: string | null;
+  };
+  const VALID_RECOMMENDATIONS: FinalAssessmentRecommendation[] = ['recommended', 'conditional', 'not_recommended'];
+  const recommendation =
+    typeof value.recommendation === 'string' &&
+    VALID_RECOMMENDATIONS.includes(value.recommendation as FinalAssessmentRecommendation)
+      ? (value.recommendation as FinalAssessmentRecommendation)
+      : null;
+  return {
+    recommendation,
+    estimatedCostMin: value.estimated_cost_min != null ? String(value.estimated_cost_min) : '',
+    estimatedCostMax: value.estimated_cost_max != null ? String(value.estimated_cost_max) : '',
+    costNotes: value.cost_notes ?? '',
+    summaryText: value.summary_text ?? '',
+  };
+}
+
 interface InspectionDetailPageProps {
   params: Promise<{ id: string }>;
 }
@@ -197,7 +226,7 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
   const { data: inspection } = await supabase
     .from('inspections')
     .select(
-      'id, car_brand, car_model, year, vin, license_plate, license_plate_country, odometer, status, public_token, general_photos, service_history, diagnostics, equipment, tires, damages, created_at'
+      'id, car_brand, car_model, year, vin, license_plate, license_plate_country, odometer, status, public_token, general_photos, service_history, diagnostics, equipment, tires, damages, final_assessment, created_at'
     )
     .eq('id', id)
     .eq('user_id', user.id)
@@ -281,6 +310,7 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
           initialPaintMeasurements={initialPaintMeasurements}
           initialDamages={toInitialDamages(inspection.damages)}
           initialDefects={initialDefects.length > 0 ? initialDefects : undefined}
+          initialFinalAssessment={toInitialFinalAssessment(inspection.final_assessment)}
         />
       </div>
     );
@@ -298,6 +328,7 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
       tires={toInitialTires(inspection.tires)}
       tireGeneralInfo={toInitialTireGeneralInfo(inspection.tires)}
       damages={toInitialDamages(inspection.damages)}
+      finalAssessment={toInitialFinalAssessment(inspection.final_assessment)}
     />
   );
 }
