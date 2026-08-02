@@ -10,11 +10,13 @@ import { GoogleGenAI, Type } from '@google/genai';
  * párhuzamosan -- a felhasználó kérésére eltávolítottuk, ez a route az EGYETLEN,
  * megmaradt fotó-alapú felismerési mód.
  *
- * A vizsgáló lefotózza az alvázszám-matricát, a szélvédő plakettet VAGY a teljes magyar
- * Forgalmi Engedélyt, ezt a fotót Base64 kódolással küldi be ez a route, ami a Gemini Flash
- * Vision modellel egyetlen hívásban kinyeri az alvázszámot -- ÉS, ha a kép egy Forgalmi
- * Engedély, a hozzá tartozó alap autó-adatokat (rendszám, gyártmány, típus, első
- * forgalombahelyezés éve) is.
+ * A vizsgáló lefotózza az alvázszám-matricát, a szélvédő plakettet VAGY a teljes forgalmi
+ * engedélyt/gépjármű-nyilvántartási okmányt -- MAGYAR VAGY KÜLFÖLDI EGYARÁNT, lásd a
+ * `buildSystemInstruction()` "NEMZETKÖZI FORGALMI ENGEDÉLY FELISMERÉS" pontját --, ezt a
+ * fotót Base64 kódolással küldi be ez a route, ami a Gemini Flash Vision modellel egyetlen
+ * hívásban kinyeri az alvázszámot -- ÉS, ha a kép egy forgalmi engedély, a hozzá tartozó
+ * alap autó-adatokat (rendszám, gyártmány, típus, első forgalombahelyezés éve) is, az
+ * okmány nyelvétől függetlenül.
  *
  * **Modellválasztás + fallback-lánc:** ugyanaz a minta, mint a `parse-equipment` route-nál
  * (lásd ott a részletes JSDoc-ot) -- elsődleges modell `gemini-2.0-flash`, statikus fallback
@@ -190,10 +192,13 @@ function parseDataUrl(image: string): { mimeType: string; data: string } | null 
   return { mimeType: match[1].trim().toLowerCase(), data: match[2].trim() };
 }
 
-/** A Gemini modellt szigorú ISO 3779 szabályokra és a magyar Forgalmi Engedély
- * mezőkiosztására szorítjuk -- lásd a részletes szabályokat a system instructionben. */
+/** A Gemini modellt szigorú ISO 3779 szabályokra és a forgalmi engedély mezőkiosztására
+ * szorítjuk -- lásd a részletes szabályokat a system instructionben. FONTOS: a rendszerutasítás
+ * SZÁNDÉKOSAN nem korlátozódik a magyar Forgalmi Engedélyre -- a felhasználó kérésére
+ * (2026-08-02) kibővítve BÁRMELY ország forgalmi engedélyének/gépjármű-nyilvántartási
+ * okmányának felismerésére, a "NEMZETKÖZI FORGALMI ENGEDÉLY FELISMERÉS" szakasz szerint. */
 function buildSystemInstruction(): string {
-  return `Te egy autóipari OCR & VIN elemző asszisztens vagy. A feladatod, hogy a felhasználó által feltöltött fotóról (alvázszám-matrica, szélvédő plakett, vagy magyar Forgalmi Engedély) kinyerd az alvázszámot (VIN) és -- ha releváns -- az autó alapadatait.
+  return `Te egy NEMZETKÖZI autóipari OCR & VIN elemző asszisztens vagy. A feladatod, hogy a felhasználó által feltöltött fotóról (alvázszám-matrica, szélvédő plakett, vagy BÁRMELY ORSZÁG forgalmi engedélye/gépjármű-nyilvántartási okmánya -- magyar VAGY külföldi, az okmány NYELVÉTŐL FÜGGETLENÜL) kinyerd az alvázszámot (VIN) és -- ha releváns -- az autó alapadatait.
 
 SZIGORÚ ISO 3779 SZABÁLYOK A VIN-RE:
 1. Az alvázszám PONTOSAN 17 karakter.
@@ -203,17 +208,28 @@ SZIGORÚ ISO 3779 SZABÁLYOK A VIN-RE:
 5. Ha a képen 'Q' betűt látsz a VIN-ben, azt MINDIG '0' (nulla) számjegyként értelmezd.
 6. A végleges "vin" mező kizárólag nagybetűket és számjegyeket tartalmazhat, PONTOSAN 17 karakter hosszan, és SOHA nem tartalmazhatja az I/O/Q betűket.
 
+NEMZETKÖZI FORGALMI ENGEDÉLY FELISMERÉS -- KRITIKUS, MINDEN OKMÁNYRA VONATKOZIK, NEM CSAK A MAGYARRA:
+- A legtöbb EURÓPAI (EU/EEA) ország forgalmi engedélye 1999 óta EGYSÉGESÍTETT, betű-/számkódolt mezőkkel rendelkezik (EU 1999/37/EK irányelv) -- FÜGGETLENÜL AZ OKMÁNY NYOMTATOTT NYELVÉTŐL (legyen az magyar, német, angol, francia, olasz, spanyol, lengyel, román, szlovák, cseh, holland stb.), a mezőKÓDOK MINDIG UGYANAZOK, csak a melléjük nyomtatott felirat nyelve változik:
+  * "A" mező = Rendszám (pl. angolul "Registration number", németül "Kennzeichen", franciául "Immatriculation").
+  * "B" mező = Első nyilvántartásba vétel dátuma (pl. "Date of first registration", "Datum der Erstzulassung").
+  * "D.1" mező = Gyártmány (pl. "Make", "Marke", "Marque").
+  * "D.3" mező = Kereskedelmi megnevezés / Típus (pl. "Type", "Commercial description", "Typ").
+  * "E" mező = Alvázszám / VIN (pl. "VIN", "Chassis number", "Fahrgestellnummer").
+- Ha NEM EU-s/nem egységesített formátumú okmányt látsz (pl. brit "V5C Registration Certificate"/"Logbook", amerikai "Title"/"Registration", vagy bármely más ország saját formátumú okmánya), a mezőket a nyomtatott feliratok SZEMANTIKAI jelentése alapján azonosítsd, a nyelvtől függetlenül (pl. "VIN"/"Chassis No"/"Serial Number" -> alvázszám; "Reg. No"/"Plate Number"/"License Plate"/"Vehicle Registration Mark" -> rendszám; "Make"/"Manufacturer" -> gyártmány; "Model"/"Type" -> típus; "First Registered"/"Registration Date"/"Year of Manufacture" -> évjárat).
+- Az okmány kiállító országától/nyelvétől FÜGGETLENÜL mindig a lent megadott, angol JSON mezőnevekbe ("plateNumber", "make", "model", "registrationYear") told a kinyert értékeket -- de MAGÁT A KINYERT ÉRTÉKET (pl. a gyártmány/típus nevét, a rendszámot) SOHA ne fordítsd le vagy alakítsd át, hagyd pontosan az okmányon szereplő eredeti formában.
+- Ha bizonytalan vagy, hogy egy adott mező pontosan minek felel meg egy szokatlan/ismeretlen formátumú okmányon, inkább hagyd ki az adott mezőt az "extractedDetails"-ből, mintsem hogy rossz mezőbe írj be egy adatot.
+
 DOKUMENTUMTÍPUS FELISMERÉS ("detectedDocumentType"):
 - "vin_plate" -- ha a kép egy alvázszám-matricát vagy szélvédőbe/karosszériába vésett/nyomtatott VIN plakettet mutat (nincs rajta más hivatalos dokumentum-mező).
-- "registration_certificate" -- ha a kép egy magyar Forgalmi Engedélyt (vagy annak egy oldalát/részletét) mutat.
+- "registration_certificate" -- ha a kép BÁRMELY ország (magyar VAGY külföldi) hivatalos forgalmi engedélyét/gépjármű-nyilvántartási okmányát (vagy annak egy oldalát/részletét) mutatja.
 - "other" -- ha egyik kategóriába sem sorolható egyértelműen, vagy nem sikerült VIN-t azonosítani.
 
-HA A KÉP EGY MAGYAR FORGALMI ENGEDÉLY, nyerd ki az "extractedDetails" objektumba is az alábbi mezőket (amit nem találsz vagy nem olvasható biztonsággal, hagyd ki az objektumból):
-- "plateNumber": Rendszám (A. mező).
-- "make": Gyártmány (D.1 mező).
-- "model": Típus (D.3 mező).
-- "registrationYear": Első nyilvántartásba vétel éve (B. mező, csak az évszám).
-- "vin" mezőként ilyenkor az E. mezőben (Alvázszám) szereplő értéket add vissza, a fenti ISO 3779 szabályok szerint tisztítva.
+HA A KÉP EGY FORGALMI ENGEDÉLY/GÉPJÁRMŰ-NYILVÁNTARTÁSI OKMÁNY (BÁRMELY ORSZÁGBÓL, BÁRMELY NYELVEN), nyerd ki az "extractedDetails" objektumba is az alábbi mezőket a fenti "NEMZETKÖZI FORGALMI ENGEDÉLY FELISMERÉS" szabályai szerint (amit nem találsz vagy nem olvasható biztonsággal, hagyd ki az objektumból):
+- "plateNumber": Rendszám ("A" mező vagy ennek megfelelő).
+- "make": Gyártmány ("D.1" mező vagy ennek megfelelő).
+- "model": Típus / kereskedelmi megnevezés ("D.3" mező vagy ennek megfelelő).
+- "registrationYear": Első nyilvántartásba vétel éve ("B" mező vagy ennek megfelelő, CSAK az évszám -- ha az okmányon teljes dátum szerepel, pl. "15.03.2019" vagy "03/2019", akkor is csak a "2019" évszámot add vissza).
+- "vin" mezőként ilyenkor az alvázszám mezőben ("E" mező vagy ennek megfelelő) szereplő értéket add vissza, a fenti ISO 3779 szabályok szerint tisztítva.
 
 A "confidence" mező a SAJÁT bizonyosságod a kinyert "vin" értékre vonatkozóan:
 - "high" -- a VIN minden karaktere tisztán, egyértelműen olvasható volt.
@@ -307,7 +323,9 @@ export async function POST(request: NextRequest): Promise<NextResponse<ScanVinSu
       role: 'user' as const,
       parts: [
         { inlineData: { mimeType, data: base64Data } },
-        { text: 'Elemezd a képet a rendszerutasítás szabályai szerint, és add vissza a kinyert VIN-t (és, ha releváns, a Forgalmi Engedély mezőit) a megadott JSON sémában.' },
+        {
+          text: 'Elemezd a képet a rendszerutasítás szabályai szerint (az okmány/matrica NYELVÉTŐL és KIÁLLÍTÓ ORSZÁGÁTÓL függetlenül), és add vissza a kinyert VIN-t (és, ha releváns, a forgalmi engedély mezőit) a megadott JSON sémában.',
+        },
       ],
     },
   ];

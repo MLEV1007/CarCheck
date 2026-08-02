@@ -372,7 +372,7 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
           <div>
             <p className="text-[14px] font-semibold text-linear-ink">AI-alapú felismerés</p>
             <p className="text-[12px] text-linear-ink-subtle">
-              Fotózd le a Forgalmi Engedélyt vagy az alvázszám-matricát -- az AI automatikusan kitölti az alábbi mezőket.
+              Fotózd le a Forgalmi Engedélyt (magyar vagy külföldi is) vagy az alvázszám-matricát -- az AI automatikusan kitölti az alábbi mezőket.
             </p>
           </div>
         </div>
