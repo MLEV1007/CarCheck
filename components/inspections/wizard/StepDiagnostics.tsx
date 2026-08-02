@@ -2,6 +2,7 @@
 
 import { AlertTriangle, Plus, Trash2 } from 'lucide-react';
 import { TextField } from '@/components/inspections/wizard/FormControls';
+import { VoiceInputButton } from '@/components/ui/VoiceInputButton';
 import { sanitizeDiagnosticCode } from '@/lib/inspections/validation';
 import { EMPTY_DIAGNOSTIC_CODE, type DiagnosticsState } from '@/lib/inspections/types';
 
@@ -88,13 +89,21 @@ export function StepDiagnostics({ value, onChange, onBack, onNext, nextLabel }: 
                   value={entry.code}
                   onChange={(e) => updateCode(entry.clientId, { code: sanitizeDiagnosticCode(e.target.value) })}
                 />
-                <TextField
-                  label="Leírás"
-                  name={`dtc-desc-${entry.clientId}`}
-                  placeholder="pl. Égéskimaradás az 1. hengerben"
-                  value={entry.description}
-                  onChange={(e) => updateCode(entry.clientId, { description: e.target.value })}
-                />
+                <div className="relative">
+                  <TextField
+                    label="Leírás"
+                    name={`dtc-desc-${entry.clientId}`}
+                    placeholder="pl. Égéskimaradás az 1. hengerben"
+                    className="pr-9"
+                    value={entry.description}
+                    onChange={(e) => updateCode(entry.clientId, { description: e.target.value })}
+                  />
+                  <VoiceInputButton
+                    value={entry.description}
+                    onChange={(next) => updateCode(entry.clientId, { description: next })}
+                    className="absolute bottom-2 right-2"
+                  />
+                </div>
               </div>
             </div>
           ))}

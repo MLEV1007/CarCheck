@@ -1,5 +1,6 @@
-import { InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react';
+import { ChangeEvent, InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
+import { VoiceInputButton } from '@/components/ui/VoiceInputButton';
 
 /**
  * Linear design system (linear.md) `text-input` tokenje -- surface-1 háttér,
@@ -93,21 +94,39 @@ export function SelectField({ label, hint, error, id, className, options, placeh
 
 interface TextareaFieldProps extends TextareaHTMLAttributes<HTMLTextAreaElement>, FieldWrapperProps {}
 
-export function TextareaField({ label, hint, id, className, ...props }: TextareaFieldProps) {
+/** Hangalapú jegyzetelés (PROJEKT_INSTRUKCIOK.md "Hangalapú Jegyzetelés" lépés) --
+ * MINDEN `TextareaField`-en (a wizard összes hosszabb Megjegyzés/Leírás mezője, pl.
+ * `StepDefects.tsx` "Hiba leírása", `StepServiceHistory.tsx` "Megjegyzés") automatikusan
+ * megjelenik a mikrofon gomb a mező jobb felső sarkában -- egyetlen közös komponensen
+ * keresztül, nem kellett minden hívóhelyen külön bekötni. */
+export function TextareaField({ label, hint, id, className, value, onChange, ...props }: TextareaFieldProps) {
   const fieldId = id ?? props.name;
+  const textValue = typeof value === 'string' ? value : '';
+
+  function handleVoiceChange(nextValue: string) {
+    if (!onChange) return;
+    const syntheticEvent = { target: { value: nextValue } } as unknown as ChangeEvent<HTMLTextAreaElement>;
+    onChange(syntheticEvent);
+  }
+
   return (
     <div className="flex flex-col gap-1.5">
       <FieldLabel label={label} htmlFor={fieldId} hint={hint} />
-      <textarea
-        id={fieldId}
-        className={cn(
-          'min-h-[96px] w-full resize-y rounded-md border border-linear-hairline bg-linear-surface-1 px-3 py-2.5',
-          'text-[14px] text-linear-ink placeholder:text-linear-ink-subtle transition-colors',
-          'focus:border-linear-primary focus:outline-none focus:ring-2 focus:ring-linear-primary/30',
-          className
-        )}
-        {...props}
-      />
+      <div className="relative">
+        <textarea
+          id={fieldId}
+          value={value}
+          onChange={onChange}
+          className={cn(
+            'min-h-[96px] w-full resize-y rounded-md border border-linear-hairline bg-linear-surface-1 px-3 py-2.5 pr-10',
+            'text-[14px] text-linear-ink placeholder:text-linear-ink-subtle transition-colors',
+            'focus:border-linear-primary focus:outline-none focus:ring-2 focus:ring-linear-primary/30',
+            className
+          )}
+          {...props}
+        />
+        <VoiceInputButton value={textValue} onChange={handleVoiceChange} className="absolute right-2 top-2" />
+      </div>
     </div>
   );
 }

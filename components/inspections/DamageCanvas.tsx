@@ -6,6 +6,7 @@ import { Trash2, X, ZoomIn } from 'lucide-react';
 import { CAR_IMAGE_HEIGHT, CAR_IMAGE_SRC, CAR_IMAGE_WIDTH } from '@/lib/inspections/carImageMap';
 import { DAMAGE_TYPE_COLOR, DAMAGE_TYPE_LABEL, DAMAGE_TYPES } from '@/lib/inspections/constants';
 import { DefectMediaUpload } from '@/components/inspections/wizard/DefectMediaUpload';
+import { VoiceInputButton } from '@/components/ui/VoiceInputButton';
 import type { DamagePointState, DamageType } from '@/lib/inspections/types';
 
 interface DamageCanvasProps {
@@ -265,17 +266,24 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
 
                 <div className="flex flex-col gap-1.5">
                   <span className={fieldLabelClass}>Leírás (opcionális)</span>
-                  <textarea
-                    placeholder="Rövid megjegyzés a sérülésről…"
-                    value={pending.description}
-                    onChange={(e) => setPending({ ...pending, description: e.target.value })}
-                    rows={2}
-                    className={
-                      theme === 'dark'
-                        ? 'w-full resize-none rounded-md border border-linear-hairline bg-linear-surface-1 px-2.5 py-2 text-[13px] text-linear-ink placeholder:text-linear-ink-subtle transition-colors focus:border-linear-primary focus:outline-none focus:ring-2 focus:ring-linear-primary/30'
-                        : 'w-full resize-none rounded-md border border-bmw-hairline bg-white px-2.5 py-2 text-[13px] text-bmw-ink placeholder:text-bmw-muted-soft transition-colors focus:border-bmw-primary focus:outline-none focus:ring-2 focus:ring-bmw-primary/30'
-                    }
-                  />
+                  <div className="relative">
+                    <textarea
+                      placeholder="Rövid megjegyzés a sérülésről…"
+                      value={pending.description}
+                      onChange={(e) => setPending({ ...pending, description: e.target.value })}
+                      rows={2}
+                      className={
+                        theme === 'dark'
+                          ? 'w-full resize-none rounded-md border border-linear-hairline bg-linear-surface-1 px-2.5 py-2 pr-9 text-[13px] text-linear-ink placeholder:text-linear-ink-subtle transition-colors focus:border-linear-primary focus:outline-none focus:ring-2 focus:ring-linear-primary/30'
+                          : 'w-full resize-none rounded-md border border-bmw-hairline bg-white px-2.5 py-2 pr-9 text-[13px] text-bmw-ink placeholder:text-bmw-muted-soft transition-colors focus:border-bmw-primary focus:outline-none focus:ring-2 focus:ring-bmw-primary/30'
+                      }
+                    />
+                    <VoiceInputButton
+                      value={pending.description}
+                      onChange={(next) => setPending({ ...pending, description: next })}
+                      className="absolute right-1.5 top-1.5"
+                    />
+                  </div>
                 </div>
 
                 <div className="flex flex-col gap-1.5">
