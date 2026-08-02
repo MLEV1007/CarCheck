@@ -35,7 +35,7 @@ import {
   type DamagePointState,
   type DefectState,
   type DiagnosticsState,
-  type EquipmentItemState,
+  type FeatureFormState,
   type FinalAssessmentState,
   type GeneralPhotoState,
   type PaintPointState,
@@ -56,8 +56,8 @@ const NEXT_STEP_SHORT_LABEL: Record<WizardStep, string> = Object.fromEntries(
   WIZARD_STEP_META.map(({ step, shortLabel }) => [step, shortLabel])
 ) as Record<WizardStep, string>;
 
-function defaultEquipment(): EquipmentItemState[] {
-  return EQUIPMENT_ITEMS.map((name) => ({ name, status: 'na' as const }));
+function defaultEquipment(): FeatureFormState[] {
+  return EQUIPMENT_ITEMS.map((name) => ({ id: name, status: 'not_present' as const, notes: '', file: null, previewUrl: null }));
 }
 
 interface InspectionWizardProps {
@@ -74,7 +74,7 @@ interface InspectionWizardProps {
   initialGeneralPhotos?: GeneralPhotoState[];
   initialServiceHistory?: ServiceHistoryState;
   initialDiagnostics?: DiagnosticsState;
-  initialEquipment?: EquipmentItemState[];
+  initialEquipment?: FeatureFormState[];
   initialTires?: TiresState;
   initialTireGeneralInfo?: TireGeneralInfoState;
   initialPaintMeasurements?: PaintPointState[];
@@ -123,7 +123,7 @@ export function InspectionWizard({
   const [generalPhotos, setGeneralPhotos] = useState<GeneralPhotoState[]>(initialGeneralPhotos ?? []);
   const [serviceHistory, setServiceHistory] = useState<ServiceHistoryState>(initialServiceHistory ?? EMPTY_SERVICE_HISTORY);
   const [diagnostics, setDiagnostics] = useState<DiagnosticsState>(initialDiagnostics ?? EMPTY_DIAGNOSTICS);
-  const [equipment, setEquipment] = useState<EquipmentItemState[]>(initialEquipment ?? defaultEquipment());
+  const [equipment, setEquipment] = useState<FeatureFormState[]>(initialEquipment ?? defaultEquipment());
   const [tires, setTires] = useState<TiresState>(initialTires ?? EMPTY_TIRES);
   const [tireGeneralInfo, setTireGeneralInfo] = useState<TireGeneralInfoState>(
     initialTireGeneralInfo ?? EMPTY_TIRE_GENERAL_INFO
@@ -251,9 +251,41 @@ export function InspectionWizard({
               .map((entry) => ({ code: entry.code, description: entry.description })),
           };
 
-      // Felszereltség (B pont): a teljes katalógust mentjük (a `na` állapotú elemeket is),
-      // hogy a publikus riport mátrixa mindig ugyanazt a fix listát tudja megjeleníteni.
-      const equipmentPayload = equipment.map((item) => ({ name: item.name, status: item.status }));
+      // Felszereltség -- UX teljes újratervezés (2026-08-02): a teljes katalógust mentjük
+      // (a `not_present` állapotú elemeket is), hogy a publikus riport mátrixa mindig
+      // ugyanazt a fix listát tudja megjeleníteni. A hibafotó feltöltése PONTOSAN ugyanazt
+      // a "blob vs. már feltöltött Storage URL" mintát követi, mint a hiba-/sérülés-média
+      // -- csak a most kiválasztott (`file !== null`) fotók töltődnek fel most, piszkozat
+      // szerkesztésekor a már meglévő URL-eket (`previewUrl`, NEM `blob:`) csak megtartjuk.
+      // `notes`/`photo_url` KIZÁRÓLAG `status === 'defective'` esetén kerül be a mentett
+      // objektumba -- ha a user egy korábban hibásra jelölt, majd visszaállított
+      // (működő/nincs benne) elemhez írt megjegyzést/fotót, az a mentéskor eldobódik,
+      // mert a `FeatureState` DB-alak szerint ezek csak defektnél értelmezettek.
+      const equipmentPayload = await Promise.all(
+        equipment.map(async (item) => {
+          const base: { id: string; status: typeof item.status; notes?: string; photo_url?: string } = {
+            id: item.id,
+            status: item.status,
+          };
+          if (item.status !== 'defective') return base;
+
+          if (item.notes.trim() !== '') base.notes = item.notes;
+
+          if (item.file) {
+            const safeName = item.file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+            const path = `${user.id}/${inspectionId}/equipment/${crypto.randomUUID()}-${safeName}`;
+            const { error: uploadError } = await supabase.storage
+              .from('inspection-media')
+              .upload(path, item.file, { upsert: true });
+            if (uploadError) throw uploadError;
+            base.photo_url = supabase.storage.from('inspection-media').getPublicUrl(path).data.publicUrl;
+          } else if (item.previewUrl && !item.previewUrl.startsWith('blob:')) {
+            base.photo_url = item.previewUrl;
+          }
+
+          return base;
+        })
+      );
 
       // Gumiabroncsok (C pont): mind a 4 pozíciót mentjük, üres/hiányos mezőknél `null`-lal --
       // a `mm` numerikus, a `dot` KIZÁRÓLAG akkor kerül be, ha a 4 számjegyű kód formailag ÉS

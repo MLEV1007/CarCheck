@@ -1,6 +1,6 @@
 import type {
   DamageType,
-  EquipmentStatus,
+  FeatureStatus,
   FinalAssessmentRecommendation,
   RimType,
   ServiceHistoryStatus,
@@ -34,8 +34,9 @@ export interface PublicReportInspection {
   /** Diagnosztikai hibakódok modul (3 új szakértői modul lépés) -- ha `no_dtc` igaz,
    * a `codes` a mentéskor mindig üresen kerül be (lásd InspectionWizard.tsx). */
   diagnostics: PublicReportDiagnostics;
-  /** Felszereltségi elemek állapota modul. */
-  equipment: PublicReportEquipmentItem[];
+  /** Felszereltségi elemek állapota modul -- UX teljes újratervezés (2026-08-02),
+   * "Szupergyors tömeges kijelölés" lépés. */
+  equipment: PublicReportFeature[];
   /** Gumiabroncsok állapota modul -- kerékpozíciónként opcionális, mert egy régi
    * (e modul előtti) vizsgálatnál vagy részlegesen kitöltött piszkozatnál hiányozhat.
    * A `rim_type`/`brand` ÁLTALÁNOS mezők (Gumiabroncs & Felni modul bővítése, A pont) --
@@ -106,9 +107,17 @@ export interface PublicReportDiagnostics {
   codes: PublicReportDiagnosticCode[];
 }
 
-export interface PublicReportEquipmentItem {
-  name: string;
-  status: EquipmentStatus;
+/**
+ * A `get_public_report` RPC-n keresztül visszaadott felszereltség-elem alak -- 1:1 az
+ * `inspections.equipment` JSONB-ben ténylegesen tárolt (lásd `lib/inspections/types.ts`
+ * `FeatureState`) struktúra. `notes`/`photo_url` csak `status === 'defective'` esetén
+ * lehet jelen (a mentéskor `InspectionWizard.tsx` csak ekkor írja be).
+ */
+export interface PublicReportFeature {
+  id: string;
+  status: FeatureStatus;
+  notes?: string | null;
+  photo_url?: string | null;
 }
 
 export interface PublicReportTireMeasurement {

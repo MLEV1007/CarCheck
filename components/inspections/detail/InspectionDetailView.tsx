@@ -20,7 +20,7 @@ import { PaintStatusBadge } from '@/components/inspections/wizard/PaintStatusBad
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { isVideoUrl } from '@/lib/reports/media';
 import {
-  EQUIPMENT_STATUS_LABEL,
+  FEATURE_STATUS_LABEL,
   FINAL_ASSESSMENT_RECOMMENDATION_LABEL,
   RIM_TYPE_LABEL,
   SERVICE_HISTORY_STATUS_LABEL,
@@ -36,7 +36,7 @@ import { DamageCanvas } from '@/components/inspections/DamageCanvas';
 import type {
   DamagePointState,
   DiagnosticsState,
-  EquipmentItemState,
+  FeatureFormState,
   FinalAssessmentState,
   ServiceHistoryState,
   TireGeneralInfoState,
@@ -78,18 +78,18 @@ interface InspectionDetailViewProps {
   generalPhotos: string[];
   serviceHistory: ServiceHistoryState;
   diagnostics: DiagnosticsState;
-  equipment: EquipmentItemState[];
+  equipment: FeatureFormState[];
   tires: TiresState;
   tireGeneralInfo: TireGeneralInfoState;
   damages: DamagePointState[];
   finalAssessment: FinalAssessmentState;
 }
 
-const EQUIPMENT_ICON = { working: CheckCircle2, not_working: XCircle, na: MinusCircle } as const;
-const EQUIPMENT_ICON_CLASS = {
+const FEATURE_ICON = { working: CheckCircle2, defective: XCircle, not_present: MinusCircle } as const;
+const FEATURE_ICON_CLASS = {
   working: 'text-linear-success',
-  not_working: 'text-linear-danger',
-  na: 'text-linear-ink-tertiary',
+  defective: 'text-linear-danger',
+  not_present: 'text-linear-ink-tertiary',
 } as const;
 
 /**
@@ -120,7 +120,7 @@ export function InspectionDetailView({
   const overallPaintAverage = getOverallPaintAverage(paintMeasurements);
   const overallPaintStatus = overallPaintAverage !== null ? getPaintStatus(overallPaintAverage) : null;
   const diagnosticCodes = diagnostics.codes.filter((entry) => entry.code.trim() !== '');
-  const relevantEquipment = equipment.filter((item) => item.status !== 'na');
+  const relevantEquipment = equipment.filter((item) => item.status !== 'not_present');
   const filledTirePositions = Object.entries(tires).filter(
     ([, tire]) => tire.mm.trim() !== '' || tire.dot.trim() !== ''
   );
@@ -398,14 +398,31 @@ export function InspectionDetailView({
           ) : (
             <ul className="mt-3 flex flex-col divide-y divide-linear-hairline">
               {relevantEquipment.map((item) => {
-                const Icon = EQUIPMENT_ICON[item.status];
+                const Icon = FEATURE_ICON[item.status];
                 return (
-                  <li key={item.name} className="flex items-center justify-between gap-3 py-2">
-                    <span className="text-[13px] text-linear-ink">{item.name}</span>
-                    <span className={'inline-flex items-center gap-1.5 text-[13px] ' + EQUIPMENT_ICON_CLASS[item.status]}>
-                      <Icon className="h-3.5 w-3.5" />
-                      {EQUIPMENT_STATUS_LABEL[item.status]}
-                    </span>
+                  <li key={item.id} className="flex flex-col gap-1 py-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-[13px] text-linear-ink">{item.id}</span>
+                      <span className={'inline-flex items-center gap-1.5 text-[13px] ' + FEATURE_ICON_CLASS[item.status]}>
+                        <Icon className="h-3.5 w-3.5" />
+                        {FEATURE_STATUS_LABEL[item.status]}
+                      </span>
+                    </div>
+                    {item.status === 'defective' && (item.notes.trim() !== '' || item.previewUrl) && (
+                      <div className="flex flex-wrap items-center gap-2 text-[12px] text-linear-ink-subtle">
+                        {item.notes.trim() !== '' && <span>{item.notes}</span>}
+                        {item.previewUrl && (
+                          <a
+                            href={item.previewUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex shrink-0 items-center gap-1 text-linear-primary hover:underline"
+                          >
+                            📷 Fotó megtekintése
+                          </a>
+                        )}
+                      </div>
+                    )}
                   </li>
                 );
               })}

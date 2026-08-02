@@ -121,15 +121,43 @@ export const EMPTY_DIAGNOSTIC_CODE = (): DiagnosticCodeState => ({
 export const EMPTY_DIAGNOSTICS: DiagnosticsState = { noDtc: true, codes: [] };
 
 /**
- * Felszereltségi elemek állapota modul (PROJEKT_INSTRUKCIOK.md, "Felszereltségi
- * Elemek Állapota Modul" lépés) -- a `lib/inspections/constants.ts` `EQUIPMENT_ITEMS`
- * előre definiált listájának minden eleméhez egy 3-állású státusz tartozik.
+ * Felszereltségi elemek állapota modul -- "Szupergyors tömeges kijelölés" UX-újratervezés
+ * (2026-08-02) -- a `lib/inspections/constants.ts` `EQUIPMENT_ITEMS` előre definiált
+ * listájának minden eleméhez egy 3-állású státusz tartozik: `working` (működik),
+ * `defective` (hibás -- ekkor kerül csak értelmezésre a `notes`/fotó), `not_present`
+ * (nincs az autóban / nem releváns).
  */
-export type EquipmentStatus = 'working' | 'not_working' | 'na';
+export type FeatureStatus = 'working' | 'defective' | 'not_present';
 
-export interface EquipmentItemState {
-  name: string;
-  status: EquipmentStatus;
+/**
+ * A `inspections.equipment` JSONB oszlopban ténylegesen TÁROLT (és a `get_public_report`
+ * RPC-n keresztül a publikus riportnak is átadott) alak egy elemre -- `notes`/`photo_url`
+ * SZÁNDÉKOSAN csak akkor kerül be, ha `status === 'defective'` (lásd
+ * `InspectionWizard.tsx` `handleSubmit`), minden más esetben `undefined`/hiányzik a
+ * mentett objektumból, hogy a JSONB ne cipeljen felesleges `null` kulcsokat.
+ */
+export interface FeatureState {
+  id: string;
+  status: FeatureStatus;
+  notes?: string;
+  photo_url?: string;
+}
+
+/**
+ * Wizard-oldali (szerkesztés közbeni) state egy felszereltségi elemhez -- a `notes` itt
+ * mindig string (nem opcionális, hogy a beviteli mező kontrollált maradjon), a
+ * `file`/`previewUrl` pár UGYANAZT a "blob vs. már feltöltött Storage URL" mintát követi,
+ * mint a `DefectState`/`DamagePointState`-nél: `file` egy most kiválasztott, még fel nem
+ * töltött hibafotó; `previewUrl` piszkozat szerkesztésekor egy már feltöltött Storage
+ * publikus URL is lehet `file` nélkül. Mindkettő csak `defective` állapotnál releváns --
+ * mentéskor alakul át a fenti `FeatureState` payload-dá (lásd `InspectionWizard.tsx`).
+ */
+export interface FeatureFormState {
+  id: string;
+  status: FeatureStatus;
+  notes: string;
+  file: File | null;
+  previewUrl: string | null;
 }
 
 /** Felszereltség-katalógus kategóriái (bővített lista, kategória-fülekkel + kereséssel

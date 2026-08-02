@@ -12,8 +12,8 @@ import type {
   DamageType,
   DefectState,
   DiagnosticsState,
-  EquipmentItemState,
-  EquipmentStatus,
+  FeatureFormState,
+  FeatureStatus,
   FinalAssessmentRecommendation,
   FinalAssessmentState,
   GeneralPhotoState,
@@ -43,18 +43,43 @@ function toInitialDiagnostics(raw: unknown): DiagnosticsState {
   };
 }
 
-function toInitialEquipment(raw: unknown): EquipmentItemState[] {
-  const stored = Array.isArray(raw) ? (raw as Array<{ name?: string; status?: string }>) : [];
-  const VALID_STATUSES: EquipmentStatus[] = ['working', 'not_working', 'na'];
+/** Felszereltség UX-újratervezés (2026-08-02) -- a `stored` tömb elemei KÉTFÉLE alakúak
+ * lehetnek: a `migrate_equipment_to_feature_state_shape` Supabase migráció az ÉLES
+ * adatbázison már átalakította a korábbi ({ name, status: working/not_working/na })
+ * sorokat az új ({ id, status: working/defective/not_present, notes?, photo_url? })
+ * alakra, de a kódot defenzíven MINDKÉT alakra felkészítjük (`entry.id ?? entry.name`
+ * az azonosítóhoz, `LEGACY_STATUS_MAP` a régi státusz-értékekhez) -- ugyanaz az elv, mint
+ * a `toInitialTireGeneralInfo`-nál a régi szabad szöveges márkanevekkel. */
+const LEGACY_FEATURE_STATUS_MAP: Record<string, FeatureStatus> = {
+  working: 'working',
+  not_working: 'defective',
+  na: 'not_present',
+};
+
+function toInitialEquipment(raw: unknown): FeatureFormState[] {
+  const stored = Array.isArray(raw)
+    ? (raw as Array<{ id?: string; name?: string; status?: string; notes?: string; photo_url?: string }>)
+    : [];
+  const VALID_STATUSES: FeatureStatus[] = ['working', 'defective', 'not_present'];
   // A teljes, JELENLEGI katalógust (EQUIPMENT_ITEMS) használjuk alapnak -- ha a tárolt
   // tömbben egy elem hiányzik (pl. a katalógus bővült a vizsgálat rögzítése óta), az
-  // alapértelmezett `na` státusszal jelenik meg, nem esik ki a listából.
+  // alapértelmezett `not_present` státusszal jelenik meg, nem esik ki a listából.
   return EQUIPMENT_ITEMS.map((name) => {
-    const match = stored.find((entry) => entry.name === name);
-    const status = match?.status && VALID_STATUSES.includes(match.status as EquipmentStatus)
-      ? (match.status as EquipmentStatus)
-      : 'na';
-    return { name, status };
+    const match = stored.find((entry) => (entry.id ?? entry.name) === name);
+    const rawStatus = match?.status;
+    const status: FeatureStatus =
+      rawStatus && VALID_STATUSES.includes(rawStatus as FeatureStatus)
+        ? (rawStatus as FeatureStatus)
+        : rawStatus && rawStatus in LEGACY_FEATURE_STATUS_MAP
+          ? LEGACY_FEATURE_STATUS_MAP[rawStatus]
+          : 'not_present';
+    return {
+      id: name,
+      status,
+      notes: match?.notes ?? '',
+      file: null,
+      previewUrl: match?.photo_url ?? null,
+    };
   });
 }
 

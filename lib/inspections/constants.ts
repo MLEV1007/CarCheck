@@ -1,7 +1,7 @@
 import type {
   DamageType,
   EquipmentCategory,
-  EquipmentStatus,
+  FeatureStatus,
   FinalAssessmentRecommendation,
   PaintPointState,
   PaintStatus,
@@ -73,17 +73,22 @@ export const DAMAGE_TYPE_COLOR: Record<DamageType, string> = {
 
 export const DAMAGE_TYPES: DamageType[] = ['scratch', 'dent', 'rust', 'chip', 'crack', 'other'];
 
-export const EQUIPMENT_STATUS_LABEL: Record<EquipmentStatus, string> = {
+/** Felszereltség modul UX-újratervezés (2026-08-02) -- 3-állapotú kompakt segmented
+ * control feliratai (`StepEquipment.tsx`), és a publikus riport `EquipmentMatrix.tsx`
+ * jelvényeinek felirata. */
+export const FEATURE_STATUS_LABEL: Record<FeatureStatus, string> = {
   working: 'Működik',
-  not_working: 'Nem működik',
-  na: 'Nem releváns',
+  defective: 'Hibás',
+  not_present: 'Nincs benne',
 };
 
 /**
  * Bővített, kategorizált felszereltség-katalógus (a "Bővített Felszereltség Lista"
- * lépés alapján) -- 4 kategória, összesen ~200 elem. A `StepEquipment.tsx` ebből épít
- * kategória-fülekkel + gyorskeresővel szűrhető listát, mert egyetlen lapos lista ennyi
- * elemnél már áttekinthetetlen lenne.
+ * lépés alapján) -- 4 kategória, összesen ~200 elem. A `StepEquipment.tsx` (UX-
+ * újratervezés, 2026-08-02 óta) ebből épít fel egy élő kereséssel szűrhető, kategória-
+ * fejlécekkel csoportosított listát -- nincsenek többé fülek, egyetlen felszereltség sem
+ * "bújik el" egy másik kategória-fül mögött, mert egyetlen lapos lista ennyi elemnél
+ * áttekinthetetlen lenne.
  */
 export const EQUIPMENT_CATEGORY_LABEL: Record<EquipmentCategory, string> = {
   muszaki: '🛠️ Műszaki & Asszisztensek',
@@ -323,7 +328,8 @@ export interface EquipmentCatalogItem {
 }
 
 /** Teljes, kategóriákkal ellátott, lapított felszereltség-katalógus -- ebből épül fel
- * a `StepEquipment.tsx` kategória-fülekkel + kereséssel szűrhető listája. */
+ * a `StepEquipment.tsx` élő kereséssel szűrhető, kategória-fejlécekkel csoportosított
+ * listája. */
 export const EQUIPMENT_CATALOG_ITEMS: EquipmentCatalogItem[] = EQUIPMENT_CATEGORY_ORDER.flatMap((category) =>
   EQUIPMENT_CATALOG[category].map((name) => ({ name, category }))
 );
@@ -333,58 +339,12 @@ export const EQUIPMENT_CATALOG_ITEMS: EquipmentCatalogItem[] = EQUIPMENT_CATEGOR
  * `defaultEquipment()` és `app/inspections/[id]/page.tsx` `toInitialEquipment()`. */
 export const EQUIPMENT_ITEMS: string[] = EQUIPMENT_CATALOG_ITEMS.map((item) => item.name);
 
-/** Név -> kategória lookup a `StepEquipment.tsx` kereső-szűréséhez (kereséskor az
- * összes kategóriában keresünk, a kategória-fülek csak üres keresésnél szűrnek). */
+/** Név -> kategória lookup a `StepEquipment.tsx`-hez -- a szűrt/kereséssel talált elemeket
+ * ebből csoportosítjuk kategória-fejlécek alá a megjelenítéskor. */
 export const EQUIPMENT_NAME_TO_CATEGORY: Record<string, EquipmentCategory> = Object.fromEntries(
   EQUIPMENT_CATALOG_ITEMS.map((item) => [item.name, item.category])
 );
 
-export interface FeaturedEquipmentItem {
-  /** A "Kiemelt / Gyakori extrák" szekcióban megjelenő, rövid köznyelvi felirat. */
-  displayLabel: string;
-  /** A TÉNYLEGES katalógus-elem neve (`EQUIPMENT_CATALOG_ITEMS`-ben szereplő kulcs) --
-   * ugyanarra a state-bejegyzésre mutat, mint amit a user a teljes listában (kategória
-   * fül alatt) is megtalálna, tehát a kiemelt gomb és a lenti lista sosem "esik szét"
-   * két külön adatra. */
-  name: string;
-}
-
-/**
- * "Kiemelt / Gyakori extrák" -- a 15-16 leggyakrabban vizsgált felszereltségi elem,
- * mindig a `StepEquipment.tsx` lépés TETEJÉN, kategória-fültől és kereséstől függetlenül
- * (Hibrid Okos-Lista, PROJEKT_INSTRUKCIOK.md "Felszereltség modul" lépés, A pont).
- * A `name` mező a `EQUIPMENT_CATALOG_ITEMS`-ben már létező, pontos katalógus-nevekre
- * mutat -- ahol a köznyelvi elnevezés (`displayLabel`) eltér a katalógus hivatalos
- * szövegétől (pl. "Navigáció" -> "GPS (navigáció)"), ott a `displayLabel` csak a kiemelt
- * kártyán jelenik meg, de a mögötte lévő állapot (`working`/`not_working`/`na`) UGYANAZ
- * a bejegyzés, mint amit a lenti, kategorizált listában is látna a user. Két elem
- * (`Klímaberendezés`, `Ülésfűtés hátul`, `Android Auto / Apple CarPlay`) korábban
- * hiányzott a katalógusból -- ezeket felvettük a megfelelő kategóriába (lásd fent),
- * hogy a kiemelt gomb ne "lógjon a levegőben" saját state-bejegyzés nélkül.
- */
-export const FEATURED_EQUIPMENT: FeaturedEquipmentItem[] = [
-  { displayLabel: 'Klímaberendezés', name: 'Klímaberendezés' },
-  { displayLabel: 'Tempomat', name: 'tempomat' },
-  { displayLabel: 'Távolságtartó tempomat', name: 'távolságtartó tempomat' },
-  { displayLabel: 'Tolatóradar', name: 'tolatóradar' },
-  { displayLabel: 'Tolatókamera', name: 'tolatókamera' },
-  { displayLabel: 'Ülésfűtés elöl', name: 'fűthető első ülés' },
-  { displayLabel: 'Ülésfűtés hátul', name: 'Ülésfűtés hátul' },
-  { displayLabel: 'Bőrkormány', name: 'bőrkormány' },
-  { displayLabel: 'Navigáció', name: 'GPS (navigáció)' },
-  { displayLabel: 'Elektromos ablak elöl', name: 'elektromos ablak elöl' },
-  { displayLabel: 'Elektromos ablak hátul', name: 'elektromos ablak hátul' },
-  { displayLabel: 'LED fényszóró', name: 'LED fényszóró' },
-  { displayLabel: 'Bluetooth kihangosító', name: 'bluetooth-os kihangosító' },
-  { displayLabel: 'Android Auto / Apple CarPlay', name: 'Android Auto / Apple CarPlay' },
-  { displayLabel: 'Holttér-figyelő', name: 'holttér-figyelő rendszer' },
-  { displayLabel: 'Sávtartó rendszer', name: 'sávtartó rendszer' },
-];
-
-/** A kiemelt elemek katalógus-neveinek gyors halmaza -- a fő (kategorizált/kereshető)
- * lista ezekkel a nevekkel NEM jelenik meg még egyszer lent, hogy ne legyen duplikált
- * sor (a kiemelt kártya és a lenti lista UGYANAZT az állapotot módosítja). */
-export const FEATURED_EQUIPMENT_NAMES = new Set(FEATURED_EQUIPMENT.map((item) => item.name));
 
 export interface LicensePlateCountryOption {
   /** A kék sávban megjelenő betűkód (pl. "H", "SK", "Egyéb"). */
