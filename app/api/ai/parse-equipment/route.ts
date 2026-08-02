@@ -4,8 +4,8 @@ import { EQUIPMENT_ITEMS } from '@/lib/inspections/constants';
 import type { FeatureState, FeatureStatus } from '@/lib/inspections/types';
 
 /**
- * Google Gemini 2.0 Flash backend a Felszereltség modul "Hibrid Okos-Lista" hangalapú/
- * szabadszöveges kitöltéséhez (PROJEKT_INSTRUKCIOK.md, "AI API Route létrehozása" lépés).
+ * Google Gemini backend a Felszereltség modul "Hibrid Okos-Lista" hangalapú/szabadszöveges
+ * kitöltéséhez (PROJEKT_INSTRUKCIOK.md, "AI API Route létrehozása" lépés).
  *
  * A vizsgáló a `StepEquipment.tsx`-ben egy hangalapú (Web Speech API, lásd
  * `lib/speech-recognition.d.ts`) vagy szabadon beírt magyar nyelvű leírást diktál/gépel be
@@ -16,10 +16,24 @@ import type { FeatureState, FeatureStatus } from '@/lib/inspections/types';
  * `id`/`status`/`notes` frissítésekkel tudja utólag (merge-eléssel) átírni a wizard state-jét,
  * a `currentStates`-ben esetlegesen már meglévő, NEM említett elemeket változatlanul hagyva.
  *
+ * **Modellválasztás + fallback-lánc (2026-08-02, "429 RESOURCE_EXHAUSTED, limit: 0,
+ * model: gemini-2.0-flash" hiba elhárítása):** a `gemini-2.0-flash` ingyenes (free tier)
+ * kvótája egyes Google AI Studio projekteken `0`-ra van állítva -- MINDEN hívás azonnal
+ * `429`-cel bukik, függetlenül a mi kódunktól. Elsődleges modell mostantól a
+ * `gemini-1.5-flash` (garantált, globális ingyenes keret: 15 RPM / 1500 RPD), ha ez is
+ * hibázna (pl. átmeneti túlterhelés, vagy egy jövőbeli fiókon szintén 0 a kerete), a route
+ * sorban megpróbálja a `gemini-1.5-pro`-t, végül a `gemini-2.0-flash`-t is -- lásd
+ * `MODEL_CANDIDATES` és a `POST` handler modell-ciklusa.
+ *
  * `runtime = 'nodejs'`, mert a `@google/genai` SDK Node.js API-kra (pl. `fetch` felett, de a
  * csomag maga Node.js-célzású) épül -- Edge runtime-on nem garantált a működése.
  */
 export const runtime = 'nodejs';
+
+/** Modell-fallback lánc, kipróbálási sorrendben -- lásd a fenti JSDoc "Modellválasztás +
+ * fallback-lánc" pontját. Az első sikeres válasz azonnal megszakítja a ciklust, a
+ * `POST` handlerben. */
+const MODEL_CANDIDATES = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash'] as const;
 
 const VALID_STATUSES: FeatureStatus[] = ['working', 'defective', 'not_present'];
 
@@ -123,45 +137,64 @@ export async function POST(request: NextRequest): Promise<NextResponse<ParseEqui
 
   const ai = new GoogleGenAI({ apiKey });
 
-  let rawText: string | undefined;
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
-      contents: [{ role: 'user', parts: [{ text: `Diktált/beírt szöveg:\n"""\n${text}\n"""` }] }],
-      config: {
-        systemInstruction: buildSystemInstruction(),
-        temperature: 0,
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              id: { type: Type.STRING },
-              status: { type: Type.STRING, enum: VALID_STATUSES },
-              notes: { type: Type.STRING },
-            },
-            // A Gemini 2.0 Flash-nél a `propertyOrdering` explicit megadása szükséges a
-            // kimenet stabil mezősorrendjéhez (a Google dokumentáció ezt kifejezetten kéri
-            // 2.0-s modelleknél, újabb (2.5+/3.x) modelleknél már opcionális).
-            propertyOrdering: ['id', 'status', 'notes'],
-            required: ['id', 'status'],
-          },
+  const generationConfig = {
+    systemInstruction: buildSystemInstruction(),
+    temperature: 0,
+    responseMimeType: 'application/json' as const,
+    responseSchema: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          id: { type: Type.STRING },
+          status: { type: Type.STRING, enum: VALID_STATUSES },
+          notes: { type: Type.STRING },
         },
+        // A Gemini 2.0 Flash-nél a `propertyOrdering` explicit megadása szükséges a
+        // kimenet stabil mezősorrendjéhez (a Google dokumentáció ezt kifejezetten kéri
+        // 2.0-s modelleknél, újabb (2.5+/3.x) modelleknél már opcionális, de az 1.5-ös
+        // modelleknél sem árt -- ugyanaz a séma megy mindhárom `MODEL_CANDIDATES`-hez).
+        propertyOrdering: ['id', 'status', 'notes'],
+        required: ['id', 'status'],
       },
-    });
+    },
+  };
 
-    rawText = response.text;
-  } catch (error) {
-    // Részletes hibalogolás a szerver konzolra (Vercel -> Deployments -> Functions logs) --
-    // a teljes kivétel-objektumot logoljuk, nem csak az üzenetet, hogy a stack trace/kód is
-    // látszódjon.
-    console.error('Gemini API Error details:', error);
+  // Modell-fallback lánc -- sorban kipróbáljuk a `MODEL_CANDIDATES`-t, az ELSŐ sikeres
+  // választ azonnal felhasználjuk. Minden sikertelen próbálkozás hibáját eltároljuk
+  // (`lastError`) ÉS azonnal logoljuk is (modellnevenként külön, hogy a Vercel logokból
+  // pontosan látszódjon, melyik modell hányadik próbálkozásra bukott el, pl. a jelenlegi
+  // "429 RESOURCE_EXHAUSTED, limit: 0, model: gemini-2.0-flash" hiba esetén) -- csak akkor
+  // adunk vissza hibaválaszt a kliensnek, ha MINDEGYIK modell elbukott.
+  let rawText: string | undefined;
+  let lastError: unknown;
+
+  for (const model of MODEL_CANDIDATES) {
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents: [{ role: 'user', parts: [{ text: `Diktált/beírt szöveg:\n"""\n${text}\n"""` }] }],
+        config: generationConfig,
+      });
+
+      rawText = response.text;
+      lastError = undefined; // sikeres hívás -- egy korábbi (más modellről érkezett) hiba már irreleváns
+      break;
+    } catch (error) {
+      console.error(`Gemini API Error details (model: ${model}):`, error);
+      lastError = error;
+    }
+  }
+
+  // `lastError` KIZÁRÓLAG akkor marad kitöltve a ciklus után, ha MINDEGYIK modell
+  // hibázott (a sikeres ág mindig `undefined`-re állítja és `break`-el) -- ez a
+  // hívási/hálózati hibaág, elkülönítve az alábbi "üres, de hibátlan válasz" esettől.
+  if (lastError !== undefined) {
     return NextResponse.json(
       {
         success: false,
         error: 'Hiba történt a Gemini API hívása közben',
-        details: toErrorDetails(error),
+        details: toErrorDetails(lastError),
       },
       { status: 502 }
     );
