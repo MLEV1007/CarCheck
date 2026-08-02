@@ -345,6 +345,60 @@ export const EQUIPMENT_NAME_TO_CATEGORY: Record<string, EquipmentCategory> = Obj
   EQUIPMENT_CATALOG_ITEMS.map((item) => [item.name, item.category])
 );
 
+/**
+ * Csomag-alapú gyorsgombok (PROJEKT_INSTRUKCIOK.md, "2. LÉPÉS: Felszereltség UI
+ * bekötése" -- "Csomag-alapú gyorsgombok" pont, `StepEquipment.tsx`) -- a vizsgálat 1
+ * másodperc alatt előkészíthető egy tipikus alap/átlagos/teljes felszereltségű autóhoz,
+ * a szaki utána csak a kivételeket (hibás/hiányzó/extra elem) állítja át kézzel.
+ *
+ * `EQUIPMENT_PRESET_BASIC` ("🥉 Alap (Fapados)") -- a legalapvetőbb, gyakorlatilag MINDEN
+ * (akár a legszegényesebb felszereltségű) autóban megtalálható biztonsági/kényelmi elemek.
+ * `EQUIPMENT_PRESET_COMFORT_EXTRA` ("🥈 Átlagos / Komfort") -- a leggyakoribb KIEGÉSZÍTŐ
+ * kényelmi extrák a `EQUIPMENT_PRESET_BASIC` FÖLÖTT (a Komfort preset a kettő UNIÓJÁT
+ * állítja `working`-ra -- lásd `StepEquipment.tsx` `applyPreset()`), a ritkább prémium
+ * extrák (pl. masszírozós ülés, HUD, tolótető) szándékosan KIMARADTAK mindkét listából,
+ * ezért a Komfort preset ezeknél `not_present`-et állít be.
+ *
+ * Mindkét lista KIZÁRÓLAG a `EQUIPMENT_CATALOG` fenti, pontos elem-neveit tartalmazza --
+ * ha a katalógus egy hivatkozott nevet átnevezne, ez a két lista is frissítendő
+ * (build-időben NEM ellenőrzött automatikusan, mert a `string[]` egyszerű literál lista).
+ */
+export const EQUIPMENT_PRESET_BASIC: string[] = [
+  'ABS (blokkolásgátló)',
+  'ESP (menetstabilizátor)',
+  'EBD/EBV (elektronikus fékerő-elosztó)',
+  'fékasszisztens',
+  'elektronikus rögzítőfék',
+  'szervokormány',
+  'centrálzár',
+  'indításgátló (immobiliser)',
+  'vezetőoldali légzsák',
+  'utasoldali légzsák',
+  'elektromos ablak elöl',
+  'rádió',
+];
+
+export const EQUIPMENT_PRESET_COMFORT_EXTRA: string[] = [
+  'Klímaberendezés',
+  'tempomat',
+  'első-hátsó parkolóradar',
+  'fűthető első ülés',
+  'tolatókamera',
+  'multifunkciós kormánykerék',
+  'fedélzeti komputer',
+  'esőszenzor',
+  'ködlámpa',
+  'elektromos ablak hátul',
+  'elektromos tükör',
+  'fűthető tükör',
+  'bluetooth-os kihangosító',
+  'AUX csatlakozó',
+  'USB csatlakozó',
+  'GPS (navigáció)',
+  'automata fényszórókapcsolás',
+  'multifunkcionális kijelző',
+];
+
 
 export interface LicensePlateCountryOption {
   /** A kék sávban megjelenő betűkód (pl. "H", "SK", "Egyéb"). */

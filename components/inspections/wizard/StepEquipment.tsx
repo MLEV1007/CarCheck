@@ -1,12 +1,27 @@
 'use client';
 
 import { useMemo, useRef, useState } from 'react';
-import { Camera, CheckCircle2, MinusCircle, Search, X, XCircle, Zap, type LucideIcon } from 'lucide-react';
+import {
+  Camera,
+  CheckCircle2,
+  Loader2,
+  MinusCircle,
+  Search,
+  Sparkles,
+  X,
+  XCircle,
+  Zap,
+  type LucideIcon,
+} from 'lucide-react';
 import { TextareaField } from '@/components/inspections/wizard/FormControls';
+import { VinScanToast, type VinScanToastVariant } from '@/components/inspections/wizard/VinScanToast';
 import {
   EQUIPMENT_CATEGORY_LABEL,
   EQUIPMENT_CATEGORY_ORDER,
+  EQUIPMENT_ITEMS,
   EQUIPMENT_NAME_TO_CATEGORY,
+  EQUIPMENT_PRESET_BASIC,
+  EQUIPMENT_PRESET_COMFORT_EXTRA,
   FEATURE_STATUS_LABEL,
 } from '@/lib/inspections/constants';
 import type { EquipmentCategory, FeatureFormState, FeatureStatus } from '@/lib/inspections/types';
@@ -30,39 +45,57 @@ const STATUS_OPTIONS: { status: FeatureStatus; icon: LucideIcon; activeClass: st
   },
 ];
 
+/** Statikus (a modul betöltésekor egyszer számolt) `Set`-ek a preset-gombokhoz -- a
+ * `EQUIPMENT_PRESET_BASIC`/`EQUIPMENT_PRESET_COMFORT_EXTRA` importált tömbök nem
+ * változnak renderelés közben, ezért NEM `useMemo`-ban, hanem modul-szinten élnek. */
+const BASIC_PRESET_IDS = new Set(EQUIPMENT_PRESET_BASIC);
+const COMFORT_PRESET_IDS = new Set([...EQUIPMENT_PRESET_BASIC, ...EQUIPMENT_PRESET_COMFORT_EXTRA]);
+
+type PresetKey = 'basic' | 'comfort' | 'full' | 'reset';
+
+const PRESET_BUTTONS: { key: PresetKey; label: string }[] = [
+  { key: 'basic', label: '🥉 Alap (Fapados)' },
+  { key: 'comfort', label: '🥈 Átlagos / Komfort' },
+  { key: 'full', label: '🥇 Full Extra' },
+  { key: 'reset', label: '🔄 Visszaállítás (Minden üres)' },
+];
+
+/** A Gemini AI parse-equipment route válasz-alakja (`app/api/ai/parse-equipment/route.ts`)
+ * -- csak a kliens-oldalon ténylegesen felhasznált mezőket modellezi. */
+interface ParseEquipmentApiResponse {
+  success: boolean;
+  updates?: { id: string; status: FeatureStatus; notes?: string }[];
+  error?: string;
+}
+
 /**
- * LÉPÉS -- Felszereltségi Elemek Állapota Modul, UX TELJES ÚJRATERVEZÉSE (2026-08-02).
- * Ez a redesign SZÁNDÉKOSAN lecseréli a korábbi "Hibrid Okos-Lista" (Kiemelt szekció +
- * kategória-fülek + nézet-szűrő) réteges felépítését egy sokkal egyszerűbb, gyorsabb
- * struktúrára:
+ * LÉPÉS -- Felszereltségi Elemek Állapota Modul.
  *
- *  A) Szupergyors tömeges kijelölés -- "⚡ Összes kijelölése: Működik" gomb a lépés
- *     tetején. A jelenleg LÁTHATÓ (keresés által szűrt) elemek státuszát egyszerre
- *     `working`-ra állítja -- így egy tipikus "minden extra megvan és működik" vizsgálat
- *     pár másodperc alatt elintézhető, a szaki csak a kivételeket (hibás/hiányzó elem)
- *     állítja át kézzel utána.
- *  B) Élő kereső -- EGYETLEN keresőmező, ami gépelés közben azonnal szűr a TELJES
- *     katalógusban. Nincsenek többé kategória-fülek/váltógombok -- a találatok a
- *     kategória-fejlécek alá csoportosítva jelennek meg (csak a nem üres kategóriák
- *     látszanak), hogy a ~212 elemes lista mindig áttekinthető maradjon.
- *  C) Kompakt, 3-állapotú segmented control minden soron (🟢 Működik / 🔴 Hibás /
- *     ⚪ Nincs benne) -- a korábbi "nehézkes dobozok" helyett egyetlen, tömör pill-sor.
- *  D) Progressive disclosure -- ha egy elemnél a 🔴 Hibás állapotot választja a szaki, a
- *     sor alatt lágy animációval megjelenik egy feltételes panel: Megjegyzés (a megosztott
- *     `TextareaField`-en keresztül -- automatikusan kapja a magyar hangalapú jegyzetelés
- *     mikrofon gombját is, lásd `FormControls.tsx`), és egy "📷 Fotó csatolása a hibáról"
- *     gomb. A tényleges Supabase Storage feltöltés -- a projekt MINDEN más média-
- *     feltöltésével (Hibák & Média, Általános fotók, Szervizmúlt, Sérülés-térkép) azonos
- *     elven -- csak a wizard végleges beküldésekor történik meg (lásd
- *     `InspectionWizard.tsx` `handleSubmit`), itt csak kliens-oldali fájlválasztás és
- *     előnézet zajlik.
+ * **UX TELJES ÚJRATERVEZÉSE (2026-08-02, 1. hullám):** a korábbi "Hibrid Okos-Lista"
+ * (Kiemelt szekció + kategória-fülek + nézet-szűrő) helyett egy sokkal egyszerűbb,
+ * gyorsabb struktúra: A) szupergyors tömeges kijelölés a keresés által listázott
+ * elemekre, B) élő kereső a TELJES katalógusban, C) kompakt 3-állapotú segmented control
+ * soronként, D) progressive disclosure (Megjegyzés + Fotó) KIZÁRÓLAG "Hibás" állapotnál.
+ *
+ * **AI DIKTÁLÁS + CSOMAG-PRESETEK (2026-08-02, 2. hullám, PROJEKT_INSTRUKCIOK.md "2. LÉPÉS"):**
+ *  E) Csomag-alapú gyorsgombok (`PRESET_BUTTONS`/`applyPreset()`) -- Alap/Átlagos/Full
+ *     Extra/Visszaállítás, 1 kattintással előkészítve a TELJES katalógust egy tipikus
+ *     felszereltségi szinthez, lásd `lib/inspections/constants.ts`
+ *     `EQUIPMENT_PRESET_BASIC`/`EQUIPMENT_PRESET_COMFORT_EXTRA`.
+ *  F) AI diktálás (`EquipmentAiAssistant`) -- a szaki szabad szöveges/hangalapú (a
+ *     megosztott `TextareaField` beépített `VoiceInputButton`-ján keresztül, magyar,
+ *     Web Speech API) leírásából a `/api/ai/parse-equipment` Gemini 2.0 Flash backend
+ *     (lásd az előző fejlesztési lépést) strukturált `FeatureState`-frissítéseket ad
+ *     vissza, amiket `applyAiUpdates()` a state-be merge-el -- KIZÁRÓLAG az AI által
+ *     ténylegesen visszaküldött elemeket módosítva, a többit érintetlenül hagyva.
  *
  * A `value` (`FeatureFormState[]`) a TELJES katalógust tartalmazza mindig (lásd
- * `InspectionWizard.tsx` `defaultEquipment()`) -- a keresés/csoportosítás csak azt
- * szabályozza, mely elemek LÁTSZANAK, a state maga nem szűkül.
+ * `InspectionWizard.tsx` `defaultEquipment()`) -- a keresés/csoportosítás/preset csak azt
+ * szabályozza, mely elemek LÁTSZANAK/módosulnak, a tömb hossza maga nem változik.
  */
 export function StepEquipment({ value, onChange, onBack, onNext, nextLabel }: StepEquipmentProps) {
   const [query, setQuery] = useState('');
+  const [toast, setToast] = useState<{ variant: VinScanToastVariant; message: string } | null>(null);
 
   function setStatus(id: string, status: FeatureStatus) {
     onChange(value.map((item) => (item.id === id ? { ...item, status } : item)));
@@ -88,6 +121,50 @@ export function StepEquipment({ value, onChange, onBack, onNext, nextLabel }: St
         if (item.id !== id) return item;
         if (item.file && item.previewUrl?.startsWith('blob:')) URL.revokeObjectURL(item.previewUrl);
         return { ...item, file: null, previewUrl: null };
+      })
+    );
+  }
+
+  /** E) Csomag-alapú gyorsgombok -- a TELJES katalógusra hatnak (nem a keresés által
+   * szűrt listára, szemben az alábbi `markListedAsWorking()`-gal), mert egy preset
+   * kifejezetten a teljes vizsgálat egyben történő előkészítésére szolgál. Státusz-
+   * VÁLTÁSKOR a korábbi hiba-megjegyzés/fotó törlődik (a blob URL felszabadításával) --
+   * egy már nem "Hibás" elemnél ezek elavulttá válnának, a "Visszaállítás" gombnál pedig
+   * ez a szándékolt, teljes nullázó viselkedés. */
+  function applyPreset(preset: PresetKey) {
+    onChange(
+      value.map((item) => {
+        let nextStatus: FeatureStatus;
+        if (preset === 'full') nextStatus = 'working';
+        else if (preset === 'reset') nextStatus = 'not_present';
+        else if (preset === 'basic') nextStatus = BASIC_PRESET_IDS.has(item.id) ? 'working' : 'not_present';
+        else nextStatus = COMFORT_PRESET_IDS.has(item.id) ? 'working' : 'not_present';
+
+        if (nextStatus === item.status) return item;
+        if (item.file && item.previewUrl?.startsWith('blob:')) URL.revokeObjectURL(item.previewUrl);
+        return { ...item, status: nextStatus, notes: '', file: null, previewUrl: null };
+      })
+    );
+  }
+
+  /** F) Az AI válaszában érkező frissítések merge-elése -- KIZÁRÓLAG a `updates`-ben
+   * ténylegesen szereplő `id`-jű elemeket módosítja, a többi elem VÁLTOZATLAN marad.
+   * "Hibás" célállapotnál az AI `notes` mezőjét (ha érkezett) átveszi, egyébként a
+   * meglévő megjegyzést megtartja; minden más célállapotnál -- ugyanúgy, mint a
+   * preset-eknél -- törli az esetleg korábban rögzített hiba-megjegyzést/fotót. */
+  function applyAiUpdates(updates: { id: string; status: FeatureStatus; notes?: string }[]) {
+    const updateMap = new Map(updates.map((update) => [update.id, update]));
+    onChange(
+      value.map((item) => {
+        const update = updateMap.get(item.id);
+        if (!update) return item;
+
+        if (update.status === 'defective') {
+          return { ...item, status: 'defective', notes: update.notes ?? item.notes };
+        }
+
+        if (item.file && item.previewUrl?.startsWith('blob:')) URL.revokeObjectURL(item.previewUrl);
+        return { ...item, status: update.status, notes: '', file: null, previewUrl: null };
       })
     );
   }
@@ -125,6 +202,8 @@ export function StepEquipment({ value, onChange, onBack, onNext, nextLabel }: St
 
   return (
     <div className="flex flex-col gap-6">
+      {toast && <VinScanToast variant={toast.variant} message={toast.message} onDismiss={() => setToast(null)} />}
+
       <div>
         <h2 className="text-[18px] font-semibold tracking-[-0.3px] text-linear-ink">
           Felszereltségi elemek állapota
@@ -140,6 +219,23 @@ export function StepEquipment({ value, onChange, onBack, onNext, nextLabel }: St
           </p>
         )}
       </div>
+
+      {/* E) Csomag-alapú gyorsgombok -- lásd a `StepEquipment` JSDoc-ját fent. */}
+      <div className="flex flex-wrap gap-2">
+        {PRESET_BUTTONS.map(({ key, label }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => applyPreset(key)}
+            className="inline-flex h-9 items-center rounded-md border border-linear-hairline-strong bg-linear-surface-2 px-3 text-[12.5px] font-medium text-linear-ink-muted transition-colors hover:border-linear-primary hover:text-linear-ink"
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* F) AI diktálás -- lásd `EquipmentAiAssistant` lent. */}
+      <EquipmentAiAssistant value={value} onApplyUpdates={applyAiUpdates} onToast={setToast} />
 
       {/* A) Tömeges kijelölő varázsgomb + B) Élő kereső -- ragadós, hogy hosszú görgetés
           közben is elérhető maradjon. */}
@@ -159,7 +255,7 @@ export function StepEquipment({ value, onChange, onBack, onNext, nextLabel }: St
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="🔍 Keresés a felszereltségek között…"
+            placeholder={`🔍 Keresés a ${EQUIPMENT_ITEMS.length} felszerelés között…`}
             className="h-10 w-full rounded-md border border-linear-hairline bg-linear-surface-1 pl-9 pr-3 text-[14px] text-linear-ink placeholder:text-linear-ink-subtle transition-colors focus:border-linear-primary focus:outline-none focus:ring-1 focus:ring-linear-primary/40"
           />
         </div>
@@ -209,6 +305,110 @@ export function StepEquipment({ value, onChange, onBack, onNext, nextLabel }: St
         >
           Tovább – {nextLabel}
         </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * F) AI diktálás kártya -- kiemelt, a lépés tetején (a preset-gombok alatt) élő vezérlő.
+ * A szöveges mező a megosztott `TextareaField`-et használja fel VÁLTOZTATÁS NÉLKÜL --
+ * az automatikusan tartalmazza a magyar (hu-HU) `VoiceInputButton`-t (mikrofon gomb,
+ * pulzáló "Diktálás…" jelzéssel felvétel közben, lásd `lib/hooks/useSpeechToText.ts`),
+ * így nem kellett külön mikrofon-komponenst építeni -- ugyanaz a bevált, projekt-szintű
+ * hangalapú bevitel, mint minden más hosszabb Megjegyzés/Leírás mezőnél.
+ *
+ * A "Feldolgozás AI-val" gomb a `/api/ai/parse-equipment` route-ot hívja (lásd az előző
+ * fejlesztési lépés) -- a válasz `updates` tömbjét az `onApplyUpdates` callback-en
+ * keresztül adja tovább a szülőnek, a siker/hiba visszajelzést pedig az `onToast`-on.
+ */
+function EquipmentAiAssistant({
+  value,
+  onApplyUpdates,
+  onToast,
+}: {
+  value: FeatureFormState[];
+  onApplyUpdates: (updates: { id: string; status: FeatureStatus; notes?: string }[]) => void;
+  onToast: (toast: { variant: VinScanToastVariant; message: string }) => void;
+}) {
+  const [text, setText] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  async function handleProcess() {
+    const trimmed = text.trim();
+    if (!trimmed || isProcessing) return;
+
+    setIsProcessing(true);
+    try {
+      const response = await fetch('/api/ai/parse-equipment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: trimmed }),
+      });
+
+      const data = (await response.json()) as ParseEquipmentApiResponse;
+
+      if (!response.ok || !data.success) {
+        onToast({
+          variant: 'warning',
+          message: data.error ?? 'Hiba történt az AI feldolgozás közben. Próbáld újra.',
+        });
+        return;
+      }
+
+      const updates = data.updates ?? [];
+      if (updates.length === 0) {
+        onToast({
+          variant: 'warning',
+          message: 'Az AI nem talált egyértelműen felismerhető felszereltségi elemet a szövegben.',
+        });
+        return;
+      }
+
+      onApplyUpdates(updates);
+      onToast({ variant: 'success', message: `AI frissítve: ${updates.length} elem módosítva` });
+      setText('');
+    } catch {
+      onToast({ variant: 'warning', message: 'Hálózati hiba -- az AI feldolgozás nem sikerült. Próbáld újra.' });
+    } finally {
+      setIsProcessing(false);
+    }
+  }
+
+  return (
+    <div className="rounded-lg border border-linear-primary/30 bg-linear-surface-1 p-4">
+      <div className="mb-3 flex items-center gap-2.5">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-linear-primary/15 text-linear-primary">
+          <Sparkles className="h-4 w-4" />
+        </span>
+        <div>
+          <p className="text-[14px] font-semibold text-linear-ink">AI diktálás</p>
+          <p className="text-[12px] text-linear-ink-subtle">
+            Mondd vagy írd be egy mondatban, mi működik, mi hibás, mi hiányzik -- az AI beállítja helyetted.
+          </p>
+        </div>
+      </div>
+
+      <TextareaField
+        label="Diktált / beírt szöveg"
+        name="equipment-ai-text"
+        placeholder='pl. "a klíma működik, a tolatókamera hibás, homályos a kép, navigáció nincs az autóban"'
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        rows={3}
+      />
+
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={handleProcess}
+          disabled={!text.trim() || isProcessing}
+          className="inline-flex h-10 items-center gap-1.5 rounded-md bg-linear-primary px-4 text-[13px] font-semibold text-white transition-colors hover:bg-linear-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+          {isProcessing ? 'AI értelmezi a diktálást…' : 'Feldolgozás AI-val'}
+        </button>
+        {isProcessing && <span className="text-[12px] text-linear-ink-subtle">Ez néhány másodpercig tarthat…</span>}
       </div>
     </div>
   );
