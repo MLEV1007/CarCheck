@@ -16,16 +16,25 @@ import type { FeatureState, FeatureStatus } from '@/lib/inspections/types';
  * `id`/`status`/`notes` frissítésekkel tudja utólag (merge-eléssel) átírni a wizard state-jét,
  * a `currentStates`-ben esetlegesen már meglévő, NEM említett elemeket változatlanul hagyva.
  *
- * **Modellválasztás + fallback-lánc (2026-08-02, két egymást követő hiba elhárítása):**
+ * **Modellválasztás + fallback-lánc (2026-08-02, három egymást követő hiba elhárítása):**
  * (1) a `gemini-2.0-flash` ingyenes (free tier) kvótája egyes Google AI Studio
  * projekteken `0`-ra volt állítva -- MINDEN hívás azonnal `429 RESOURCE_EXHAUSTED,
  * limit: 0`-val bukott. (2) A `gemini-2.0-flash` NÉV -- a Google modell-kivezetései miatt
  * -- azóta TELJESEN meg is szűnt (`404 NOT_FOUND, "This model models/gemini-2.0-flash is
- * no longer available"`), tehát a korábbi fallback-lánc végén sem lett volna elérhető.
- * Emiatt a `MODEL_CANDIDATES` mostantól KIZÁRÓLAG jelenleg aktív, ingyenesen elérhető
- * modelleket tartalmaz: elsődleges `gemini-1.5-flash` (garantált, globális ingyenes keret:
- * 15 RPM / 1500 RPD), ha ez hibázna (pl. átmeneti túlterhelés), a route megpróbálja a
- * `gemini-1.5-pro`-t -- lásd `MODEL_CANDIDATES` és a `POST` handler modell-ciklusa.
+ * no longer available"`). (3) A fallback-lánc akkori második tagja, a `gemini-1.5-pro`
+ * SOSEM volt valódi, hivatalosan elérhető modellazonosító -- ez a NÉV maga adott
+ * `404 NOT_FOUND`-ot, és mivel a hibaválasz `details` mezője korábban mindig az UTOLSÓ
+ * (a fallback-láncban legutolsóként megpróbált) modell hibáját mutatta, ez ELFEDTE a
+ * VALÓDI, elsődleges (`gemini-1.5-flash`) hiba okát -- a UI-n úgy tűnt, mintha az
+ * elsődleges modell adna 404-et, holott az valójában sikeresen elérhető, csak a
+ * fallback-modellnév volt hibás.
+ *
+ * Emiatt a `MODEL_CANDIDATES` mostantól KIZÁRÓLAG hivatalosan támogatott, jelenleg aktív
+ * Flash modellazonosítókat tartalmaz (`gemini-1.5-flash` elsődleges, `gemini-1.5-flash-latest`
+ * a stabil verzió-alias fallback-ként -- lásd `MODEL_CANDIDATES`), ÉS a `POST` handler
+ * modell-ciklusa mostantól KIZÁRÓLAG az ELSŐDLEGES (index 0) modell hibáját adja vissza a
+ * `details` mezőben, függetlenül attól, hány fallback próbálkozás futott utána -- lásd a
+ * `POST` handler `primaryError` változóját.
  *
  * `runtime = 'nodejs'`, mert a `@google/genai` SDK Node.js API-kra (pl. `fetch` felett, de a
  * csomag maga Node.js-célzású) épül -- Edge runtime-on nem garantált a működése.
@@ -34,10 +43,12 @@ export const runtime = 'nodejs';
 
 /** Modell-fallback lánc, kipróbálási sorrendben -- lásd a fenti JSDoc "Modellválasztás +
  * fallback-lánc" pontját. Az első sikeres válasz azonnal megszakítja a ciklust, a
- * `POST` handlerben. SZÁNDÉKOSAN NEM tartalmazza a `gemini-2.0-flash`-t -- az a modellnév
- * a Google oldalán megszűnt (`404 NOT_FOUND`), felvétele csak egy garantáltan bukó,
- * felesleges harmadik próbálkozást jelentene minden hívásnál. */
-const MODEL_CANDIDATES = ['gemini-1.5-flash', 'gemini-1.5-pro'] as const;
+ * `POST` handlerben. SZÁNDÉKOSAN NEM tartalmazza SEM a `gemini-2.0-flash`-t (a Google
+ * oldalán megszűnt modellnév, `404 NOT_FOUND`), SEM a `gemini-1.5-pro`-t (ez a "pro"
+ * variáns-név SOSEM volt hivatalosan érvényes azonosító ebben az SDK-ban, szintén
+ * `404 NOT_FOUND`-ot adott) -- mindkettő csak egy garantáltan bukó, felesleges
+ * próbálkozást (és a valódi hiba elfedését, lásd fent) jelentett volna minden hívásnál. */
+const MODEL_CANDIDATES = ['gemini-1.5-flash', 'gemini-1.5-flash-latest'] as const;
 
 const VALID_STATUSES: FeatureStatus[] = ['working', 'defective', 'not_present'];
 
@@ -165,14 +176,18 @@ export async function POST(request: NextRequest): Promise<NextResponse<ParseEqui
   };
 
   // Modell-fallback lánc -- sorban kipróbáljuk a `MODEL_CANDIDATES`-t, az ELSŐ sikeres
-  // választ azonnal felhasználjuk. Minden sikertelen próbálkozás hibáját eltároljuk
-  // (`lastError`) ÉS azonnal logoljuk is (modellnevenként külön, hogy a Vercel logokból
-  // pontosan látszódjon, melyik modell hányadik próbálkozásra bukott el) -- csak akkor
-  // adunk vissza hibaválaszt a kliensnek, ha MINDEGYIK modell elbukott.
+  // választ azonnal felhasználjuk. MINDEN próbálkozás hibáját logoljuk (modellnevenként
+  // külön, hogy a Vercel logokból pontosan látszódjon, melyik modell hányadik
+  // próbálkozásra bukott el), DE a kliensnek küldött `details` mezőbe KIZÁRÓLAG az
+  // ELSŐDLEGES (`MODEL_CANDIDATES[0]`) modell hibáját tesszük -- egy esetleges
+  // fallback-modell (pl. hibás/érvénytelen névvel) hibája NE fedje el a valódi,
+  // elsődleges okot (lásd a fájl fejléc-JSDoc-jában a `gemini-1.5-pro` 404-es esetét).
   let rawText: string | undefined;
-  let lastError: unknown;
+  let succeeded = false;
+  let primaryError: unknown;
 
-  for (const model of MODEL_CANDIDATES) {
+  for (let i = 0; i < MODEL_CANDIDATES.length; i++) {
+    const model = MODEL_CANDIDATES[i];
     try {
       const response = await ai.models.generateContent({
         model,
@@ -181,23 +196,20 @@ export async function POST(request: NextRequest): Promise<NextResponse<ParseEqui
       });
 
       rawText = response.text;
-      lastError = undefined; // sikeres hívás -- egy korábbi (más modellről érkezett) hiba már irreleváns
+      succeeded = true;
       break;
     } catch (error) {
       console.error(`Gemini API Error details (model: ${model}):`, error);
-      lastError = error;
+      if (i === 0) primaryError = error;
     }
   }
 
-  // `lastError` KIZÁRÓLAG akkor marad kitöltve a ciklus után, ha MINDEGYIK modell
-  // hibázott (a sikeres ág mindig `undefined`-re állítja és `break`-el) -- ez a
-  // hívási/hálózati hibaág, elkülönítve az alábbi "üres, de hibátlan válasz" esettől.
-  if (lastError !== undefined) {
+  if (!succeeded) {
     return NextResponse.json(
       {
         success: false,
         error: 'Hiba történt a Gemini API hívása közben',
-        details: toErrorDetails(lastError),
+        details: toErrorDetails(primaryError),
       },
       { status: 502 }
     );
