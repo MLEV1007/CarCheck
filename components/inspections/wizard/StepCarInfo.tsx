@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import { AlertTriangle, Camera, Loader2, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SelectField, TextField } from '@/components/inspections/wizard/FormControls';
 import { VinScanToast, type VinScanToastVariant } from '@/components/inspections/wizard/VinScanToast';
@@ -21,6 +21,64 @@ import type { CarInfoState } from '@/lib/inspections/types';
 
 const VIN_SCAN_FAILURE_MESSAGE =
   'Nem sikerült felismerni az alvázszámot. Kérlek fotózd közelebbről, vagy gépeld be manuálisan!';
+
+const AI_SCAN_FAILURE_MESSAGE =
+  'Nem sikerült az AI-alapú beolvasás. Próbáld újra, vagy használd a "VIN beolvasása fotóról" gombot, illetve gépeld be manuálisan!';
+
+/** A `/api/ai/scan-vin` route válasz-alakja (lásd `app/api/ai/scan-vin/route.ts`) -- csak a
+ * kliens-oldalon ténylegesen felhasznált mezőket modellezi, ugyanaz az elv, mint a
+ * `StepEquipment.tsx` `ParseEquipmentApiResponse` típusánál. */
+interface ScanVinApiResponse {
+  success: boolean;
+  data?: {
+    vin: string;
+    confidence: 'high' | 'medium' | 'low';
+    detectedDocumentType: 'vin_plate' | 'registration_certificate' | 'other';
+    extractedDetails?: {
+      plateNumber?: string;
+      make?: string;
+      model?: string;
+      registrationYear?: string;
+    };
+  };
+  error?: string;
+  /** Hibakeresési célú nyers hibaüzenet -- lásd `route.ts` `toErrorDetails()`. */
+  details?: string;
+}
+
+/** A kiválasztott fájlt `data:image/...;base64,...` séma szerinti data URL-lé alakítja --
+ * a `/api/ai/scan-vin` route ezt a formátumot fogadja el közvetlenül (a MIME-típust a
+ * data URL-ből olvassa ki, lásd a route `parseDataUrl()` függvényét). */
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error('A kép beolvasása sikertelen.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+/** Az AI által felismert gyártmány/típus szöveget megpróbálja a `CAR_CATALOG`-ban szereplő
+ * PONTOS névre illeszteni (ékezet-/kis-nagybetű-független összehasonlítással, `localeCompare`
+ * `sensitivity: 'base'`-zel -- pl. "skoda"/"Škoda" is egyezzen). `null`, ha nincs egyértelmű
+ * találat -- ekkor a hívó a nyers AI-szöveget szabad szöveges ("Egyéb / Más") mezőként tölti
+ * be, ugyanúgy, mint amikor a user maga választ ismeretlen márkát. */
+function matchCatalogBrand(rawMake: string | undefined): string | null {
+  const trimmed = rawMake?.trim();
+  if (!trimmed) return null;
+  return Object.keys(CAR_CATALOG).find((brand) => brand.localeCompare(trimmed, 'hu', { sensitivity: 'base' }) === 0) ?? null;
+}
+
+/** Ugyanaz az elv, mint `matchCatalogBrand`, de a MÁR (ismert vagy szabad szöveges) márkához
+ * tartozó típuslistán belül keres -- ha a `brand` nem szerepel a katalógusban, a `CAR_CATALOG[brand]`
+ * eleve `undefined`, ezért automatikusan `null`-t ad vissza (nincs szükség külön elágazásra). */
+function matchCatalogModel(brand: string, rawModel: string | undefined): string | null {
+  const trimmed = rawModel?.trim();
+  if (!trimmed) return null;
+  const models = CAR_CATALOG[brand];
+  if (!models) return null;
+  return models.find((model) => model.localeCompare(trimmed, 'hu', { sensitivity: 'base' }) === 0) ?? null;
+}
 
 interface StepCarInfoProps {
   value: CarInfoState;
@@ -65,7 +123,16 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
   // VIN OCR (Tesseract.js, kliens-oldali, 100%-ig ingyenes -- lásd lib/inspections/vinOcr.ts).
   const vinFileInputRef = useRef<HTMLInputElement>(null);
   const [isScanningVin, setIsScanningVin] = useState(false);
+  // A két beolvasási mód (Tesseract OCR ÉS Gemini Vision AI) UGYANAZT a toast-állapotot
+  // osztja meg -- a wizard felületén egyszerre úgyis csak egy visszajelzés-sáv látszik,
+  // nincs értelme külön state-nek.
   const [vinScanToast, setVinScanToast] = useState<{ variant: VinScanToastVariant; message: string } | null>(null);
+
+  // Gemini Vision AI szkenner (`/api/ai/scan-vin`, lásd a route JSDoc-ját) -- Forgalmi
+  // Engedély VAGY alvázszám-matrica fotóból VIN + (Forgalmi esetén) rendszám/gyártmány/
+  // típus/évjárat kinyerése egyetlen AI-hívással.
+  const aiScanFileInputRef = useRef<HTMLInputElement>(null);
+  const [isAiScanning, setIsAiScanning] = useState(false);
 
   const errors = getCarInfoErrors(value);
   const showError = (field: keyof CarInfoState) => (touched[field] || attemptedNext ? errors[field] : undefined);
@@ -137,6 +204,129 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
     }
   }
 
+  function handleAiScanClick() {
+    aiScanFileInputRef.current?.click();
+  }
+
+  /**
+   * Fotó kiválasztása/lefotózása után Base64-re konvertálja a képet (`readFileAsDataUrl`),
+   * elküldi a `/api/ai/scan-vin` route-nak, majd a válasz alapján -- KIZÁRÓLAG az AI által
+   * ténylegesen visszaadott mezőket felülírva -- előtölti a formot:
+   *  - `vin` -> Alvázszám (a helyi `sanitizeVin` szigorú ISO 3779-tisztítást is elvégzi
+   *    "MÉG EGYSZER", ugyanazzal az elvvel, mint a szerver-oldali `sanitizeVin` a route-ban --
+   *    dupla védelmi vonal, nem bízzuk kizárólag a szerverre).
+   *  - `extractedDetails.plateNumber` -> Rendszám (`sanitizeLicensePlate`).
+   *  - `extractedDetails.make`/`model` -> Márka/Típus -- ha a `CAR_CATALOG`-ban PONTOSAN
+   *    azonosítható a név (`matchCatalogBrand`/`matchCatalogModel`), dropdown-módra váltunk
+   *    a felismert értékkel; ha nem, a nyers AI-szöveggel szabad szöveges ("Egyéb / Más")
+   *    módra váltunk -- UGYANAZ a viselkedés, mint amikor a user saját kezűleg választja az
+   *    "Egyéb / Más" opciót egy nem katalogizált márkánál/típusnál.
+   *  - `extractedDetails.registrationYear` -> Évjárat (`sanitizeYear`).
+   * A gomb a feldolgozás alatt le van tiltva (`isAiScanning`), hogy ne induljon el
+   * párhuzamosan több hívás egy véletlen dupla kattintással.
+   */
+  async function handleAiScanPhotoSelected(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null;
+    // Az input értékét azonnal töröljük, hogy ugyanaz a fájl újra kiválasztható legyen.
+    event.target.value = '';
+    if (!file) return;
+
+    setIsAiScanning(true);
+    setVinScanToast(null);
+    try {
+      const imageDataUrl = await readFileAsDataUrl(file);
+
+      const response = await fetch('/api/ai/scan-vin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: imageDataUrl }),
+      });
+
+      const result = (await response.json()) as ScanVinApiResponse;
+
+      if (!response.ok || !result.success || !result.data) {
+        // A `details` mezőt (ha érkezett) a konzolba is kilogoljuk hibakereséshez, hogy
+        // Vercel-en a szerver-logok megnyitása nélkül is látszódjon a tényleges ok.
+        if (result.details) console.error('[StepCarInfo] Gemini scan-vin hiba részletek:', result.details);
+        setVinScanToast({ variant: 'warning', message: result.error ?? AI_SCAN_FAILURE_MESSAGE });
+        return;
+      }
+
+      const { data } = result;
+      const details = data.extractedDetails;
+      const next: CarInfoState = { ...value };
+      let filledCount = 0;
+      const newlyTouched: Partial<Record<keyof CarInfoState, boolean>> = {};
+
+      const cleanedVin = sanitizeVin(data.vin);
+      if (cleanedVin) {
+        next.vin = cleanedVin;
+        newlyTouched.vin = true;
+        filledCount += 1;
+      }
+
+      if (details?.plateNumber) {
+        const cleanedPlate = sanitizeLicensePlate(details.plateNumber);
+        if (cleanedPlate) {
+          next.licensePlate = cleanedPlate;
+          newlyTouched.licensePlate = true;
+          filledCount += 1;
+        }
+      }
+
+      if (details?.make) {
+        const matchedBrand = matchCatalogBrand(details.make);
+        next.carBrand = matchedBrand ?? details.make.trim();
+        next.carModel = ''; // márkaváltáskor a korábbi típus törlődik, ugyanaz az elv, mint handleBrandSelect-nél
+        setIsCustomBrand(matchedBrand === null);
+        setIsCustomModel(matchedBrand === null);
+        newlyTouched.carBrand = true;
+        filledCount += 1;
+      }
+
+      if (details?.model) {
+        const matchedModel = matchCatalogModel(next.carBrand, details.model);
+        next.carModel = matchedModel ?? details.model.trim();
+        setIsCustomModel(matchedModel === null);
+        newlyTouched.carModel = true;
+        filledCount += 1;
+      }
+
+      if (details?.registrationYear) {
+        const cleanedYear = sanitizeYear(details.registrationYear);
+        if (cleanedYear) {
+          next.year = cleanedYear;
+          newlyTouched.year = true;
+          filledCount += 1;
+        }
+      }
+
+      onChange(next);
+      setTouched((prev) => ({ ...prev, ...newlyTouched }));
+
+      if (filledCount === 0) {
+        setVinScanToast({
+          variant: 'warning',
+          message: 'Az AI nem talált felismerhető adatot a képen. Próbáld közelebbről, jobb megvilágításban lefotózni!',
+        });
+      } else if (data.confidence === 'low') {
+        setVinScanToast({
+          variant: 'warning',
+          message: `Beolvasva (${filledCount} mező kitöltve), de kérlek ellenőrizd az alvázszámot -- a kép elmosódott lehet!`,
+        });
+      } else {
+        setVinScanToast({
+          variant: 'success',
+          message: `Forgalmi/alvázszám sikeresen beolvasva AI-val: ${filledCount} mező kitöltve.`,
+        });
+      }
+    } catch {
+      setVinScanToast({ variant: 'warning', message: AI_SCAN_FAILURE_MESSAGE });
+    } finally {
+      setIsAiScanning(false);
+    }
+  }
+
   function handleNext() {
     if (Object.keys(errors).length === 0) {
       onNext();
@@ -162,6 +352,43 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
         <p className="mt-1 text-[13px] text-linear-ink-subtle">
           Add meg a vizsgált jármű azonosító adatait.
         </p>
+      </div>
+
+      {/* Gemini Vision AI szkenner -- kiemelt kártya a lépés tetején, a mezők kitöltése
+          ELŐTT, hogy a szaki egyetlen fotóval elindíthassa az auto-fill-t. */}
+      <div className="rounded-lg border border-linear-primary/30 bg-linear-surface-1 p-4">
+        <div className="mb-3 flex items-center gap-2.5">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-linear-primary/15 text-linear-primary">
+            <Sparkles className="h-4 w-4" />
+          </span>
+          <div>
+            <p className="text-[14px] font-semibold text-linear-ink">AI-alapú felismerés</p>
+            <p className="text-[12px] text-linear-ink-subtle">
+              Fotózd le a Forgalmi Engedélyt vagy az alvázszám-matricát -- az AI automatikusan kitölti az alábbi mezőket.
+            </p>
+          </div>
+        </div>
+
+        <input
+          ref={aiScanFileInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={handleAiScanPhotoSelected}
+        />
+        <button
+          type="button"
+          onClick={handleAiScanClick}
+          disabled={isAiScanning}
+          className="inline-flex h-10 items-center gap-1.5 rounded-md bg-linear-primary px-4 text-[13px] font-semibold text-white transition-colors hover:bg-linear-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isAiScanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+          {isAiScanning ? 'AI elemzi a képet és az ISO 3779 szabványt…' : '📷 Forgalmi vagy Alvázszám beszkennelése (AI)'}
+        </button>
+        {isAiScanning && (
+          <span className="mt-2 block text-[12px] text-linear-ink-subtle">Ez néhány másodpercig tarthat…</span>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
