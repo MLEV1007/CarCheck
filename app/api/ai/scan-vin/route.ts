@@ -172,7 +172,12 @@ function sanitizeExtractedDetails(raw: unknown): ScanVinExtractedDetailsClean | 
  * hívónak a `mimeType` mezőt kell megadnia, és a teljes `image` stringet nyers Base64-nek
  * tekintjük). */
 function parseDataUrl(image: string): { mimeType: string; data: string } | null {
-  const match = /^data:([^;]+);base64,(.+)$/s.exec(image.trim());
+  // FONTOS: NINCS `s` (dotAll) regex flag -- az a `tsconfig.json` `target: "ES2017"`
+  // beállítása mellett `tsc`/Next.js build hibát dob ("This regular expression flag is
+  // only available when targeting 'es2018' or later"), lásd a Vercel build hibáját, ami
+  // ezt a lépést kiváltotta. A `[\s\S]` karakterosztály UGYANAZT a "bármilyen karakter,
+  // sortörést is beleértve" viselkedést adja, `s` flag nélkül, ES2017-kompatibilisen.
+  const match = /^data:([^;]+);base64,([\s\S]+)$/.exec(image.trim());
   if (!match) return null;
   return { mimeType: match[1].trim().toLowerCase(), data: match[2].trim() };
 }
