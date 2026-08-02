@@ -2,6 +2,7 @@
 
 import { DAMAGE_TYPE_LABEL } from '@/lib/inspections/constants';
 import { DamageCanvas } from '@/components/inspections/DamageCanvas';
+import { WizardStepFooter } from '@/components/inspections/wizard/WizardBottomBar';
 import type { DamagePointState } from '@/lib/inspections/types';
 
 interface StepDamageMapProps {
@@ -54,22 +55,7 @@ export function StepDamageMap({ value, onChange, onBack, onNext, nextLabel }: St
         </ul>
       )}
 
-      <div className="flex flex-wrap justify-between gap-3 border-t border-linear-hairline pt-5">
-        <button
-          type="button"
-          onClick={onBack}
-          className="inline-flex h-10 items-center rounded-md border border-linear-hairline-strong bg-linear-surface-1 px-5 text-[14px] font-medium text-linear-ink transition-colors hover:bg-linear-surface-2"
-        >
-          Vissza
-        </button>
-        <button
-          type="button"
-          onClick={onNext}
-          className="inline-flex h-10 items-center rounded-md bg-linear-primary px-5 text-[14px] font-medium text-white transition-colors hover:bg-linear-primary-hover"
-        >
-          Tovább – {nextLabel}
-        </button>
-      </div>
+      <WizardStepFooter onBack={onBack} onNext={onNext} nextLabel={nextLabel} />
     </div>
   );
 }

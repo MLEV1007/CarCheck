@@ -7,7 +7,6 @@ import {
   Loader2,
   MinusCircle,
   Search,
-  Sparkles,
   X,
   XCircle,
   Zap,
@@ -15,6 +14,7 @@ import {
 } from 'lucide-react';
 import { TextareaField } from '@/components/inspections/wizard/FormControls';
 import { VinScanToast, type VinScanToastVariant } from '@/components/inspections/wizard/VinScanToast';
+import { WizardStepFooter } from '@/components/inspections/wizard/WizardBottomBar';
 import {
   EQUIPMENT_CATEGORY_LABEL,
   EQUIPMENT_CATEGORY_ORDER,
@@ -294,22 +294,7 @@ export function StepEquipment({ value, onChange, onBack, onNext, nextLabel }: St
         </div>
       )}
 
-      <div className="flex flex-wrap justify-between gap-3 border-t border-linear-hairline pt-5">
-        <button
-          type="button"
-          onClick={onBack}
-          className="inline-flex h-10 items-center rounded-md border border-linear-hairline-strong bg-linear-surface-1 px-5 text-[14px] font-medium text-linear-ink transition-colors hover:bg-linear-surface-2"
-        >
-          Vissza
-        </button>
-        <button
-          type="button"
-          onClick={onNext}
-          className="inline-flex h-10 items-center rounded-md bg-linear-primary px-5 text-[14px] font-medium text-white transition-colors hover:bg-linear-primary-hover"
-        >
-          Tovább – {nextLabel}
-        </button>
-      </div>
+      <WizardStepFooter onBack={onBack} onNext={onNext} nextLabel={nextLabel} />
     </div>
   );
 }
@@ -386,16 +371,15 @@ function EquipmentAiAssistant({
 
   return (
     <div className="rounded-lg border border-linear-primary/30 bg-linear-surface-1 p-4">
-      <div className="mb-3 flex items-center gap-2.5">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-linear-primary/15 text-linear-primary">
-          <Sparkles className="h-4 w-4" />
-        </span>
-        <div>
-          <p className="text-[14px] font-semibold text-linear-ink">AI diktálás</p>
-          <p className="text-[12px] text-linear-ink-subtle">
-            Mondd vagy írd be egy mondatban, mi működik, mi hibás, mi hiányzik -- az AI beállítja helyetted.
-          </p>
-        </div>
+      {/* A korábbi lila Sparkles ikon és "AI diktálás" felirat "generatív AI tech-demó"
+          hatást keltett -- a "UI/UX finomhangolás, Copywriting tisztítás" lépés kérésére
+          egy letisztult, ikon nélküli, profi SaaS-copy váltotta fel (a funkció maga --
+          Gemini szöveg-értelmezés + a megosztott hangalapú diktálás -- változatlan). */}
+      <div className="mb-3">
+        <p className="text-[14px] font-semibold text-linear-ink">Hangalapú gyorskitöltés</p>
+        <p className="text-[12px] text-linear-ink-subtle">
+          Diktáld be egyetlen mondatban a tesztelt extrákat, és a rendszer automatikusan beállítja a gombokat.
+        </p>
       </div>
 
       <TextareaField

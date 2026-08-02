@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ExternalLink, Pencil, Plus, Search } from 'lucide-react';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
-import { LicensePlateBadge } from '@/components/ui/LicensePlateBadge';
 import { InspectionActionsMenu } from '@/components/dashboard/InspectionActionsMenu';
 import { createClient } from '@/lib/supabase/client';
 
@@ -214,7 +213,20 @@ function InspectionRowItem({
       </Link>
 
       <div className="flex sm:justify-start">
-        <LicensePlateBadge value={inspection.license_plate} countryCode={inspection.license_plate_country} size="sm" />
+        {/* "Rendszám komponens letisztítása" lépés -- a korábbi, felségjelzés-sávos
+            `LicensePlateBadge` a Dashboard listájának szűk sorában (fix `h-7` magasság,
+            sűrűn egymás mellett futó oszlopok) szétesett/nehezen olvashatóvá vált. A
+            listanézetben ennél egy sokkal egyszerűbb, nem túlbonyolított jelvény a cél --
+            a `LicensePlateBadge` (felségjelzés-sáv + csillag) TOVÁBBRA IS él a Wizard
+            Áttekintésben, a `/inspections/[id]` adatlapon és a publikus BMW riportban,
+            csak EBBEN a szűk lista-kontextusban váltottuk le. */}
+        {inspection.license_plate ? (
+          <span className="inline-flex items-center gap-2 rounded border-2 border-blue-600 px-2 py-1 font-mono text-xs font-bold uppercase tracking-wider text-linear-ink">
+            {inspection.license_plate}
+          </span>
+        ) : (
+          <span className="text-[13px] text-linear-ink-subtle">—</span>
+        )}
       </div>
 
       <span className="text-[13px] text-linear-ink-muted sm:text-center">{inspection.year ?? '—'}</span>

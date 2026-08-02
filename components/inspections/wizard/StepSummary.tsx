@@ -1,7 +1,8 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { AlertTriangle, CheckCircle2, Loader2, MinusCircle, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, MinusCircle, XCircle } from 'lucide-react';
+import { WizardSummaryFooter } from '@/components/inspections/wizard/WizardBottomBar';
 import {
   FEATURE_STATUS_LABEL,
   FINAL_ASSESSMENT_RECOMMENDATION_LABEL,
@@ -361,37 +362,7 @@ export function StepSummary({
         </p>
       )}
 
-      <div className="flex flex-col-reverse gap-3 border-t border-linear-hairline pt-5 sm:flex-row sm:items-center sm:justify-between">
-        <button
-          type="button"
-          onClick={onBack}
-          disabled={isSubmitting}
-          className="inline-flex h-10 items-center rounded-md border border-linear-hairline-strong bg-linear-surface-1 px-5 text-[14px] font-medium text-linear-ink transition-colors hover:bg-linear-surface-2 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          Vissza
-        </button>
-
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <button
-            type="button"
-            onClick={onSaveDraft}
-            disabled={isSubmitting}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-linear-hairline-strong bg-linear-surface-1 px-5 text-[14px] font-medium text-linear-ink transition-colors hover:bg-linear-surface-2 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-            Mentés piszkozatként
-          </button>
-          <button
-            type="button"
-            onClick={onPublish}
-            disabled={isSubmitting}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-linear-primary px-5 text-[14px] font-medium text-white transition-colors hover:bg-linear-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-            Vizsgálat befejezése & Publikálás
-          </button>
-        </div>
-      </div>
+      <WizardSummaryFooter onBack={onBack} onSaveDraft={onSaveDraft} onPublish={onPublish} isSubmitting={isSubmitting} />
     </div>
   );
 }

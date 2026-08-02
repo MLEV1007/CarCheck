@@ -3,6 +3,7 @@
 import { getOverallPaintAverage, getPaintStatus } from '@/lib/inspections/constants';
 import { PaintCanvas } from '@/components/inspections/PaintCanvas';
 import { PaintStatusBadge } from '@/components/inspections/wizard/PaintStatusBadge';
+import { WizardStepFooter } from '@/components/inspections/wizard/WizardBottomBar';
 import type { PaintPointState } from '@/lib/inspections/types';
 
 interface StepPaintMeasurementsProps {
@@ -57,22 +58,7 @@ export function StepPaintMeasurements({ value, onChange, onBack, onNext, nextLab
 
       <PaintCanvas points={value} mode="edit" onChange={onChange} theme="dark" />
 
-      <div className="flex flex-wrap justify-between gap-3 border-t border-linear-hairline pt-5">
-        <button
-          type="button"
-          onClick={onBack}
-          className="inline-flex h-10 items-center rounded-md border border-linear-hairline-strong bg-linear-surface-1 px-5 text-[14px] font-medium text-linear-ink transition-colors hover:bg-linear-surface-2"
-        >
-          Vissza
-        </button>
-        <button
-          type="button"
-          onClick={onNext}
-          className="inline-flex h-10 items-center rounded-md bg-linear-primary px-5 text-[14px] font-medium text-white transition-colors hover:bg-linear-primary-hover"
-        >
-          Tovább – {nextLabel}
-        </button>
-      </div>
+      <WizardStepFooter onBack={onBack} onNext={onNext} nextLabel={nextLabel} />
     </div>
   );
 }

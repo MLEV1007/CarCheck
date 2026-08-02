@@ -20,12 +20,23 @@ interface LicensePlateBadgeProps {
  * Rendszám "felségjelzés" -- az EU rendszámtáblák bal oldali kék sávjának vizuális utánzata
  * (ország-jelölés betűkóddal + csillag), a rendszám szövege mellett. Design-rendszer-FÜGGETLEN,
  * direkt ezért él a `components/ui/`-ban (`Button.tsx`/`Input.tsx` mintájára) -- Linear dark
- * app (Wizard, `/inspections/[id]`), BMW light Publikus Riport és a Dashboard lista is
+ * app (Wizard Áttekintés, `/inspections/[id]`) és BMW light Publikus Riport egyaránt
  * UGYANEZT használja: egy fizikai rendszámtábla mindig fehér/kék/fekete, FÜGGETLENÜL a
  * körülötte lévő felület design rendszerétől vagy világos/sötét témájától, ezért itt
  * SZÁNDÉKOSAN literal (nem `linear-*`/`bmw-*` design-token) Tailwind színek szerepelnek
- * (`slate-*`, `#003399`, `#ffcc00`) -- ez a "Dashboard táblázat teljes UX/UI újratervezése"
- * lépés explicit kérése egy "igazi autós rendszám" megjelenésre.
+ * (`slate-*`, `#003399`, `#ffcc00`).
+ *
+ * **"Rendszám komponens letisztítása" lépés (2026-08-02):** a Dashboard LISTA nézete
+ * (`InspectionsExplorer.tsx`) mostantól NEM ezt a komponenst használja -- a szűk,
+ * sűrűn egymás mellett futó táblázat-oszlopban a felségjelzés-sávos jelvény szétesett/
+ * nehezen olvashatóvá vált, ezért ott egy sokkal egyszerűbb, inline `border-2
+ * border-blue-600` jelvény váltotta fel. Ugyanekkor a `StepCarInfo.tsx` (Wizard 1.
+ * lépés, "Jármű adatok") ŰRLAPJÁBÓL is eltűnt -- a Rendszám mező alatt korábban
+ * megjelenő élő előnézeti jelvény felesleges duplikációnak (kétszer megjelenő
+ * rendszám -- input mező ÉS grafikai előnézet egymás alatt) hatott, egyetlen sima
+ * szöveges input maradt. Ez a komponens a `StepSummary.tsx` Áttekintés lépésen, a
+ * `/inspections/[id]` adatlapon (`InspectionDetailView.tsx`) és a publikus riport
+ * hero-ján (`ReportHero.tsx`) változatlanul él tovább.
  *
  * A kék sáv EGY SORBAN (nem stack-elve) jeleníti meg a csillagot + a betűkódot, mert a
  * `countryCode` 1-5 karakter hosszú is lehet ("H"-tól "Egyéb"-ig) -- egy vízszintes

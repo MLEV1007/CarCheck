@@ -490,7 +490,7 @@ export function InspectionWizard({
   }
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-5 px-4 py-8 sm:px-6 sm:py-10">
+    <div className="mx-auto flex max-w-3xl flex-col gap-5 px-4 py-8 pb-28 sm:px-6 sm:py-10 sm:pb-32">
       <StepIndicator current={step} />
       <p className="-mt-1 text-[13px] font-medium text-linear-ink-subtle sm:hidden">
         {step}. lépés / {TOTAL_WIZARD_STEPS} · {STEP_LABELS[step]}
@@ -586,6 +586,18 @@ export function InspectionWizard({
             onBack={() => setStep(9)}
             onNext={() => setStep(11)}
             nextLabel={NEXT_STEP_SHORT_LABEL[11]}
+            aiSummaryContext={{
+              carInfo,
+              diagnostics,
+              equipment,
+              tires,
+              tireGeneralInfo,
+              paintMeasurements,
+              damages,
+              defects: defects.filter(
+                (defect) => defect.category.trim() !== '' || defect.description.trim() !== '' || defect.file
+              ),
+            }}
           />
         )}
         {step === 11 && (
@@ -611,6 +623,16 @@ export function InspectionWizard({
           />
         )}
       </div>
+
+      {/* Rögzített alsó navigációs sáv (Vissza/Tovább, ill. az utolsó lépésnél
+          Vissza/Piszkozat/Publikálás) -- a cél-elem MINDIG jelen van a DOM-ban, a
+          tényleges gombokat az aktív `Step*.tsx` portál-lal rajzolja bele, lásd
+          `WizardBottomBar.tsx` JSDoc-ját. */}
+      <div
+        id="wizard-bottom-bar"
+        className="fixed bottom-0 left-0 z-50 w-full border-t border-linear-hairline bg-linear-surface-1/95 py-3 backdrop-blur supports-[backdrop-filter]:bg-linear-surface-1/80"
+        style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+      />
     </div>
   );
 }

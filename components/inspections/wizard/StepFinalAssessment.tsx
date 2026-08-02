@@ -1,14 +1,41 @@
 'use client';
 
-import { Info } from 'lucide-react';
+import { useState } from 'react';
+import { Info, Loader2 } from 'lucide-react';
 import { TextField, TextareaField } from '@/components/inspections/wizard/FormControls';
+import { WizardStepFooter } from '@/components/inspections/wizard/WizardBottomBar';
 import {
   FINAL_ASSESSMENT_RECOMMENDATION_DESCRIPTION,
   FINAL_ASSESSMENT_RECOMMENDATION_LABEL,
 } from '@/lib/inspections/constants';
 import { sanitizeCostAmount } from '@/lib/inspections/validation';
 import { formatHufInput } from '@/lib/format';
-import type { FinalAssessmentRecommendation, FinalAssessmentState } from '@/lib/inspections/types';
+import type {
+  CarInfoState,
+  DamagePointState,
+  DefectState,
+  DiagnosticsState,
+  FeatureFormState,
+  FinalAssessmentRecommendation,
+  FinalAssessmentState,
+  PaintPointState,
+  TireGeneralInfoState,
+  TiresState,
+} from '@/lib/inspections/types';
+
+/** A `/api/ai/generate-summary` route bemenetéhez -- a wizard aktuális állapotának
+ * KIZÁRÓLAG a szakvélemény szempontjából releváns, JSON-szerializálható részhalmaza
+ * (a `File`/`blob:` mezők nélkül, lásd `buildInspectionSnapshot()` lent). */
+export interface AiSummaryContext {
+  carInfo: CarInfoState;
+  diagnostics: DiagnosticsState;
+  equipment: FeatureFormState[];
+  tires: TiresState;
+  tireGeneralInfo: TireGeneralInfoState;
+  paintMeasurements: PaintPointState[];
+  damages: DamagePointState[];
+  defects: DefectState[];
+}
 
 interface StepFinalAssessmentProps {
   value: FinalAssessmentState;
@@ -17,9 +44,75 @@ interface StepFinalAssessmentProps {
   onNext: () => void;
   /** A KÖVETKEZŐ lépés rövid címe -- lásd StepCarInfo.tsx ugyanerről a propról. */
   nextLabel: string;
+  /** A "AI Szakértői Összefoglaló" gombhoz szükséges, a wizard szülőjéből (`InspectionWizard.tsx`)
+   * összeállított aktuális vizsgálati adat -- lásd `buildInspectionSnapshot()` lent. */
+  aiSummaryContext: AiSummaryContext;
 }
 
 const RECOMMENDATION_OPTIONS: FinalAssessmentRecommendation[] = ['recommended', 'conditional', 'not_recommended'];
+
+/** A `/api/ai/generate-summary` route válasz-alakja. */
+interface GenerateSummaryApiResponse {
+  success: boolean;
+  summary?: string;
+  error?: string;
+  details?: string;
+}
+
+/** A wizard teljes állapotából KIZÁRÓLAG a szakvélemény-generáláshoz releváns, tisztán
+ * JSON-szerializálható adatokat állítja össze -- a `File`/`blob:` mezőket (fotók, videók)
+ * szándékosan kihagyja, mert azok a Gemini szöveg-modellnek irrelevánsak, és a `File`
+ * objektum egyébként sem szerializálható JSON-ná. */
+function buildInspectionSnapshot(context: AiSummaryContext) {
+  const { carInfo, diagnostics, equipment, tires, tireGeneralInfo, paintMeasurements, damages, defects } = context;
+
+  return {
+    auto: {
+      marka: carInfo.carBrand || null,
+      tipus: carInfo.carModel || null,
+      evjarat: carInfo.year || null,
+      kmOraAllas: carInfo.odometer || null,
+    },
+    diagnosztika: diagnostics.noDtc
+      ? { obdTiszta: true, hibakodok: [] }
+      : {
+          obdTiszta: false,
+          hibakodok: diagnostics.codes
+            .filter((entry) => entry.code.trim() !== '')
+            .map((entry) => ({ kod: entry.code, leiras: entry.description || null })),
+        },
+    felszereltseg: equipment
+      .filter((item) => item.status !== 'not_present')
+      .map((item) => ({
+        nev: item.id,
+        allapot: item.status === 'working' ? 'működik' : 'hibás',
+        megjegyzes: item.status === 'defective' && item.notes.trim() !== '' ? item.notes.trim() : null,
+      })),
+    gumiabroncsok: {
+      felniTipusa: tireGeneralInfo.rimType || null,
+      marka: tireGeneralInfo.brand || null,
+      pozíciók: Object.entries(tires)
+        .filter(([, tire]) => tire.mm.trim() !== '' || tire.dot.trim() !== '')
+        .map(([position, tire]) => ({ pozicio: position, profilmelysegMm: tire.mm || null, dot: tire.dot || null })),
+    },
+    festekvastagsagMeres: {
+      pontokSzama: paintMeasurements.length,
+      atlagMikron:
+        paintMeasurements.length > 0
+          ? Math.round((paintMeasurements.reduce((sum, p) => sum + p.value, 0) / paintMeasurements.length) * 10) / 10
+          : null,
+    },
+    serulesek: damages.map((damage) => ({
+      tipus: damage.type,
+      cim: damage.title || null,
+      leiras: damage.description || null,
+    })),
+    hibak: defects.map((defect) => ({
+      kategoria: defect.category || null,
+      leiras: defect.description || null,
+    })),
+  };
+}
 
 /**
  * LÉPÉS -- Végső Szakvélemény & Várható Költségek modul (a wizard utolsó, szakértői-adat
@@ -41,9 +134,50 @@ const RECOMMENDATION_OPTIONS: FinalAssessmentRecommendation[] = ['recommended', 
  * C) Összefoglaló szakértői vélemény -- szabad szöveges összefoglaló (hangalapú
  *    jegyzeteléssel, mert `TextareaField`-et használ).
  */
-export function StepFinalAssessment({ value, onChange, onBack, onNext, nextLabel }: StepFinalAssessmentProps) {
+export function StepFinalAssessment({
+  value,
+  onChange,
+  onBack,
+  onNext,
+  nextLabel,
+  aiSummaryContext,
+}: StepFinalAssessmentProps) {
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
+
   function setRecommendation(recommendation: FinalAssessmentRecommendation) {
     onChange({ ...value, recommendation: value.recommendation === recommendation ? null : recommendation });
+  }
+
+  /** "AI Szakértői Összefoglaló" gomb -- a `buildInspectionSnapshot()`-tal összeállított
+   * aktuális vizsgálati adatot elküldi a `/api/ai/generate-summary` route-nak, majd a
+   * visszakapott 3-4 mondatos szöveget beilleszti a "Szöveges összefoglaló" mezőbe
+   * (a korábbi tartalmat felülírva -- a user a mentés/publikálás előtt bármikor
+   * kézzel is szerkesztheti/finomíthatja a kapott szöveget). */
+  async function handleGenerateSummary() {
+    setIsGeneratingSummary(true);
+    setSummaryError(null);
+    try {
+      const response = await fetch('/api/ai/generate-summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inspectionData: buildInspectionSnapshot(aiSummaryContext) }),
+      });
+
+      const data = (await response.json()) as GenerateSummaryApiResponse;
+
+      if (!response.ok || !data.success || !data.summary) {
+        if (data.details) console.error('[StepFinalAssessment] Gemini generate-summary hiba részletek:', data.details);
+        setSummaryError(data.error ?? 'Hiba történt az összefoglaló generálása közben. Próbáld újra.');
+        return;
+      }
+
+      onChange({ ...value, summaryText: data.summary.trim() });
+    } catch {
+      setSummaryError('Hálózati hiba -- az összefoglaló generálása nem sikerült. Próbáld újra.');
+    } finally {
+      setIsGeneratingSummary(false);
+    }
   }
 
   return (
@@ -135,9 +269,25 @@ export function StepFinalAssessment({ value, onChange, onBack, onNext, nextLabel
 
       {/* C) Összefoglaló szakértői vélemény */}
       <div className="flex flex-col gap-3">
-        <p className="text-[13px] font-semibold uppercase tracking-[0.4px] text-linear-ink-subtle">
-          Összefoglaló szakértői vélemény (opcionális)
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[13px] font-semibold uppercase tracking-[0.4px] text-linear-ink-subtle">
+            Összefoglaló szakértői vélemény (opcionális)
+          </p>
+          <button
+            type="button"
+            onClick={handleGenerateSummary}
+            disabled={isGeneratingSummary}
+            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-linear-primary/40 bg-linear-primary/10 px-3 text-[12.5px] font-medium text-linear-primary transition-colors hover:bg-linear-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isGeneratingSummary && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            {isGeneratingSummary ? 'Összefoglaló írása…' : '✨ Automatikus összefoglaló írása (AI)'}
+          </button>
+        </div>
+        {summaryError && (
+          <p role="alert" className="text-[12px] text-linear-danger">
+            {summaryError}
+          </p>
+        )}
         <TextareaField
           label="Szöveges összefoglaló"
           name="final-summary-text"
@@ -147,22 +297,7 @@ export function StepFinalAssessment({ value, onChange, onBack, onNext, nextLabel
         />
       </div>
 
-      <div className="flex flex-wrap justify-between gap-3 border-t border-linear-hairline pt-5">
-        <button
-          type="button"
-          onClick={onBack}
-          className="inline-flex h-10 items-center rounded-md border border-linear-hairline-strong bg-linear-surface-1 px-5 text-[14px] font-medium text-linear-ink transition-colors hover:bg-linear-surface-2"
-        >
-          Vissza
-        </button>
-        <button
-          type="button"
-          onClick={onNext}
-          className="inline-flex h-10 items-center rounded-md bg-linear-primary px-5 text-[14px] font-medium text-white transition-colors hover:bg-linear-primary-hover"
-        >
-          Tovább – {nextLabel}
-        </button>
-      </div>
+      <WizardStepFooter onBack={onBack} onNext={onNext} nextLabel={nextLabel} />
     </div>
   );
 }

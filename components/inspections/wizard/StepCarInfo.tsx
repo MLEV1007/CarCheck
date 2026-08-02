@@ -1,10 +1,11 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { AlertTriangle, Camera, Loader2, Sparkles } from 'lucide-react';
+import { AlertTriangle, Camera, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SelectField, TextField } from '@/components/inspections/wizard/FormControls';
 import { VinScanToast, type VinScanToastVariant } from '@/components/inspections/wizard/VinScanToast';
+import { WizardStepFooter } from '@/components/inspections/wizard/WizardBottomBar';
 import { CAR_BRANDS, CAR_CATALOG, OTHER_OPTION } from '@/lib/inspections/carCatalog';
 import {
   getCarInfoErrors,
@@ -14,7 +15,6 @@ import {
   sanitizeYear,
 } from '@/lib/inspections/validation';
 import { formatKmInput } from '@/lib/format';
-import { LicensePlateBadge } from '@/components/ui/LicensePlateBadge';
 import { LICENSE_PLATE_COUNTRIES } from '@/lib/inspections/constants';
 import type { CarInfoState } from '@/lib/inspections/types';
 
@@ -362,19 +362,18 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
         </p>
       </div>
 
-      {/* Gemini Vision AI szkenner -- kiemelt kártya a lépés tetején, a mezők kitöltése
-          ELŐTT, hogy a szaki egyetlen fotóval elindíthassa az auto-fill-t. */}
+      {/* Adatok beolvasása -- kiemelt kártya a lépés tetején, a mezők kitöltése ELŐTT,
+          hogy a szaki egyetlen fotóval elindíthassa az auto-fill-t. A korábbi lila
+          Sparkles ikon és "AI-alapú felismerés" felirat "generatív AI tech-demó" hatást
+          keltett -- a "UI/UX finomhangolás, Copywriting tisztítás" lépés kérésére egy
+          letisztult, ikon nélküli, profi SaaS-copy váltotta fel (a funkció maga --
+          Gemini Vision -- változatlan, csak a megjelenés/szöveg egyszerűsödött). */}
       <div className="rounded-lg border border-linear-primary/30 bg-linear-surface-1 p-4">
-        <div className="mb-3 flex items-center gap-2.5">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-linear-primary/15 text-linear-primary">
-            <Sparkles className="h-4 w-4" />
-          </span>
-          <div>
-            <p className="text-[14px] font-semibold text-linear-ink">AI-alapú felismerés</p>
-            <p className="text-[12px] text-linear-ink-subtle">
-              Fotózd le a Forgalmi Engedélyt (magyar vagy külföldi is) vagy az alvázszám-matricát -- az AI automatikusan kitölti az alábbi mezőket.
-            </p>
-          </div>
+        <div className="mb-3">
+          <p className="text-[14px] font-semibold text-linear-ink">Adatok beolvasása</p>
+          <p className="text-[12px] text-linear-ink-subtle">
+            Készíts fotót a forgalmi engedélyről vagy az alvázszám-matricáról az adatok automatikus kitöltéséhez.
+          </p>
         </div>
 
         <input
@@ -530,9 +529,6 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
               {showError('licensePlate')}
             </span>
           )}
-          {value.licensePlate && (
-            <LicensePlateBadge value={value.licensePlate} countryCode={value.licensePlateCountry} size="sm" />
-          )}
         </div>
       </div>
 
@@ -546,15 +542,7 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
         </p>
       )}
 
-      <div className="flex justify-end border-t border-linear-hairline pt-5">
-        <button
-          type="button"
-          onClick={handleNext}
-          className="inline-flex h-10 items-center rounded-md bg-linear-primary px-5 text-[14px] font-medium text-white transition-colors hover:bg-linear-primary-hover"
-        >
-          Tovább – {nextLabel}
-        </button>
-      </div>
+      <WizardStepFooter onNext={handleNext} nextLabel={nextLabel} />
     </div>
   );
 }

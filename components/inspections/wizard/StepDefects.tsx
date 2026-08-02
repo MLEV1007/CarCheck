@@ -3,6 +3,7 @@
 import { Plus, Trash2 } from 'lucide-react';
 import { SelectField, TextareaField } from '@/components/inspections/wizard/FormControls';
 import { DefectMediaUpload } from '@/components/inspections/wizard/DefectMediaUpload';
+import { WizardStepFooter } from '@/components/inspections/wizard/WizardBottomBar';
 import { DEFECT_CATEGORIES } from '@/lib/inspections/constants';
 import { EMPTY_DEFECT, type DefectState } from '@/lib/inspections/types';
 
@@ -113,24 +114,13 @@ export function StepDefects({ value, onChange, onBack, onNext, nextLabel }: Step
         </button>
       </div>
 
-      <div className="flex flex-wrap justify-between gap-3 border-t border-linear-hairline pt-5">
-        <button
-          type="button"
-          onClick={onBack}
-          className="inline-flex h-10 items-center rounded-md border border-linear-hairline-strong bg-linear-surface-1 px-5 text-[14px] font-medium text-linear-ink transition-colors hover:bg-linear-surface-2"
-        >
-          Vissza
-        </button>
-        <button
-          type="button"
-          disabled={hasIncompleteRow}
-          onClick={onNext}
-          title={hasIncompleteRow ? 'Tölts ki minden hiba-kártyát, vagy töröld az üreseket.' : undefined}
-          className="inline-flex h-10 items-center rounded-md bg-linear-primary px-5 text-[14px] font-medium text-white transition-colors hover:bg-linear-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          Tovább – {nextLabel}
-        </button>
-      </div>
+      <WizardStepFooter
+        onBack={onBack}
+        onNext={onNext}
+        nextLabel={nextLabel}
+        nextDisabled={hasIncompleteRow}
+        nextTitle={hasIncompleteRow ? 'Tölts ki minden hiba-kártyát, vagy töröld az üreseket.' : undefined}
+      />
     </div>
   );
 }

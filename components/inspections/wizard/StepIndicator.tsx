@@ -21,10 +21,10 @@ import type { WizardStep } from '@/lib/inspections/types';
  */
 export function StepIndicator({ current }: { current: WizardStep }) {
   return (
-    <nav aria-label="Vizsgálati lépések">
+    <nav aria-label="Vizsgálati lépések" className="w-full">
       <ol
         className={
-          'flex items-center gap-1.5 overflow-x-auto pb-1 sm:gap-3 sm:overflow-visible sm:pb-0 ' +
+          'flex w-full items-center gap-1.5 overflow-x-auto pb-1 sm:gap-3 sm:overflow-visible sm:pb-0 ' +
           '[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
         }
       >

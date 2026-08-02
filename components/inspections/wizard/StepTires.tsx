@@ -2,6 +2,7 @@
 
 import { AlertTriangle, ClipboardCopy } from 'lucide-react';
 import { SelectField, TextField } from '@/components/inspections/wizard/FormControls';
+import { WizardStepFooter } from '@/components/inspections/wizard/WizardBottomBar';
 import { RIM_TYPES, RIM_TYPE_LABEL, TIRE_BRAND_OTHER, TIRE_BRANDS, TIRE_POSITIONS } from '@/lib/inspections/constants';
 import { decodeDot, getMaxDotYearSuffix } from '@/lib/inspections/tireDot';
 import { sanitizeDotCode, sanitizeMm } from '@/lib/inspections/validation';
@@ -194,24 +195,13 @@ export function StepTires({
         })}
       </div>
 
-      <div className="flex flex-wrap justify-between gap-3 border-t border-linear-hairline pt-5">
-        <button
-          type="button"
-          onClick={onBack}
-          className="inline-flex h-10 items-center rounded-md border border-linear-hairline-strong bg-linear-surface-1 px-5 text-[14px] font-medium text-linear-ink transition-colors hover:bg-linear-surface-2"
-        >
-          Vissza
-        </button>
-        <button
-          type="button"
-          disabled={hasInvalidDot}
-          onClick={onNext}
-          title={hasInvalidDot ? 'Javítsd vagy töröld az érvénytelen DOT kódot a továbblépéshez.' : undefined}
-          className="inline-flex h-10 items-center rounded-md bg-linear-primary px-5 text-[14px] font-medium text-white transition-colors hover:bg-linear-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          Tovább – {nextLabel}
-        </button>
-      </div>
+      <WizardStepFooter
+        onBack={onBack}
+        onNext={onNext}
+        nextLabel={nextLabel}
+        nextDisabled={hasInvalidDot}
+        nextTitle={hasInvalidDot ? 'Javítsd vagy töröld az érvénytelen DOT kódot a továbblépéshez.' : undefined}
+      />
     </div>
   );
 }
