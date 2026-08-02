@@ -7,24 +7,34 @@ import type { WizardStep } from '@/lib/inspections/types';
  * `linear-primary` kitöltést kap, a korábbiak pipát, a hátralévők tompított
  * hairline-keretes kört.
  *
- * "Wizard Stepper UI fix" -- 8 lépésnél (3 új szakértői modul óta) a korábbi
+ * "Wizard Stepper UI fix" -- 11 lépésnél (a legutóbbi modulok óta) a korábbi
  * `flex-1` egyenlő-elosztásos elrendezés SZÁMOLÁSSAL IGAZOLTAN szétcsúszott/kilógott
  * keskeny (320-400px-es) mobil képernyőkön, még a címkék elrejtésével is. Ehelyett:
  *  - a lépések MINDIG a saját természetes szélességüket foglalják (`shrink-0`, NEM
  *    `flex-1`), a cím SOHA nem törik sorba (`whitespace-nowrap`) és SOHA nem takarja ki
  *    egymást a szomszédos lépés;
- *  - a `nav` `overflow-x-auto`-val VÍZSZINTESEN GÖRGETHETŐ, ha a 8 lépés összesen nem
- *    fér ki egy sorban -- ez garantáltan törésmentes bármilyen szélességen, a rejtett
- *    natív görgetősávval (`[scrollbar-width:none]`/`[&::-webkit-scrollbar]:hidden`);
+ *  - a `nav` `overflow-x-auto`-val VÍZSZINTESEN GÖRGETHETŐ, ha a lépések összesen nem
+ *    férnek ki egy sorban -- ez garantáltan törésmentes bármilyen szélességen, a rejtett
+ *    natív görgetősávval (`[scrollbar-width:none]`/`[&::-webkit-scrollbar]:hidden`).
+ *    **FONTOS (2026-08-02, javítás):** ez a görgethetőség KORÁBBAN csak a legszűkebb
+ *    (`< sm`) nézeten volt bekapcsolva -- `sm:overflow-visible`-re váltott utána, ami
+ *    azt jelentette, hogy 640px felett (vagyis GYAKORLATILAG MINDEN nem-telefon
+ *    képernyőn) a 11 lépés natúr szélessége (jóval szélesebb, mint a `max-w-3xl`
+ *    wizard-konténer) egyszerűen KILÓGOTT/túlcsordult a konténer jobb szélén (`overflow-
+ *    visible` nem vág, nem görget, csak láthatóan kilógni hagyja a tartalmat) -- a
+ *    felhasználó screenshotján pontosan ez látszott. A javítás: a görgethetőség
+ *    (`overflow-x-auto` + rejtett scrollbar) MINDEN képernyőméreten aktív marad, a
+ *    lépések SOHA nem törhetnek ki a konténer szélessége fölé, csak (ha kell)
+ *    vízszintesen görgethetők maradnak belül.
  *  - emellett az `InspectionWizard.tsx` a lépés-tartalom felett egy kompakt, mindig
- *    látható "X / 8 lépés · Cím" szöveges visszajelzőt is mutat mobilon.
+ *    látható "X / 11 lépés · Cím" szöveges visszajelzőt is mutat mobilon.
  */
 export function StepIndicator({ current }: { current: WizardStep }) {
   return (
-    <nav aria-label="Vizsgálati lépések" className="w-full">
+    <nav aria-label="Vizsgálati lépések" className="w-full min-w-0">
       <ol
         className={
-          'flex w-full items-center gap-1.5 overflow-x-auto pb-1 sm:gap-3 sm:overflow-visible sm:pb-0 ' +
+          'flex w-full min-w-0 items-center gap-1.5 overflow-x-auto pb-1 sm:gap-3 ' +
           '[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
         }
       >
@@ -32,7 +42,7 @@ export function StepIndicator({ current }: { current: WizardStep }) {
           const isDone = step < current;
           const isActive = step === current;
           return (
-            <li key={step} className="flex shrink-0 items-center gap-1.5 sm:flex-1 sm:gap-3">
+            <li key={step} className="flex shrink-0 items-center gap-1.5 sm:gap-3">
               <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
                 <span
                   className={
@@ -57,9 +67,7 @@ export function StepIndicator({ current }: { current: WizardStep }) {
               </div>
               {index < WIZARD_STEP_META.length - 1 && (
                 <div
-                  className={
-                    'h-px w-6 shrink-0 sm:w-auto sm:flex-1 ' + (isDone ? 'bg-linear-success/30' : 'bg-linear-hairline')
-                  }
+                  className={'h-px w-6 shrink-0 sm:w-8 ' + (isDone ? 'bg-linear-success/30' : 'bg-linear-hairline')}
                 />
               )}
             </li>

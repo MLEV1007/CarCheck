@@ -1050,6 +1050,18 @@ A tényleges hiba a **Supabase Storage `inspection-media` bucket `storage.object
 
 **Git:** a commit a ténylegesen érintett fájlokra korlátozva (ÚJ: `components/inspections/wizard/WizardBottomBar.tsx`, `app/api/ai/generate-summary/route.ts`; MÓDOSÍTOTT: `components/inspections/wizard/InspectionWizard.tsx`, `StepIndicator.tsx`, `StepCarInfo.tsx`, `StepGeneralPhotos.tsx`, `StepServiceHistory.tsx`, `StepDiagnostics.tsx`, `StepEquipment.tsx`, `StepTires.tsx`, `StepPaintMeasurements.tsx`, `StepDamageMap.tsx`, `StepDefects.tsx`, `StepFinalAssessment.tsx`, `StepSummary.tsx`, `components/dashboard/InspectionsExplorer.tsx`, `components/ui/LicensePlateBadge.tsx`, `status.md`).
 
+### 37. Stepper kilógás javítása -- `overflow-x-auto` minden képernyőméreten (2026-08-02)
+
+**Felhasználói jelzés (screenshotos):** a 11-lépéses Stepper desktopon/tableten láthatóan kilógott a wizard `max-w-3xl` konténeréből, jóval a képernyő jobb szélén túlnyúlva.
+
+**Gyökérok:** a 36. szakaszban a Stepper `w-full`-t kapott, de a görgethetőség (`overflow-x-auto`) a `sm:overflow-visible`-lel felül lett írva 640px felett -- mivel 11 lépés natúr (nem törhető) szélessége jóval meghaladja a `max-w-3xl` konténer szélességét, az `overflow-visible` NEM vág/görget, csak láthatóan kiengedi a tartalmat a konténer alól, pontosan úgy, ahogy a screenshoton látszott.
+
+**Javítás (`StepIndicator.tsx`):** a `sm:overflow-visible`/`sm:pb-0` eltávolítva -- a `overflow-x-auto` (rejtett scrollbarral) mostantól MINDEN képernyőméreten aktív, a `nav`/`ol` `min-w-0`-t is kapott (hogy a flex-konténer ténylegesen tudjon kisebbre görbülni a szülőnél, ne a tartalom szélessége diktáljon). A `li` elemek `sm:flex-1` egyenletes-elosztása (ami csak akkor működött volna helyesen, ha a tartalom amúgy is kifért volna) törölve -- a lépések MINDEN méreten a saját természetes szélességüket foglalják, a köztük lévő elválasztó vonal fix `sm:w-8` (nem `sm:flex-1`).
+
+**Ellenőrzés:** `node node_modules/typescript/bin/tsc --noEmit -p tsconfig.json` -- SZINKRON, hibamentes, exit code 0. Élő böngésző-teszt (a screenshot szerinti túlcsordulás tényleges eltűnése desktop/tablet nézeten) a sandboxból nem futtatható, kézi ellenőrzést igényel.
+
+**Git:** MÓDOSÍTOTT: `components/inspections/wizard/StepIndicator.tsx`, `status.md`.
+
 ## Verziókezelés
 - GitHub repó: `https://github.com/MLEV1007/CarCheck` (`main` ág).
 - A `/inspections/[id]` szerkesztő/részletező oldalt (`d475379`) és a márka/típus dropdown + validáció + Általános autó fotók modult (`6f274d7`) tartalmazó korábbi commitok korábban push-olva lettek `origin/main`-re.
