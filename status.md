@@ -1062,6 +1062,20 @@ A tényleges hiba a **Supabase Storage `inspection-media` bucket `storage.object
 
 **Git:** MÓDOSÍTOTT: `components/inspections/wizard/StepIndicator.tsx`, `status.md`.
 
+### 38. Stepper teljes újratervezése -- progress bar a kör+címke lista helyett (2026-08-02)
+
+**Felhasználói jelzés (2. screenshot):** a 37. szakasz `overflow-x-auto` javítása után a Stepper már nem lógott ki a konténerből, de a rejtett scrollbar miatt semmilyen vizuális jel nem utalt rá, hogy görgethető -- a sor egyszerűen "levágva" tűnt (a screenshoton "Felszere" közepén), ami legalább annyira zavaró, mint az előző kilógás. A felhasználó explicit kérte, hogy 2-3 alternatív megoldást javasoljak, mielőtt fejlesztek -- felajánlott 3 irány: A) vékony progress bar + szöveg, B) kompakt pöttysor (dots), C) csak az aktuális lépés nagyban középen. A felhasználó a döntést rám bízta ("UX szempontból melyik lenne a legjobb?").
+
+**Döntés + indoklás:** a progress bar + szöveg (A opció) mellett döntöttem -- ez az egyetlen megoldás, ami MATEMATIKAILAG garantáltan nem csúszhat ki és nem törhet el semmilyen szélességen (a sáv szélessége mindig `w-full`, nincs benne natúr/tartalom-alapú szélességű elem, szemben a kör+címke listával VAGY akár egy 11 elemű pöttysorral is, ami elméletileg még mindig tartalom-alapú szélességű). A wizard NEM támogat lépések közötti szabad ugrálást (csak szekvenciális Vissza/Tovább), így egy klikkelhető pöttysor/körsor interaktivitási előnye amúgy sem érvényesülne. Ez a minta (Stripe Checkout, Typeform, sok hosszú SaaS-wizard) emellett a projekt Linear-minimalista esztétikájával is jól illeszkedik.
+
+**Megvalósítás (`StepIndicator.tsx` -- TELJES újraírás):** a korábbi kör+címke+összekötő-vonal `<nav><ol>` lista lecserélve egy `role="progressbar"` `<div>`-re: felül szöveg (`"5. lépés / 11 · Felszereltség állapota"`, a `WIZARD_STEP_META` `longLabel`-jéből), alatta egy `h-1.5 rounded-full bg-linear-surface-2` sáv, amiben a kitöltött rész (`bg-linear-primary`, `width: {current/TOTAL_WIZARD_STEPS*100}%`, `transition-[width]`) mutatja az előrehaladást. `aria-valuenow`/`aria-valuemin`/`aria-valuemax` a képernyőolvasóknak.
+
+**`InspectionWizard.tsx` takarítás:** a korábbi, KIZÁRÓLAG mobilon (`sm:hidden`) megjelenő "X / 11 lépés · Cím" szöveges paragrafus törölve -- ez a szöveg most MINDEN képernyőméreten a `StepIndicator`-ba van beépítve, nincs többé duplikáció. A hozzá tartozó, immár feleslegessé vált `STEP_LABELS` konstans és a `TOTAL_WIZARD_STEPS` import is törölve `InspectionWizard.tsx`-ből (a `WIZARD_STEP_META` import megmaradt, mert a `NEXT_STEP_SHORT_LABEL`-hez -- a "Tovább – {label}" gomb-feliratokhoz -- továbbra is kell).
+
+**Ellenőrzés:** `node node_modules/typescript/bin/tsc --noEmit -p tsconfig.json` -- SZINKRON, hibamentes, exit code 0 (ez a lépés fogta meg és javította ki azonnal a `TOTAL_WIZARD_STEPS`/`STEP_LABELS` immár feleslegessé vált hivatkozásait is). Élő böngésző-teszt (a progress bar tényleges megjelenése minden lépésen, minden képernyőméreten) a sandboxból nem futtatható, kézi ellenőrzést igényel.
+
+**Git:** MÓDOSÍTOTT: `components/inspections/wizard/StepIndicator.tsx` (teljes újraírás), `components/inspections/wizard/InspectionWizard.tsx`, `status.md`.
+
 ## Verziókezelés
 - GitHub repó: `https://github.com/MLEV1007/CarCheck` (`main` ág).
 - A `/inspections/[id]` szerkesztő/részletező oldalt (`d475379`) és a márka/típus dropdown + validáció + Általános autó fotók modult (`6f274d7`) tartalmazó korábbi commitok korábban push-olva lettek `origin/main`-re.

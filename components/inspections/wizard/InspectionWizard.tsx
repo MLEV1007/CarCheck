@@ -19,7 +19,6 @@ import {
   DEFAULT_LICENSE_PLATE_COUNTRY,
   EQUIPMENT_ITEMS,
   TIRE_BRAND_OTHER,
-  TOTAL_WIZARD_STEPS,
   WIZARD_STEP_META,
 } from '@/lib/inspections/constants';
 import { isValidDot } from '@/lib/inspections/tireDot';
@@ -45,13 +44,11 @@ import {
   type WizardStep,
 } from '@/lib/inspections/types';
 
-/** A hosszú (mobil "X / 10 lépés · Cím" szöveghez) és rövid (Vissza/Tovább gomb-felirathoz)
- * lépés-címkék EGYETLEN forrása -- lásd `WIZARD_STEP_META` a `constants.ts`-ben a teljes
- * indoklásért ("Dinamikus Tovább gomb felirat" lépés). */
-const STEP_LABELS: Record<WizardStep, string> = Object.fromEntries(
-  WIZARD_STEP_META.map(({ step, longLabel }) => [step, longLabel])
-) as Record<WizardStep, string>;
-
+/** A "Tovább" gomb-feliratokhoz szükséges rövid lépés-címkék EGYETLEN forrása -- lásd
+ * `WIZARD_STEP_META` a `constants.ts`-ben a teljes indoklásért ("Dinamikus Tovább gomb
+ * felirat" lépés). A hosszú címke (`longLabel`) mostantól közvetlenül a
+ * `StepIndicator.tsx`-ben él, mert az a progress bar felirat EGYETLEN felhasználója
+ * (lásd a "Stepper teljes újratervezése" lépést) -- itt már nincs rá szükség. */
 const NEXT_STEP_SHORT_LABEL: Record<WizardStep, string> = Object.fromEntries(
   WIZARD_STEP_META.map(({ step, shortLabel }) => [step, shortLabel])
 ) as Record<WizardStep, string>;
@@ -492,9 +489,6 @@ export function InspectionWizard({
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-5 px-4 py-8 pb-28 sm:px-6 sm:py-10 sm:pb-32">
       <StepIndicator current={step} />
-      <p className="-mt-1 text-[13px] font-medium text-linear-ink-subtle sm:hidden">
-        {step}. lépés / {TOTAL_WIZARD_STEPS} · {STEP_LABELS[step]}
-      </p>
 
       <div className="rounded-lg border border-linear-hairline bg-linear-surface-1 p-5 sm:p-7">
         {step === 1 && (

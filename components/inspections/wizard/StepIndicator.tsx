@@ -1,79 +1,51 @@
-import { Check } from 'lucide-react';
-import { WIZARD_STEP_META } from '@/lib/inspections/constants';
+import { TOTAL_WIZARD_STEPS, WIZARD_STEP_META } from '@/lib/inspections/constants';
 import type { WizardStep } from '@/lib/inspections/types';
 
 /**
- * Linear design system: kompakt, funkcionális lépés-jelző. Az aktuális lépés
- * `linear-primary` kitöltést kap, a korábbiak pipát, a hátralévők tompított
- * hairline-keretes kört.
+ * Linear design system: lépés-előrehaladás jelző.
  *
- * "Wizard Stepper UI fix" -- 11 lépésnél (a legutóbbi modulok óta) a korábbi
- * `flex-1` egyenlő-elosztásos elrendezés SZÁMOLÁSSAL IGAZOLTAN szétcsúszott/kilógott
- * keskeny (320-400px-es) mobil képernyőkön, még a címkék elrejtésével is. Ehelyett:
- *  - a lépések MINDIG a saját természetes szélességüket foglalják (`shrink-0`, NEM
- *    `flex-1`), a cím SOHA nem törik sorba (`whitespace-nowrap`) és SOHA nem takarja ki
- *    egymást a szomszédos lépés;
- *  - a `nav` `overflow-x-auto`-val VÍZSZINTESEN GÖRGETHETŐ, ha a lépések összesen nem
- *    férnek ki egy sorban -- ez garantáltan törésmentes bármilyen szélességen, a rejtett
- *    natív görgetősávval (`[scrollbar-width:none]`/`[&::-webkit-scrollbar]:hidden`).
- *    **FONTOS (2026-08-02, javítás):** ez a görgethetőség KORÁBBAN csak a legszűkebb
- *    (`< sm`) nézeten volt bekapcsolva -- `sm:overflow-visible`-re váltott utána, ami
- *    azt jelentette, hogy 640px felett (vagyis GYAKORLATILAG MINDEN nem-telefon
- *    képernyőn) a 11 lépés natúr szélessége (jóval szélesebb, mint a `max-w-3xl`
- *    wizard-konténer) egyszerűen KILÓGOTT/túlcsordult a konténer jobb szélén (`overflow-
- *    visible` nem vág, nem görget, csak láthatóan kilógni hagyja a tartalmat) -- a
- *    felhasználó screenshotján pontosan ez látszott. A javítás: a görgethetőség
- *    (`overflow-x-auto` + rejtett scrollbar) MINDEN képernyőméreten aktív marad, a
- *    lépések SOHA nem törhetnek ki a konténer szélessége fölé, csak (ha kell)
- *    vízszintesen görgethetők maradnak belül.
- *  - emellett az `InspectionWizard.tsx` a lépés-tartalom felett egy kompakt, mindig
- *    látható "X / 11 lépés · Cím" szöveges visszajelzőt is mutat mobilon.
+ * **Teljes újratervezés (2026-08-02) -- a korábbi kör+címke sor kiváltása vékony
+ * progress bar-ral.** A projekt 8, majd 11 lépésre bővült, és a korábbi, minden lépést
+ * saját körrel + szöveges címkével kirajzoló "klasszikus stepper" ennyi lépésnél
+ * SEMMILYEN fix szélességű konténerbe nem fér ki törésmentesen:
+ *  - `overflow-visible`-lel a sor egyszerűen KILÓGOTT a `max-w-3xl` wizard-konténerből
+ *    (lásd a korábbi javítási kísérlet screenshotját);
+ *  - `overflow-x-auto`-val (rejtett scrollbarral) NEM lógott ki, de a rejtett scrollbar
+ *    miatt semmilyen vizuális jel nem utalt arra, hogy van folytatás -- a sor egyszerűen
+ *    abrupt módon "levágva" tűnt (pl. "Felszere" közepén), ami zavaróbb volt, mint a
+ *    kilógás.
+ *
+ * A megoldás: NINCS TÖBBÉ lépésenkénti kör/címke lista. Helyette egyetlen vékony,
+ * kitöltött sáv mutatja az előrehaladást (`current / TOTAL_WIZARD_STEPS` arányban), fölötte
+ * pedig egy mindig látható szöveg ("5. lépés / 11 · Felszereltség állapota") -- ez a minta
+ * (Stripe Checkout, Typeform és sok más SaaS hosszú wizard-ja) GARANTÁLTAN nem csúszhat
+ * ki és nem törhet el semmilyen képernyőszélességen, mert a sáv szélessége mindig a
+ * SZÜLŐ konténerhez igazodik (`w-full`), nincs benne semmilyen tartalom-alapú (natúr
+ * szélességű) elem.
  */
 export function StepIndicator({ current }: { current: WizardStep }) {
+  const currentMeta = WIZARD_STEP_META.find((meta) => meta.step === current);
+  const percent = Math.round((current / TOTAL_WIZARD_STEPS) * 100);
+
   return (
-    <nav aria-label="Vizsgálati lépések" className="w-full min-w-0">
-      <ol
-        className={
-          'flex w-full min-w-0 items-center gap-1.5 overflow-x-auto pb-1 sm:gap-3 ' +
-          '[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
-        }
-      >
-        {WIZARD_STEP_META.map(({ step, shortLabel }, index) => {
-          const isDone = step < current;
-          const isActive = step === current;
-          return (
-            <li key={step} className="flex shrink-0 items-center gap-1.5 sm:gap-3">
-              <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-                <span
-                  className={
-                    'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold transition-colors sm:h-7 sm:w-7 sm:text-[12px] ' +
-                    (isActive
-                      ? 'bg-linear-primary text-white'
-                      : isDone
-                        ? 'bg-linear-success/15 text-linear-success'
-                        : 'border border-linear-hairline-strong bg-linear-surface-1 text-linear-ink-subtle')
-                  }
-                >
-                  {isDone ? <Check className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> : step}
-                </span>
-                <span
-                  className={
-                    'whitespace-nowrap text-[12px] font-medium sm:text-[13px] ' +
-                    (isActive ? 'text-linear-ink' : 'text-linear-ink-subtle')
-                  }
-                >
-                  {shortLabel}
-                </span>
-              </div>
-              {index < WIZARD_STEP_META.length - 1 && (
-                <div
-                  className={'h-px w-6 shrink-0 sm:w-8 ' + (isDone ? 'bg-linear-success/30' : 'bg-linear-hairline')}
-                />
-              )}
-            </li>
-          );
-        })}
-      </ol>
-    </nav>
+    <div
+      className="flex w-full flex-col gap-2"
+      role="progressbar"
+      aria-label="Vizsgálati folyamat"
+      aria-valuenow={current}
+      aria-valuemin={1}
+      aria-valuemax={TOTAL_WIZARD_STEPS}
+    >
+      <p className="text-[13px] font-medium text-linear-ink-subtle">
+        <span className="font-semibold text-linear-ink">{current}. lépés</span> / {TOTAL_WIZARD_STEPS}
+        {currentMeta && <> · {currentMeta.longLabel}</>}
+      </p>
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-linear-surface-2">
+        <div
+          className="h-full rounded-full bg-linear-primary transition-[width] duration-300 ease-out"
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+    </div>
   );
 }
