@@ -16,14 +16,16 @@ import type { FeatureState, FeatureStatus } from '@/lib/inspections/types';
  * `id`/`status`/`notes` frissítésekkel tudja utólag (merge-eléssel) átírni a wizard state-jét,
  * a `currentStates`-ben esetlegesen már meglévő, NEM említett elemeket változatlanul hagyva.
  *
- * **Modellválasztás + fallback-lánc (2026-08-02, "429 RESOURCE_EXHAUSTED, limit: 0,
- * model: gemini-2.0-flash" hiba elhárítása):** a `gemini-2.0-flash` ingyenes (free tier)
- * kvótája egyes Google AI Studio projekteken `0`-ra van állítva -- MINDEN hívás azonnal
- * `429`-cel bukik, függetlenül a mi kódunktól. Elsődleges modell mostantól a
- * `gemini-1.5-flash` (garantált, globális ingyenes keret: 15 RPM / 1500 RPD), ha ez is
- * hibázna (pl. átmeneti túlterhelés, vagy egy jövőbeli fiókon szintén 0 a kerete), a route
- * sorban megpróbálja a `gemini-1.5-pro`-t, végül a `gemini-2.0-flash`-t is -- lásd
- * `MODEL_CANDIDATES` és a `POST` handler modell-ciklusa.
+ * **Modellválasztás + fallback-lánc (2026-08-02, két egymást követő hiba elhárítása):**
+ * (1) a `gemini-2.0-flash` ingyenes (free tier) kvótája egyes Google AI Studio
+ * projekteken `0`-ra volt állítva -- MINDEN hívás azonnal `429 RESOURCE_EXHAUSTED,
+ * limit: 0`-val bukott. (2) A `gemini-2.0-flash` NÉV -- a Google modell-kivezetései miatt
+ * -- azóta TELJESEN meg is szűnt (`404 NOT_FOUND, "This model models/gemini-2.0-flash is
+ * no longer available"`), tehát a korábbi fallback-lánc végén sem lett volna elérhető.
+ * Emiatt a `MODEL_CANDIDATES` mostantól KIZÁRÓLAG jelenleg aktív, ingyenesen elérhető
+ * modelleket tartalmaz: elsődleges `gemini-1.5-flash` (garantált, globális ingyenes keret:
+ * 15 RPM / 1500 RPD), ha ez hibázna (pl. átmeneti túlterhelés), a route megpróbálja a
+ * `gemini-1.5-pro`-t -- lásd `MODEL_CANDIDATES` és a `POST` handler modell-ciklusa.
  *
  * `runtime = 'nodejs'`, mert a `@google/genai` SDK Node.js API-kra (pl. `fetch` felett, de a
  * csomag maga Node.js-célzású) épül -- Edge runtime-on nem garantált a működése.
@@ -32,8 +34,10 @@ export const runtime = 'nodejs';
 
 /** Modell-fallback lánc, kipróbálási sorrendben -- lásd a fenti JSDoc "Modellválasztás +
  * fallback-lánc" pontját. Az első sikeres válasz azonnal megszakítja a ciklust, a
- * `POST` handlerben. */
-const MODEL_CANDIDATES = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash'] as const;
+ * `POST` handlerben. SZÁNDÉKOSAN NEM tartalmazza a `gemini-2.0-flash`-t -- az a modellnév
+ * a Google oldalán megszűnt (`404 NOT_FOUND`), felvétele csak egy garantáltan bukó,
+ * felesleges harmadik próbálkozást jelentene minden hívásnál. */
+const MODEL_CANDIDATES = ['gemini-1.5-flash', 'gemini-1.5-pro'] as const;
 
 const VALID_STATUSES: FeatureStatus[] = ['working', 'defective', 'not_present'];
 
@@ -150,10 +154,10 @@ export async function POST(request: NextRequest): Promise<NextResponse<ParseEqui
           status: { type: Type.STRING, enum: VALID_STATUSES },
           notes: { type: Type.STRING },
         },
-        // A Gemini 2.0 Flash-nél a `propertyOrdering` explicit megadása szükséges a
-        // kimenet stabil mezősorrendjéhez (a Google dokumentáció ezt kifejezetten kéri
-        // 2.0-s modelleknél, újabb (2.5+/3.x) modelleknél már opcionális, de az 1.5-ös
-        // modelleknél sem árt -- ugyanaz a séma megy mindhárom `MODEL_CANDIDATES`-hez).
+        // A `propertyOrdering` explicit megadása a kimenet stabil mezősorrendjéhez -- a
+        // Google dokumentáció a (mára kivezetett) 2.0-s modelleknél kifejezetten kérte,
+        // újabb modelleknél már opcionális, de az itt használt 1.5-ös modelleknél sem árt --
+        // ugyanaz a séma megy mindkét `MODEL_CANDIDATES`-belihez.
         propertyOrdering: ['id', 'status', 'notes'],
         required: ['id', 'status'],
       },
@@ -163,8 +167,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ParseEqui
   // Modell-fallback lánc -- sorban kipróbáljuk a `MODEL_CANDIDATES`-t, az ELSŐ sikeres
   // választ azonnal felhasználjuk. Minden sikertelen próbálkozás hibáját eltároljuk
   // (`lastError`) ÉS azonnal logoljuk is (modellnevenként külön, hogy a Vercel logokból
-  // pontosan látszódjon, melyik modell hányadik próbálkozásra bukott el, pl. a jelenlegi
-  // "429 RESOURCE_EXHAUSTED, limit: 0, model: gemini-2.0-flash" hiba esetén) -- csak akkor
+  // pontosan látszódjon, melyik modell hányadik próbálkozásra bukott el) -- csak akkor
   // adunk vissza hibaválaszt a kliensnek, ha MINDEGYIK modell elbukott.
   let rawText: string | undefined;
   let lastError: unknown;
