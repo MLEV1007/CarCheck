@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { AlertTriangle, CheckCircle2, MinusCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { SectionHeading } from '@/components/report/SectionHeading';
 import { MediaLightbox } from '@/components/report/MediaLightbox';
 import type { PublicReportFeature } from '@/lib/reports/types';
@@ -19,21 +19,31 @@ interface EquipmentMatrixProps {
  *     szaki megjegyzése és a felnagyítható hibafotó (a meglévő `MediaLightbox`-szal,
  *     ugyanaz a komponens, mint a hiba-/sérülés-médiáknál). Ha nincs hibás elem, ez a
  *     kártya EGYÁLTALÁN nem renderelődik.
- *  B) A `working`/`not_present` elemek letisztult, kompakt chip-rácsban -- egy 200+
- *     elemes katalógusnál egy tömör pill-felhő sokkal áttekinthetőbb, mint az egyenkénti
- *     nagy kártyák (a korábbi verzió mintája), ezért NEM azt a mintát követi.
+ *  B) A `working` elemek letisztult, kompakt chip-rácsban -- egy 200+ elemes
+ *     katalógusnál egy tömör pill-felhő sokkal áttekinthetőbb, mint az egyenkénti nagy
+ *     kártyák (a korábbi verzió mintája), ezért NEM azt a mintát követi.
  *
- * Ha az `equipment` tömb teljesen üres (elméletileg nem fordulhat elő, mert a wizard
- * mindig a teljes katalógust menti), a szekció nem renderelődik. BMW design: `rounded-none`.
+ * **"Extrák szűrése" lépés (2026-08-02):** a `not_present` ("nincs benne") státuszú
+ * elemek SOHA nem jelennek meg a publikus riporton -- egy 200+ elemes katalógusnál a
+ * vásárlót/ügyfelet kizárólag az érdekli, mi VAN és MŰKÖDIK-e az autóban, a katalógus
+ * túlnyomó többsége (ami az adott autóban egyszerűen nincs felszerelve) csak zajt
+ * jelentene. A korábbi "Nem található extrák (N)" chip-szekció ezért TELJESEN törölve
+ * -- a wizard (`StepEquipment.tsx`) és a szakértői adatlap (`InspectionDetailView.tsx`)
+ * TOVÁBBRA IS mutatja a `not_present` elemeket (ott a szakinak releváns, mit NEM
+ * pipált be), KIZÁRÓLAG a publikus, ügyfélnek szánt riport szűri ki őket.
+ *
+ * Ha az `equipment` tömb teljesen üres, VAGY a szűrés után nincs egyetlen megjelenítendő
+ * (`working`/`defective`) elem sem (elméletileg ritka, de egy csupa `not_present`
+ * katalógusnál előfordulhat), a teljes szekció nem renderelődik -- egy üres "Felszereltség
+ * állapota" fejléc tartalom nélkül félrevezető lenne. BMW design: `rounded-none`.
  */
 export function EquipmentMatrix({ equipment }: EquipmentMatrixProps) {
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
-  if (equipment.length === 0) return null;
-
   const defective = equipment.filter((item) => item.status === 'defective');
   const working = equipment.filter((item) => item.status === 'working');
-  const notPresent = equipment.filter((item) => item.status === 'not_present');
+
+  if (defective.length === 0 && working.length === 0) return null;
 
   return (
     <section className="border-t border-bmw-hairline py-16 first:border-t-0 first:pt-0">
@@ -88,25 +98,6 @@ export function EquipmentMatrix({ equipment }: EquipmentMatrixProps) {
                 className="inline-flex items-center gap-1.5 rounded-none border border-bmw-success bg-[#f0faf3] px-3 py-1.5 text-[13px] font-medium text-bmw-ink"
               >
                 <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-bmw-success" />
-                {item.id}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {notPresent.length > 0 && (
-        <div className="mt-8">
-          <p className="text-[13px] font-bold uppercase tracking-[1px] text-bmw-muted">
-            Nem található extrák ({notPresent.length})
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {notPresent.map((item) => (
-              <span
-                key={item.id}
-                className="inline-flex items-center gap-1.5 rounded-none border border-bmw-hairline-strong bg-bmw-surface-soft px-3 py-1.5 text-[13px] font-medium text-bmw-muted"
-              >
-                <MinusCircle className="h-3.5 w-3.5 shrink-0 text-bmw-muted" />
                 {item.id}
               </span>
             ))}

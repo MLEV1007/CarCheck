@@ -100,3 +100,25 @@ body {
     print-color-adjust: exact;
   }
 }
+
+/*
+ * iOS Safari mobil-zoom hiba javítása -- ha egy `<input>`/`<textarea>`/`<select>`
+ * betűmérete 16px alatt van, iOS Safari a mezőre koppintáskor automatikusan ráközelít
+ * (zoom) az oldalra, hogy a szöveg "olvashatóbb" legyen -- ez a wizard mobil-first
+ * használatánál (garázsban/terepen, telefonon kitöltött űrlapok) minden egyes mező
+ * érintésekor zavaró ugrálást okozott. A legtöbb mezőt adó megosztott komponens
+ * (`FormControls.tsx` `TextField`/`SelectField`/`TextareaField`) már eleve 16px-es
+ * (`text-[16px] sm:text-[14px]`, lásd a fájlt), DE ez a globális, `!important`-tal
+ * kikényszerített szabály egy VÉGSŐ biztonsági háló minden egyéb, egyedi/inline
+ * stílusú mezőre is (pl. `PaintCanvas.tsx`/`DamageCanvas.tsx` popover-jei, a
+ * Felszereltség lépés keresőmezője, a Rendszám felségjelzés `<select>`-je stb.) --
+ * KIZÁRÓLAG mobil szélességen (`max-width: 768px`) aktív, desktopon a komponensek
+ * saját (jellemzően kisebb, sűrűbb) betűmérete érvényesül.
+ */
+@media screen and (max-width: 768px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}

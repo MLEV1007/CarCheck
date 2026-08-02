@@ -15,6 +15,7 @@ import {
 import { TextareaField } from '@/components/inspections/wizard/FormControls';
 import { VinScanToast, type VinScanToastVariant } from '@/components/inspections/wizard/VinScanToast';
 import { WizardStepFooter } from '@/components/inspections/wizard/WizardBottomBar';
+import { joinDictatedText } from '@/lib/utils';
 import {
   EQUIPMENT_CATEGORY_LABEL,
   EQUIPMENT_CATEGORY_ORDER,
@@ -323,8 +324,16 @@ function EquipmentAiAssistant({
   const [text, setText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
-  async function handleProcess() {
-    const trimmed = text.trim();
+  /** "Auto-Trigger AI Diktálás" lépés (2026-08-02) -- `overrideText` az
+   * `onDictationEnd`-ből érkezik (lásd a `TextareaField` hívását lent): a diktálás
+   * VÉGÉN a `useSpeechToText` közvetlenül a frissen felismert, végleges szöveget adja
+   * át, NEM a `text` React state-re támaszkodva -- ez elkerüli azt az elméleti
+   * race condition-t, hogy a `text` state a `onSessionEnd` böngésző-esemény
+   * lefutásakor még nem feltétlenül frissült a legutolsó `onresult`-ból (a state-
+   * frissítés aszinkron). Kézi gombnyomásnál (`overrideText` nincs megadva) a
+   * jelenlegi `text` state-et használja, változatlanul. */
+  async function handleProcess(overrideText?: string) {
+    const trimmed = (overrideText ?? text).trim();
     if (!trimmed || isProcessing) return;
 
     setIsProcessing(true);
@@ -389,12 +398,21 @@ function EquipmentAiAssistant({
         value={text}
         onChange={(e) => setText(e.target.value)}
         rows={3}
+        // "Auto-Trigger AI Diktálás" lépés -- ez KIVÁLTJA a `TextareaField`
+        // alapértelmezett nyelvhelyesség-javítását: itt a mikrofon kikapcsolásakor
+        // NEM a szöveg "kisimítása" a cél, hanem a `/api/ai/parse-equipment` strukturált
+        // feldolgozás AZONNALI, kézi gombnyomás nélküli elindítása.
+        onDictationEnd={(sessionText, baseValueAtStart) => {
+          const finalText = joinDictatedText(baseValueAtStart, sessionText);
+          setText(finalText);
+          void handleProcess(finalText);
+        }}
       />
 
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <button
           type="button"
-          onClick={handleProcess}
+          onClick={() => handleProcess()}
           disabled={!text.trim() || isProcessing}
           className="inline-flex h-10 items-center gap-1.5 rounded-md bg-linear-primary px-4 text-[13px] font-semibold text-white transition-colors hover:bg-linear-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
         >
