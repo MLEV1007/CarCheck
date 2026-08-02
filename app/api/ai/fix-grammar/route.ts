@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
+import { createClient } from '@/lib/supabase/server';
+import { hasEnoughCredits, deductCredits } from '@/lib/credits';
 
 /**
  * Google Gemini backend az "Auto-Trigger AI Diktálás" lépéshez (2026-08-02) --
@@ -22,11 +24,17 @@ import { GoogleGenAI } from '@google/genai';
  * `gemini-2.0-flash`, fallback `gemini-flash-latest`.
  *
  * `runtime = 'nodejs'` -- ugyanazon okból, mint a projekt többi Gemini route-jánál.
+ *
+ * **Autentikáció + kredit-védelem:** lásd `parse-equipment/route.ts` JSDoc "Autentikáció +
+ * kredit-védelem" szakaszát (CANONIKUS leírás) -- ugyanaz a minta, `featureName: 'grammar_fix'`.
  */
 export const runtime = 'nodejs';
 
 /** Lásd `parse-equipment/route.ts` "Modellválasztás + fallback-lánc" JSDoc pontját. */
 const MODEL_CANDIDATES = ['gemini-2.0-flash', 'gemini-flash-latest'] as const;
+
+/** A `usage_logs.feature_name` értéke ehhez a route-hoz -- lásd `lib/credits.ts`. */
+const FEATURE_NAME = 'grammar_fix';
 
 interface FixGrammarRequestBody {
   text: string;
@@ -41,6 +49,8 @@ interface FixGrammarErrorResponse {
   success: false;
   error: string;
   details?: string;
+  /** Gépileg feldolgozható hibakód -- lásd `parse-equipment/route.ts` azonos mezőjének JSDoc-ját. */
+  code?: string;
 }
 
 function toErrorDetails(error: unknown): string {
@@ -58,6 +68,21 @@ const SYSTEM_INSTRUCTION =
 export async function POST(
   request: NextRequest
 ): Promise<NextResponse<FixGrammarSuccessResponse | FixGrammarErrorResponse>> {
+  // AUTENTIKÁCIÓ -- lásd `parse-equipment/route.ts` JSDoc "Autentikáció + kredit-védelem"
+  // szakaszát (CANONIKUS leírás).
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return NextResponse.json(
+      { success: false, error: 'A művelethez bejelentkezés szükséges.', code: 'UNAUTHORIZED' },
+      { status: 401 }
+    );
+  }
+
   const apiKey = process.env.GEMINI_API_KEY?.trim().replace(/^["']|["']$/g, '');
   if (!apiKey) {
     return NextResponse.json({ success: false, error: 'A GEMINI_API_KEY érvénytelen vagy hiányzik.' }, { status: 500 });
@@ -78,6 +103,20 @@ export async function POST(
     return NextResponse.json(
       { success: false, error: `A szöveg túl hosszú (max ${MAX_TEXT_LENGTH} karakter).` },
       { status: 400 }
+    );
+  }
+
+  // ELŐZETES KREDIT-ELLENŐRZÉS -- a Gemini API hívás ELŐTT. Lásd `parse-equipment/route.ts`
+  // JSDoc-ját; a tényleges levonás sikeres, érvényes válasz UTÁN, lent.
+  const hasCredits = await hasEnoughCredits(user.id, 1);
+  if (!hasCredits) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Nincs elegendő AI kredit a művelet elvégzéséhez.',
+        code: 'INSUFFICIENT_CREDITS',
+      },
+      { status: 402 }
     );
   }
 
@@ -122,6 +161,14 @@ export async function POST(
   const fixedText = rawText?.trim();
   if (!fixedText) {
     return NextResponse.json({ success: false, error: 'A Gemini API üres választ adott.' }, { status: 502 });
+  }
+
+  // KREDIT LEVONÁS -- KIZÁRÓLAG sikeres, érvényes Gemini-válasz UTÁN. Lásd
+  // `parse-equipment/route.ts` JSDoc-ját a hiba-esetek indoklásáról.
+  try {
+    await deductCredits(user.id, FEATURE_NAME, 1);
+  } catch (error) {
+    console.error('[fix-grammar] Kredit levonás sikertelen a sikeres AI hívás után:', error);
   }
 
   return NextResponse.json({ success: true, text: fixedText });

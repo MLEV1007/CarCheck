@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI, Type } from '@google/genai';
+import { createClient } from '@/lib/supabase/server';
+import { hasEnoughCredits, deductCredits } from '@/lib/credits';
 
 /**
  * Google Gemini Vision (multimodal) backend a VIN (alvázszám) / forgalmi engedély
@@ -28,12 +30,18 @@ import { GoogleGenAI, Type } from '@google/genai';
  *
  * `runtime = 'nodejs'`, mert a `@google/genai` SDK Node.js-célzású (Edge runtime-on nem
  * garantált a működése).
+ *
+ * **Autentikáció + kredit-védelem:** lásd `parse-equipment/route.ts` JSDoc "Autentikáció +
+ * kredit-védelem" szakaszát (CANONIKUS leírás) -- ugyanaz a minta, `featureName: 'vin_scan'`.
  */
 export const runtime = 'nodejs';
 
 /** Modell-fallback lánc, kipróbálási sorrendben -- lásd a fenti JSDoc "Modellválasztás +
  * fallback-lánc" pontját. */
 const MODEL_CANDIDATES = ['gemini-2.0-flash', 'gemini-flash-latest'] as const;
+
+/** A `usage_logs.feature_name` értéke ehhez a route-hoz -- lásd `lib/credits.ts`. */
+const FEATURE_NAME = 'vin_scan';
 
 /** A Gemini `inlineData` bemenetéhez elfogadott kép MIME-típusok -- ezen kívül minden
  * mást elutasítunk, mielőtt egyáltalán elküldenénk a képet a Gemini API-nak. */
@@ -118,6 +126,9 @@ interface ScanVinErrorResponse {
   /** A nyers hibaüzenet -- KIZÁRÓLAG hibakeresési célból, lásd `parse-equipment/route.ts`
    * azonos elvű `details` mezőjének JSDoc-ját. */
   details?: string;
+  /** Gépileg feldolgozható hibakód (pl. `'UNAUTHORIZED'`, `'INSUFFICIENT_CREDITS'`) --
+   * lásd `parse-equipment/route.ts` azonos mezőjének JSDoc-ját. */
+  code?: string;
 }
 
 function toErrorDetails(error: unknown): string {
@@ -242,6 +253,21 @@ Kizárólag a megadott JSON séma szerinti választ add -- semmi mást, se magya
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse<ScanVinSuccessResponse | ScanVinErrorResponse>> {
+  // AUTENTIKÁCIÓ -- lásd `parse-equipment/route.ts` JSDoc "Autentikáció + kredit-védelem"
+  // szakaszát (CANONIKUS leírás).
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return NextResponse.json(
+      { success: false, error: 'A művelethez bejelentkezés szükséges.', code: 'UNAUTHORIZED' },
+      { status: 401 }
+    );
+  }
+
   // Környezeti változó megtisztítása -- lásd `parse-equipment/route.ts` azonos elvű
   // kommentjét arról, miért fontos ez (Vercel-en előforduló idézőjel/whitespace szennyeződés).
   const apiKey = process.env.GEMINI_API_KEY?.trim().replace(/^["']|["']$/g, '');
@@ -287,6 +313,20 @@ export async function POST(request: NextRequest): Promise<NextResponse<ScanVinSu
     return NextResponse.json(
       { success: false, error: `A kép túl nagy (max ${Math.floor(MAX_IMAGE_BYTES / (1024 * 1024))} MB).` },
       { status: 400 }
+    );
+  }
+
+  // ELŐZETES KREDIT-ELLENŐRZÉS -- a Gemini API hívás ELŐTT. Lásd `parse-equipment/route.ts`
+  // JSDoc-ját; a tényleges levonás sikeres, érvényes válasz UTÁN, lent.
+  const hasCredits = await hasEnoughCredits(user.id, 1);
+  if (!hasCredits) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Nincs elegendő AI kredit a művelet elvégzéséhez.',
+        code: 'INSUFFICIENT_CREDITS',
+      },
+      { status: 402 }
     );
   }
 
@@ -432,6 +472,14 @@ export async function POST(request: NextRequest): Promise<NextResponse<ScanVinSu
     detectedDocumentType: modelResponse.detectedDocumentType,
     ...(extractedDetails ? { extractedDetails } : {}),
   };
+
+  // KREDIT LEVONÁS -- KIZÁRÓLAG sikeres, érvényes Gemini-válasz UTÁN. Lásd
+  // `parse-equipment/route.ts` JSDoc-ját a hiba-esetek indoklásáról.
+  try {
+    await deductCredits(user.id, FEATURE_NAME, 1);
+  } catch (error) {
+    console.error('[scan-vin] Kredit levonás sikertelen a sikeres AI hívás után:', error);
+  }
 
   return NextResponse.json({ success: true, data });
 }

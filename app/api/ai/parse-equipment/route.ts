@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI, Type } from '@google/genai';
 import { EQUIPMENT_ITEMS } from '@/lib/inspections/constants';
 import type { FeatureState, FeatureStatus } from '@/lib/inspections/types';
+import { createClient } from '@/lib/supabase/server';
+import { hasEnoughCredits, deductCredits } from '@/lib/credits';
 
 /**
  * Google Gemini backend a Felszereltség modul "Hibrid Okos-Lista" hangalapú/szabadszöveges
@@ -44,6 +46,26 @@ import type { FeatureState, FeatureStatus } from '@/lib/inspections/types';
  *
  * `runtime = 'nodejs'`, mert a `@google/genai` SDK Node.js API-kra (pl. `fetch` felett, de a
  * csomag maga Node.js-célzású) épül -- Edge runtime-on nem garantált a működése.
+ *
+ * **Autentikáció + kredit-védelem (2026-08-02, CANONIKUS leírás -- a `scan-vin`,
+ * `generate-summary`, `fix-grammar` route-ok UGYANEZT a mintát követik, ott csak erre a
+ * szakaszra hivatkozunk):** a `/api/ai/*` route-ok korábban NEM voltak védve a
+ * middleware-ben (`lib/supabase/middleware.ts` `PROTECTED_PREFIXES`-je csak OLDAL-
+ * útvonalakat fed le, API route-okat nem) -- bárki, bejelentkezés nélkül is meg tudta
+ * hívni őket közvetlenül, ami feleslegesen fizetős Gemini-hívásokat tett lehetővé. A
+ * `POST` handler elején ezért a `lib/supabase/server.ts` cookie-alapú (NEM service role)
+ * kliensével lekérjük a hívó felhasználót (`auth.getUser()`) -- ha nincs bejelentkezve,
+ * `401`-et adunk vissza, MIELŐTT bármilyen egyéb (API kulcs/body) ellenőrzés lefutna.
+ * Ezután, MIELŐTT a Gemini API-t hívnánk, `hasEnoughCredits(userId, 1)`-gyel ellenőrizzük,
+ * van-e szabad kreditje -- ha nincs, `402`-t adunk vissza `INSUFFICIENT_CREDITS` kóddal, a
+ * Gemini API-t EGYÁLTALÁN NEM hívjuk meg (nincs felesleges szerverköltség). A tényleges
+ * `deductCredits(userId, featureName, 1)` levonás KIZÁRÓLAG a válasz VALIDÁLÁSA (nem csak a
+ * Gemini-hívás technikai sikere, hanem a `success: true` válasz összeállítása) UTÁN, a
+ * `return NextResponse.json({ success: true, ... })` sor ELŐTT fut le -- ha a Gemini-hívás
+ * hibázik VAGY a válasz érvénytelennek bizonyul (JSON parse hiba, séma-eltérés stb.), NEM
+ * vonunk le kreditet. Ha maga a levonás hibázna (pl. egy párhuzamos kérés időközben
+ * elfogyasztotta a kreditet), a hibát logoljuk, de a választ -- amit a felhasználó a MÁR
+ * lefutott, kifizetett Gemini-hívásért cserébe jogosan kapott -- nem tartjuk vissza.
  */
 export const runtime = 'nodejs';
 
@@ -52,6 +74,9 @@ export const runtime = 'nodejs';
  * `POST` handlerben. Ha MINDKETTŐ elbukna, a `POST` handler egy dinamikus
  * modell-listázó fallback-kel próbálkozik tovább (lásd `ai.models.list()` hívás lent). */
 const MODEL_CANDIDATES = ['gemini-2.0-flash', 'gemini-flash-latest'] as const;
+
+/** A `usage_logs.feature_name` értéke ehhez a route-hoz -- lásd `lib/credits.ts`. */
+const FEATURE_NAME = 'equipment_parse';
 
 const VALID_STATUSES: FeatureStatus[] = ['working', 'defective', 'not_present'];
 
@@ -87,6 +112,10 @@ interface ParseEquipmentErrorResponse {
    * tényleges ok (pl. hibás/hiányzó API kulcs, kvóta-túllépés, modellnév-hiba stb.), ne
    * csak egy generikus "Hiba történt..." szöveg. */
   details?: string;
+  /** Gépileg feldolgozható hibakód (pl. `'UNAUTHORIZED'`, `'INSUFFICIENT_CREDITS'`) --
+   * a kliens ez alapján tud speciális UI-t mutatni (pl. "vásárolj több kreditet" gombot),
+   * nem csak a szabad szöveges `error` üzenetet kiírni. */
+  code?: string;
 }
 
 /** Kivétel-objektumból (vagy bármilyen `catch`-elt értékből) egységesen kinyert,
@@ -121,6 +150,20 @@ ${catalogJson}`;
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse<ParseEquipmentSuccessResponse | ParseEquipmentErrorResponse>> {
+  // AUTENTIKÁCIÓ -- lásd a fenti JSDoc "Autentikáció + kredit-védelem" szakaszát.
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return NextResponse.json(
+      { success: false, error: 'A művelethez bejelentkezés szükséges.', code: 'UNAUTHORIZED' },
+      { status: 401 }
+    );
+  }
+
   // Környezeti változó megtisztítása -- Vercel-en (vagy más .env kezelőkben) előfordul,
   // hogy a beillesztett API kulcs köré véletlenül idézőjelek kerülnek, vagy a másolás
   // felesleges vezető/záró szóközt/sortörést hagy maga után. Egy ilyen "szennyezett" kulcs
@@ -150,6 +193,21 @@ export async function POST(request: NextRequest): Promise<NextResponse<ParseEqui
     return NextResponse.json(
       { success: false, error: `A szöveg túl hosszú (max ${MAX_TEXT_LENGTH} karakter).` },
       { status: 400 }
+    );
+  }
+
+  // ELŐZETES KREDIT-ELLENŐRZÉS -- a Gemini API hívás ELŐTT, hogy elégtelen kredit esetén NE
+  // keletkezzen felesleges szerverköltség. Lásd a fenti JSDoc "Autentikáció + kredit-védelem"
+  // szakaszát; a tényleges levonás sikeres, érvényes válasz UTÁN, lent.
+  const hasCredits = await hasEnoughCredits(user.id, 1);
+  if (!hasCredits) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Nincs elegendő AI kredit a művelet elvégzéséhez.',
+        code: 'INSUFFICIENT_CREDITS',
+      },
+      { status: 402 }
     );
   }
 
@@ -299,6 +357,14 @@ export async function POST(request: NextRequest): Promise<NextResponse<ParseEqui
 
     updates.push(featureState);
     seenIds.add(item.id);
+  }
+
+  // KREDIT LEVONÁS -- KIZÁRÓLAG sikeres, érvényes Gemini-válasz UTÁN, lásd a fenti JSDoc
+  // "Autentikáció + kredit-védelem" szakaszát a hiba-esetek indoklásáról.
+  try {
+    await deductCredits(user.id, FEATURE_NAME, 1);
+  } catch (error) {
+    console.error('[parse-equipment] Kredit levonás sikertelen a sikeres AI hívás után:', error);
   }
 
   return NextResponse.json({ success: true, updates });
