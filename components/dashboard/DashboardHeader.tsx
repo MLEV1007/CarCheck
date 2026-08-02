@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Settings } from 'lucide-react';
 import { SignOutButton } from '@/components/auth/SignOutButton';
+import { HeaderCreditBadge } from '@/components/credits/HeaderCreditBadge';
 
 interface DashboardHeaderProps {
   companyName: string | null;
@@ -30,6 +31,7 @@ export function DashboardHeader({ companyName, logoUrl }: DashboardHeaderProps) 
       </div>
 
       <div className="flex shrink-0 items-center gap-3">
+        <HeaderCreditBadge />
         <Link
           href="/settings"
           className="inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-[13px] font-medium text-linear-ink-subtle transition-colors hover:bg-linear-surface-1 hover:text-linear-ink"

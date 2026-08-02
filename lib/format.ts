@@ -75,6 +75,25 @@ export function formatHufInput(amount: string | null | undefined): string {
   return new Intl.NumberFormat('hu-HU').format(num);
 }
 
+/**
+ * ISO 8601 timestamp (pl. `user_credits.credits_reset_at`, `usage_logs.created_at` --
+ * mindkettő Postgres `timestamptz`, `Date`-ként JSON-szerializálva ISO stringgé) magyar
+ * dátum (és opcionálisan idő) formában -- a Kredit Dashboard modul ("Megújulás dátuma",
+ * "AI Használati Előzmények") vezette be, de bármely jövőbeli timestamp-megjelenítés
+ * felhasználhatja. `null`/`undefined`/érvénytelen dátum esetén üres stringet ad vissza.
+ */
+export function formatDateTimeHu(iso: string | null | undefined, withTime = false): string {
+  if (!iso) return '';
+  const date = new Date(iso);
+  if (isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('hu-HU', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    ...(withTime ? { hour: '2-digit', minute: '2-digit' } : {}),
+  });
+}
+
 export function formatServiceDate(raw: string | null | undefined): string {
   if (!raw) return '';
   if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {

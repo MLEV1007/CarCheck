@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
+import { InsufficientCreditsProvider } from '@/components/credits/InsufficientCreditsProvider';
 import './globals.css';
 
 // A Stripe design system (stripe.md) a proprietary "Sohne"-t írja elő, ennek dokumentált
@@ -49,7 +50,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     // ártalmatlan eltérést okoz, amit ez a prop néma marad React figyelmeztetés nélkül.
     <html lang="hu" className={inter.variable} suppressHydrationWarning>
       <body className="font-sohne antialiased">
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <InsufficientCreditsProvider>{children}</InsufficientCreditsProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

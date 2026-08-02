@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { InspectionWizard } from '@/components/inspections/wizard/InspectionWizard';
+import { HeaderCreditBadge } from '@/components/credits/HeaderCreditBadge';
 import { DEFAULT_LICENSE_PLATE_COUNTRY } from '@/lib/inspections/constants';
 
 export const metadata: Metadata = {
@@ -38,7 +39,8 @@ export default async function NewInspectionPage() {
         >
           <ArrowLeft className="h-4 w-4" />
         </Link>
-        <span className="text-[14px] font-medium text-linear-ink">Új vizsgálat indítása</span>
+        <span className="flex-1 text-[14px] font-medium text-linear-ink">Új vizsgálat indítása</span>
+        <HeaderCreditBadge />
       </header>
 
       <InspectionWizard defaultLicensePlateCountry={defaultLicensePlateCountry} />

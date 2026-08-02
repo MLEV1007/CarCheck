@@ -16,6 +16,7 @@ import {
 } from '@/lib/inspections/validation';
 import { formatKmInput } from '@/lib/format';
 import { LICENSE_PLATE_COUNTRIES } from '@/lib/inspections/constants';
+import { useInsufficientCredits } from '@/components/credits/InsufficientCreditsProvider';
 import type { CarInfoState } from '@/lib/inspections/types';
 
 const AI_SCAN_FAILURE_MESSAGE = 'Nem sikerült az AI-alapú beolvasás. Próbáld újra, vagy gépeld be manuálisan!';
@@ -168,6 +169,7 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
   // típus/évjárat kinyerése egyetlen AI-hívással.
   const aiScanFileInputRef = useRef<HTMLInputElement>(null);
   const [isAiScanning, setIsAiScanning] = useState(false);
+  const { notifyInsufficientCredits } = useInsufficientCredits();
 
   const errors = getCarInfoErrors(value);
   const showError = (field: keyof CarInfoState) => (touched[field] || attemptedNext ? errors[field] : undefined);
@@ -235,6 +237,13 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image: imageDataUrl }),
       });
+
+      // 402 INSUFFICIENT_CREDITS -- lásd `InsufficientCreditsProvider.tsx`. A globális
+      // "Elfogytak az AI krediteid" modalt nyitjuk meg a lokális toast helyett.
+      if (response.status === 402) {
+        notifyInsufficientCredits();
+        return;
+      }
 
       // A válasz JSON-parszolását KÜLÖN try/catch-ben végezzük -- ha a kérés a Vercel
       // infrastruktúra szintjén (pl. a kb. 4,5 MB-os request body limit átlépése miatt)

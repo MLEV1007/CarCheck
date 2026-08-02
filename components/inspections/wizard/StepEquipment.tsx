@@ -15,6 +15,7 @@ import {
 import { TextareaField } from '@/components/inspections/wizard/FormControls';
 import { VinScanToast, type VinScanToastVariant } from '@/components/inspections/wizard/VinScanToast';
 import { WizardStepFooter } from '@/components/inspections/wizard/WizardBottomBar';
+import { useInsufficientCredits } from '@/components/credits/InsufficientCreditsProvider';
 import { joinDictatedText } from '@/lib/utils';
 import {
   EQUIPMENT_CATEGORY_LABEL,
@@ -323,6 +324,7 @@ function EquipmentAiAssistant({
 }) {
   const [text, setText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const { notifyInsufficientCredits } = useInsufficientCredits();
 
   /** "Auto-Trigger AI Diktálás" lépés (2026-08-02) -- `overrideText` az
    * `onDictationEnd`-ből érkezik (lásd a `TextareaField` hívását lent): a diktálás
@@ -343,6 +345,15 @@ function EquipmentAiAssistant({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: trimmed }),
       });
+
+      // 402 INSUFFICIENT_CREDITS -- lásd `InsufficientCreditsProvider.tsx`. A globális
+      // "Elfogytak az AI krediteid" modalt nyitjuk meg a lokális toast helyett, hogy a
+      // felhasználó egyértelmű, akcionálható visszajelzést kapjon (nem csak egy generikus
+      // hibaüzenetet).
+      if (response.status === 402) {
+        notifyInsufficientCredits();
+        return;
+      }
 
       const data = (await response.json()) as ParseEquipmentApiResponse;
 

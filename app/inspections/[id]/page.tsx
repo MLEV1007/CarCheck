@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { InspectionWizard } from '@/components/inspections/wizard/InspectionWizard';
 import { InspectionDetailView } from '@/components/inspections/detail/InspectionDetailView';
 import { InspectionNotFound } from '@/components/inspections/detail/InspectionNotFound';
+import { HeaderCreditBadge } from '@/components/credits/HeaderCreditBadge';
 import { DAMAGE_TYPES, DEFAULT_LICENSE_PLATE_COUNTRY, EQUIPMENT_ITEMS, TIRE_BRANDS } from '@/lib/inspections/constants';
 import type {
   CarInfoState,
@@ -320,7 +321,8 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
-          <span className="text-[14px] font-medium text-linear-ink">Vizsgálat folytatása (piszkozat)</span>
+          <span className="flex-1 text-[14px] font-medium text-linear-ink">Vizsgálat folytatása (piszkozat)</span>
+          <HeaderCreditBadge />
         </header>
 
         <InspectionWizard

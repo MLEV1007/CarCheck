@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import type { UserCredit } from '@/types/credits';
+import type { PlanTier, UsageLog, UserCredit } from '@/types/credits';
 
 /**
  * Kredit kezelő szerveroldali segédmodul.
@@ -173,4 +173,51 @@ export async function deductCredits(
   // állítjuk össze, hogy a visszaadott `UserCredit` mindig konzisztens legyen.
   const balance = await getUserCreditBalance(userId);
   return balance;
+}
+
+/**
+ * Visszaadja a felhasználó `profiles.plan_tier` értékét (Kredit Dashboard UI, "Csomag
+ * Státusz" blokk) -- ha valamiért hiányzik/érvénytelen (nem várt, de defenzíven kezelt
+ * eset), `'free'`-re esik vissza, sose adjon vissza a `PlanTier` unión kívüli értéket.
+ */
+export async function getUserPlanTier(userId: string): Promise<PlanTier> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.from('profiles').select('plan_tier').eq('id', userId).maybeSingle();
+
+  if (error) {
+    throw new Error(`Nem sikerült lekérni a csomag-szintet: ${error.message}`);
+  }
+
+  const VALID_TIERS: PlanTier[] = ['free', 'starter', 'pro', 'enterprise'];
+  const rawTier = data?.plan_tier;
+  return rawTier && (VALID_TIERS as string[]).includes(rawTier) ? (rawTier as PlanTier) : 'free';
+}
+
+/**
+ * Visszaadja a felhasználó legutóbbi `usage_logs` bejegyzéseit, legfrissebb elöl (Kredit
+ * Dashboard UI, "AI Használati Előzmények" tábla) -- alapértelmezetten a legutóbbi 8
+ * bejegyzést, a felhasználói kérésben szereplő "max 5-10 soros táblázat" tartományon belül.
+ */
+export async function getRecentUsageLogs(userId: string, limit: number = 8): Promise<UsageLog[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from('usage_logs')
+    .select('id, user_id, feature_name, credits_deducted, created_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    throw new Error(`Nem sikerült lekérni a használati előzményeket: ${error.message}`);
+  }
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    userId: row.user_id,
+    featureName: row.feature_name,
+    creditsDeducted: row.credits_deducted,
+    createdAt: row.created_at,
+  }));
 }

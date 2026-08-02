@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Loader2, Mic } from 'lucide-react';
 import { useSpeechToText } from '@/lib/hooks/useSpeechToText';
 import { cn, joinDictatedText } from '@/lib/utils';
+import { useInsufficientCredits } from '@/components/credits/InsufficientCreditsProvider';
 
 interface VoiceInputButtonProps {
   /** A cél mező (textarea/input) JELENLEGI tartalma -- a felismert szöveg ehhez fűződik. */
@@ -60,6 +61,7 @@ export function VoiceInputButton({
   autoFixGrammar = true,
 }: VoiceInputButtonProps) {
   const [isFixingGrammar, setIsFixingGrammar] = useState(false);
+  const { notifyInsufficientCredits } = useInsufficientCredits();
 
   /** Alapértelmezett diktálás-vége viselkedés -- KIZÁRÓLAG akkor fut, ha a hívó fél NEM
    * adott meg egyedi `onDictationEnd`-et. Lásd a `/api/ai/fix-grammar` route JSDoc-ját a
@@ -74,6 +76,15 @@ export function VoiceInputButton({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: sessionText }),
       });
+
+      // 402 INSUFFICIENT_CREDITS -- lásd `InsufficientCreditsProvider.tsx`. A mezőben már
+      // ott van az élő, nyers felismert szöveg, ezért itt is (a többi hibaágnál
+      // megszokott módon) CSENDBEN visszaesünk arra, csak a modalt nyitjuk meg extra
+      // jelzésként, hogy a felhasználó tudja, MIÉRT nem futott le a nyelvhelyesség-javítás.
+      if (response.status === 402) {
+        notifyInsufficientCredits();
+        return;
+      }
 
       const data = (await response.json().catch(() => null)) as { success: boolean; text?: string } | null;
 

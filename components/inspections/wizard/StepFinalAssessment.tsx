@@ -10,6 +10,7 @@ import {
 } from '@/lib/inspections/constants';
 import { sanitizeCostAmount } from '@/lib/inspections/validation';
 import { formatHufInput } from '@/lib/format';
+import { useInsufficientCredits } from '@/components/credits/InsufficientCreditsProvider';
 import type {
   CarInfoState,
   DamagePointState,
@@ -144,6 +145,7 @@ export function StepFinalAssessment({
 }: StepFinalAssessmentProps) {
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
+  const { notifyInsufficientCredits } = useInsufficientCredits();
 
   function setRecommendation(recommendation: FinalAssessmentRecommendation) {
     onChange({ ...value, recommendation: value.recommendation === recommendation ? null : recommendation });
@@ -163,6 +165,13 @@ export function StepFinalAssessment({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ inspectionData: buildInspectionSnapshot(aiSummaryContext) }),
       });
+
+      // 402 INSUFFICIENT_CREDITS -- lásd `InsufficientCreditsProvider.tsx`. A globális
+      // "Elfogytak az AI krediteid" modalt nyitjuk meg a lokális hibaüzenet helyett.
+      if (response.status === 402) {
+        notifyInsufficientCredits();
+        return;
+      }
 
       const data = (await response.json()) as GenerateSummaryApiResponse;
 
