@@ -13,17 +13,15 @@ import {
   sanitizeVin,
   sanitizeYear,
 } from '@/lib/inspections/validation';
-import { recognizeVinFromImage } from '@/lib/inspections/vinOcr';
 import { formatKmInput } from '@/lib/format';
 import { LicensePlateBadge } from '@/components/ui/LicensePlateBadge';
 import { LICENSE_PLATE_COUNTRIES } from '@/lib/inspections/constants';
 import type { CarInfoState } from '@/lib/inspections/types';
 
-const VIN_SCAN_FAILURE_MESSAGE =
-  'Nem sikerült felismerni az alvázszámot. Kérlek fotózd közelebbről, vagy gépeld be manuálisan!';
+const AI_SCAN_FAILURE_MESSAGE = 'Nem sikerült az AI-alapú beolvasás. Próbáld újra, vagy gépeld be manuálisan!';
 
-const AI_SCAN_FAILURE_MESSAGE =
-  'Nem sikerült az AI-alapú beolvasás. Próbáld újra, vagy használd a "VIN beolvasása fotóról" gombot, illetve gépeld be manuálisan!';
+const AI_SCAN_TOO_LARGE_MESSAGE =
+  'A kép túl nagy volt a feltöltéshez a tömörítés után is. Próbálj egy alacsonyabb felbontású fotót, vagy gépeld be manuálisan!';
 
 /** A `/api/ai/scan-vin` route válasz-alakja (lásd `app/api/ai/scan-vin/route.ts`) -- csak a
  * kliens-oldalon ténylegesen felhasznált mezőket modellezi, ugyanaz az elv, mint a
@@ -46,15 +44,68 @@ interface ScanVinApiResponse {
   details?: string;
 }
 
-/** A kiválasztott fájlt `data:image/...;base64,...` séma szerinti data URL-lé alakítja --
- * a `/api/ai/scan-vin` route ezt a formátumot fogadja el közvetlenül (a MIME-típust a
- * data URL-ből olvassa ki, lásd a route `parseDataUrl()` függvényét). */
-function readFileAsDataUrl(file: File): Promise<string> {
+/** A kép leghosszabb oldala (px) tömörítés UTÁN -- egy Forgalmi Engedély/VIN-matrica
+ * szövege bőven olvasható marad ekkora felbontáson is, miközben a fájlméret drasztikusan
+ * csökken egy natív telefonfotóhoz (gyakran 3000-4000px+ oldalhosszal) képest. */
+const AI_SCAN_MAX_DIMENSION = 1600;
+/** JPEG tömörítési minőség (0-1) -- 0.82 jó kompromisszum: a szöveg élesen olvasható marad
+ * OCR/AI-elemzéshez, a fájlméret mégis a töredéke egy tömörítetlen fotónak. */
+const AI_SCAN_JPEG_QUALITY = 0.82;
+
+/**
+ * A kiválasztott fotót Canvas-szal átméretezi (leghosszabb oldal max. `AI_SCAN_MAX_DIMENSION`
+ * px-re) és JPEG-ként újratömöríti (`AI_SCAN_JPEG_QUALITY`), mielőtt Base64 data URL-lé
+ * alakítaná a `/api/ai/scan-vin` route-nak küldött kéréshez.
+ *
+ * **Miért kellett ez a lépés:** a Vercel Serverless Function-ök request body mérete
+ * (a JSON+Base64 kép EGYÜTT) egy kb. 4,5 MB-os, a platform által kikényszerített, nem
+ * konfigurálható felső korláttal rendelkezik. Egy natív telefonfotó (jellemzően 2-8 MB,
+ * ráadásul Base64 kódolással +33% méretnövekedéssel) simán túllépi ezt -- ilyenkor a
+ * kérés MÉG A ROUTE-UNK MEGHÍVÁSA ELŐTT, Vercel-infrastruktúra szinten elutasításra kerül
+ * egy `413`-as (vagy HTML-hibaoldalas, NEM JSON) válasszal, amit a kliens `response.json()`
+ * hívása kivétellel jelez -- ez okozta a felhasználó által jelentett generikus
+ * `AI_SCAN_FAILURE_MESSAGE` hibaüzenetet minden feltöltésnél. A kliens-oldali tömörítés
+ * megelőzi ezt: egy 1600px-es, 0,82 minőségű JPEG szinte mindig jóval 1 MB alatt marad.
+ */
+function compressImageForAiScan(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () => reject(new Error('A kép beolvasása sikertelen.'));
-    reader.readAsDataURL(file);
+    const objectUrl = URL.createObjectURL(file);
+    const img = new Image();
+
+    img.onload = () => {
+      try {
+        const scale = Math.min(1, AI_SCAN_MAX_DIMENSION / Math.max(img.naturalWidth, img.naturalHeight));
+        const width = Math.max(1, Math.round(img.naturalWidth * scale));
+        const height = Math.max(1, Math.round(img.naturalHeight * scale));
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('A böngésző nem támogatja a Canvas 2D kontextust.'));
+          return;
+        }
+
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, width, height);
+
+        resolve(canvas.toDataURL('image/jpeg', AI_SCAN_JPEG_QUALITY));
+      } catch (err) {
+        reject(err instanceof Error ? err : new Error('Ismeretlen hiba a kép tömörítése közben.'));
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('A kép betöltése sikertelen.'));
+    };
+
+    img.src = objectUrl;
   });
 }
 
@@ -120,12 +171,6 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
   const [touched, setTouched] = useState<Partial<Record<keyof CarInfoState, boolean>>>({});
   const [attemptedNext, setAttemptedNext] = useState(false);
 
-  // VIN OCR (Tesseract.js, kliens-oldali, 100%-ig ingyenes -- lásd lib/inspections/vinOcr.ts).
-  const vinFileInputRef = useRef<HTMLInputElement>(null);
-  const [isScanningVin, setIsScanningVin] = useState(false);
-  // A két beolvasási mód (Tesseract OCR ÉS Gemini Vision AI) UGYANAZT a toast-állapotot
-  // osztja meg -- a wizard felületén egyszerre úgyis csak egy visszajelzés-sáv látszik,
-  // nincs értelme külön state-nek.
   const [vinScanToast, setVinScanToast] = useState<{ variant: VinScanToastVariant; message: string } | null>(null);
 
   // Gemini Vision AI szkenner (`/api/ai/scan-vin`, lásd a route JSDoc-ját) -- Forgalmi
@@ -170,46 +215,13 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
     set('carModel', selected);
   }
 
-  function handleVinScanClick() {
-    vinFileInputRef.current?.click();
-  }
-
-  /** Fotó kiválasztása/lefotózása után lefuttatja a Tesseract.js OCR-t (lib/inspections/vinOcr.ts),
-   * és sikeres 17 karakteres VIN találat esetén automatikusan kitölti a mezőt. A gomb a
-   * felismerés alatt le van tiltva (`isScanningVin`), hogy a user ne indíthasson el több
-   * párhuzamos worker-t véletlen dupla kattintással. */
-  async function handleVinPhotoSelected(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0] ?? null;
-    // Az input értékét azonnal töröljük, hogy ugyanaz a fájl újra kiválasztható legyen
-    // (böngésző különben nem tüzeli az onChange-et változatlan fájlnál).
-    event.target.value = '';
-    if (!file) return;
-
-    setIsScanningVin(true);
-    setVinScanToast(null);
-    try {
-      const result = await recognizeVinFromImage(file);
-      if (result.success && result.vin) {
-        const vin = sanitizeVin(result.vin);
-        set('vin', vin);
-        markTouched('vin');
-        setVinScanToast({ variant: 'success', message: `Alvázszám sikeresen beolvasva: ${vin}` });
-      } else {
-        setVinScanToast({ variant: 'warning', message: VIN_SCAN_FAILURE_MESSAGE });
-      }
-    } catch {
-      setVinScanToast({ variant: 'warning', message: VIN_SCAN_FAILURE_MESSAGE });
-    } finally {
-      setIsScanningVin(false);
-    }
-  }
-
   function handleAiScanClick() {
     aiScanFileInputRef.current?.click();
   }
 
   /**
-   * Fotó kiválasztása/lefotózása után Base64-re konvertálja a képet (`readFileAsDataUrl`),
+   * Fotó kiválasztása/lefotózása után Canvas-szal tömöríti a képet (`compressImageForAiScan`
+   * -- lásd a JSDoc-ját arról, miért kritikus ez a Vercel request body korlátja miatt),
    * elküldi a `/api/ai/scan-vin` route-nak, majd a válasz alapján -- KIZÁRÓLAG az AI által
    * ténylegesen visszaadott mezőket felülírva -- előtölti a formot:
    *  - `vin` -> Alvázszám (a helyi `sanitizeVin` szigorú ISO 3779-tisztítást is elvégzi
@@ -234,7 +246,7 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
     setIsAiScanning(true);
     setVinScanToast(null);
     try {
-      const imageDataUrl = await readFileAsDataUrl(file);
+      const imageDataUrl = await compressImageForAiScan(file);
 
       const response = await fetch('/api/ai/scan-vin', {
         method: 'POST',
@@ -242,13 +254,31 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
         body: JSON.stringify({ image: imageDataUrl }),
       });
 
-      const result = (await response.json()) as ScanVinApiResponse;
+      // A válasz JSON-parszolását KÜLÖN try/catch-ben végezzük -- ha a kérés a Vercel
+      // infrastruktúra szintjén (pl. a kb. 4,5 MB-os request body limit átlépése miatt)
+      // MÉG A ROUTE-UNK MEGHÍVÁSA ELŐTT elutasításra kerül, a válasz `413`/HTML-hibaoldal
+      // lehet, NEM a route JSON válasza -- ezt korábban a `response.json()` kivétele a
+      // `catch`-ig görgette, ahol csak a generikus `AI_SCAN_FAILURE_MESSAGE` jelent meg,
+      // a tényleges ok (túl nagy kép) nélkül. Itt explicit különválasztjuk a két esetet.
+      let result: ScanVinApiResponse | null = null;
+      try {
+        result = (await response.json()) as ScanVinApiResponse;
+      } catch (parseError) {
+        console.error(
+          '[StepCarInfo] A /api/ai/scan-vin válasza nem érvényes JSON (státusz:',
+          response.status,
+          '):',
+          parseError
+        );
+      }
 
-      if (!response.ok || !result.success || !result.data) {
+      if (!response.ok || !result?.success || !result?.data) {
         // A `details` mezőt (ha érkezett) a konzolba is kilogoljuk hibakereséshez, hogy
         // Vercel-en a szerver-logok megnyitása nélkül is látszódjon a tényleges ok.
-        if (result.details) console.error('[StepCarInfo] Gemini scan-vin hiba részletek:', result.details);
-        setVinScanToast({ variant: 'warning', message: result.error ?? AI_SCAN_FAILURE_MESSAGE });
+        if (result?.details) console.error('[StepCarInfo] Gemini scan-vin hiba részletek:', result.details);
+        const message =
+          result?.error ?? (response.status === 413 ? AI_SCAN_TOO_LARGE_MESSAGE : AI_SCAN_FAILURE_MESSAGE);
+        setVinScanToast({ variant: 'warning', message });
         return;
       }
 
@@ -489,42 +519,17 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
           onBlur={() => markTouched('odometer')}
         />
 
-        <div className="flex flex-col gap-1.5">
-          <TextField
-            label="Alvázszám (VIN)"
-            name="vin"
-            placeholder="17 karakteres azonosító"
-            maxLength={17}
-            className="font-mono uppercase tracking-wider"
-            error={showError('vin')}
-            value={value.vin}
-            onChange={(e) => set('vin', sanitizeVin(e.target.value))}
-            onBlur={() => markTouched('vin')}
-          />
-          <input
-            ref={vinFileInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="hidden"
-            onChange={handleVinPhotoSelected}
-          />
-          <button
-            type="button"
-            onClick={handleVinScanClick}
-            disabled={isScanningVin}
-            className="inline-flex h-8 w-fit items-center gap-1.5 self-start rounded-md border border-linear-hairline bg-linear-surface-2 px-2.5 text-[12px] font-medium text-linear-ink-muted transition-colors hover:border-linear-primary/50 hover:text-linear-ink disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isScanningVin ? (
-              <>
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                📷 Alvázszám felismerése…
-              </>
-            ) : (
-              '📷 VIN beolvasása fotóról'
-            )}
-          </button>
-        </div>
+        <TextField
+          label="Alvázszám (VIN)"
+          name="vin"
+          placeholder="17 karakteres azonosító"
+          maxLength={17}
+          className="font-mono uppercase tracking-wider"
+          error={showError('vin')}
+          value={value.vin}
+          onChange={(e) => set('vin', sanitizeVin(e.target.value))}
+          onBlur={() => markTouched('vin')}
+        />
 
         <div className="flex flex-col gap-1.5">
           <div className="flex items-baseline justify-between">

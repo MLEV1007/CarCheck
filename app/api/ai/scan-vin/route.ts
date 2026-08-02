@@ -3,9 +3,12 @@ import { GoogleGenAI, Type } from '@google/genai';
 
 /**
  * Google Gemini Vision (multimodal) backend a VIN (alvázszám) / forgalmi engedély
- * fotó-szkenneréhez (PROJEKT_INSTRUKCIOK.md 5.B pont, "Autó adatok" wizard-lépés --
- * a kliens-oldali, 100%-ig ingyenes `lib/inspections/vinOcr.ts` (Tesseract.js) OCR MELLETT,
- * attól függetlenül, egy pontosabb, AI-alapú alternatívaként).
+ * fotó-szkenneréhez (PROJEKT_INSTRUKCIOK.md 5.B pont, "Autó adatok" wizard-lépés).
+ *
+ * **Megjegyzés:** korábban a projekt EGY MÁSODIK, kliens-oldali Tesseract.js-alapú VIN OCR
+ * módszert is tartalmazott (`lib/inspections/vinOcr.ts`) ezzel a Gemini Vision route-tal
+ * párhuzamosan -- a felhasználó kérésére eltávolítottuk, ez a route az EGYETLEN,
+ * megmaradt fotó-alapú felismerési mód.
  *
  * A vizsgáló lefotózza az alvázszám-matricát, a szélvédő plakettet VAGY a teljes magyar
  * Forgalmi Engedélyt, ezt a fotót Base64 kódolással küldi be ez a route, ami a Gemini Flash
@@ -39,12 +42,17 @@ function isAllowedMimeType(value: string): value is AllowedMimeType {
   return (ALLOWED_MIME_TYPES as readonly string[]).includes(value);
 }
 
-/** A beküldött kép max. mérete (nyers, dekódolt bájtokban) -- a Gemini `inlineData`
- * (Base64-beágyazott) bemenetnek kb. 20 MB-os a gyakorlati felső korlátja kérésenként;
- * ennél jóval szűkebb, 15 MB-os limitet szabunk, hogy egy tipikus telefonos fotónál bőven
- * maradjon tartalék, de egy véletlenül/rosszindulatúan túlméretezett kérést elutasítsunk,
- * mielőtt a Gemini API-t egyáltalán meghívnánk. */
-const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
+/** A beküldött kép max. mérete (nyers, dekódolt bájtokban). FONTOS: a Gemini `inlineData`
+ * (Base64-beágyazott) bemenetnek kb. 20 MB-os gyakorlati felső korlátja VAN, DE a
+ * ténylegesen szűkebb korlát a Vercel Serverless Function-ök request body mérete -- ez
+ * (JSON + Base64 kép EGYÜTT) kb. 4,5 MB, platform szinten kikényszerítve, NEM
+ * konfigurálható. Ha a kliens (`StepCarInfo.tsx` `compressImageForAiScan`) ennél nagyobb
+ * képet küldene, a kérés MÉG EZ A ROUTE MEGHÍVÁSA ELŐTT elutasításra kerül Vercel-en --
+ * ezt a route-ot tehát csak MÁSODLAGOS védelmi vonalként hagyjuk ~4 MB-on (bőven a Vercel
+ * limit alatt, de bőven a klienstől érkező, tömörített ~1 MB alatti képek felett), hogy
+ * egyértelmű `400`-as hibát adjunk vissza, ha valamiért mégis egy nagy kép jutna el idáig
+ * (pl. egy jövőbeli, tömörítés nélküli hívó -- API-t közvetlenül `curl`-ező teszt stb.). */
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 
 const CONFIDENCE_VALUES = ['high', 'medium', 'low'] as const;
 type ScanVinConfidence = (typeof CONFIDENCE_VALUES)[number];
