@@ -66,6 +66,10 @@ interface ParseEquipmentApiResponse {
   success: boolean;
   updates?: { id: string; status: FeatureStatus; notes?: string }[];
   error?: string;
+  /** Hibakeresési célú nyers hibaüzenet (lásd `route.ts` `toErrorDetails()`) -- ha jelen
+   * van, a toast-üzenethez fűzve jelenik meg, hogy a szaki (vagy a fejlesztő Vercel-en) a
+   * konzol megnyitása nélkül is lássa a tényleges okot. */
+  details?: string;
 }
 
 /**
@@ -349,9 +353,14 @@ function EquipmentAiAssistant({
       const data = (await response.json()) as ParseEquipmentApiResponse;
 
       if (!response.ok || !data.success) {
+        // A `details` mezőt (ha érkezett -- lásd `route.ts` `toErrorDetails()`) a
+        // konzolba is kilogoljuk hibakereséshez, ÉS a toast-üzenethez is hozzáfűzzük,
+        // hogy Vercel-en a szerver-logok megnyitása nélkül is látszódjon a tényleges ok.
+        if (data.details) console.error('[EquipmentAiAssistant] Gemini API hiba részletek:', data.details);
+        const baseMessage = data.error ?? 'Hiba történt az AI feldolgozás közben. Próbáld újra.';
         onToast({
           variant: 'warning',
-          message: data.error ?? 'Hiba történt az AI feldolgozás közben. Próbáld újra.',
+          message: data.details ? `${baseMessage} (${data.details})` : baseMessage,
         });
         return;
       }

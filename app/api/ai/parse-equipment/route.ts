@@ -49,6 +49,18 @@ interface ParseEquipmentSuccessResponse {
 interface ParseEquipmentErrorResponse {
   success: false;
   error: string;
+  /** A nyers hibaüzenet (kivétel `.message`-e, vagy `String(error)` ha nem `Error`
+   * példány) -- KIZÁRÓLAG hibakeresési célból kerül bele a válaszba, hogy Vercel-en (ahol
+   * a szerver-konzol logok nem mindig kényelmesen elérhetők) is azonnal látszódjon a
+   * tényleges ok (pl. hibás/hiányzó API kulcs, kvóta-túllépés, modellnév-hiba stb.), ne
+   * csak egy generikus "Hiba történt..." szöveg. */
+  details?: string;
+}
+
+/** Kivétel-objektumból (vagy bármilyen `catch`-elt értékből) egységesen kinyert,
+ * naplózásra/válaszba küldésre alkalmas szöveg. */
+function toErrorDetails(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 const MAX_TEXT_LENGTH = 4000;
@@ -77,12 +89,15 @@ ${catalogJson}`;
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse<ParseEquipmentSuccessResponse | ParseEquipmentErrorResponse>> {
-  const apiKey = process.env.GEMINI_API_KEY;
+  // Környezeti változó megtisztítása -- Vercel-en (vagy más .env kezelőkben) előfordul,
+  // hogy a beillesztett API kulcs köré véletlenül idézőjelek kerülnek, vagy a másolás
+  // felesleges vezető/záró szóközt/sortörést hagy maga után. Egy ilyen "szennyezett" kulcs
+  // a Gemini API-nál generikus hitelesítési hibaként (a mi kódunkban eddig "Hiba történt a
+  // Gemini API hívása közben"-ként) jelentkezett, a valódi ok (érvénytelen kulcs) elrejtve
+  // maradt -- ezért itt, HASZNÁLAT ELŐTT explicit tisztítjuk.
+  const apiKey = process.env.GEMINI_API_KEY?.trim().replace(/^["']|["']$/g, '');
   if (!apiKey) {
-    return NextResponse.json(
-      { success: false, error: 'A GEMINI_API_KEY környezeti változó nincs beállítva a szerveren.' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'A GEMINI_API_KEY érvénytelen vagy hiányzik.' }, { status: 500 });
   }
 
   let body: ParseEquipmentRequestBody;
@@ -138,9 +153,16 @@ export async function POST(request: NextRequest): Promise<NextResponse<ParseEqui
 
     rawText = response.text;
   } catch (error) {
-    console.error('[parse-equipment] Gemini API hívási hiba:', error);
+    // Részletes hibalogolás a szerver konzolra (Vercel -> Deployments -> Functions logs) --
+    // a teljes kivétel-objektumot logoljuk, nem csak az üzenetet, hogy a stack trace/kód is
+    // látszódjon.
+    console.error('Gemini API Error details:', error);
     return NextResponse.json(
-      { success: false, error: 'Hiba történt a Gemini API hívása közben.' },
+      {
+        success: false,
+        error: 'Hiba történt a Gemini API hívása közben',
+        details: toErrorDetails(error),
+      },
       { status: 502 }
     );
   }
@@ -155,7 +177,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ParseEqui
   } catch (error) {
     console.error('[parse-equipment] A Gemini válasz nem érvényes JSON:', rawText, error);
     return NextResponse.json(
-      { success: false, error: 'A Gemini API válasza nem érvényes JSON.' },
+      { success: false, error: 'A Gemini API válasza nem érvényes JSON.', details: toErrorDetails(error) },
       { status: 502 }
     );
   }
