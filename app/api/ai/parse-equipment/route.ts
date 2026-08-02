@@ -16,25 +16,31 @@ import type { FeatureState, FeatureStatus } from '@/lib/inspections/types';
  * `id`/`status`/`notes` frissítésekkel tudja utólag (merge-eléssel) átírni a wizard state-jét,
  * a `currentStates`-ben esetlegesen már meglévő, NEM említett elemeket változatlanul hagyva.
  *
- * **Modellválasztás + fallback-lánc (2026-08-02, három egymást követő hiba elhárítása):**
- * (1) a `gemini-2.0-flash` ingyenes (free tier) kvótája egyes Google AI Studio
- * projekteken `0`-ra volt állítva -- MINDEN hívás azonnal `429 RESOURCE_EXHAUSTED,
- * limit: 0`-val bukott. (2) A `gemini-2.0-flash` NÉV -- a Google modell-kivezetései miatt
- * -- azóta TELJESEN meg is szűnt (`404 NOT_FOUND, "This model models/gemini-2.0-flash is
- * no longer available"`). (3) A fallback-lánc akkori második tagja, a `gemini-1.5-pro`
- * SOSEM volt valódi, hivatalosan elérhető modellazonosító -- ez a NÉV maga adott
- * `404 NOT_FOUND`-ot, és mivel a hibaválasz `details` mezője korábban mindig az UTOLSÓ
- * (a fallback-láncban legutolsóként megpróbált) modell hibáját mutatta, ez ELFEDTE a
- * VALÓDI, elsődleges (`gemini-1.5-flash`) hiba okát -- a UI-n úgy tűnt, mintha az
- * elsődleges modell adna 404-et, holott az valójában sikeresen elérhető, csak a
- * fallback-modellnév volt hibás.
+ * **Modellválasztás + fallback-lánc (2026-08-02, végleges változat -- a korábbi hibás
+ * kísérletek teljes története a git history-ban követhető, itt csak a jelenlegi,
+ * ÉRVÉNYES állapot):** a felhasználói Google AI Studio API kulcs és számlázási fiók
+ * aktiválása óta a `gemini-2.0-flash` és a mindenkori legfrissebb "flash" modell is
+ * zökkenőmentesen elérhető -- a korábbi `1.5`-ös modellnevekre (amik a Google
+ * modell-kivezetései miatt közben elavultak) többé NINCS szükség, minden ilyen
+ * hivatkozás törölve. Elsődleges modell `gemini-2.0-flash`, fallback a
+ * `gemini-flash-latest` (a Google mindenkori legújabb, stabil "flash" verzió-aliasa --
+ * ez a NÉV saját magát tartja karban a Google oldalán, így egy jövőbeli
+ * `gemini-2.0-flash`-kivezetés esetén sem kell a kódot módosítani).
  *
- * Emiatt a `MODEL_CANDIDATES` mostantól KIZÁRÓLAG hivatalosan támogatott, jelenleg aktív
- * Flash modellazonosítókat tartalmaz (`gemini-1.5-flash` elsődleges, `gemini-1.5-flash-latest`
- * a stabil verzió-alias fallback-ként -- lásd `MODEL_CANDIDATES`), ÉS a `POST` handler
- * modell-ciklusa mostantól KIZÁRÓLAG az ELSŐDLEGES (index 0) modell hibáját adja vissza a
- * `details` mezőben, függetlenül attól, hány fallback próbálkozás futott utána -- lásd a
- * `POST` handler `primaryError` változóját.
+ * **Dinamikus modell-listázó végső biztonsági háló:** ha VÉLETLENÜL mindkét fix
+ * `MODEL_CANDIDATES` név elbukna (pl. egy jövőbeli, előre nem látott Google-oldali
+ * modell-átnevezés miatt), a `POST` handler `ai.models.list({ config: { queryBase: true
+ * } })`-szal lekérdezi a ténylegesen elérhető modellek listáját, és az ELSŐ, nevében
+ * "flash" szót tartalmazó modellel próbálkozik -- ez a réteg kódmódosítás NÉLKÜL is
+ * túlél egy jövőbeli modellnév-változást, csak a statikus lista frissítése válik
+ * feleslegessé (bár a gyorsabb, egy hálózati kör nélküli sikeres hívás miatt a
+ * `MODEL_CANDIDATES` karbantartása továbbra is ajánlott).
+ *
+ * A hibaválasz `details` mezője TOVÁBBRA IS KIZÁRÓLAG az ELSŐDLEGES (`MODEL_CANDIDATES[0]`,
+ * azaz `gemini-2.0-flash`) hibáját mutatja, függetlenül attól, hány fallback (statikus
+ * VAGY dinamikus) próbálkozás futott utána -- lásd a `POST` handler `primaryError`
+ * változóját, és a korábbi (`gemini-1.5-pro` 404-es esetét dokumentáló) fejlesztési
+ * lépést a `status.md`-ben arról, miért fontos ez a szétválasztás.
  *
  * `runtime = 'nodejs'`, mert a `@google/genai` SDK Node.js API-kra (pl. `fetch` felett, de a
  * csomag maga Node.js-célzású) épül -- Edge runtime-on nem garantált a működése.
@@ -43,12 +49,9 @@ export const runtime = 'nodejs';
 
 /** Modell-fallback lánc, kipróbálási sorrendben -- lásd a fenti JSDoc "Modellválasztás +
  * fallback-lánc" pontját. Az első sikeres válasz azonnal megszakítja a ciklust, a
- * `POST` handlerben. SZÁNDÉKOSAN NEM tartalmazza SEM a `gemini-2.0-flash`-t (a Google
- * oldalán megszűnt modellnév, `404 NOT_FOUND`), SEM a `gemini-1.5-pro`-t (ez a "pro"
- * variáns-név SOSEM volt hivatalosan érvényes azonosító ebben az SDK-ban, szintén
- * `404 NOT_FOUND`-ot adott) -- mindkettő csak egy garantáltan bukó, felesleges
- * próbálkozást (és a valódi hiba elfedését, lásd fent) jelentett volna minden hívásnál. */
-const MODEL_CANDIDATES = ['gemini-1.5-flash', 'gemini-1.5-flash-latest'] as const;
+ * `POST` handlerben. Ha MINDKETTŐ elbukna, a `POST` handler egy dinamikus
+ * modell-listázó fallback-kel próbálkozik tovább (lásd `ai.models.list()` hívás lent). */
+const MODEL_CANDIDATES = ['gemini-2.0-flash', 'gemini-flash-latest'] as const;
 
 const VALID_STATUSES: FeatureStatus[] = ['working', 'defective', 'not_present'];
 
@@ -166,22 +169,25 @@ export async function POST(request: NextRequest): Promise<NextResponse<ParseEqui
           notes: { type: Type.STRING },
         },
         // A `propertyOrdering` explicit megadása a kimenet stabil mezősorrendjéhez -- a
-        // Google dokumentáció a (mára kivezetett) 2.0-s modelleknél kifejezetten kérte,
-        // újabb modelleknél már opcionális, de az itt használt 1.5-ös modelleknél sem árt --
-        // ugyanaz a séma megy mindkét `MODEL_CANDIDATES`-belihez.
+        // Google dokumentáció a 2.0-s modelleknél kifejezetten kéri, újabb modelleknél már
+        // opcionális, de nem árt -- ugyanaz a séma megy mindegyik próbált modellhez
+        // (`MODEL_CANDIDATES` ÉS az esetleges dinamikus fallback modell is).
         propertyOrdering: ['id', 'status', 'notes'],
         required: ['id', 'status'],
       },
     },
   };
 
+  // A kérés tartalma (`contents`) minden próbálkozásnál (statikus ÉS dinamikus fallback)
+  // ugyanaz -- egyetlen helyen építjük fel, hogy ne duplikálódjon a kód.
+  const contents = [{ role: 'user' as const, parts: [{ text: `Diktált/beírt szöveg:\n"""\n${text}\n"""` }] }];
+
   // Modell-fallback lánc -- sorban kipróbáljuk a `MODEL_CANDIDATES`-t, az ELSŐ sikeres
   // választ azonnal felhasználjuk. MINDEN próbálkozás hibáját logoljuk (modellnevenként
   // külön, hogy a Vercel logokból pontosan látszódjon, melyik modell hányadik
   // próbálkozásra bukott el), DE a kliensnek küldött `details` mezőbe KIZÁRÓLAG az
-  // ELSŐDLEGES (`MODEL_CANDIDATES[0]`) modell hibáját tesszük -- egy esetleges
-  // fallback-modell (pl. hibás/érvénytelen névvel) hibája NE fedje el a valódi,
-  // elsődleges okot (lásd a fájl fejléc-JSDoc-jában a `gemini-1.5-pro` 404-es esetét).
+  // ELSŐDLEGES (`MODEL_CANDIDATES[0]`, azaz `gemini-2.0-flash`) modell hibáját tesszük --
+  // egy esetleges fallback-modell hibája NE fedje el a valódi, elsődleges okot.
   let rawText: string | undefined;
   let succeeded = false;
   let primaryError: unknown;
@@ -189,18 +195,50 @@ export async function POST(request: NextRequest): Promise<NextResponse<ParseEqui
   for (let i = 0; i < MODEL_CANDIDATES.length; i++) {
     const model = MODEL_CANDIDATES[i];
     try {
-      const response = await ai.models.generateContent({
-        model,
-        contents: [{ role: 'user', parts: [{ text: `Diktált/beírt szöveg:\n"""\n${text}\n"""` }] }],
-        config: generationConfig,
-      });
-
+      const response = await ai.models.generateContent({ model, contents, config: generationConfig });
       rawText = response.text;
       succeeded = true;
       break;
     } catch (error) {
       console.error(`Gemini API Error details (model: ${model}):`, error);
       if (i === 0) primaryError = error;
+    }
+  }
+
+  // Dinamikus modell-listázó VÉGSŐ biztonsági háló -- KIZÁRÓLAG akkor fut le, ha MINDKÉT
+  // fix `MODEL_CANDIDATES` elbukott. Lekérdezzük a ténylegesen elérhető (nem finomhangolt,
+  // `queryBase: true`) modellek listáját, és az ELSŐ, nevében "flash" szót tartalmazó
+  // modellel próbálkozunk -- ez a réteg egy jövőbeli, előre nem látott Google-oldali
+  // modellnév-változást is túlél kódmódosítás nélkül. A `primaryError`-t EZ a próbálkozás
+  // sem írja felül -- a kliens felé küldött hiba oka mindig az elsődleges statikus modellé
+  // marad, a dinamikus fallback csak egy csendes, extra mentőöv.
+  if (!succeeded) {
+    try {
+      const modelsPager = await ai.models.list({ config: { queryBase: true, pageSize: 50 } });
+      let dynamicModelName: string | undefined;
+
+      for await (const candidateModel of modelsPager) {
+        const name = candidateModel.name ?? '';
+        if (name.toLowerCase().includes('flash')) {
+          dynamicModelName = name;
+          break;
+        }
+      }
+
+      if (dynamicModelName) {
+        console.error(`[parse-equipment] Statikus MODEL_CANDIDATES mind elbuktak -- dinamikus fallback próbálkozás: ${dynamicModelName}`);
+        try {
+          const response = await ai.models.generateContent({ model: dynamicModelName, contents, config: generationConfig });
+          rawText = response.text;
+          succeeded = true;
+        } catch (error) {
+          console.error(`Gemini API Error details (dynamic fallback model: ${dynamicModelName}):`, error);
+        }
+      } else {
+        console.error('[parse-equipment] Dinamikus modell-listázás nem talált "flash" nevet tartalmazó modellt.');
+      }
+    } catch (error) {
+      console.error('[parse-equipment] Dinamikus modell-listázás (ai.models.list()) hívási hiba:', error);
     }
   }
 
