@@ -117,10 +117,39 @@ export async function getUserCreditBalance(userId: string): Promise<UserCredit> 
 /**
  * Igaz, ha a felhasználónak legalább `cost` darab szabad (havi + vásárolt
  * összesen) kreditje van.
+ *
+ * **Szigorúan "fail-closed" (2026-08-03, kredit-szivárgás audit után hozzáadva):**
+ * ez a függvény SOHA nem dobhat kivételt a hívó (`/api/ai/*` route) felé -- ha az
+ * egyenleg lekérése BÁRMILYEN okból hibázik (DB-hiba, hálózati hiba, RLS-probléma,
+ * hiányzó rekord létrehozásának sikertelensége stb.), `false`-t adunk vissza, NEM
+ * dobjuk tovább a kivételt. Ennek oka: a hívó route-ok (`app/api/ai/.../route.ts`)
+ * NINCSENEK try/catch-csel körbevéve ennél a hívásnál (a `hasEnoughCredits(...)`
+ * UTÁNI kód -- a Gemini-hívás -- explicit `if (!hasCredits) return 402` mögött van),
+ * így egy itt eldobott kivétel technikailag "csak" egy 500-as hibát okozott volna
+ * (nem egy tényleges jogosulatlan AI-hívást), DE ez a védelmi vonal explicit
+ * "fail-closed" garanciát ad: BÁRMILYEN bizonytalan/hibás állapotban a válasz `false`
+ * (nincs elég kredit), SOSE `true`. Az `totalCreditsAvailable <= 0` explicit,
+ * kerekítési/típus-hibáktól független ellenőrzést is kap (nem csak a `>= cost`
+ * összehasonlításra hagyatkozunk), hogy egy esetleges negatív/`NaN`/nem-szám érték
+ * se csúszhasson át véletlenül.
  */
 export async function hasEnoughCredits(userId: string, cost: number = 1): Promise<boolean> {
-  const balance = await getUserCreditBalance(userId);
-  return balance.totalCreditsAvailable >= cost;
+  try {
+    const balance = await getUserCreditBalance(userId);
+    const total = balance.totalCreditsAvailable;
+
+    if (typeof total !== 'number' || !Number.isFinite(total) || total <= 0) {
+      return false;
+    }
+
+    return total >= cost;
+  } catch (error) {
+    console.error(
+      '[hasEnoughCredits] Hiba az egyenleg lekérése közben -- fail-closed, false-t adunk vissza (a hívó AI route NEM fut le):',
+      error
+    );
+    return false;
+  }
 }
 
 /**

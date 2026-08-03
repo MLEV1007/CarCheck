@@ -107,7 +107,8 @@ export async function POST(
   }
 
   // ELŐZETES KREDIT-ELLENŐRZÉS -- a Gemini API hívás ELŐTT. Lásd `parse-equipment/route.ts`
-  // JSDoc-ját; a tényleges levonás sikeres, érvényes válasz UTÁN, lent.
+  // JSDoc-ját; a tényleges levonás sikeres, érvényes válasz UTÁN, lent. A `hasEnoughCredits`
+  // 2026-08-03 óta szigorúan "fail-closed" (lásd `lib/credits.ts`) -- hiba esetén is `false`.
   const hasCredits = await hasEnoughCredits(user.id, 1);
   if (!hasCredits) {
     return NextResponse.json(
