@@ -6,6 +6,12 @@ import { HeaderCreditBadge } from '@/components/credits/HeaderCreditBadge';
 interface DashboardHeaderProps {
   companyName: string | null;
   logoUrl: string | null;
+  /** Szervezeti szerepkör (PROJEKT_INSTRUKCIOK.md "Átvizsgálói UI" lépés) -- Átvizsgáló
+   * NEM láthatja a céges AI kredit-egyenleget, ezért `role === 'inspector'` esetén a
+   * `HeaderCreditBadge` szerver-oldalon, renderelés ELŐTT kimarad (nincs kliens-oldali
+   * villanás/flash, mert ez itt egy Server Component). Opcionális -- ha a hívó nem adja
+   * meg, a badge alapértelmezetten megjelenik (visszafelé kompatibilis viselkedés). */
+  role?: 'manager' | 'inspector';
 }
 
 /**
@@ -13,7 +19,7 @@ interface DashboardHeaderProps {
  * 56-64px magasság, body-sm tipográfia. Bal oldalon a céges branding (logó vagy
  * kezdőbetű-monogram, ha még nincs feltöltve logó), jobb oldalon navigáció + kijelentkezés.
  */
-export function DashboardHeader({ companyName, logoUrl }: DashboardHeaderProps) {
+export function DashboardHeader({ companyName, logoUrl, role = 'manager' }: DashboardHeaderProps) {
   const displayName = companyName || 'Autó Állapotfelmérő';
 
   return (
@@ -31,7 +37,7 @@ export function DashboardHeader({ companyName, logoUrl }: DashboardHeaderProps) 
       </div>
 
       <div className="flex shrink-0 items-center gap-3">
-        <HeaderCreditBadge />
+        {role !== 'inspector' && <HeaderCreditBadge />}
         <Link
           href="/settings"
           className="inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-[13px] font-medium text-linear-ink-subtle transition-colors hover:bg-linear-surface-1 hover:text-linear-ink"

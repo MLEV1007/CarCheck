@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import type { CreditSummarySuccessResponse } from '@/app/api/credits/summary/route';
+import type { OrganizationRole } from '@/types/credits';
 
 interface InsufficientCreditsModalProps {
   onClose: () => void;
@@ -16,9 +18,41 @@ interface InsufficientCreditsModalProps {
  * Linear Dark Design Style, mert a 4 AI-hívó hely (`VoiceInputButton`, `StepEquipment`,
  * `StepCarInfo`, `StepFinalAssessment`) kizárólag a Szakértői Munkaterületen
  * (`/inspections/*`) belül él.
+ *
+ * **Szerepkör-tudatos szöveg (2026-08-03, "Szervezeti szerepkezelés" lépés):** a modal
+ * a `/api/credits/summary` végpontról (ugyanaz a minta, mint a `HeaderCreditBadge`/
+ * `CreditDashboardModal`-nál) megnyíláskor lekérdezi a hívó szerepkörét -- Átvizsgálónak
+ * a "kifogyott a KÖZÖS céges keret, szólj a Menedzsernek" üzenet jelenik meg, a
+ * Stripe-placeholder gombok NÉLKÜL (az Átvizsgáló úgysem tud/nem szabad neki csomagot
+ * váltania -- lásd a "Pénzügyi Végpontok Védelme" lépést, `lib/auth/roles.ts`
+ * `requireManager()`). Amíg a lekérdezés fut (vagy hibázik), a Menedzsernek szánt,
+ * eredeti szöveg jelenik meg alapértelmezettként -- ez biztonságos "fail-open a
+ * szövegre" (NEM a kreditre) eset, legrosszabb esetben egy Átvizsgáló egy pillanatra
+ * a Menedzser-szöveget látja loading közben.
  */
 export function InsufficientCreditsModal({ onClose }: InsufficientCreditsModalProps) {
   const [placeholderNotice, setPlaceholderNotice] = useState<string | null>(null);
+  const [role, setRole] = useState<OrganizationRole>('manager');
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const response = await fetch('/api/credits/summary');
+        const json = (await response.json().catch(() => null)) as CreditSummarySuccessResponse | null;
+        if (!cancelled && response.ok && json?.success) {
+          setRole(json.role);
+        }
+      } catch {
+        // Csendben megtartjuk az alapértelmezett 'manager' szöveget -- lásd a fenti JSDoc-ot.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     function handleEscape(event: KeyboardEvent) {
@@ -38,6 +72,8 @@ export function InsufficientCreditsModal({ onClose }: InsufficientCreditsModalPr
     setPlaceholderNotice(`${action} -- a Stripe fizetési integráció hamarosan érkezik.`);
   }
 
+  const isInspector = role === 'inspector';
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
@@ -54,25 +90,29 @@ export function InsufficientCreditsModal({ onClose }: InsufficientCreditsModalPr
       >
         <p className="text-[16px] font-semibold text-linear-ink">🔒 Elfogytak az AI krediteid!</p>
         <p className="mt-2 text-[13px] leading-relaxed text-linear-ink-subtle">
-          A hangalapú diktáláshoz és a VIN szkennerhez töltsd fel az egyenlegedet vagy válts Pro csomagra.
+          {isInspector
+            ? 'A céges AI keret kimerült. Kérjük, értesítsd a Menedzsert a feltöltéshez!'
+            : 'A hangalapú diktáláshoz és a VIN szkennerhez töltsd fel az egyenlegedet vagy válts Pro csomagra.'}
         </p>
 
-        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-          <button
-            type="button"
-            onClick={() => handlePlaceholderClick('Előfizetés váltása')}
-            className="flex-1 rounded-md border border-linear-hairline px-3.5 py-2 text-[13px] font-medium text-linear-ink transition-colors hover:bg-linear-surface-2"
-          >
-            Előfizetés váltása
-          </button>
-          <button
-            type="button"
-            onClick={() => handlePlaceholderClick('Kredit vásárlása')}
-            className="flex-1 rounded-md bg-linear-primary px-3.5 py-2 text-[13px] font-medium text-white transition-colors hover:bg-linear-primary-hover"
-          >
-            Kredit vásárlása
-          </button>
-        </div>
+        {!isInspector && (
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+            <button
+              type="button"
+              onClick={() => handlePlaceholderClick('Előfizetés váltása')}
+              className="flex-1 rounded-md border border-linear-hairline px-3.5 py-2 text-[13px] font-medium text-linear-ink transition-colors hover:bg-linear-surface-2"
+            >
+              Előfizetés váltása
+            </button>
+            <button
+              type="button"
+              onClick={() => handlePlaceholderClick('Kredit vásárlása')}
+              className="flex-1 rounded-md bg-linear-primary px-3.5 py-2 text-[13px] font-medium text-white transition-colors hover:bg-linear-primary-hover"
+            >
+              Kredit vásárlása
+            </button>
+          </div>
+        )}
 
         {placeholderNotice && (
           <p

@@ -16,6 +16,13 @@ interface MagicLinkFormProps {
   /** 'primary' -- a Regisztráció oldalon ez az EGYETLEN ténylegesen működő akció, ezért ott
    * ez a vizuálisan kiemelt gomb, nem a Passkey (lásd RegisterForm.tsx). */
   variant?: 'primary' | 'secondary';
+  /** Csapattag-meghívó regisztráció (PROJEKT_INSTRUKCIOK.md "Csapattag meghívása" lépés)
+   * -- ha a `/register?invite=<organization_id>` linkről érkezik a user, ez a mező kerül
+   * a `signInWithOtp` `options.data`-jába (`raw_user_meta_data`), amit a DB-oldali
+   * `handle_new_user()` trigger olvas ki, hogy a MEGLÉVŐ szervezethez, 'inspector'
+   * szerepkörrel csatlakoztassa az új usert (a "sima", meghívó nélküli regisztráció
+   * helyett, ami mindig ÚJ, önálló szervezetet + 'manager' szerepkört hoz létre). */
+  signUpData?: Record<string, string>;
 }
 
 /**
@@ -32,6 +39,7 @@ export function MagicLinkForm({
   onSent,
   onError,
   variant = 'secondary',
+  signUpData,
 }: MagicLinkFormProps) {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -46,6 +54,7 @@ export function MagicLinkForm({
       email,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`,
+        ...(signUpData ? { data: signUpData } : {}),
       },
     });
 

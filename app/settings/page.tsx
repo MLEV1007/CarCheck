@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { SettingsForm } from '@/components/settings/SettingsForm';
 import { PasskeyCard } from '@/components/settings/PasskeyCard';
 import { DefaultPreferencesCard } from '@/components/settings/DefaultPreferencesCard';
+import { SettingsTabs } from '@/components/settings/SettingsTabs';
 import { DEFAULT_LICENSE_PLATE_COUNTRY } from '@/lib/inspections/constants';
 
 export const metadata: Metadata = {
@@ -36,9 +37,11 @@ export default async function SettingsPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('company_name, phone, email, logo_url, primary_color')
+    .select('company_name, phone, email, logo_url, primary_color, role, organization_id')
     .eq('id', user.id)
     .maybeSingle();
+
+  const role = profile?.role === 'inspector' ? 'inspector' : 'manager';
 
   const initialDefaultLicenseCountry =
     (user.user_metadata?.default_license_country as string | undefined) || DEFAULT_LICENSE_PLATE_COUNTRY;
@@ -59,16 +62,24 @@ export default async function SettingsPage() {
       </header>
 
       <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-10 sm:px-6">
-        <SettingsForm
-          userId={user.id}
-          initialCompanyName={profile?.company_name ?? ''}
-          initialPhone={profile?.phone ?? ''}
-          initialEmail={profile?.email ?? user.email ?? ''}
-          initialLogoUrl={profile?.logo_url ?? null}
-          initialPrimaryColor={profile?.primary_color ?? '#1c69d4'}
-        />
-        <DefaultPreferencesCard initialDefaultLicenseCountry={initialDefaultLicenseCountry} />
-        <PasskeyCard />
+        <SettingsTabs
+          role={role}
+          organizationId={profile?.organization_id ?? ''}
+          currentUserId={user.id}
+        >
+          <div className="flex flex-col gap-6">
+            <SettingsForm
+              userId={user.id}
+              initialCompanyName={profile?.company_name ?? ''}
+              initialPhone={profile?.phone ?? ''}
+              initialEmail={profile?.email ?? user.email ?? ''}
+              initialLogoUrl={profile?.logo_url ?? null}
+              initialPrimaryColor={profile?.primary_color ?? '#1c69d4'}
+            />
+            <DefaultPreferencesCard initialDefaultLicenseCountry={initialDefaultLicenseCountry} />
+            <PasskeyCard />
+          </div>
+        </SettingsTabs>
       </main>
     </div>
   );

@@ -29,6 +29,14 @@ export default async function NewInspectionPage() {
   const defaultLicensePlateCountry =
     (user?.user_metadata?.default_license_country as string | undefined) || DEFAULT_LICENSE_PLATE_COUNTRY;
 
+  // Szervezeti RBAC (PROJEKT_INSTRUKCIOK.md "Átvizsgálói UI" lépés): az Átvizsgáló NEM
+  // láthatja a céges AI kredit-egyenleget -- a `HeaderCreditBadge` szerver-oldalon,
+  // renderelés ELŐTT marad ki `role === 'inspector'` esetén (nincs kliens-oldali villanás).
+  const { data: profile } = user
+    ? await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
+    : { data: null };
+  const role = profile?.role === 'inspector' ? 'inspector' : 'manager';
+
   return (
     <div className="min-h-screen bg-linear-canvas">
       <header className="flex h-16 items-center gap-3 border-b border-linear-hairline px-4 sm:px-6">
@@ -40,7 +48,7 @@ export default async function NewInspectionPage() {
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <span className="flex-1 text-[14px] font-medium text-linear-ink">Új vizsgálat indítása</span>
-        <HeaderCreditBadge />
+        {role !== 'inspector' && <HeaderCreditBadge />}
       </header>
 
       <InspectionWizard defaultLicensePlateCountry={defaultLicensePlateCountry} />

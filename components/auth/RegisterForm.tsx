@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { PasskeyButton } from '@/components/auth/PasskeyButton';
 import { MagicLinkForm } from '@/components/auth/MagicLinkForm';
 import { AuthDivider } from '@/components/auth/AuthDivider';
@@ -18,10 +19,19 @@ import { AuthDivider } from '@/components/auth/AuthDivider';
  * Supabase alapértelmezetten létrehozza a fiókot az e-mail linkre kattintáskor -- `signInWithOtp`
  * `shouldCreateUser` alapértéke `true`); a Passkey gomb itt csak másodlagos, halkabb link marad
  * azoknak, akik tévedésből a Regisztráció oldalra jöttek, pedig már van fiókjuk és passkey-jük.
+ *
+ * **Csapattag-meghívás (2026-08-03, "Szervezeti szerepkezelés" lépés):** ha a user egy
+ * `/register?invite=<organization_id>` linkről érkezett (lásd `TeamManagement.tsx`
+ * "Csapattag meghívása" modaljának generált linkjét), a `?invite=` query paramétert a
+ * `MagicLinkForm`-nak adjuk tovább `signUpData`-ként -- a `handle_new_user()` DB trigger
+ * ez alapján a MEGLÉVŐ szervezethez, 'inspector' szerepkörrel csatlakoztatja, a "sima"
+ * (nem meghívott) regisztráció helyett, ami mindig új, önálló szervezetet hoz létre.
  */
 export function RegisterForm() {
   const [error, setError] = useState<string | null>(null);
   const [magicLinkSentTo, setMagicLinkSentTo] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const inviteOrgId = searchParams.get('invite');
 
   if (magicLinkSentTo) {
     return (
@@ -56,11 +66,18 @@ export function RegisterForm() {
         </p>
       )}
 
+      {inviteOrgId && (
+        <p className="rounded-stripe-sm border border-stripe-primary/30 bg-stripe-primary/5 px-3 py-2 font-sohne text-[13px] text-stripe-primary">
+          👥 Csapatba lettél meghívva -- a regisztráció után Átvizsgálóként csatlakozol a meghívó cégéhez.
+        </p>
+      )}
+
       <MagicLinkForm
         redirectTo="/dashboard"
         onSent={setMagicLinkSentTo}
         onError={setError}
         variant="primary"
+        signUpData={inviteOrgId ? { invite_org_id: inviteOrgId } : undefined}
       />
 
       <AuthDivider label="már van fiókod és passkey-d?" />

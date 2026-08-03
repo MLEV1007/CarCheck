@@ -19,10 +19,23 @@ export interface InspectionRow {
   status: string;
   created_at: string;
   public_token: string;
+  /** Szervezeti RBAC (PROJEKT_INSTRUKCIOK.md "Riportok Lekérdezési Logikája") -- a
+   * ténylegesen létrehozó user azonosítója. A dashboard listája mostantól -- a hívó
+   * szerepkörétől függően -- CSAPATTÁRSAK vizsgálatait is tartalmazhatja (lásd
+   * `app/dashboard/page.tsx` RLS-alapú, szerepkör-tudatos lekérdezését), ezért a UI-nak
+   * el kell tudnia dönteni, melyik sor a "sajátja" a hívónak. */
+  created_by: string;
 }
 
 interface InspectionsExplorerProps {
   inspections: InspectionRow[];
+  /** A bejelentkezett hívó user azonosítója -- a "sajátom-e ez a sor" eldöntéséhez. */
+  currentUserId: string;
+  /** A bejelentkezett hívó szerepköre -- Menedzser a TELJES szervezet vizsgálatait
+   * kezelheti (szerkesztheti/törölheti), egy csapattárs sorát látó, de nem tulajdonos
+   * Átvizsgáló csak MEGTEKINTHETI (a "Riport" linken keresztül), nem szerkesztheti/
+   * törölheti -- lásd `inspections_update_org`/`inspections_delete_org` RLS policy-kat. */
+  role: 'manager' | 'inspector';
 }
 
 /**
@@ -45,7 +58,7 @@ const GRID_COLS = 'sm:grid-cols-[28fr_18fr_10fr_16fr_14fr_14fr]';
  * lista-konténer, hairline elválasztók a sorok között, mobilon (mobile-first) a sorok egy
  * oszlopba rendeződnek.
  */
-export function InspectionsExplorer({ inspections: initialInspections }: InspectionsExplorerProps) {
+export function InspectionsExplorer({ inspections: initialInspections, currentUserId, role }: InspectionsExplorerProps) {
   const router = useRouter();
   const [inspections, setInspections] = useState(initialInspections);
   const [query, setQuery] = useState('');
@@ -161,6 +174,7 @@ export function InspectionsExplorer({ inspections: initialInspections }: Inspect
                   <InspectionRowItem
                     key={inspection.id}
                     inspection={inspection}
+                    canManage={inspection.created_by === currentUserId || role === 'manager'}
                     isCopied={copiedId === inspection.id}
                     isDeleting={deletingId === inspection.id}
                     onCopyLink={() => handleCopyLink(inspection)}
@@ -178,12 +192,19 @@ export function InspectionsExplorer({ inspections: initialInspections }: Inspect
 
 function InspectionRowItem({
   inspection,
+  canManage,
   isCopied,
   isDeleting,
   onCopyLink,
   onDelete,
 }: {
   inspection: InspectionRow;
+  /** Szervezeti RBAC -- igaz, ha a hívó a sor tulajdonosa VAGY Menedzser (lásd
+   * `InspectionsExplorerProps.role` JSDoc-ját). Csak ekkor jelenik meg a piszkozat
+   * "Folytatás" szerkesztő linkje, illetve a törlés/link-másolás akciómenü -- egy
+   * `can_view_all_reports` miatt látható, de nem saját csapattárs-sor CSAK
+   * megtekinthető (a "Riport" linken keresztül, befejezett vizsgálatnál). */
+  canManage: boolean;
   isCopied: boolean;
   isDeleting: boolean;
   onCopyLink: () => void;
@@ -238,13 +259,21 @@ function InspectionRowItem({
 
       <div className="flex items-center gap-2 sm:justify-end">
         {isDraft ? (
-          <Link
-            href={`/inspections/${inspection.id}`}
-            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-linear-hairline-strong bg-linear-surface-2 px-2.5 py-1.5 text-xs font-medium text-linear-ink transition-colors hover:bg-linear-surface-3"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-            Folytatás
-          </Link>
+          canManage ? (
+            <Link
+              href={`/inspections/${inspection.id}`}
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-linear-hairline-strong bg-linear-surface-2 px-2.5 py-1.5 text-xs font-medium text-linear-ink transition-colors hover:bg-linear-surface-3"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Folytatás
+            </Link>
+          ) : (
+            // Szervezeti RBAC: ez a sor egy csapattárs piszkozata, amit a hívó
+            // `can_view_all_reports` miatt LÁT a listában, de nem szerkesztheti (nem ő
+            // a tulajdonos és nem Menedzser) -- lásd `inspections_update_org` RLS
+            // policy-t. Nincs link, csak egy tájékoztató felirat.
+            <span className="text-[12px] italic text-linear-ink-subtle">Csapattárs piszkozata</span>
+          )
         ) : (
           <>
             <a
@@ -256,12 +285,14 @@ function InspectionRowItem({
               <ExternalLink className="h-3.5 w-3.5" />
               Riport
             </a>
-            <InspectionActionsMenu
-              inspectionId={inspection.id}
-              isCopied={isCopied}
-              onCopyLink={onCopyLink}
-              onDelete={onDelete}
-            />
+            {canManage && (
+              <InspectionActionsMenu
+                inspectionId={inspection.id}
+                isCopied={isCopied}
+                onCopyLink={onCopyLink}
+                onDelete={onDelete}
+              />
+            )}
           </>
         )}
       </div>

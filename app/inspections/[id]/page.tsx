@@ -262,6 +262,12 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
     return <InspectionNotFound />;
   }
 
+  // Szervezeti RBAC (PROJEKT_INSTRUKCIOK.md "Átvizsgálói UI" lépés): az Átvizsgáló NEM
+  // láthatja a céges AI kredit-egyenleget -- a `HeaderCreditBadge` szerver-oldalon,
+  // renderelés ELŐTT marad ki `role === 'inspector'` esetén (nincs kliens-oldali villanás).
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle();
+  const role = profile?.role === 'inspector' ? 'inspector' : 'manager';
+
   const [{ data: paintMeasurements }, { data: defects }] = await Promise.all([
     supabase
       .from('paint_measurements')
@@ -322,7 +328,7 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
             <ArrowLeft className="h-4 w-4" />
           </Link>
           <span className="flex-1 text-[14px] font-medium text-linear-ink">Vizsgálat folytatása (piszkozat)</span>
-          <HeaderCreditBadge />
+          {role !== 'inspector' && <HeaderCreditBadge />}
         </header>
 
         <InspectionWizard

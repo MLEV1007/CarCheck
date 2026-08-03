@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getRecentUsageLogs, getUserCreditBalance, getUserPlanTier } from '@/lib/credits';
-import type { PlanTier, UsageLog, UserCredit } from '@/types/credits';
+import { getUserRoleContext } from '@/lib/auth/roles';
+import type { OrganizationRole, PlanTier, UsageLog, UserCredit } from '@/types/credits';
 
 /**
  * Kredit- és előfizetés-áttekintés végpont a kliens-oldali UI komponenseknek
@@ -16,12 +17,20 @@ import type { PlanTier, UsageLog, UserCredit } from '@/types/credits';
  * Ugyanaz az autentikációs minta, mint a `/api/ai/*` route-oknál (lásd
  * `app/api/ai/parse-equipment/route.ts` "Autentikáció + kredit-védelem" JSDoc-ját) --
  * `lib/supabase/server.ts` cookie-alapú kliens, `401` bejelentkezés nélkül.
+ *
+ * **`role`/`canViewAllReports` (2026-08-03, "Szervezeti szerepkezelés" lépés):** a
+ * válasz ezeket is tartalmazza -- a `HeaderCreditBadge`/`InsufficientCreditsModal`
+ * (mindkettő kliens-komponens) ezen keresztül tudja meg a hívó szerepkörét, hogy
+ * Átvizsgálónak elrejtse a kredit-egyenleget, illetve testreszabott "keresd meg a
+ * Menedzseredet" üzenetet mutasson kifogyott céges kereten.
  */
 export interface CreditSummarySuccessResponse {
   success: true;
   planTier: PlanTier;
   balance: UserCredit;
   usageLogs: UsageLog[];
+  role: OrganizationRole;
+  canViewAllReports: boolean;
 }
 
 interface CreditSummaryErrorResponse {
@@ -50,13 +59,21 @@ export async function GET(): Promise<NextResponse<CreditSummarySuccessResponse |
   }
 
   try {
-    const [balance, planTier, usageLogs] = await Promise.all([
+    const [balance, planTier, usageLogs, roleContext] = await Promise.all([
       getUserCreditBalance(user.id),
       getUserPlanTier(user.id),
       getRecentUsageLogs(user.id, 8),
+      getUserRoleContext(user.id),
     ]);
 
-    return NextResponse.json({ success: true, planTier, balance, usageLogs });
+    return NextResponse.json({
+      success: true,
+      planTier,
+      balance,
+      usageLogs,
+      role: roleContext?.role ?? 'manager',
+      canViewAllReports: roleContext?.canViewAllReports ?? false,
+    });
   } catch (error) {
     console.error('[credits/summary] Nem sikerült összeállítani a kredit-áttekintést:', error);
     return NextResponse.json(

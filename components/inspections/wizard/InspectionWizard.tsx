@@ -156,6 +156,24 @@ export function InspectionWizard({
         throw new Error('A munkamenet lejárt. Jelentkezz be újra, és próbáld meg ismét.');
       }
 
+      // Szervezeti RBAC (PROJEKT_INSTRUKCIOK.md "Szervezeti szerepkezelés" lépés): minden
+      // vizsgálat az `organization_id`-jához kötve él (multi-tenant riport-láthatóság,
+      // lásd `supabase/migrations/20260803_organizations_rbac.sql` `inspections_select_org`
+      // RLS policy-ját) -- ezt a user `profiles` sorából olvassuk ki, a `created_by` pedig
+      // mindig a TÉNYLEGESEN mentő user (a `user_id` oszloppal jelenleg megegyezik, de a
+      // jövőbeli csapaton-belüli szerkesztéshez a kettő szándékosan külön mező).
+      const { data: profileRow, error: profileError } = await supabase
+        .from('profiles')
+        .select('organization_id')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError || !profileRow?.organization_id) {
+        throw new Error('Nem sikerült meghatározni a szervezetedet. Jelentkezz be újra, és próbáld meg ismét.');
+      }
+
+      const organizationId = profileRow.organization_id;
+
       // Általános autó fotók feltöltése (PROJEKT_INSTRUKCIOK.md, "Általános autó fotók modul"
       // lépés) -- ugyanaz a minta, mint a hiba-médiánál: a most kiválasztott (`file` !== null)
       // képek most töltődnek fel, a piszkozat szerkesztésekor már meglévő, még mindig a listában
@@ -365,6 +383,8 @@ export function InspectionWizard({
         .upsert({
           id: inspectionId,
           user_id: user.id,
+          organization_id: organizationId,
+          created_by: user.id,
           car_brand: carInfo.carBrand || null,
           car_model: carInfo.carModel || null,
           year: carInfo.year ? Number(carInfo.year) : null,
