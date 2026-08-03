@@ -2,7 +2,10 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 // Ezekhez az útvonalakhoz (és minden al-útvonalukhoz) érvényes bejelentkezés kell.
-const PROTECTED_PREFIXES = ['/dashboard', '/inspections', '/settings'];
+// `/admin` (Platform Admin felület, lásd `app/admin/page.tsx`) itt CSAK a bejelentkezést
+// követeli meg -- a tényleges "platform admin-e a user?" ellenőrzés (allow-list,
+// `platform_admins` tábla) az oldal Server Component-jében történik, RLS-sel védve.
+const PROTECTED_PREFIXES = ['/dashboard', '/inspections', '/settings', '/admin'];
 
 // Ha egy már bejelentkezett felhasználó idelátogat, inkább a dashboardra tereljük,
 // nincs értelme neki újra a login/register képernyőt mutatni.

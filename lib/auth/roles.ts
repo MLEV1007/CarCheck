@@ -84,3 +84,29 @@ export async function requireManager(): Promise<NextResponse | null> {
 
   return null;
 }
+
+/**
+ * Platform Admin (2026-08-03, "Platform Admin + Csapatkezelés-entitlement" lépés) --
+ * ÚJ, a szervezetek FÖLÖTTI szerepkör: a CarCheck SaaS ÜZEMELTETŐJE (nem egy
+ * autóvizsgáló cég Menedzsere!), aki a `/admin` felületen dönti el, melyik ÜGYFÉL
+ * (szervezet) kap Menedzser-szintű csapatkezelést (`organizations.
+ * team_management_enabled`). A `platform_admins` tábla explicit allow-list --
+ * KIZÁRÓLAG SQL-en/Supabase Dashboardon keresztül bővíthető (nincs insert/update RLS
+ * policy rajta), hogy egy alkalmazás-szintű hiba se tudjon valakit önmagát platform
+ * adminná léptetni. Lásd `supabase/migrations/20260803_platform_admin_entitlements.sql`.
+ */
+export async function isPlatformAdmin(userId: string): Promise<boolean> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from('platform_admins')
+    .select('user_id')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error || !data) {
+    return false;
+  }
+
+  return true;
+}

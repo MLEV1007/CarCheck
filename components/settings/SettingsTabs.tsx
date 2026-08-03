@@ -1,12 +1,19 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
+import { Lock } from 'lucide-react';
 import { TeamManagement } from '@/components/settings/TeamManagement';
 
 interface SettingsTabsProps {
   role: 'manager' | 'inspector';
   organizationId: string;
   currentUserId: string;
+  /** Platform Admin entitlement (2026-08-03, "Platform Admin + Csapatkezelés-
+   * entitlement" lépés) -- az üzemeltető (`/admin`) engedélyezi ügyfelenként
+   * (`organizations.team_management_enabled`). `false` esetén a fül LÁTSZIK (a
+   * Menedzser tudja, hogy a funkció létezik), de zárolt állapotot mutat a tényleges
+   * csapattag-lista/meghívás helyett. */
+  teamManagementEnabled: boolean;
   /** A meglévő "Cégbeállítások" kártyák (`SettingsForm`/`DefaultPreferencesCard`/
    * `PasskeyCard`) -- a szülő (`app/settings/page.tsx`) adja át, hogy a Server Component
    * ott maradjon felelős a kezdeti adatok betöltéséért, ez a komponens csak a fül-váltás
@@ -24,7 +31,13 @@ interface SettingsTabsProps {
  * Stripe design system (stripe.md): `rounded-full` pill tab-gombok, aktív fül
  * `bg-stripe-primary` kitöltéssel, inaktív fül halvány, hairline szegéllyel.
  */
-export function SettingsTabs({ role, organizationId, currentUserId, children }: SettingsTabsProps) {
+export function SettingsTabs({
+  role,
+  organizationId,
+  currentUserId,
+  teamManagementEnabled,
+  children,
+}: SettingsTabsProps) {
   const [activeTab, setActiveTab] = useState<'company' | 'team'>('company');
 
   if (role !== 'manager') {
@@ -60,9 +73,29 @@ export function SettingsTabs({ role, organizationId, currentUserId, children }: 
 
       {activeTab === 'company' ? (
         children
-      ) : (
+      ) : teamManagementEnabled ? (
         <TeamManagement organizationId={organizationId} currentUserId={currentUserId} />
+      ) : (
+        <TeamManagementLocked />
       )}
+    </div>
+  );
+}
+
+/** Zárolt állapot, ha az üzemeltető MÉG NEM engedélyezte a csapatkezelést ennek a
+ * szervezetnek (`team_management_enabled = false`, lásd fent) -- a Menedzser lássa,
+ * hogy a funkció LÉTEZIK (nem tűnik el nyomtalanul), de ne tudja használni. */
+function TeamManagementLocked() {
+  return (
+    <div className="flex flex-col items-center gap-3 rounded-stripe-lg border border-stripe-hairline bg-white p-10 text-center shadow-stripe-1">
+      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-stripe-canvas-soft">
+        <Lock className="h-5 w-5 text-stripe-ink-mute" />
+      </div>
+      <p className="font-sohne text-[15px] font-medium text-stripe-ink">A Csapatkezelés még nincs engedélyezve</p>
+      <p className="max-w-sm font-sohne text-[13px] font-light text-stripe-ink-mute">
+        Ez a funkció csomag-bővítéssel érhető el. Vedd fel a kapcsolatot velünk, ha
+        szeretnéd, hogy Átvizsgáló csapattagokat is meghívhass a fiókodhoz.
+      </p>
     </div>
   );
 }

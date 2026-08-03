@@ -43,6 +43,22 @@ export default async function SettingsPage() {
 
   const role = profile?.role === 'inspector' ? 'inspector' : 'manager';
 
+  // Platform Admin entitlement (2026-08-03, "Platform Admin + Csapatkezelés-
+  // entitlement" lépés) -- a Csapatkezelés fül csak akkor mutatja a tényleges
+  // funkciót, ha az üzemeltető ("Platform Admin", lásd `/admin`) ezt a szervezetnek
+  // engedélyezte. A `organizations_select_own_org` RLS mindenkinek engedi a SAJÁT
+  // szervezete sorát olvasni, tehát ez a lekérdezés Menedzsernek és Átvizsgálónak is
+  // biztonságosan lefut.
+  const { data: organization } = profile?.organization_id
+    ? await supabase
+        .from('organizations')
+        .select('team_management_enabled')
+        .eq('id', profile.organization_id)
+        .maybeSingle()
+    : { data: null };
+
+  const teamManagementEnabled = organization?.team_management_enabled ?? false;
+
   const initialDefaultLicenseCountry =
     (user.user_metadata?.default_license_country as string | undefined) || DEFAULT_LICENSE_PLATE_COUNTRY;
 
@@ -66,6 +82,7 @@ export default async function SettingsPage() {
           role={role}
           organizationId={profile?.organization_id ?? ''}
           currentUserId={user.id}
+          teamManagementEnabled={teamManagementEnabled}
         >
           <div className="flex flex-col gap-6">
             <SettingsForm
