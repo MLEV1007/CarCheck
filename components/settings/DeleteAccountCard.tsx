@@ -60,29 +60,14 @@ export function DeleteAccountCard({ email, role, otherTeamMemberCount }: DeleteA
         </ul>
       </div>
 
-      <p className="font-sohne text-[13px] font-light leading-relaxed text-stripe-ink-secondary">
-        <span className="font-normal text-stripe-ink">
-          A korábban rögzített vizsgálatok, fotók és riportok adatai a törléssel NEM
-          vesznek el
-        </span>{' '}
-        -- ezek a cégedhez tartoznak, nem a személyes fiókodhoz.
-      </p>
-
-      {role === 'manager' &&
-        (otherTeamMemberCount > 0 ? (
-          <p className="rounded-stripe-sm border border-stripe-ruby/20 bg-white px-3 py-2 font-sohne text-[13px] font-light text-stripe-ink-secondary">
-            {otherTeamMemberCount} másik csapattagod is van -- a törlés után nem marad
-            Menedzser a cégnél (senki nem tudja majd meghívni/kezelni a csapatot), de a
-            csapattagjaid a jelenlegi jogosultságukkal továbbra is hozzáférnek a
-            vizsgálatokhoz.
-          </p>
-        ) : (
-          <p className="rounded-stripe-sm border border-stripe-ruby/20 bg-white px-3 py-2 font-sohne text-[13px] font-light text-stripe-ink-secondary">
-            Te vagy az egyetlen felhasználó a cégednél -- a törlés után senki nem fog
-            tudni bejelentkezni, hogy megtekintse a korábbi vizsgálatokat (bár azok az
-            adatbázisban megmaradnak).
-          </p>
-        ))}
+      {role === 'manager' && otherTeamMemberCount > 0 && (
+        <p className="rounded-stripe-sm border border-stripe-ruby/20 bg-white px-3 py-2 font-sohne text-[13px] font-light text-stripe-ink-secondary">
+          {otherTeamMemberCount} másik csapattagod is van -- a törlés után nem marad
+          Menedzser a cégnél (senki nem tudja majd meghívni/kezelni a csapatot), de a
+          csapattagjaid a jelenlegi jogosultságukkal továbbra is hozzáférnek a
+          vizsgálatokhoz.
+        </p>
+      )}
 
       {role === 'inspector' && (
         <p className="rounded-stripe-sm border border-stripe-ruby/20 bg-white px-3 py-2 font-sohne text-[13px] font-light text-stripe-ink-secondary">
