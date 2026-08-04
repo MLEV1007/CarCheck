@@ -3,6 +3,9 @@
 import { useState, type ReactNode } from 'react';
 import { Lock } from 'lucide-react';
 import { TeamManagement } from '@/components/settings/TeamManagement';
+import { BillingTab } from '@/components/settings/BillingTab';
+
+type SettingsTabKey = 'company' | 'team' | 'billing';
 
 interface SettingsTabsProps {
   role: 'manager' | 'inspector';
@@ -14,6 +17,17 @@ interface SettingsTabsProps {
    * Menedzser tudja, hogy a funkció létezik), de zárolt állapotot mutat a tényleges
    * csapattag-lista/meghívás helyett. */
   teamManagementEnabled: boolean;
+  /** Melyik fül legyen kezdetben aktív -- `app/settings/billing/page.tsx` (a Stripe
+   * Checkout `success_url`/`cancel_url` célja) ezt `'billing'`-re állítja, hogy a
+   * fizetésből visszatérő Menedzser rögtön az Előfizetés fület lássa, ne a
+   * Cégbeállításokat. Alapértelmezetten `'company'` (lásd `app/settings/page.tsx`). */
+  initialTab?: SettingsTabKey;
+  /** Az "Előfizetés" fül Stripe Price ID-jai + a Checkout után visszairányított
+   * success/canceled banner -- lásd `components/settings/BillingTab.tsx` JSDoc-ját. */
+  starterPriceId: string | null;
+  proPriceId: string | null;
+  topupPriceId: string | null;
+  billingBanner: 'success' | 'canceled' | null;
   /** A meglévő "Cégbeállítások" kártyák (`SettingsForm`/`DefaultPreferencesCard`/
    * `PasskeyCard`) -- a szülő (`app/settings/page.tsx`) adja át, hogy a Server Component
    * ott maradjon felelős a kezdeti adatok betöltéséért, ez a komponens csak a fül-váltás
@@ -36,9 +50,14 @@ export function SettingsTabs({
   organizationId,
   currentUserId,
   teamManagementEnabled,
+  initialTab = 'company',
+  starterPriceId,
+  proPriceId,
+  topupPriceId,
+  billingBanner,
   children,
 }: SettingsTabsProps) {
-  const [activeTab, setActiveTab] = useState<'company' | 'team'>('company');
+  const [activeTab, setActiveTab] = useState<SettingsTabKey>(initialTab);
 
   if (role !== 'manager') {
     return <>{children}</>;
@@ -69,14 +88,34 @@ export function SettingsTabs({
         >
           Csapatkezelés
         </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('billing')}
+          className={`rounded-full px-4 py-1.5 font-sohne text-[13px] font-normal transition-colors ${
+            activeTab === 'billing'
+              ? 'bg-stripe-primary text-white'
+              : 'text-stripe-ink-secondary hover:bg-stripe-canvas-soft'
+          }`}
+        >
+          Előfizetés
+        </button>
       </div>
 
-      {activeTab === 'company' ? (
-        children
-      ) : teamManagementEnabled ? (
-        <TeamManagement organizationId={organizationId} currentUserId={currentUserId} />
-      ) : (
-        <TeamManagementLocked />
+      {activeTab === 'company' && children}
+      {activeTab === 'team' &&
+        (teamManagementEnabled ? (
+          <TeamManagement organizationId={organizationId} currentUserId={currentUserId} />
+        ) : (
+          <TeamManagementLocked />
+        ))}
+      {activeTab === 'billing' && (
+        <BillingTab
+          role={role}
+          starterPriceId={starterPriceId}
+          proPriceId={proPriceId}
+          topupPriceId={topupPriceId}
+          banner={billingBanner}
+        />
       )}
     </div>
   );

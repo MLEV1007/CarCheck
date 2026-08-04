@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Lock } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { InspectionWizard } from '@/components/inspections/wizard/InspectionWizard';
 import { HeaderCreditBadge } from '@/components/credits/HeaderCreditBadge';
 import { DEFAULT_LICENSE_PLATE_COUNTRY } from '@/lib/inspections/constants';
+import { checkInspectionQuota, InsufficientInspectionQuotaError } from '@/lib/quotas';
 
 export const metadata: Metadata = {
   title: 'Új vizsgálat | Autó Állapotfelmérő',
@@ -37,6 +38,31 @@ export default async function NewInspectionPage() {
     : { data: null };
   const role = profile?.role === 'inspector' ? 'inspector' : 'manager';
 
+  // VIZSGÁLATI KVÓTA ELLENŐRZÉS (PROJEKT_INSTRUKCIOK.md "Keret-ellenőrző és fogyasztó
+  // logika" lépés, 2026-08-04) -- "Új autó vizsgálat indításakor ellenőrizze, hogy van-e
+  // még elérhető vizsgálati keret... Ha nincs, dobjon hibát." Ez a Server Component a
+  // legtermészetesebb hely erre: MIELŐTT a user egyáltalán elkezdene adatokat gépelni a
+  // Wizardba, itt derül ki, ha a szervezetnek elfogyott a kerete (havi + vásárolt Top-up
+  // összesen <= 0) -- ilyenkor egy blokkoló üzenetet mutatunk a Wizard HELYETT, link a
+  // Beállítások > Előfizetés oldalra. A TÉNYLEGES levonás (1 egységgel) csak a vizsgálat
+  // első sikeres MENTÉSEKOR történik (lásd `InspectionWizard.tsx` `/api/inspections/
+  // consume-quota` hívását), NEM itt -- ez a lépés csak egy előzetes, blokkoló ellenőrzés.
+  let quotaExceeded = false;
+  if (user) {
+    try {
+      await checkInspectionQuota(user.id);
+    } catch (error) {
+      if (error instanceof InsufficientInspectionQuotaError) {
+        quotaExceeded = true;
+      } else {
+        // Egy váratlan (DB/hálózati) hiba esetén NEM blokkoljuk a usert -- inkább egy
+        // esetlegesen sikertelen kvóta-levonás derül ki a mentéskor, mint hogy egy
+        // átmeneti infrastruktúra-hiba miatt senki ne tudjon vizsgálatot indítani.
+        console.error('[inspections/new] Váratlan hiba a vizsgálati kvóta ellenőrzése közben:', error);
+      }
+    }
+  }
+
   return (
     <div className="min-h-screen bg-linear-canvas">
       <header className="flex h-16 items-center gap-3 border-b border-linear-hairline px-4 sm:px-6">
@@ -51,7 +77,29 @@ export default async function NewInspectionPage() {
         {role !== 'inspector' && <HeaderCreditBadge />}
       </header>
 
-      <InspectionWizard defaultLicensePlateCountry={defaultLicensePlateCountry} />
+      {quotaExceeded ? (
+        <div className="mx-auto flex max-w-md flex-col items-center gap-3 px-4 py-24 text-center">
+          <div className="flex h-11 w-11 items-center justify-center rounded-md bg-linear-surface-2">
+            <Lock className="h-5 w-5 text-linear-ink-subtle" />
+          </div>
+          <p className="text-[15px] font-medium text-linear-ink">Elfogyott a havi vizsgálati kereted</p>
+          <p className="text-[13px] text-linear-ink-subtle">
+            {role === 'manager'
+              ? 'Vásárolj "+10 Autó" Top-up csomagot, vagy válts magasabb előfizetésre a Beállítások > Előfizetés oldalon.'
+              : 'A céges vizsgálati keret kimerült. Kérjük, értesítsd a Menedzsert a feltöltéshez!'}
+          </p>
+          {role === 'manager' && (
+            <Link
+              href="/settings/billing"
+              className="mt-2 inline-flex h-9 items-center rounded-md bg-linear-primary px-4 text-[13px] font-medium text-white transition-colors hover:bg-linear-primary-hover"
+            >
+              Ugrás az Előfizetéshez
+            </Link>
+          )}
+        </div>
+      ) : (
+        <InspectionWizard defaultLicensePlateCountry={defaultLicensePlateCountry} />
+      )}
     </div>
   );
 }

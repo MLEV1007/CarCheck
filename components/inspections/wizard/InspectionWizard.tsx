@@ -406,6 +406,32 @@ export function InspectionWizard({
 
       if (inspectionError) throw inspectionError;
 
+      // VIZSGÁLATI KVÓTA LEVONÁS (PROJEKT_INSTRUKCIOK.md "Keret-ellenőrző és fogyasztó
+      // logika" lépés, 2026-08-04) -- KIZÁRÓLAG egy VADONATÚJ vizsgálat ELSŐ sikeres
+      // mentésekor (`!isEditMode`, lásd a komponens tetején lévő `isEditMode` definíciót),
+      // hogy egy piszkozat TÖBBSZÖRI újramentése (Vissza/Tovább közben, majd végül
+      // Publikálás) ne fogyasszon el több keretet egyetlen vizsgálatért. A tényleges
+      // "van-e egyáltalán keret" ELLENŐRZÉS/BLOKKOLÁS korábban, az `/inspections/new`
+      // oldal betöltésekor már megtörtént (lásd `app/inspections/new/page.tsx`
+      // `checkInspectionQuota`-hívását) -- ez itt a MÁR ellenőrzött keret tényleges,
+      // szerver-oldali levonása (`/api/inspections/consume-quota`, mert ez a komponens
+      // kliens-oldalon fut, a `lib/quotas.ts` szerver-only). Szándékosan best-effort: ha a
+      // levonás hibázna (pl. egy szűk race-condition-ablakban két böngészőfül egyszerre
+      // menti az utolsó szabad keretet), a hibát logoljuk, DE a MÁR sikeresen elmentett
+      // vizsgálatot nem dobjuk el emiatt -- ugyanaz az elv, mint a `deductCredits`/
+      // `lib/credits.ts` "kredit levonás a sikeres AI-hívás UTÁN, hiba esetén csak logolva"
+      // mintájánál.
+      if (!isEditMode) {
+        try {
+          const quotaResponse = await fetch('/api/inspections/consume-quota', { method: 'POST' });
+          if (!quotaResponse.ok) {
+            console.error('[InspectionWizard] Vizsgálati kvóta levonása sikertelen:', await quotaResponse.text());
+          }
+        } catch (quotaError) {
+          console.error('[InspectionWizard] Vizsgálati kvóta levonása sikertelen:', quotaError);
+        }
+      }
+
       // Piszkozat szerkesztésekor a korábbi mérés-/hiba-sorok a jelenlegi state-tel NEM
       // egyeznek meg 1:1 (a wizard nem tartja nyilván az egyes DB row id-kat, csak a
       // kliens-oldali `clientId`-t) -- ezért a legegyszerűbb és legbiztonságosabb út a

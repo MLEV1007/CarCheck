@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI, Type } from '@google/genai';
 import { createClient } from '@/lib/supabase/server';
 import { hasEnoughCredits, deductCredits } from '@/lib/credits';
+import { checkAiQuota, consumeAiQuota } from '@/lib/quotas';
 
 /**
  * Google Gemini Vision (multimodal) backend a VIN (alvázszám) / forgalmi engedély
@@ -331,6 +332,20 @@ export async function POST(request: NextRequest): Promise<NextResponse<ScanVinSu
     );
   }
 
+  // ELŐZETES AI-KVÓTA ELLENŐRZÉS -- lásd `parse-equipment/route.ts` "ELŐZETES AI-KVÓTA
+  // ELLENŐRZÉS" JSDoc-kommentjét, ugyanaz a minta.
+  const hasAiQuota = await checkAiQuota(user.id);
+  if (!hasAiQuota) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Elfogyott a havi AI keret. A mezőt kézzel is kitöltheted.',
+        code: 'INSUFFICIENT_AI_QUOTA',
+      },
+      { status: 402 }
+    );
+  }
+
   const ai = new GoogleGenAI({ apiKey });
 
   const generationConfig = {
@@ -480,6 +495,13 @@ export async function POST(request: NextRequest): Promise<NextResponse<ScanVinSu
     await deductCredits(user.id, FEATURE_NAME, 1);
   } catch (error) {
     console.error('[scan-vin] Kredit levonás sikertelen a sikeres AI hívás után:', error);
+  }
+
+  // AI-KVÓTA LEVONÁS -- lásd `parse-equipment/route.ts` ugyanezen kommentjét.
+  try {
+    await consumeAiQuota(user.id);
+  } catch (error) {
+    console.error('[scan-vin] AI-kvóta levonás sikertelen a sikeres AI hívás után:', error);
   }
 
   return NextResponse.json({ success: true, data });

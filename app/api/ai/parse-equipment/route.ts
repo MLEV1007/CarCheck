@@ -4,6 +4,7 @@ import { EQUIPMENT_ITEMS } from '@/lib/inspections/constants';
 import type { FeatureState, FeatureStatus } from '@/lib/inspections/types';
 import { createClient } from '@/lib/supabase/server';
 import { hasEnoughCredits, deductCredits } from '@/lib/credits';
+import { checkAiQuota, consumeAiQuota } from '@/lib/quotas';
 
 /**
  * Google Gemini backend a Felszereltség modul "Hibrid Okos-Lista" hangalapú/szabadszöveges
@@ -214,6 +215,24 @@ export async function POST(request: NextRequest): Promise<NextResponse<ParseEqui
     );
   }
 
+  // ELŐZETES AI-KVÓTA ELLENŐRZÉS (PROJEKT_INSTRUKCIOK.md "Keret-ellenőrző és fogyasztó
+  // logika" lépés, 2026-08-04) -- a fenti generikus kredit-ellenőrzés MELLETT, a Stripe
+  // csomaghoz (Starter/Pro) kötött havi AI-hívás keretet is ellenőrizzük. A `checkAiQuota`
+  // (lib/quotas.ts) szigorúan "fail-closed" -- hiba esetén is `false`. Ha elfogyott, ez a
+  // KONKRÉT AI-hívás blokkolódik (`INSUFFICIENT_AI_QUOTA`), DE a vizsgálat egyéb, kézi
+  // gépeléssel/kattintással kitölthető részei NEM -- ez a route nem érinti azokat.
+  const hasAiQuota = await checkAiQuota(user.id);
+  if (!hasAiQuota) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Elfogyott a havi AI keret. A mezőt kézzel is kitöltheted.',
+        code: 'INSUFFICIENT_AI_QUOTA',
+      },
+      { status: 402 }
+    );
+  }
+
   const ai = new GoogleGenAI({ apiKey });
 
   const generationConfig = {
@@ -368,6 +387,14 @@ export async function POST(request: NextRequest): Promise<NextResponse<ParseEqui
     await deductCredits(user.id, FEATURE_NAME, 1);
   } catch (error) {
     console.error('[parse-equipment] Kredit levonás sikertelen a sikeres AI hívás után:', error);
+  }
+
+  // AI-KVÓTA LEVONÁS -- ugyanaz az elv, mint a fenti generikus kredit-levonásnál: KIZÁRÓLAG
+  // sikeres, érvényes Gemini-válasz UTÁN, best-effort (hiba esetén csak logolva).
+  try {
+    await consumeAiQuota(user.id);
+  } catch (error) {
+    console.error('[parse-equipment] AI-kvóta levonás sikertelen a sikeres AI hívás után:', error);
   }
 
   return NextResponse.json({ success: true, updates });
