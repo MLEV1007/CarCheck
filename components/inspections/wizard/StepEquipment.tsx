@@ -346,12 +346,13 @@ function EquipmentAiAssistant({
         body: JSON.stringify({ text: trimmed }),
       });
 
-      // 402 INSUFFICIENT_CREDITS -- lásd `InsufficientCreditsProvider.tsx`. A globális
-      // "Elfogytak az AI krediteid" modalt nyitjuk meg a lokális toast helyett, hogy a
-      // felhasználó egyértelmű, akcionálható visszajelzést kapjon (nem csak egy generikus
-      // hibaüzenetet).
+      // 402 -- lásd `InsufficientCreditsProvider.tsx` (`INSUFFICIENT_CREDITS` VAGY az ÚJ
+      // `INSUFFICIENT_AI_QUOTA`, lásd `lib/quotas.ts`). A globális "Elfogyott a kereted"
+      // modalt nyitjuk meg a lokális toast helyett, hogy a felhasználó egyértelmű,
+      // akcionálható visszajelzést kapjon (nem csak egy generikus hibaüzenetet).
       if (response.status === 402) {
-        notifyInsufficientCredits();
+        const errorBody = (await response.json().catch(() => null)) as { code?: string } | null;
+        notifyInsufficientCredits(errorBody?.code === 'INSUFFICIENT_AI_QUOTA' ? 'ai_quota' : 'credits');
         return;
       }
 

@@ -77,12 +77,14 @@ export function VoiceInputButton({
         body: JSON.stringify({ text: sessionText }),
       });
 
-      // 402 INSUFFICIENT_CREDITS -- lásd `InsufficientCreditsProvider.tsx`. A mezőben már
-      // ott van az élő, nyers felismert szöveg, ezért itt is (a többi hibaágnál
-      // megszokott módon) CSENDBEN visszaesünk arra, csak a modalt nyitjuk meg extra
-      // jelzésként, hogy a felhasználó tudja, MIÉRT nem futott le a nyelvhelyesség-javítás.
+      // 402 -- lásd `InsufficientCreditsProvider.tsx` (`INSUFFICIENT_CREDITS` VAGY az ÚJ
+      // `INSUFFICIENT_AI_QUOTA`, lásd `lib/quotas.ts`). A mezőben már ott van az élő, nyers
+      // felismert szöveg, ezért itt is (a többi hibaágnál megszokott módon) CSENDBEN
+      // visszaesünk arra, csak a modalt nyitjuk meg extra jelzésként, hogy a felhasználó
+      // tudja, MIÉRT nem futott le a nyelvhelyesség-javítás.
       if (response.status === 402) {
-        notifyInsufficientCredits();
+        const errorBody = (await response.json().catch(() => null)) as { code?: string } | null;
+        notifyInsufficientCredits(errorBody?.code === 'INSUFFICIENT_AI_QUOTA' ? 'ai_quota' : 'credits');
         return;
       }
 

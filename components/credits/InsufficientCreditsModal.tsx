@@ -1,18 +1,26 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import type { CreditSummarySuccessResponse } from '@/app/api/credits/summary/route';
 import type { OrganizationRole } from '@/types/credits';
+import type { InsufficientCreditsReason } from '@/components/credits/InsufficientCreditsProvider';
 
 interface InsufficientCreditsModalProps {
   onClose: () => void;
+  /** Melyik keret ürült ki -- lásd `InsufficientCreditsProvider.tsx` `InsufficientCreditsReason`
+   * JSDoc-ját. Kizárólag a CÍM/szöveg különbözik ez alapján, a szerepkör-tudatos ág
+   * (lent) MINDKÉT `reason`-nél ugyanúgy működik. */
+  reason: InsufficientCreditsReason;
 }
 
 /**
- * "Elfogytak az AI krediteid" figyelmeztető modal (PROJEKT_INSTRUKCIOK.md "402
- * INSUFFICIENT_CREDITS Handler" lépés) -- akkor jelenik meg, amikor bármelyik `/api/ai/*`
- * route `402`-t ad vissza (`code: 'INSUFFICIENT_CREDITS'`, lásd `app/api/ai/parse-equipment/
- * route.ts` "Autentikáció + kredit-védelem" JSDoc-ját). Lásd `InsufficientCreditsProvider.tsx`
+ * "Elfogyott a kereted" figyelmeztető modal (PROJEKT_INSTRUKCIOK.md "402 Handler" lépés)
+ * -- akkor jelenik meg, amikor bármelyik `/api/ai/*` route `402`-t ad vissza, akár a régi,
+ * generikus AI-kredit rendszer (`code: 'INSUFFICIENT_CREDITS'`, lásd
+ * `app/api/ai/parse-equipment/route.ts` "Autentikáció + kredit-védelem" JSDoc-ját), akár az
+ * ÚJ, Stripe csomaghoz kötött havi AI-keret (`code: 'INSUFFICIENT_AI_QUOTA'`, lásd
+ * `lib/quotas.ts`, 2026-08-04) ürült ki -- lásd `InsufficientCreditsProvider.tsx`
  * -- ez a komponens SOSEM közvetlenül példányosított, mindig a Provideren keresztül.
  *
  * Linear Dark Design Style, mert a 4 AI-hívó hely (`VoiceInputButton`, `StepEquipment`,
@@ -23,15 +31,21 @@ interface InsufficientCreditsModalProps {
  * a `/api/credits/summary` végpontról (ugyanaz a minta, mint a `HeaderCreditBadge`/
  * `CreditDashboardModal`-nál) megnyíláskor lekérdezi a hívó szerepkörét -- Átvizsgálónak
  * a "kifogyott a KÖZÖS céges keret, szólj a Menedzsernek" üzenet jelenik meg, a
- * Stripe-placeholder gombok NÉLKÜL (az Átvizsgáló úgysem tud/nem szabad neki csomagot
+ * csomagváltó/vásárlás gomb NÉLKÜL (az Átvizsgáló úgysem tud/nem szabad neki csomagot
  * váltania -- lásd a "Pénzügyi Végpontok Védelme" lépést, `lib/auth/roles.ts`
  * `requireManager()`). Amíg a lekérdezés fut (vagy hibázik), a Menedzsernek szánt,
  * eredeti szöveg jelenik meg alapértelmezettként -- ez biztonságos "fail-open a
  * szövegre" (NEM a kreditre) eset, legrosszabb esetben egy Átvizsgáló egy pillanatra
  * a Menedzser-szöveget látja loading közben.
+ *
+ * **Valódi Stripe link (2026-08-04-től):** a korábbi 2 placeholder gomb ("Előfizetés
+ * váltása"/"Kredit vásárlása", ami csak egy 4 másodperces "hamarosan érkezik" toast-ot
+ * mutatott) a Stripe-integráció megépülése óta ELAVULT lenne -- lecserélve egy VALÓDI
+ * linkre a `/settings/billing` oldalra (lásd `app/settings/billing/page.tsx` +
+ * `components/settings/BillingTab.tsx`), ahol a Menedzser ténylegesen válthat csomagot/
+ * vásárolhat Top-up-ot.
  */
-export function InsufficientCreditsModal({ onClose }: InsufficientCreditsModalProps) {
-  const [placeholderNotice, setPlaceholderNotice] = useState<string | null>(null);
+export function InsufficientCreditsModal({ onClose, reason }: InsufficientCreditsModalProps) {
   const [role, setRole] = useState<OrganizationRole>('manager');
 
   useEffect(() => {
@@ -62,17 +76,14 @@ export function InsufficientCreditsModal({ onClose }: InsufficientCreditsModalPr
     return () => window.removeEventListener('keydown', handleEscape);
   }, [onClose]);
 
-  useEffect(() => {
-    if (!placeholderNotice) return;
-    const timer = setTimeout(() => setPlaceholderNotice(null), 4000);
-    return () => clearTimeout(timer);
-  }, [placeholderNotice]);
-
-  function handlePlaceholderClick(action: string) {
-    setPlaceholderNotice(`${action} -- a Stripe fizetési integráció hamarosan érkezik.`);
-  }
-
   const isInspector = role === 'inspector';
+
+  const title = reason === 'ai_quota' ? '🔒 Elfogyott a havi AI kereted!' : '🔒 Elfogytak az AI krediteid!';
+
+  const managerText =
+    reason === 'ai_quota'
+      ? 'A csomagodhoz tartozó havi AI-hívás keret elfogyott. Válts magasabb csomagra a több AI-hívásért.'
+      : 'A hangalapú diktáláshoz és a VIN szkennerhez töltsd fel az egyenlegedet vagy válts Pro csomagra.';
 
   return (
     <div
@@ -85,42 +96,24 @@ export function InsufficientCreditsModal({ onClose }: InsufficientCreditsModalPr
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label="Elfogytak az AI kredited"
+        aria-label="Elfogyott a kereted"
         className="w-full max-w-sm rounded-lg border border-linear-hairline bg-linear-surface-1 p-5 shadow-xl"
       >
-        <p className="text-[16px] font-semibold text-linear-ink">🔒 Elfogytak az AI krediteid!</p>
+        <p className="text-[16px] font-semibold text-linear-ink">{title}</p>
         <p className="mt-2 text-[13px] leading-relaxed text-linear-ink-subtle">
           {isInspector
-            ? 'A céges AI keret kimerült. Kérjük, értesítsd a Menedzsert a feltöltéshez!'
-            : 'A hangalapú diktáláshoz és a VIN szkennerhez töltsd fel az egyenlegedet vagy válts Pro csomagra.'}
+            ? 'A céges keret kimerült. Kérjük, értesítsd a Menedzsert a feltöltéshez!'
+            : managerText}
         </p>
 
         {!isInspector && (
-          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-            <button
-              type="button"
-              onClick={() => handlePlaceholderClick('Előfizetés váltása')}
-              className="flex-1 rounded-md border border-linear-hairline px-3.5 py-2 text-[13px] font-medium text-linear-ink transition-colors hover:bg-linear-surface-2"
-            >
-              Előfizetés váltása
-            </button>
-            <button
-              type="button"
-              onClick={() => handlePlaceholderClick('Kredit vásárlása')}
-              className="flex-1 rounded-md bg-linear-primary px-3.5 py-2 text-[13px] font-medium text-white transition-colors hover:bg-linear-primary-hover"
-            >
-              Kredit vásárlása
-            </button>
-          </div>
-        )}
-
-        {placeholderNotice && (
-          <p
-            role="status"
-            className="mt-3 rounded-md border border-linear-primary/30 bg-linear-primary/10 px-3 py-2 text-center text-[12px] text-linear-primary"
+          <Link
+            href="/settings/billing"
+            onClick={onClose}
+            className="mt-4 flex h-9 items-center justify-center rounded-md bg-linear-primary px-3.5 text-[13px] font-medium text-white transition-colors hover:bg-linear-primary-hover"
           >
-            {placeholderNotice}
-          </p>
+            Ugrás az Előfizetéshez
+          </Link>
         )}
 
         <button

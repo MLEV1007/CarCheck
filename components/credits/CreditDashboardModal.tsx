@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Loader2, X, Zap } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { formatDateTimeHu } from '@/lib/format';
 import type { CreditSummarySuccessResponse } from '@/app/api/credits/summary/route';
 import type { PlanTier } from '@/types/credits';
@@ -48,14 +48,18 @@ type LoadState = 'loading' | 'ready' | 'error';
  * ez garantálja, hogy egy AI-hívás UTÁN megnyitva mindig a ténylegesen aktuális egyenleg
  * látszik, nem egy oldal-betöltéskori pillanatkép.
  *
- * A "Előfizetés váltása"/"Kredit vásárlása" gombok egyelőre PLACEHOLDER-ek (a felhasználói
- * kérés explicit így specifikálta) -- a tényleges Stripe checkout/customer portal
- * integráció egy KÖVETKEZŐ, külön fejlesztési lépés (lásd `status.md` "Következő lépés").
+ * **Valódi Stripe link (2026-08-04-től):** az "Előfizetés váltása"/"Kredit vásárlása" gomb
+ * korábban PLACEHOLDER volt (a felhasználói kérés akkor explicit így specifikálta) -- a
+ * Stripe Checkout/Webhook + Billing felület megépülése óta (lásd `status.md` 52. szakasz)
+ * egy VALÓDI linkre cserélve, a `/settings/billing` oldalra (`app/settings/billing/
+ * page.tsx` + `components/settings/BillingTab.tsx`), ahol a Menedzser ténylegesen
+ * válthat csomagot/vásárolhat Top-up-ot. Ez a modal MAGA nem hívja a Stripe checkout
+ * API-t közvetlenül (nem tudja, melyik konkrét `priceId`-t akarja a user), csak átirányít
+ * a felületre, ahol ez a döntés megtörténik.
  */
 export function CreditDashboardModal({ onClose }: CreditDashboardModalProps) {
   const [state, setState] = useState<LoadState>('loading');
   const [data, setData] = useState<CreditSummarySuccessResponse | null>(null);
-  const [placeholderNotice, setPlaceholderNotice] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -90,16 +94,6 @@ export function CreditDashboardModal({ onClose }: CreditDashboardModalProps) {
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
   }, [onClose]);
-
-  useEffect(() => {
-    if (!placeholderNotice) return;
-    const timer = setTimeout(() => setPlaceholderNotice(null), 4000);
-    return () => clearTimeout(timer);
-  }, [placeholderNotice]);
-
-  function handlePlaceholderClick(action: string) {
-    setPlaceholderNotice(`${action} -- a Stripe fizetési integráció hamarosan érkezik.`);
-  }
 
   return (
     <div
@@ -227,34 +221,14 @@ export function CreditDashboardModal({ onClose }: CreditDashboardModalProps) {
                 )}
               </div>
 
-              {/* Gombok (Placeholder) */}
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <button
-                  type="button"
-                  onClick={() => handlePlaceholderClick('Előfizetés váltása')}
-                  className="flex-1 rounded-md border border-linear-hairline px-3.5 py-2 text-[13px] font-medium text-linear-ink transition-colors hover:bg-linear-surface-2"
-                >
-                  Előfizetés váltása
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handlePlaceholderClick('Kredit vásárlása')}
-                  className="flex-1 rounded-md bg-linear-primary px-3.5 py-2 text-[13px] font-medium text-white transition-colors hover:bg-linear-primary-hover"
-                >
-                  Kredit vásárlása
-                </button>
-              </div>
-
-              {placeholderNotice && (
-                <p
-                  role="status"
-                  className={cn(
-                    'rounded-md border border-linear-primary/30 bg-linear-primary/10 px-3 py-2 text-center text-[12px] text-linear-primary'
-                  )}
-                >
-                  {placeholderNotice}
-                </p>
-              )}
+              {/* Előfizetés/Top-up -- valódi link a Billing felületre (2026-08-04-től) */}
+              <Link
+                href="/settings/billing"
+                onClick={onClose}
+                className="flex h-9 items-center justify-center rounded-md bg-linear-primary px-3.5 text-[13px] font-medium text-white transition-colors hover:bg-linear-primary-hover"
+              >
+                Előfizetés / Keret kezelése
+              </Link>
             </div>
           )}
         </div>
