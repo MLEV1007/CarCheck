@@ -85,22 +85,25 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    // A `SUPABASE_SERVICE_ROLE_KEY` hiánya (lásd `lib/supabase/admin.ts` JSDoc-ját)
-    // KONFIGURÁCIÓS hiba, nem egy váratlan futásidejű bug -- a felhasználó pontosan
-    // ezt a hibát kapta ("Váratlan hiba történt a fiók törlése közben.", a lenti
-    // generikus ág szövege) éles kipróbáláskor, mert a kulcs nem volt beállítva
-    // (lásd 47. szakasz, status.md) -- ez a generikus üzenet elfedte a valódi okot.
-    // MOSTANTÓL ezt a konkrét esetet külön, cselekvésre ösztönző üzenettel jelezzük
-    // (2026-08-04, hibajavítás).
+    // A `SUPABASE_SERVICE_ROLE_KEY`/`NEXT_PUBLIC_SUPABASE_URL` hiánya (lásd
+    // `lib/supabase/admin.ts` JSDoc-ját) KONFIGURÁCIÓS hiba, nem egy váratlan
+    // futásidejű bug -- a felhasználó ELSŐ körben a generikus "Váratlan hiba
+    // történt..." szöveget kapta (lásd 47/48. szakasz, status.md), MÁSODIK körben
+    // (a kulcsot már beállítva Vercelen, push+redeploy után is) UGYANEZT a konkrét
+    // "hiányzik a SUPABASE_SERVICE_ROLE_KEY" üzenetet -- ami azt bizonyítja, hogy a
+    // process.env-ben TÉNYLEGESEN nem érhető el a változó a futó Route Handlerben
+    // (leggyakoribb ok: a Vercel env változó nincs bepipálva "Production"-re, vagy
+    // elgépelt a neve) -- ez már NEM kód-oldali probléma, lásd 49. szakasz. Az
+    // `error.message` (lásd `MissingServiceRoleKeyError`) MOST MÁR konkrétan
+    // megnevezi, melyik változó hiányzik, és mit kell a Vercel Dashboardon
+    // ellenőrizni -- ezt adjuk tovább a UI-nak, a korábbi, kevésbé konkrét szöveg
+    // helyett.
     if (error instanceof MissingServiceRoleKeyError) {
-      console.error('[account/delete] Hiányzó SUPABASE_SERVICE_ROLE_KEY:', error.message);
+      console.error('[account/delete]', error.message);
       return NextResponse.json(
         {
           success: false,
-          error:
-            'A fiók törlés funkció jelenleg nincs beállítva a szerveren (hiányzik a ' +
-            'SUPABASE_SERVICE_ROLE_KEY). Kérd meg az üzemeltetőt, hogy állítsa be, majd ' +
-            'próbáld újra.',
+          error: `A fiók törlés funkció jelenleg nincs helyesen beállítva a szerveren. ${error.message}`,
         },
         { status: 500 }
       );
