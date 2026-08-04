@@ -269,12 +269,17 @@ export function StepSummary({
                 )}
                 <div className="min-w-0">
                   <p className="text-[13px] font-medium text-linear-ink">
-                    #{index + 1} · {damage.title || 'Névtelen'}
+                    #{index + 1} · {DAMAGE_TYPE_LABEL[damage.type]}
                   </p>
-                  <p className="truncate text-[12px] text-linear-ink-subtle">
-                    {DAMAGE_TYPE_LABEL[damage.type]}
-                    {damage.description ? ` · ${damage.description}` : ''}
-                  </p>
+                  {/* "Egyéb" kategóriánál a cím egyedi szöveg -- csak akkor jelenik meg ez a
+                      sor, ha van kiírható tartalom (fix kategóriáknál a cím megegyezne a
+                      fenti sorral, lásd DamageCanvas.tsx). */}
+                  {(damage.title !== DAMAGE_TYPE_LABEL[damage.type] || damage.description) && (
+                    <p className="truncate text-[12px] text-linear-ink-subtle">
+                      {damage.title !== DAMAGE_TYPE_LABEL[damage.type] ? damage.title : ''}
+                      {damage.description ? ` · ${damage.description}` : ''}
+                    </p>
+                  )}
                 </div>
               </li>
             ))}

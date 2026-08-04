@@ -18,9 +18,11 @@ interface StepDamageMapProps {
  * LÉPÉS -- Sérülés- és Hibatérkép modul: PONTOSAN a Festékvastagság-mérő "Szabadkézi
  * (Free-form Canvas)" mintáját követi (`DamageCanvas`, `mode="edit"`) -- nincs előre
  * definiált karosszéria-elem, a felhasználó a `cars.webp` referenciakép TETSZŐLEGES
- * pontjára kattinthat egy sérülés/esztétikai hiba felvételéhez, amihez kategóriát,
- * rövid címet, opcionális leírást és opcionális fotót is rögzíthet. Egy meglévő,
- * színes markerre kattintva a pont módosítható vagy törölhető.
+ * pontjára kattinthat egy sérülés/esztétikai hiba felvételéhez, amihez kategóriát (ill.
+ * "Egyéb" esetén egy rövid megnevezést), opcionális leírást és opcionális fotót is
+ * rögzíthet -- lásd `DamageCanvas.tsx` JSDoc-ját a "cím" mező 2026-08-04-i
+ * egyszerűsítéséről. Egy meglévő, színes markerre kattintva a pont módosítható vagy
+ * törölhető.
  */
 export function StepDamageMap({ value, onChange, onBack, onNext, nextLabel }: StepDamageMapProps) {
   return (
@@ -28,9 +30,9 @@ export function StepDamageMap({ value, onChange, onBack, onNext, nextLabel }: St
       <div>
         <h2 className="text-[18px] font-semibold tracking-[-0.3px] text-linear-ink">Sérülés- és Hibatérkép</h2>
         <p className="mt-1 text-[13px] text-linear-ink-subtle">
-          Kattints az autó-képen BÁRHOVA egy sérülés/esztétikai hiba rögzítéséhez -- add meg a
-          kategóriát, egy rövid címet, és -- ha van -- csatolj fotót. Egy meglévő markerre kattintva
-          módosíthatod vagy törölheted a bejegyzést.
+          Kattints az autó-képen BÁRHOVA egy sérülés/esztétikai hiba rögzítéséhez -- válaszd ki a
+          kategóriát ("Egyéb" esetén add meg, mi a hiba pontosan), és -- ha van -- csatolj fotót.
+          Egy meglévő markerre kattintva módosíthatod vagy törölheted a bejegyzést.
         </p>
       </div>
 
@@ -48,7 +50,12 @@ export function StepDamageMap({ value, onChange, onBack, onNext, nextLabel }: St
           {value.map((point, index) => (
             <li key={point.id} className="flex items-center gap-3 px-4 py-2.5">
               <span className="text-[13px] text-linear-ink-subtle">{index + 1}.</span>
-              <span className="min-w-0 flex-1 truncate text-[13px] text-linear-ink">{point.title}</span>
+              {/* Csak akkor jelenik meg külön szöveg, ha a cím ELTÉR a kategória
+                  feliratától (lásd DamageCanvas.tsx JSDoc) -- fix kategóriáknál a kettő
+                  megegyezik, azt fölöslegesen duplikálná ez a lista. */}
+              <span className="min-w-0 flex-1 truncate text-[13px] text-linear-ink">
+                {point.title !== DAMAGE_TYPE_LABEL[point.type] ? point.title : ''}
+              </span>
               <span className="shrink-0 text-[12px] text-linear-ink-subtle">{DAMAGE_TYPE_LABEL[point.type]}</span>
             </li>
           ))}

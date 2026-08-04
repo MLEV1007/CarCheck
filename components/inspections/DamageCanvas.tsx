@@ -52,8 +52,17 @@ const ACCENT = { dark: '#5e6ad2', light: '#1c69d4' };
  * Sérülés- és Hibatérkép "Szabadkézi" (Free-form Canvas) komponens -- PONTOSAN a
  * `PaintCanvas.tsx` mintáját követi (NINCS előre definiált elem/hotspot a `cars.webp`
  * referenciaképen, a felhasználó a kép TETSZŐLEGES pontjára kattinthat), de itt minden
- * ponthoz egy kategória (karcolás/horpadás/rozsda/kavicsfelverődés/repedés/egyéb), egy
- * kötelező rövid cím, egy opcionális leírás és egy opcionális fotó is tartozik.
+ * ponthoz egy kategória (karcolás/horpadás/rozsda/kavicsfelverődés/repedés/egyéb) tartozik,
+ * plusz egy opcionális leírás és egy opcionális fotó.
+ *
+ * **Cím mező (2026-08-04, "vegyük ki a cím megadását" UX-egyszerűsítés):** a `title` mező
+ * MOSTANTÓL NEM önálló, mindig kitöltendő szövegmező -- az 5 fix kategóriánál (karcolás/
+ * horpadás/rozsda/kavicsfelverődés/repedés) a kategória-választás automatikusan kitölti
+ * `title`-t a kategória feliratával (`DAMAGE_TYPE_LABEL[type]`), a mező NEM jelenik meg a
+ * formban. KIZÁRÓLAG "Egyéb" kategóriánál jelenik meg egy szabad szöveges input, mert ott
+ * a kategória önmagában nem elég leíró -- ilyenkor a "Mentés" is csak akkor engedélyezett,
+ * ha ezt kitöltötte a felhasználó. A `DamagePointState.title` mező TÍPUSA/DB-oszlopa
+ * változatlan (mindig van érvényes, nem üres szöveg benne), csak a KITÖLTÉS módja változott.
  *
  * SZÁNDÉKOS ELTÉRÉS a `PaintCanvas`-tól: ott egy apró, a kattintott ponthoz horgonyzott
  * (`position: absolute`, % koordinátás) popover elég volt egyetlen szám mezőhöz -- itt a
@@ -80,7 +89,24 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
     const rawY = ((e.clientY - rect.top) / rect.height) * 100;
     const x = Math.min(100, Math.max(0, rawX));
     const y = Math.min(100, Math.max(0, rawY));
-    setPending({ id: null, x, y, type: 'scratch', title: '', description: '', file: null, previewUrl: null });
+    setPending({
+      id: null,
+      x,
+      y,
+      type: 'scratch',
+      title: DAMAGE_TYPE_LABEL.scratch,
+      description: '',
+      file: null,
+      previewUrl: null,
+    });
+  }
+
+  /** Kategória-váltáskor: a fix kategóriáknál a `title` automatikusan a kategória
+   * feliratára áll (a mező ekkor nem is jelenik meg a formban), "Egyéb"-re váltva pedig
+   * kiürül, hogy a felhasználó a megjelenő input mezőbe beírhassa, mi is a hiba pontosan. */
+  function handleTypeChange(newType: DamageType) {
+    if (!pending) return;
+    setPending({ ...pending, type: newType, title: newType === 'other' ? '' : DAMAGE_TYPE_LABEL[newType] });
   }
 
   function handleMarkerClick(e: React.MouseEvent, point: DamagePointState) {
@@ -98,7 +124,8 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
   }
 
   function handleSave() {
-    if (!pending || !onChange || pending.title.trim() === '') return;
+    if (!pending || !onChange) return;
+    if (pending.type === 'other' && pending.title.trim() === '') return;
     if (pending.id) {
       onChange(
         points.map((p) =>
@@ -236,7 +263,7 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
                   <span className={fieldLabelClass}>Kategória</span>
                   <select
                     value={pending.type}
-                    onChange={(e) => setPending({ ...pending, type: e.target.value as DamageType })}
+                    onChange={(e) => handleTypeChange(e.target.value as DamageType)}
                     className={fieldClass + ' appearance-none'}
                   >
                     {DAMAGE_TYPES.map((type) => (
@@ -247,17 +274,22 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
                   </select>
                 </div>
 
-                <div className="flex flex-col gap-1.5">
-                  <span className={fieldLabelClass}>Cím</span>
-                  <input
-                    type="text"
-                    autoFocus
-                    placeholder="pl. Kavicsfelverődés"
-                    value={pending.title}
-                    onChange={(e) => setPending({ ...pending, title: e.target.value })}
-                    className={fieldClass}
-                  />
-                </div>
+                {/* Csak "Egyéb" kategóriánál jelenik meg -- a fix kategóriáknál a `title`
+                    automatikusan a kategória feliratára áll (lásd `handleTypeChange`), itt
+                    nincs rá szükség, feleslegesen duplikálná a select tartalmát. */}
+                {pending.type === 'other' && (
+                  <div className="flex flex-col gap-1.5">
+                    <span className={fieldLabelClass}>Mi a hiba pontosan?</span>
+                    <input
+                      type="text"
+                      autoFocus
+                      placeholder="pl. Törött hátsó lámpabúra"
+                      value={pending.title}
+                      onChange={(e) => setPending({ ...pending, title: e.target.value })}
+                      className={fieldClass}
+                    />
+                  </div>
+                )}
 
                 <div className="flex flex-col gap-1.5">
                   <span className={fieldLabelClass}>Leírás (opcionális)</span>
@@ -305,7 +337,7 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
                   <button
                     type="button"
                     onClick={handleSave}
-                    disabled={pending.title.trim() === ''}
+                    disabled={pending.type === 'other' && pending.title.trim() === ''}
                     className="inline-flex h-9 flex-1 items-center justify-center rounded-md bg-linear-primary text-[13px] font-medium text-white transition-colors hover:bg-linear-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Mentés
@@ -321,9 +353,15 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
                   <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: DAMAGE_TYPE_COLOR[pending.type] }} />
                   {DAMAGE_TYPE_LABEL[pending.type]}
                 </span>
-                <p className={theme === 'dark' ? 'text-[14px] font-semibold text-linear-ink' : 'text-[14px] font-bold text-bmw-ink'}>
-                  {pending.title}
-                </p>
+                {/* A kategória-jelvény felett csak akkor jelenik meg külön cím, ha az
+                    valóban EGYEDI szöveg ("Egyéb" kategóriánál a felhasználó által beírt
+                    megnevezés) -- a fix kategóriáknál a `title` megegyezik a jelvény
+                    feliratával, azt fölöslegesen duplikálná. */}
+                {pending.title !== DAMAGE_TYPE_LABEL[pending.type] && (
+                  <p className={theme === 'dark' ? 'text-[14px] font-semibold text-linear-ink' : 'text-[14px] font-bold text-bmw-ink'}>
+                    {pending.title}
+                  </p>
+                )}
                 {pending.description && (
                   <p className={theme === 'dark' ? 'text-[13px] text-linear-ink-subtle' : 'text-[13px] font-light text-bmw-muted'}>
                     {pending.description}
