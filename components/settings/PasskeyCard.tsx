@@ -146,7 +146,20 @@ function describePasskeyError(error: unknown): string {
     return 'Megszakítottad a Face ID / Touch ID beolvasást. Próbáld újra, ha szeretnéd rögzíteni.';
   }
 
-  const message = (error as { message?: string } | null)?.message;
+  const message = (error as { message?: string } | null)?.message ?? '';
+
+  // "The RP ID '...' is invalid for this domain." -- 2026-08-04, hibajavítás (lásd
+  // status.md, `lib/supabase/client.ts` JSDoc-ja, `PasskeyButton.tsx` ugyanezen
+  // ellenőrzése bejelentkezésnél): a Supabase Dashboard Authentication -> Passkeys
+  // beállításánál rögzített Relying Party ID nem egyezik a TÉNYLEGES domainnel (pl.
+  // custom domain bekötése után a Dashboardon elfelejtett frissítés) -- ez
+  // ADMINISZTRÁTORI konfigurációs hiba, NEM az eszköz/böngésző hibája, ezért itt is
+  // külön, célzott üzenettel jelezzük a generikus "ellenőrizd az eszközöd" szöveg
+  // helyett, ami tévesen a saját gépükre terelné a gyanút.
+  if (/rp id/i.test(message) && /invalid/i.test(message)) {
+    return 'A Face ID / Touch ID rögzítése jelenleg nincs beállítva erre a domainre (adminisztrátori beállítás, nem a te eszközöd hibája) -- szólj a rendszergazdának, hogy ellenőrizze a Supabase Passkey beállításokat.';
+  }
+
   return message
     ? `Nem sikerült rögzíteni a passkey-t: ${message}`
     : 'Nem sikerült rögzíteni a passkey-t. Ellenőrizd, hogy az eszközöd és böngésződ támogatja-e a Face ID / Touch ID / biztonsági kulcs használatát, majd próbáld újra.';

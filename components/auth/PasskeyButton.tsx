@@ -72,5 +72,18 @@ function describeSignInError(error: unknown): string {
     return 'Megszakítottad a Face ID / Touch ID azonosítást. Próbáld újra, vagy használd az e-mailes belépést.';
   }
 
+  // "The RP ID '...' is invalid for this domain." -- 2026-08-04, hibajavítás (lásd
+  // status.md, `lib/supabase/client.ts` JSDoc-ja): ez a Supabase Dashboard
+  // Authentication -> Passkeys beállításánál rögzített Relying Party ID és a TÉNYLEGES
+  // domain eltérése (pl. custom domain bekötése után a Dashboardon elfelejtett
+  // frissítés) -- ADMINISZTRÁTORI konfigurációs hiba, NEM a felhasználó eszközének
+  // problémája, ezért itt külön, félreérthetetlen üzenettel jelezzük, ahelyett hogy a
+  // generikus "nem sikerült ezen az eszközön" szöveg tévesen a saját gépükre terelné a
+  // gyanút.
+  const message = (error as { message?: string } | null)?.message ?? '';
+  if (/rp id/i.test(message) && /invalid/i.test(message)) {
+    return 'A Face ID / Touch ID belépés jelenleg nincs beállítva erre a domainre (adminisztrátori beállítás, nem a te eszközöd hibája) -- addig kérj belépési linket e-mailben.';
+  }
+
   return 'Nem sikerült a Face ID / Touch ID azonosítás ezen az eszközön. Ha még nincs regisztrált passkey-d, kérj belépési linket e-mailben.';
 }
