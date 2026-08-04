@@ -6,6 +6,7 @@ import { SettingsForm } from '@/components/settings/SettingsForm';
 import { PasskeyCard } from '@/components/settings/PasskeyCard';
 import { DefaultPreferencesCard } from '@/components/settings/DefaultPreferencesCard';
 import { SettingsTabs } from '@/components/settings/SettingsTabs';
+import { DeleteAccountCard } from '@/components/settings/DeleteAccountCard';
 import { DEFAULT_LICENSE_PLATE_COUNTRY } from '@/lib/inspections/constants';
 
 export const metadata: Metadata = {
@@ -59,6 +60,21 @@ export default async function SettingsPage() {
 
   const teamManagementEnabled = organization?.team_management_enabled ?? false;
 
+  // "Fiók törlése" (Veszélyzóna) figyelmeztető szövegéhez -- csak Menedzsernek releváns,
+  // hogy tudja, a törlés után marad-e valaki, aki hozzáfér a cég adataihoz. A
+  // `profiles_select_org_manager` RLS policy (20260803_organizations_rbac.sql) csak
+  // Menedzsernek engedi a teljes szervezet profiljainak lekérdezését, ezért ez a
+  // számláló Átvizsgálónál mindig `0` marad (nem is jelenik meg a UI-n, lásd
+  // `DeleteAccountCard.tsx`).
+  const { count: otherTeamMemberCount } =
+    role === 'manager' && profile?.organization_id
+      ? await supabase
+          .from('profiles')
+          .select('id', { count: 'exact', head: true })
+          .eq('organization_id', profile.organization_id)
+          .neq('id', user.id)
+      : { count: 0 };
+
   const initialDefaultLicenseCountry =
     (user.user_metadata?.default_license_country as string | undefined) || DEFAULT_LICENSE_PLATE_COUNTRY;
 
@@ -95,6 +111,11 @@ export default async function SettingsPage() {
             />
             <DefaultPreferencesCard initialDefaultLicenseCountry={initialDefaultLicenseCountry} />
             <PasskeyCard />
+            <DeleteAccountCard
+              email={profile?.email ?? user.email ?? ''}
+              role={role}
+              otherTeamMemberCount={otherTeamMemberCount ?? 0}
+            />
           </div>
         </SettingsTabs>
       </main>

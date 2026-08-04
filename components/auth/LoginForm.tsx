@@ -23,6 +23,10 @@ export function LoginForm() {
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get('redirectTo') ?? '/dashboard';
   const callbackError = searchParams.get('error');
+  // `DeleteAccountCard.tsx` ide irányít vissza sikeres fiók-törlés után
+  // (`/login?accountDeleted=1`) -- egy semleges, nem hiba-stílusú visszajelzés, hogy a
+  // user tudja, a törlés ténylegesen megtörtént, nem csak kijelentkezett.
+  const accountDeleted = searchParams.get('accountDeleted') === '1';
 
   const [error, setError] = useState<string | null>(
     callbackError ? CALLBACK_ERROR_MESSAGES[callbackError] ?? 'Váratlan hiba történt. Próbáld újra.' : null
@@ -52,6 +56,13 @@ export function LoginForm() {
 
   return (
     <div className="flex flex-col gap-5">
+      {accountDeleted && (
+        <p className="rounded-stripe-sm border border-stripe-hairline bg-stripe-canvas-soft px-3 py-2 font-sohne text-[13px] text-stripe-ink-secondary">
+          A fiókod törölve lett. A korábban rögzített vizsgálatok adatai megmaradtak a
+          cégednél.
+        </p>
+      )}
+
       <PasskeyButton redirectTo={redirectTo} onError={setError} />
       <AuthDivider label="vagy" />
 

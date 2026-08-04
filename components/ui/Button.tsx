@@ -5,7 +5,9 @@ import { cn } from '@/lib/utils';
 // Stripe design system (stripe.md): `button-primary-pill` / `button-secondary`
 // -- rounded-full (pill), 8px 16px padding, button-md tipográfia (16px / 400).
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary';
+  /** `danger` -- destruktív műveletekhez (pl. "Fiók törlése"), `stripe-ruby` háttérrel --
+   * lásd `DeleteAccountCard.tsx`. */
+  variant?: 'primary' | 'secondary' | 'danger';
   isLoading?: boolean;
   fullWidth?: boolean;
 }
@@ -26,6 +28,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             'bg-stripe-primary text-white hover:bg-stripe-primary-deep active:bg-stripe-primary-press',
           variant === 'secondary' &&
             'border border-stripe-hairline bg-white text-stripe-primary hover:bg-stripe-canvas-soft',
+          variant === 'danger' && 'bg-stripe-ruby text-white hover:opacity-90 active:opacity-80',
           className
         )}
         {...props}
