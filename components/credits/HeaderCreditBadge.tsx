@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Zap } from 'lucide-react';
+import Link from 'next/link';
+import { CreditCard, Zap } from 'lucide-react';
 import { CreditDashboardModal } from '@/components/credits/CreditDashboardModal';
 
 type LoadState = 'loading' | 'ready' | 'error';
@@ -32,6 +33,16 @@ type LoadState = 'loading' | 'ready' | 'error';
  *
  * Betöltési hiba esetén CSENDBEN `null`-t rendereli -- egy hibás/félrevezető számot mutató
  * jelvény rosszabb UX, mint egy hiányzó jelvény.
+ *
+ * **"Előfizetés" gomb a jelvény BAL oldalán (2026-08-04):** közvetlen link a
+ * `/settings/billing` oldalra (`components/settings/BillingTab.tsx`) -- korábban az
+ * előfizetés/keret-kezelő felület KIZÁRÓLAG a jelvényre kattintva megnyíló
+ * `CreditDashboardModal.tsx` "Előfizetés / Keret kezelése" linkjén keresztül volt
+ * elérhető (2 kattintás); ez a gomb egy MÁSODIK, közvetlen útvonalat ad ugyanoda (1
+ * kattintás), hogy MINDKÉT helyről (a jelvény mellől ÉS a modalból) elérhető legyen a
+ * felület. Ugyanaz a szerepkör-gate vonatkozik rá, mint magára a `HeaderCreditBadge`-re
+ * (a hívó oldal -- `DashboardHeader.tsx`/`app/inspections/new/page.tsx`/
+ * `app/inspections/[id]/page.tsx` -- eleve csak Menedzsernek renderel egyet).
  */
 export function HeaderCreditBadge() {
   const [state, setState] = useState<LoadState>('loading');
@@ -70,7 +81,16 @@ export function HeaderCreditBadge() {
   if (state === 'error') return null;
 
   return (
-    <>
+    <div className="flex shrink-0 items-center gap-2">
+      <Link
+        href="/settings/billing"
+        className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-linear-hairline px-3 text-[13px] font-medium text-linear-ink-subtle transition-colors hover:bg-linear-surface-2 hover:text-linear-ink"
+        aria-label="Ugrás az Előfizetés oldalra"
+      >
+        <CreditCard className="h-3.5 w-3.5" />
+        <span className="hidden sm:inline">Előfizetés</span>
+      </Link>
+
       <button
         type="button"
         onClick={() => setIsModalOpen(true)}
@@ -83,6 +103,6 @@ export function HeaderCreditBadge() {
       </button>
 
       {isModalOpen && <CreditDashboardModal onClose={() => setIsModalOpen(false)} />}
-    </>
+    </div>
   );
 }
