@@ -51,9 +51,16 @@ export function DeleteAccountCard({ email, role, otherTeamMemberCount }: DeleteA
         </div>
       </div>
 
+      <div className="font-sohne text-[13px] font-light leading-relaxed text-stripe-ink-secondary">
+        <p>A fiókod törlésével:</p>
+        <ul className="mt-2 list-disc space-y-1 pl-5">
+          <li>Többé nem tudsz bejelentkezni ezzel az e-mail címmel.</li>
+          <li>A személyes beállításaid (pl. Face ID / Passkey) törlődnek.</li>
+          <li>Ha te vagy az egyetlen felhasználó, a céged hozzáférése véglegesen megszűnik.</li>
+        </ul>
+      </div>
+
       <p className="font-sohne text-[13px] font-light leading-relaxed text-stripe-ink-secondary">
-        A fiókod törlése után nem tudsz többé bejelentkezni ezzel az email címmel, és a
-        személyes beállításaid (Face ID / Touch ID passkey-k stb.) elvesznek.{' '}
         <span className="font-normal text-stripe-ink">
           A korábban rögzített vizsgálatok, fotók és riportok adatai a törléssel NEM
           vesznek el
@@ -119,7 +126,14 @@ function DeleteAccountModal({ email, onClose }: { email: string; onClose: () => 
       const result = await response.json().catch(() => null);
 
       if (!response.ok || !result?.success) {
-        setError(result?.error ?? 'Nem sikerült törölni a fiókot. Próbáld újra.');
+        // A `details` mezőt (ha érkezett -- lásd `route.ts` `toErrorDetails()`) a
+        // konzolba is kilogoljuk, ugyanaz a minta, mint a wizard AI-hívásainál
+        // (pl. `StepCarInfo.tsx`) -- 2026-08-04, hibajavítás: korábban a szerver
+        // egy GENERIKUS "Váratlan hiba történt..." üzenetet adott vissza, ami elfedte
+        // a valódi okot (hiányzó `SUPABASE_SERVICE_ROLE_KEY`, lásd `route.ts` JSDoc-ját).
+        const baseMessage = result?.error ?? 'Nem sikerült törölni a fiókot. Próbáld újra.';
+        if (result?.details) console.error('[DeleteAccountCard] Fiók törlés hiba részletek:', result.details);
+        setError(result?.details ? `${baseMessage} (${result.details})` : baseMessage);
         setIsDeleting(false);
         return;
       }

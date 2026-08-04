@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createAdminClient, MissingServiceRoleKeyError } from '@/lib/supabase/admin';
+
+function toErrorDetails(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 /**
  * "Fiók törlése" végpont (Beállítások -- Veszélyzóna, lásd `DeleteAccountCard.tsx`).
@@ -70,16 +74,45 @@ export async function POST(request: Request) {
     if (deleteError) {
       console.error('[account/delete] Nem sikerült törölni a fiókot:', deleteError);
       return NextResponse.json(
-        { success: false, error: 'Nem sikerült törölni a fiókot. Próbáld újra, vagy jelezd nekünk.' },
+        {
+          success: false,
+          error: 'Nem sikerült törölni a fiókot. Próbáld újra, vagy jelezd nekünk.',
+          details: deleteError.message,
+        },
         { status: 500 }
       );
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    // A `SUPABASE_SERVICE_ROLE_KEY` hiánya (lásd `lib/supabase/admin.ts` JSDoc-ját)
+    // KONFIGURÁCIÓS hiba, nem egy váratlan futásidejű bug -- a felhasználó pontosan
+    // ezt a hibát kapta ("Váratlan hiba történt a fiók törlése közben.", a lenti
+    // generikus ág szövege) éles kipróbáláskor, mert a kulcs nem volt beállítva
+    // (lásd 47. szakasz, status.md) -- ez a generikus üzenet elfedte a valódi okot.
+    // MOSTANTÓL ezt a konkrét esetet külön, cselekvésre ösztönző üzenettel jelezzük
+    // (2026-08-04, hibajavítás).
+    if (error instanceof MissingServiceRoleKeyError) {
+      console.error('[account/delete] Hiányzó SUPABASE_SERVICE_ROLE_KEY:', error.message);
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            'A fiók törlés funkció jelenleg nincs beállítva a szerveren (hiányzik a ' +
+            'SUPABASE_SERVICE_ROLE_KEY). Kérd meg az üzemeltetőt, hogy állítsa be, majd ' +
+            'próbáld újra.',
+        },
+        { status: 500 }
+      );
+    }
+
     console.error('[account/delete] Váratlan hiba a fiók törlése közben:', error);
     return NextResponse.json(
-      { success: false, error: 'Váratlan hiba történt a fiók törlése közben.' },
+      {
+        success: false,
+        error: 'Váratlan hiba történt a fiók törlése közben.',
+        details: toErrorDetails(error),
+      },
       { status: 500 }
     );
   }

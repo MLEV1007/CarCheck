@@ -16,16 +16,34 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
  * `autoRefreshToken`/`persistSession: false` -- ez a kliens rövid életű, egyetlen Route
  * Handler-hívás alatt él, nincs böngésző-session-je, amit kezelnie kellene.
  */
+/**
+ * Külön, azonosítható hibaosztály (2026-08-04, hibajavítás -- lásd status.md) -- a
+ * felhasználó "Váratlan hiba történt a fiók törlése közben." üzenetet kapott a "Fiók
+ * törlése" gombra kattintva, ami a `route.ts` legkülső `catch`-ének GENERIKUS
+ * üzenete volt -- ez elfedte a TÉNYLEGES okot (a `SUPABASE_SERVICE_ROLE_KEY` hiányzott
+ * a szerver környezeti változói közül, lásd 47. szakasz -- ez a kulcs a sandboxban
+ * SOSEM volt beállítva, a felhasználónak kézzel kellett volna pótolnia). Ezzel a
+ * dedikált hibaosztállyal a `route.ts` MOST MÁR meg tudja különböztetni ezt a
+ * konfigurációs hibát egy tényleges, váratlan futásidejű hibától, és egy konkrét,
+ * cselekvésre ösztönző üzenetet adhat vissza a generikus helyett.
+ */
+export class MissingServiceRoleKeyError extends Error {
+  constructor() {
+    super(
+      'SUPABASE_SERVICE_ROLE_KEY hiányzik a szerver környezeti változói közül -- ' +
+        'lásd .env.local.example, ez KIZÁRÓLAG szerver-oldalon (Vercel Environment ' +
+        'Variables / .env.local) állítható be, NEXT_PUBLIC_ előtag NÉLKÜL.'
+    );
+    this.name = 'MissingServiceRoleKeyError';
+  }
+}
+
 export function createAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!url || !serviceRoleKey) {
-    throw new Error(
-      'SUPABASE_SERVICE_ROLE_KEY hiányzik a szerver környezeti változói közül -- ' +
-        'lásd .env.example, ez KIZÁRÓLAG szerver-oldalon (Vercel Environment Variables / ' +
-        '.env.local) állítható be, NEXT_PUBLIC_ előtag NÉLKÜL.'
-    );
+    throw new MissingServiceRoleKeyError();
   }
 
   return createSupabaseClient(url, serviceRoleKey, {
