@@ -6,6 +6,7 @@ import { Trash2, X } from 'lucide-react';
 import { CAR_IMAGE_HEIGHT, CAR_IMAGE_SRC, CAR_IMAGE_WIDTH } from '@/lib/inspections/carImageMap';
 import { PAINT_STATUS_LABEL, getPaintStatus } from '@/lib/inspections/constants';
 import { sanitizeMicron } from '@/lib/inspections/validation';
+import { CarPointPin } from '@/components/inspections/CarPointPin';
 import type { PaintPointState, PaintStatus } from '@/lib/inspections/types';
 
 interface PaintCanvasProps {
@@ -148,24 +149,17 @@ export function PaintCanvas({ points, mode, onChange, theme, className }: PaintC
           const status = getPaintStatus(point.value);
           const isSelected = pending?.id === point.id;
           return (
-            <button
+            <CarPointPin
               key={point.id}
-              type="button"
-              aria-label={`Mérési pont: ${point.value} µm (${PAINT_STATUS_LABEL[status]})`}
+              x={point.x}
+              y={point.y}
+              color={STATUS_FILL[status]}
+              selected={isSelected}
+              accentColor={accent}
+              label={String(Math.round(point.value))}
               onClick={(e) => handleBubbleClick(e, point)}
-              style={{
-                left: `${point.x}%`,
-                top: `${point.y}%`,
-                backgroundColor: STATUS_FILL[status],
-                boxShadow: isSelected ? `0 0 0 3px ${accent}` : undefined,
-              }}
-              className={
-                'absolute z-10 flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-[11px] font-bold text-white shadow-md ring-2 ring-white outline-none transition-transform sm:h-9 sm:w-9 ' +
-                (isSelected ? 'scale-110' : 'hover:scale-105')
-              }
-            >
-              {Math.round(point.value)}
-            </button>
+              ariaLabel={`Mérési pont: ${point.value} µm (${PAINT_STATUS_LABEL[status]})`}
+            />
           );
         })}
 

@@ -7,6 +7,7 @@ import { CAR_IMAGE_HEIGHT, CAR_IMAGE_SRC, CAR_IMAGE_WIDTH } from '@/lib/inspecti
 import { DAMAGE_TYPE_COLOR, DAMAGE_TYPE_LABEL, DAMAGE_TYPES } from '@/lib/inspections/constants';
 import { DefectMediaUpload } from '@/components/inspections/wizard/DefectMediaUpload';
 import { VoiceInputButton } from '@/components/ui/VoiceInputButton';
+import { CarPointPin } from '@/components/inspections/CarPointPin';
 import type { DamagePointState, DamageType } from '@/lib/inspections/types';
 
 interface DamageCanvasProps {
@@ -189,21 +190,15 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
         {points.map((point) => {
           const isSelected = pending?.id === point.id;
           return (
-            <button
+            <CarPointPin
               key={point.id}
-              type="button"
-              aria-label={`${DAMAGE_TYPE_LABEL[point.type]}: ${point.title}`}
+              x={point.x}
+              y={point.y}
+              color={DAMAGE_TYPE_COLOR[point.type]}
+              selected={isSelected}
+              accentColor={accent}
               onClick={(e) => handleMarkerClick(e, point)}
-              style={{
-                left: `${point.x}%`,
-                top: `${point.y}%`,
-                backgroundColor: DAMAGE_TYPE_COLOR[point.type],
-                boxShadow: isSelected ? `0 0 0 3px ${accent}` : undefined,
-              }}
-              className={
-                'absolute z-10 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full shadow-md ring-2 ring-white outline-none transition-transform sm:h-6 sm:w-6 ' +
-                (isSelected ? 'scale-110' : 'hover:scale-110')
-              }
+              ariaLabel={`${DAMAGE_TYPE_LABEL[point.type]}: ${point.title}`}
             />
           );
         })}

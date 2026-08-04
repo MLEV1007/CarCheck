@@ -11,8 +11,16 @@ import type {
   WizardStep,
 } from '@/lib/inspections/types';
 
-/** Hiba-kategóriák (PROJEKT_INSTRUKCIOK.md 5.B.3). */
-export const DEFECT_CATEGORIES: string[] = ['Motor', 'Váltó', 'Karosszéria', 'Beltér', 'Fék/Futómű', 'Egyéb'];
+/**
+ * Hiba-kategóriák (PROJEKT_INSTRUKCIOK.md 5.B.3). A "Karosszéria" kategória SZÁNDÉKOSAN
+ * hiányzik innen (UX-egyszerűsítés, 2026-08-03) -- a látható karosszéria-/festéksérüléseket
+ * a 8. lépés (`StepDamageMap.tsx`, "Sérülés- és Hibatérkép") vizuális, kép-alapú felülete
+ * fedi le, hogy ugyanaz a hiba (pl. karcolás) ne legyen kétszer rögzíthető: egyszer pontként
+ * a képen, egyszer kártyaként ebben a listában. Ez a lépés innentől kizárólag a képen nem
+ * ábrázolható, technikai/belső hibákra szolgál. (Régi, "Karosszéria" kategóriával mentett
+ * hibák továbbra is helyesen jelennek meg a riportban, csak új hibánál nem választható.)
+ */
+export const DEFECT_CATEGORIES: string[] = ['Motor', 'Váltó', 'Beltér', 'Fék/Futómű', 'Egyéb'];
 
 export const PAINT_STATUS_LABEL: Record<PaintStatus, string> = {
   gyari: 'Gyári',
