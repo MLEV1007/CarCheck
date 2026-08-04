@@ -26,11 +26,28 @@ import { AuthDivider } from '@/components/auth/AuthDivider';
  * `MagicLinkForm`-nak adjuk tovább `signUpData`-ként -- a `handle_new_user()` DB trigger
  * ez alapján a MEGLÉVŐ szervezethez, 'inspector' szerepkörrel csatlakoztatja, a "sima"
  * (nem meghívott) regisztráció helyett, ami mindig új, önálló szervezetet hoz létre.
+ *
+ * **Meghívás-ellenőrzés hibaüzenete (2026-08-04, hibajavítás -- lásd status.md):** az
+ * `/auth/callback` `?error=invite_not_applied` paraméterrel irányít ide vissza, ha a
+ * meghívó link NEM érvényesült ténylegesen (leggyakoribb ok: a meghívott email címhez
+ * már létezett fiók a rendszerben, ezért a `handle_new_user()` trigger nem futott le
+ * rá -- lásd `MagicLinkForm.tsx` és `app/auth/callback/route.ts` JSDoc-ját).
  */
+const CALLBACK_ERROR_MESSAGES: Record<string, string> = {
+  invite_not_applied:
+    'A meghívás nem érvényesült ennél a fióknál. Ha ezzel az email címmel már korábban ' +
+    'regisztráltál, jelentkezz be a meglévő fiókoddal -- a csapattagsághoz kérd meg azt, ' +
+    'aki meghívott, hogy vegye fel veled külön a kapcsolatot. Ha ez az első fiókod, kérd ' +
+    'meg a meghívó Managert, hogy ellenőrizze, engedélyezve van-e a csapatkezelés a cégéhez.',
+};
+
 export function RegisterForm() {
-  const [error, setError] = useState<string | null>(null);
-  const [magicLinkSentTo, setMagicLinkSentTo] = useState<string | null>(null);
   const searchParams = useSearchParams();
+  const callbackError = searchParams.get('error');
+  const [error, setError] = useState<string | null>(
+    callbackError ? CALLBACK_ERROR_MESSAGES[callbackError] ?? 'Váratlan hiba történt. Próbáld újra.' : null
+  );
+  const [magicLinkSentTo, setMagicLinkSentTo] = useState<string | null>(null);
   const inviteOrgId = searchParams.get('invite');
 
   if (magicLinkSentTo) {

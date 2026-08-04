@@ -50,10 +50,29 @@ export function MagicLinkForm({
     setIsLoading(true);
 
     const supabase = createClient();
+
+    // A `raw_user_meta_data`-ba írt `invite_org_id` (lásd `signUpData` JSDoc fent) CSAK
+    // vadonatúj usernél ér célba, mert a `handle_new_user()` DB trigger -- ami ezt
+    // kiolvassa -- kizárólag `auth.users` INSERT-re fut le. Ha a megadott email címhez
+    // MÁR LÉTEZIK fiók, a `signInWithOtp` nem hoz létre új sort, a trigger nem fut, a
+    // meghívás csendben "elveszik" -- a user csak visszalép a saját, a meghívó cégétől
+    // független (régi) fiókjába (2026-08-04, valós hiba: `manyilevente@gmail.com`
+    // meghívása a `test@buildmysite.hu` fiókból -- lásd status.md). Ezért az
+    // `invite_org_id`-t a redirect URL-be IS beégetjük -- az `/auth/callback` a
+    // sikeres bejelentkezés UTÁN, a user tényleges `profiles.organization_id`-jából
+    // meg tudja állapítani, hogy a meghívás valóban érvényesült-e, és ha nem, egy
+    // egyértelmű hibaüzenettel küldi vissza a usert a dashboard helyett.
+    const inviteOrgId = signUpData?.invite_org_id;
+    const emailRedirectTo = new URL('/auth/callback', window.location.origin);
+    emailRedirectTo.searchParams.set('next', redirectTo);
+    if (inviteOrgId) {
+      emailRedirectTo.searchParams.set('invite_org_id', inviteOrgId);
+    }
+
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`,
+        emailRedirectTo: emailRedirectTo.toString(),
         ...(signUpData ? { data: signUpData } : {}),
       },
     });
