@@ -2,10 +2,19 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { CreditCard, Zap } from 'lucide-react';
+import { ClipboardCheck, CreditCard, Zap } from 'lucide-react';
 import { CreditDashboardModal } from '@/components/credits/CreditDashboardModal';
 
 type LoadState = 'loading' | 'ready' | 'error';
+
+/** A jelvényhez ténylegesen szükséges 2 összesített szám -- lásd `types/quotas.ts`
+ * `QuotaBalance` teljes alakját, itt csak a header-jelvényekhez kellő mezőket tartjuk
+ * state-ben (nem a teljes objektumot, mert a `CreditDashboardModal` a saját, önálló
+ * `/api/quotas/summary` hívásával tölti be a részletes bontást). */
+interface HeaderQuotaSummary {
+  totalAiAvailable: number;
+  totalInspectionsAvailable: number;
+}
 
 /**
  * Fejléc kredit-jelvény (PROJEKT_INSTRUKCIOK.md "Felhasználói Kredit & Előfizetés
@@ -55,10 +64,19 @@ type LoadState = 'loading' | 'ready' | 'error';
  * felület. Ugyanaz a szerepkör-gate vonatkozik rá, mint magára a `HeaderCreditBadge`-re
  * (a hívó oldal -- `DashboardHeader.tsx`/`app/inspections/new/page.tsx`/
  * `app/inspections/[id]/page.tsx` -- eleve csak Menedzsernek renderel egyet).
+ *
+ * **Hátralévő vizsgálati keret jelvény (2026-08-06):** az AI kredit jelvény MELLETT
+ * (attól balra) egy második, `ClipboardCheck` ikonos jelvény mutatja a szervezet
+ * hátralévő VIZSGÁLATI keretét (`quota.totalInspectionsAvailable` -- havi + vásárolt
+ * Top-up összesen, UGYANAZ a szám, mint a `CreditDashboardModal.tsx` "Vizsgálati keret"
+ * kártyájának "Összesen elérhető" sora). Ugyanabból az egyetlen `/api/quotas/summary`
+ * hívásból származik, mint az AI-kredit szám -- nincs külön hálózati kérés hozzá.
+ * Kattintásra UGYANAZT a `CreditDashboardModal`-t nyitja meg, mint az AI-kredit
+ * jelvény (mindkét szám ott, egy helyen, részletesen is megjelenik).
  */
 export function HeaderCreditBadge() {
   const [state, setState] = useState<LoadState>('loading');
-  const [totalCredits, setTotalCredits] = useState<number | null>(null);
+  const [quota, setQuota] = useState<HeaderQuotaSummary | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
@@ -68,14 +86,17 @@ export function HeaderCreditBadge() {
       try {
         const response = await fetch('/api/quotas/summary');
         const json = (await response.json().catch(() => null)) as
-          | { success: true; quota: { totalAiAvailable: number } }
+          | { success: true; quota: HeaderQuotaSummary }
           | { success: false }
           | null;
 
         if (cancelled) return;
 
         if (response.ok && json?.success) {
-          setTotalCredits(json.quota.totalAiAvailable);
+          setQuota({
+            totalAiAvailable: json.quota.totalAiAvailable,
+            totalInspectionsAvailable: json.quota.totalInspectionsAvailable,
+          });
           setState('ready');
         } else {
           setState('error');
@@ -108,10 +129,21 @@ export function HeaderCreditBadge() {
         onClick={() => setIsModalOpen(true)}
         disabled={state === 'loading'}
         className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-linear-hairline bg-linear-surface-2 px-3 text-[13px] font-medium text-linear-ink transition-colors hover:bg-linear-surface-3 disabled:cursor-wait disabled:opacity-70"
+        aria-label="Hátralévő vizsgálati keret -- kattints a részletekért"
+      >
+        <ClipboardCheck className="h-3.5 w-3.5 text-linear-primary" />
+        <span>{state === 'loading' ? '…' : quota?.totalInspectionsAvailable} vizsgálat</span>
+      </button>
+
+      <button
+        type="button"
+        onClick={() => setIsModalOpen(true)}
+        disabled={state === 'loading'}
+        className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-linear-hairline bg-linear-surface-2 px-3 text-[13px] font-medium text-linear-ink transition-colors hover:bg-linear-surface-3 disabled:cursor-wait disabled:opacity-70"
         aria-label="AI kredit egyenleg -- kattints a részletekért"
       >
         <Zap className="h-3.5 w-3.5 text-linear-primary" />
-        <span>{state === 'loading' ? '…' : totalCredits} AI kredit</span>
+        <span>{state === 'loading' ? '…' : quota?.totalAiAvailable} AI kredit</span>
       </button>
 
       {isModalOpen && <CreditDashboardModal onClose={() => setIsModalOpen(false)} />}
