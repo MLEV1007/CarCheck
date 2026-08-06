@@ -104,19 +104,26 @@ export function AdminOrganizationsTable({ organizations: initial }: AdminOrganiz
                     <span className="text-[12px] text-linear-ink-subtle">
                       {org.teamManagementEnabled ? 'Engedélyezve' : 'Letiltva'}
                     </span>
+                    {/* Toggle switch geometria javítás (2026-08-06) -- lásd
+                        `TeamManagement.tsx` UGYANEZEN mintájú kapcsolójának JSDoc-ját a
+                        teljes indoklásért: a korábbi `absolute` + hiányzó `left-*` knob-
+                        pozicionálás böngésző-függően inkonzisztensen renderelt (halvány
+                        szín + jobb szélen levágott/túlcsorduló knob). Az új `flex
+                        items-center p-0.5` "sín" + NEM abszolút pozicionált, `translate-x`-
+                        szel tolt knob a hivatalos, robusztus Tailwind UI switch-minta. */}
                     <button
                       type="button"
                       role="switch"
                       aria-checked={org.teamManagementEnabled}
                       disabled={togglingId === org.id}
                       onClick={() => handleToggle(org.id, !org.teamManagementEnabled)}
-                      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-60 ${
+                      className={`flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
                         org.teamManagementEnabled ? 'bg-linear-primary' : 'bg-linear-hairline-strong'
                       }`}
                     >
                       <span
-                        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                          org.teamManagementEnabled ? 'translate-x-[22px]' : 'translate-x-0.5'
+                        className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                          org.teamManagementEnabled ? 'translate-x-5' : 'translate-x-0'
                         }`}
                       />
                     </button>

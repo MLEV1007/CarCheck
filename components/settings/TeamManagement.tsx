@@ -190,19 +190,32 @@ function TeamMemberRow({
           <span className="font-sohne text-[12px] text-stripe-ink-secondary">
             Láthatja az összes céges riportot
           </span>
+          {/* Toggle switch geometria javítás (2026-08-06) -- a korábbi verzió a knob-ot
+              `position: absolute` + `top-0.5` + feltételes `translate-x` kombinációval
+              pozicionálta, DE `left-*` osztály NÉLKÜL -- a knob vízszintes nyugalmi
+              pozíciója emiatt a böngésző "abszolút pozicionált elem statikus pozíciója"
+              tartalék-számításától függött, ami a gyakorlatban a szülő elem
+              megjelenítési kontextusától függően INKONZISZTENSEN renderelt (halvány
+              szín + a knob a jobb szélen túlcsordulva/levágva -- lásd a felhasználó
+              screenshotjait). Az ÚJ minta (`flex items-center` + `p-0.5` padding a
+              "sínen" + a knob NEM abszolút pozicionált, hanem normál flex-gyerek,
+              KIZÁRÓLAG `translate-x`-szel tolva) ugyanaz a hivatalos, robusztus
+              Tailwind UI switch-minta -- a knob nyugalmi pozícióját a `p-0.5` padding
+              garantálja (nem egy ambiguity-re épülő böngésző-fallback), így minden
+              böngészőben/kontextusban determinisztikusan ugyanott jelenik meg. */}
           <button
             type="button"
             role="switch"
             aria-checked={member.can_view_all_reports}
             disabled={isToggling}
             onClick={() => onToggle(!member.can_view_all_reports)}
-            className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-60 ${
+            className={`flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
               member.can_view_all_reports ? 'bg-stripe-primary' : 'bg-stripe-hairline-input'
             }`}
           >
             <span
-              className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                member.can_view_all_reports ? 'translate-x-[22px]' : 'translate-x-0.5'
+              className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                member.can_view_all_reports ? 'translate-x-5' : 'translate-x-0'
               }`}
             />
           </button>

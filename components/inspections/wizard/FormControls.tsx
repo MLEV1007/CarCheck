@@ -116,10 +116,22 @@ interface ToggleFieldProps {
  * megjelenítési kapcsolók lépés (2026-08-06), `StepSummary.tsx` "PDF megjelenítési
  * beállítások" blokkja. Ugyanaz a `role="switch"`/`aria-checked` minta, mint a
  * `TeamManagement.tsx` (Stripe design, `/settings` "Láthatja az összes céges
- * riportot" kapcsolója), csak `linear-*` design-tokenekre öntve, mert ez a wizard
- * (Linear Dark) felületén él -- a design rendszer FÜGGŐ színek (`bg-linear-primary`
- * / `bg-linear-surface-2`) miatt nem lehetett a meglévő komponenst egy az egyben
- * újrahasznosítani.
+ * riportot" kapcsolója) és az `AdminOrganizationsTable.tsx` kapcsolója, csak
+ * `linear-*` design-tokenekre öntve, mert ez a wizard (Linear Dark) felületén él --
+ * a design rendszer FÜGGŐ színek (`bg-linear-primary` / `bg-linear-surface-2`) miatt
+ * nem lehetett a meglévő komponenst egy az egyben újrahasznosítani.
+ *
+ * **Geometria (2026-08-06, hibajavítás):** a knob NEM `position: absolute`-tal
+ * pozicionált -- egy `absolute` + `top-0.5` + feltételes `translate-x` kombináció
+ * `left-*` osztály NÉLKÜL a böngésző "abszolút pozicionált elem statikus pozíciója"
+ * tartalék-számításától tenné függővé a knob vízszintes nyugalmi helyzetét, ami
+ * kontextus-függően inkonzisztensen renderelt (halvány szín + a knob a jobb szélen
+ * túlcsordulva/levágva -- ez a hiba a `TeamManagement.tsx`/`AdminOrganizationsTable.tsx`
+ * korábbi, azonos mintájú kapcsolóin ténylegesen jelentkezett is). Az itteni minta a
+ * hivatalos, robusztus Tailwind UI switch-mintát követi: a "sín" (`button`) `flex
+ * items-center p-0.5`-je adja a 2px belső inzetet DETERMINISZTIKUSAN (padding, nem
+ * ambiguity-re épülő böngésző-fallback), a knob pedig egy NORMÁL flex-gyerek,
+ * KIZÁRÓLAG `translate-x-5`/`translate-x-0`-val tolva.
  */
 export function ToggleField({ label, hint, checked, onChange, disabled, id }: ToggleFieldProps) {
   return (
@@ -136,14 +148,14 @@ export function ToggleField({ label, hint, checked, onChange, disabled, id }: To
         disabled={disabled}
         onClick={() => onChange(!checked)}
         className={cn(
-          'relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60',
+          'flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition-colors disabled:cursor-not-allowed disabled:opacity-60',
           checked ? 'bg-linear-primary' : 'bg-linear-surface-2'
         )}
       >
         <span
           className={cn(
-            'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform',
-            checked ? 'translate-x-[22px]' : 'translate-x-0.5'
+            'h-5 w-5 rounded-full bg-white shadow transition-transform',
+            checked ? 'translate-x-5' : 'translate-x-0'
           )}
         />
       </button>
