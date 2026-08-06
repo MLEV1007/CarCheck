@@ -21,14 +21,15 @@ const PLAN_TIER_LABELS: Record<PlanTier, string> = {
 };
 
 /** `usage_logs.feature_name` -> magyar, ügyfélnek/szakinak érthető funkció-név -- lásd
- * a `featureName` konstansokat a 4 `/api/ai/*` route-ban (`equipment_parse`/`vin_scan`/
- * `summary_generate`/`grammar_fix`). Ismeretlen (jövőbeli) `feature_name` esetén magát a
- * nyers kódot jelenítjük meg, hogy sose tűnjön el egy sor a táblázatból. */
+ * a `featureName` konstansokat az 5 `/api/ai/*` route-ban (`equipment_parse`/`vin_scan`/
+ * `summary_generate`/`grammar_fix`/`service_doc_scan`). Ismeretlen (jövőbeli) `feature_name`
+ * esetén magát a nyers kódot jelenítjük meg, hogy sose tűnjön el egy sor a táblázatból. */
 const FEATURE_NAME_LABELS: Record<string, string> = {
   equipment_parse: 'Felszereltség AI-elemzés',
   vin_scan: 'VIN / Forgalmi szkennelés',
   summary_generate: 'AI szakvélemény-összefoglaló',
   grammar_fix: 'Hangalapú diktálás',
+  service_doc_scan: 'Szervizbejegyzés AI-beolvasás',
 };
 
 function featureLabel(featureName: string): string {

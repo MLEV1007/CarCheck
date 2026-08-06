@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { SelectField, TextField } from '@/components/inspections/wizard/FormControls';
 import { VinScanToast, type VinScanToastVariant } from '@/components/inspections/wizard/VinScanToast';
 import { WizardStepFooter } from '@/components/inspections/wizard/WizardBottomBar';
+import { compressImageForAiScan } from '@/lib/inspections/aiImageCompression';
 import { CAR_BRANDS, CAR_CATALOG, OTHER_OPTION } from '@/lib/inspections/carCatalog';
 import {
   getCarInfoErrors,
@@ -45,70 +46,11 @@ interface ScanVinApiResponse {
   details?: string;
 }
 
-/** A kép leghosszabb oldala (px) tömörítés UTÁN -- egy Forgalmi Engedély/VIN-matrica
- * szövege bőven olvasható marad ekkora felbontáson is, miközben a fájlméret drasztikusan
- * csökken egy natív telefonfotóhoz (gyakran 3000-4000px+ oldalhosszal) képest. */
-const AI_SCAN_MAX_DIMENSION = 1600;
-/** JPEG tömörítési minőség (0-1) -- 0.82 jó kompromisszum: a szöveg élesen olvasható marad
- * OCR/AI-elemzéshez, a fájlméret mégis a töredéke egy tömörítetlen fotónak. */
-const AI_SCAN_JPEG_QUALITY = 0.82;
-
-/**
- * A kiválasztott fotót Canvas-szal átméretezi (leghosszabb oldal max. `AI_SCAN_MAX_DIMENSION`
- * px-re) és JPEG-ként újratömöríti (`AI_SCAN_JPEG_QUALITY`), mielőtt Base64 data URL-lé
- * alakítaná a `/api/ai/scan-vin` route-nak küldött kéréshez.
- *
- * **Miért kellett ez a lépés:** a Vercel Serverless Function-ök request body mérete
- * (a JSON+Base64 kép EGYÜTT) egy kb. 4,5 MB-os, a platform által kikényszerített, nem
- * konfigurálható felső korláttal rendelkezik. Egy natív telefonfotó (jellemzően 2-8 MB,
- * ráadásul Base64 kódolással +33% méretnövekedéssel) simán túllépi ezt -- ilyenkor a
- * kérés MÉG A ROUTE-UNK MEGHÍVÁSA ELŐTT, Vercel-infrastruktúra szinten elutasításra kerül
- * egy `413`-as (vagy HTML-hibaoldalas, NEM JSON) válasszal, amit a kliens `response.json()`
- * hívása kivétellel jelez -- ez okozta a felhasználó által jelentett generikus
- * `AI_SCAN_FAILURE_MESSAGE` hibaüzenetet minden feltöltésnél. A kliens-oldali tömörítés
- * megelőzi ezt: egy 1600px-es, 0,82 minőségű JPEG szinte mindig jóval 1 MB alatt marad.
- */
-function compressImageForAiScan(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const objectUrl = URL.createObjectURL(file);
-    const img = new Image();
-
-    img.onload = () => {
-      try {
-        const scale = Math.min(1, AI_SCAN_MAX_DIMENSION / Math.max(img.naturalWidth, img.naturalHeight));
-        const width = Math.max(1, Math.round(img.naturalWidth * scale));
-        const height = Math.max(1, Math.round(img.naturalHeight * scale));
-
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error('A böngésző nem támogatja a Canvas 2D kontextust.'));
-          return;
-        }
-
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(img, 0, 0, width, height);
-
-        resolve(canvas.toDataURL('image/jpeg', AI_SCAN_JPEG_QUALITY));
-      } catch (err) {
-        reject(err instanceof Error ? err : new Error('Ismeretlen hiba a kép tömörítése közben.'));
-      } finally {
-        URL.revokeObjectURL(objectUrl);
-      }
-    };
-
-    img.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
-      reject(new Error('A kép betöltése sikertelen.'));
-    };
-
-    img.src = objectUrl;
-  });
-}
+/** A kép-tömörítés (`compressImageForAiScan`) mostantól a `lib/inspections/aiImageCompression.ts`
+ * megosztott modulban él (2026-08-06, "Szervizbejegyzés AI-beolvasás" lépés) -- korábban itt,
+ * ebben a fájlban volt egy önálló másolata, de a `/api/ai/scan-service-doc` (StepServiceHistory.tsx)
+ * második fotó-alapú AI-funkció bevezetésekor ez duplikációt jelentett volna, ezért kiemelve.
+ * Lásd a megosztott modul JSDoc-ját a "Miért kellett ez a lépés" indoklásért. */
 
 /** Az AI által felismert gyártmány szöveget megpróbálja a `CAR_CATALOG`-ban szereplő PONTOS
  * névre illeszteni (ékezet-/kis-nagybetű-független összehasonlítással, `localeCompare`
