@@ -55,23 +55,44 @@ interface QuotaRow {
   purchased_inspections_remaining: number;
   monthly_ai_limit: number;
   monthly_ai_remaining: number;
+  purchased_ai_remaining: number;
 }
 
 const QUOTA_COLUMNS =
-  'organization_id, plan_tier, monthly_inspections_limit, monthly_inspections_remaining, purchased_inspections_remaining, monthly_ai_limit, monthly_ai_remaining';
+  'organization_id, plan_tier, monthly_inspections_limit, monthly_inspections_remaining, purchased_inspections_remaining, monthly_ai_limit, monthly_ai_remaining, purchased_ai_remaining';
+
+/** A DB `plan_tier` szöveges oszlopát a `QuotaPlanTier` unióra képezi le -- 2026-08-06,
+ * "Árazási struktúra bővítés" lépés óta EXHAUSZTÍV (a korábbi bináris `=== 'pro' ? 'pro'
+ * : 'starter'` ternary minden ismeretlen/jövőbeli értéket csendben `'starter'`-re
+ * fordított volna, ami a `growth`/`business` bevezetésével MÁR TÉNYLEGESEN hibás lett
+ * volna). Igazán ismeretlen (jövőbeli, itt még nem kezelt) DB-érték esetén -- ami csak a
+ * DB CHECK constraint (`user_credits_plan_tier_check`) és ez a leképezés szétcsúszása
+ * esetén fordulhatna elő -- defenzíven `'starter'`-re esik vissza, DE ez mostantól
+ * kifejezetten a "nem várt" ág, nem a normál `pro` eset mellékhatása. */
+function toPlanTier(rawPlanTier: string): QuotaPlanTier {
+  switch (rawPlanTier) {
+    case 'starter':
+    case 'growth':
+    case 'pro':
+    case 'business':
+      return rawPlanTier;
+    default:
+      return 'starter';
+  }
+}
 
 function toQuotaBalance(row: QuotaRow): QuotaBalance {
-  const planTier: QuotaPlanTier = row.plan_tier === 'pro' ? 'pro' : 'starter';
-
   return {
     organizationId: row.organization_id,
-    planTier,
+    planTier: toPlanTier(row.plan_tier),
     monthlyInspectionsLimit: row.monthly_inspections_limit,
     monthlyInspectionsRemaining: row.monthly_inspections_remaining,
     purchasedInspectionsRemaining: row.purchased_inspections_remaining,
     totalInspectionsAvailable: row.monthly_inspections_remaining + row.purchased_inspections_remaining,
     monthlyAiLimit: row.monthly_ai_limit,
     monthlyAiRemaining: row.monthly_ai_remaining,
+    purchasedAiRemaining: row.purchased_ai_remaining,
+    totalAiAvailable: row.monthly_ai_remaining + row.purchased_ai_remaining,
   };
 }
 
@@ -194,7 +215,8 @@ export async function consumeInspectionQuota(userId: string): Promise<QuotaBalan
 
 /**
  * LÁGY AI-keret ellenőrzés -- AI-funkció (hangdiktálás/forgalmi szkenner) hívása ELŐTT
- * hívandó. Igaz, ha a szervezetnek van szabad havi AI kerete. **Szigorúan "fail-closed",
+ * hívandó. Igaz, ha a szervezetnek van szabad AI kerete -- havi ÉS vásárolt együtt (lásd
+ * `QuotaBalance.totalAiAvailable`, 2026-08-06). **Szigorúan "fail-closed",
  * UGYANAZ a minta, mint `hasEnoughCredits` (lib/credits.ts):** BÁRMILYEN hiba esetén (DB/
  * hálózat/RLS/hiányzó szervezet) `false`-t ad vissza, SOSE dob kivételt -- a hívó AI route
  * ezt egy egyszerű `if (!hasAiQuota) { ...ne hívja a Gemini API-t... }` ággal használja, DE
@@ -204,7 +226,11 @@ export async function consumeInspectionQuota(userId: string): Promise<QuotaBalan
 export async function checkAiQuota(userId: string): Promise<boolean> {
   try {
     const balance = await getQuotaBalance(userId);
-    return balance.monthlyAiRemaining > 0;
+    // 2026-08-06, "Árazási struktúra bővítés" lépés óta a TELJES (havi + vásárolt)
+    // AI-kredit keretet nézzük, nem csak a havit -- korábban a vásárolt AI-kredit
+    // csomagok (lásd `purchasedAiRemaining`) sosem tudták volna feloldani ezt a kaput,
+    // pedig pont ez a rendeltetésük (a havi keret elfogyása UTÁNI vásárolható kiegészítés).
+    return balance.totalAiAvailable > 0;
   } catch (error) {
     console.error(
       '[checkAiQuota] Hiba az AI-keret lekérése közben -- fail-closed, false-t adunk vissza:',

@@ -28,12 +28,25 @@ export const runtime = 'nodejs';
  * `p_plan_action` paramétere. `null`, ha a `priceId` egyik ismert env-price-azonosítóval
  * sem egyezik (pl. egy régi/törölt ár, vagy konfigurációs hiba) -- ilyenkor a webhook
  * `200`-at ad vissza (a Stripe-nak NEM szabad újrapróbálkoznia), de logolja a hibát, mert
- * a KÉRÉS maga érvényes volt, csak a mi price ID <-> csomag leképezésünk hiányos. */
-function resolvePlanAction(priceId: string | undefined): 'starter' | 'pro' | 'topup10' | null {
+ * a KÉRÉS maga érvényes volt, csak a mi price ID <-> csomag leképezésünk hiányos.
+ *
+ * **2026-08-06, "Árazási struktúra bővítés" lépés:** `growth` + 3 AI-kredit-csomag
+ * (`ai_topup5/15/40`) hozzáadva -- lásd `supabase/migrations/
+ * 20260806_pricing_tiers_growth_business_ai_credits.sql` bővített `apply_plan_purchase`
+ * `p_plan_action` enumját. A `business` tier SZÁNDÉKOSAN NINCS itt leképezve -- nem
+ * önkiszolgáló Stripe Checkout tétel (egyedi ártárgyalás, lásd `BillingTab.tsx`), ezért
+ * sosem érkezik `checkout.session.completed` esemény hozzá ezen a felületen keresztül. */
+function resolvePlanAction(
+  priceId: string | undefined
+): 'starter' | 'growth' | 'pro' | 'topup10' | 'ai_topup5' | 'ai_topup15' | 'ai_topup40' | null {
   if (!priceId) return null;
   if (priceId === process.env.STRIPE_PRICE_ID_STARTER) return 'starter';
+  if (priceId === process.env.STRIPE_PRICE_ID_GROWTH) return 'growth';
   if (priceId === process.env.STRIPE_PRICE_ID_PRO) return 'pro';
   if (priceId === process.env.STRIPE_PRICE_ID_TOPUP_10) return 'topup10';
+  if (priceId === process.env.STRIPE_PRICE_ID_AI_TOPUP_5) return 'ai_topup5';
+  if (priceId === process.env.STRIPE_PRICE_ID_AI_TOPUP_15) return 'ai_topup15';
+  if (priceId === process.env.STRIPE_PRICE_ID_AI_TOPUP_40) return 'ai_topup40';
   return null;
 }
 

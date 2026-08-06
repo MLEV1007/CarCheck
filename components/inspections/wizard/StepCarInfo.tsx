@@ -182,12 +182,10 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
         body: JSON.stringify({ image: imageDataUrl, inspectionId }),
       });
 
-      // 402 -- lásd `InsufficientCreditsProvider.tsx` (`INSUFFICIENT_CREDITS` VAGY az ÚJ
-      // `INSUFFICIENT_AI_QUOTA`, lásd `lib/quotas.ts`). A globális "Elfogyott a kereted"
-      // modalt nyitjuk meg a lokális toast helyett.
+      // 402 (INSUFFICIENT_AI_QUOTA) -- lásd `InsufficientCreditsProvider.tsx`. A globális
+      // "Elfogyott az AI kereted" modalt nyitjuk meg a lokális toast helyett.
       if (response.status === 402) {
-        const errorBody = (await response.json().catch(() => null)) as { code?: string } | null;
-        notifyInsufficientCredits(errorBody?.code === 'INSUFFICIENT_AI_QUOTA' ? 'ai_quota' : 'credits');
+        notifyInsufficientCredits();
         return;
       }
 

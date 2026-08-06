@@ -168,12 +168,10 @@ export function StepFinalAssessment({
         body: JSON.stringify({ inspectionData: buildInspectionSnapshot(aiSummaryContext), inspectionId }),
       });
 
-      // 402 -- lásd `InsufficientCreditsProvider.tsx` (`INSUFFICIENT_CREDITS` VAGY az ÚJ
-      // `INSUFFICIENT_AI_QUOTA`, lásd `lib/quotas.ts`). A globális "Elfogyott a kereted"
-      // modalt nyitjuk meg a lokális hibaüzenet helyett.
+      // 402 (INSUFFICIENT_AI_QUOTA) -- lásd `InsufficientCreditsProvider.tsx`. A globális
+      // "Elfogyott az AI kereted" modalt nyitjuk meg a lokális hibaüzenet helyett.
       if (response.status === 402) {
-        const errorBody = (await response.json().catch(() => null)) as { code?: string } | null;
-        notifyInsufficientCredits(errorBody?.code === 'INSUFFICIENT_AI_QUOTA' ? 'ai_quota' : 'credits');
+        notifyInsufficientCredits();
         return;
       }
 

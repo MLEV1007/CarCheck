@@ -19,9 +19,10 @@ import { getStripeClient } from '@/lib/stripe';
  * `requireManager()` ezeket NEM adja vissza, csak a guard `NextResponse`-t, egy második
  * hívás pedig felesleges duplikált auth-lekérdezés lenne.
  *
- * `mode`: a `priceId` alapján dől el -- a `STRIPE_PRICE_ID_TOPUP_10` (eseti, nem lejáró
- * "+10 Autó" csomag) `'payment'` (egyszeri fizetés), MINDEN MÁS ár (Starter/Pro havi
- * előfizetés) `'subscription'`.
+ * `mode`: a `priceId` alapján dől el -- MINDEN egyszeri (nem lejáró) csomag `'payment'`
+ * (egyszeri fizetés): a `STRIPE_PRICE_ID_TOPUP_10` ("+10 Autó" vizsgálat-csomag) ÉS a 3
+ * AI-kredit-csomag (`STRIPE_PRICE_ID_AI_TOPUP_5/15/40`, 2026-08-06, "Árazási struktúra
+ * bővítés" lépés). MINDEN MÁS ár (Starter/Growth/Pro havi előfizetés) `'subscription'`.
  */
 export const runtime = 'nodejs';
 
@@ -85,8 +86,17 @@ export async function POST(
     );
   }
 
-  const topUpPriceId = process.env.STRIPE_PRICE_ID_TOPUP_10;
-  const mode: 'payment' | 'subscription' = priceId === topUpPriceId ? 'payment' : 'subscription';
+  // Egyszeri (nem lejáró) vásárlási tételek -- lásd a fenti JSDoc "mode" pontját. Minden
+  // más ár (Starter/Growth/Pro havi előfizetés) `'subscription'` módban indul.
+  const oneTimePurchasePriceIds = new Set(
+    [
+      process.env.STRIPE_PRICE_ID_TOPUP_10,
+      process.env.STRIPE_PRICE_ID_AI_TOPUP_5,
+      process.env.STRIPE_PRICE_ID_AI_TOPUP_15,
+      process.env.STRIPE_PRICE_ID_AI_TOPUP_40,
+    ].filter((id): id is string => Boolean(id))
+  );
+  const mode: 'payment' | 'subscription' = oneTimePurchasePriceIds.has(priceId) ? 'payment' : 'subscription';
 
   const origin = request.nextUrl.origin;
 

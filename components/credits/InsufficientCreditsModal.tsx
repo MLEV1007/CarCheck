@@ -2,50 +2,47 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import type { CreditSummarySuccessResponse } from '@/app/api/credits/summary/route';
+import type { QuotaSummarySuccessResponse } from '@/app/api/quotas/summary/route';
 import type { OrganizationRole } from '@/types/credits';
-import type { InsufficientCreditsReason } from '@/components/credits/InsufficientCreditsProvider';
 
 interface InsufficientCreditsModalProps {
   onClose: () => void;
-  /** Melyik keret ürült ki -- lásd `InsufficientCreditsProvider.tsx` `InsufficientCreditsReason`
-   * JSDoc-ját. Kizárólag a CÍM/szöveg különbözik ez alapján, a szerepkör-tudatos ág
-   * (lent) MINDKÉT `reason`-nél ugyanúgy működik. */
-  reason: InsufficientCreditsReason;
 }
 
 /**
- * "Elfogyott a kereted" figyelmeztető modal (PROJEKT_INSTRUKCIOK.md "402 Handler" lépés)
- * -- akkor jelenik meg, amikor bármelyik `/api/ai/*` route `402`-t ad vissza, akár a régi,
- * generikus AI-kredit rendszer (`code: 'INSUFFICIENT_CREDITS'`, lásd
- * `app/api/ai/parse-equipment/route.ts` "Autentikáció + kredit-védelem" JSDoc-ját), akár az
- * ÚJ, Stripe csomaghoz kötött havi AI-keret (`code: 'INSUFFICIENT_AI_QUOTA'`, lásd
- * `lib/quotas.ts`, 2026-08-04) ürült ki -- lásd `InsufficientCreditsProvider.tsx`
- * -- ez a komponens SOSEM közvetlenül példányosított, mindig a Provideren keresztül.
+ * "Elfogyott az AI kereted" figyelmeztető modal (PROJEKT_INSTRUKCIOK.md "402 Handler"
+ * lépés) -- akkor jelenik meg, amikor bármelyik `/api/ai/*` route `402`-t ad vissza
+ * (`code: 'INSUFFICIENT_AI_QUOTA'`, lásd `lib/quotas.ts`) -- lásd
+ * `InsufficientCreditsProvider.tsx` -- ez a komponens SOSEM közvetlenül példányosított,
+ * mindig a Provideren keresztül.
+ *
+ * **2026-08-06, "Árazási struktúra bővítés" lépés:** korábban KÉT különböző okot
+ * (a régi, generikus kredit-rendszer VS az új, Stripe-csomaghoz kötött AI-kvóta)
+ * különböztetett meg egy `reason` prop -- a régi kredit-gate-et eltávolítottuk az
+ * `/api/ai/*` route-okból (lásd `lib/inspectionAiCredit.ts` JSDoc-ját), így ez a modal
+ * mostantól EGYETLEN, mindig ugyanazt jelentő esetet kezel: elfogyott az AI-kredit
+ * (havi + vásárolt együtt, lásd `QuotaBalance.totalAiAvailable`).
  *
  * Linear Dark Design Style, mert a 4 AI-hívó hely (`VoiceInputButton`, `StepEquipment`,
  * `StepCarInfo`, `StepFinalAssessment`) kizárólag a Szakértői Munkaterületen
  * (`/inspections/*`) belül él.
  *
  * **Szerepkör-tudatos szöveg (2026-08-03, "Szervezeti szerepkezelés" lépés):** a modal
- * a `/api/credits/summary` végpontról (ugyanaz a minta, mint a `HeaderCreditBadge`/
- * `CreditDashboardModal`-nál) megnyíláskor lekérdezi a hívó szerepkörét -- Átvizsgálónak
- * a "kifogyott a KÖZÖS céges keret, szólj a Menedzsernek" üzenet jelenik meg, a
- * csomagváltó/vásárlás gomb NÉLKÜL (az Átvizsgáló úgysem tud/nem szabad neki csomagot
- * váltania -- lásd a "Pénzügyi Végpontok Védelme" lépést, `lib/auth/roles.ts`
+ * a `/api/quotas/summary` végpontról (2026-08-06-tól -- korábban `/api/credits/summary`,
+ * lásd a fenti JSDoc-ot a váltás indokáról) megnyíláskor lekérdezi a hívó szerepkörét --
+ * Átvizsgálónak a "kifogyott a KÖZÖS céges keret, szólj a Menedzsernek" üzenet jelenik
+ * meg, a csomagváltó/vásárlás gomb NÉLKÜL (az Átvizsgáló úgysem tud/nem szabad neki
+ * csomagot váltania -- lásd a "Pénzügyi Végpontok Védelme" lépést, `lib/auth/roles.ts`
  * `requireManager()`). Amíg a lekérdezés fut (vagy hibázik), a Menedzsernek szánt,
  * eredeti szöveg jelenik meg alapértelmezettként -- ez biztonságos "fail-open a
- * szövegre" (NEM a kreditre) eset, legrosszabb esetben egy Átvizsgáló egy pillanatra
+ * szövegre" (NEM a kvótára) eset, legrosszabb esetben egy Átvizsgáló egy pillanatra
  * a Menedzser-szöveget látja loading közben.
  *
- * **Valódi Stripe link (2026-08-04-től):** a korábbi 2 placeholder gomb ("Előfizetés
- * váltása"/"Kredit vásárlása", ami csak egy 4 másodperces "hamarosan érkezik" toast-ot
- * mutatott) a Stripe-integráció megépülése óta ELAVULT lenne -- lecserélve egy VALÓDI
- * linkre a `/settings/billing` oldalra (lásd `app/settings/billing/page.tsx` +
- * `components/settings/BillingTab.tsx`), ahol a Menedzser ténylegesen válthat csomagot/
- * vásárolhat Top-up-ot.
+ * A "Előfizetéshez"/"AI kredit vásárlása" gomb a `/settings/billing` oldalra visz (lásd
+ * `app/settings/billing/page.tsx` + `components/settings/BillingTab.tsx`), ahol a
+ * Menedzser ténylegesen válthat csomagot vagy vásárolhat AI-kredit csomagot.
  */
-export function InsufficientCreditsModal({ onClose, reason }: InsufficientCreditsModalProps) {
+export function InsufficientCreditsModal({ onClose }: InsufficientCreditsModalProps) {
   const [role, setRole] = useState<OrganizationRole>('manager');
 
   useEffect(() => {
@@ -53,8 +50,8 @@ export function InsufficientCreditsModal({ onClose, reason }: InsufficientCredit
 
     (async () => {
       try {
-        const response = await fetch('/api/credits/summary');
-        const json = (await response.json().catch(() => null)) as CreditSummarySuccessResponse | null;
+        const response = await fetch('/api/quotas/summary');
+        const json = (await response.json().catch(() => null)) as QuotaSummarySuccessResponse | null;
         if (!cancelled && response.ok && json?.success) {
           setRole(json.role);
         }
@@ -78,12 +75,10 @@ export function InsufficientCreditsModal({ onClose, reason }: InsufficientCredit
 
   const isInspector = role === 'inspector';
 
-  const title = reason === 'ai_quota' ? '🔒 Elfogyott a havi AI kereted!' : '🔒 Elfogytak az AI krediteid!';
+  const title = '🔒 Elfogyott az AI kereted!';
 
   const managerText =
-    reason === 'ai_quota'
-      ? 'A csomagodhoz tartozó havi AI-hívás keret elfogyott. Válts magasabb csomagra a több AI-hívásért.'
-      : 'A hangalapú diktáláshoz és a VIN szkennerhez töltsd fel az egyenlegedet vagy válts Pro csomagra.';
+    'A csomagodhoz tartozó AI-kredit (havi + vásárolt) elfogyott. Válts magasabb csomagra, vagy vásárolj AI-kredit csomagot.';
 
   return (
     <div

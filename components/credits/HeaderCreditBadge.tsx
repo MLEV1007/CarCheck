@@ -13,17 +13,29 @@ type LoadState = 'loading' | 'ready' | 'error';
  * Design Style) fejléceiben (`DashboardHeader.tsx`, `/inspections/new`, `/inspections/[id]`
  * piszkozat-szerkesztő fejléce). Kattintásra megnyitja a `CreditDashboardModal`-t.
  *
- * **Szándékosan ÖNÁLLÓAN, kliens-oldalon tölti be** az egyenleget a `/api/credits/summary`
- * végpontról (`useEffect`, mount-kor), NEM egy Server Component-től kapott prop-ként --
- * ez a projekt eddigi SSR-first adatlekérési konvenciójától (lásd pl. `DashboardHeader`
- * props-ai, amiket `app/dashboard/page.tsx` tölt be szerver-oldalon) tudatos eltérés: a
- * badge 3 KÜLÖNBÖZŐ, egymástól független Server Component oldal fejlécében jelenik meg
- * (Dashboard, Új vizsgálat, Piszkozat-szerkesztő), és mindegyiknek külön kellene
- * lekérdeznie+átadnia az egyenleget prop-drilling-gel -- egyetlen, önmagát ellátó kliens-
- * komponensként újrafelhasználva ez a duplikáció (és a jövőbeli 4. felhasználási hely
- * hozzáadásakor felmerülő módosítási felület) elkerülhető. A `lib/credits.ts` maga NEM
- * hívható közvetlenül kliens-komponensből (a `next/headers`-re épülő szerver-oldali
- * Supabase klienst használja), ezért a `/api/credits/summary` REST végpont a hídelem.
+ * **2026-08-06, "AI kredit kijelzés javítása" lépés -- KRITIKUS hibajavítás:** korábban
+ * a `/api/credits/summary` (régi, `user_credits.monthly_credits_remaining`/
+ * `purchased_credits_remaining` alapú) végpontról töltötte az egyenleget -- élő adatban
+ * megerősítve, hogy ez a szám TELJESEN FÜGGETLEN a valódi, Stripe-csomaghoz kötött AI-
+ * kerettől (`monthly_ai_remaining`, amit a `/settings/billing` oldal mutat): egy fizető
+ * Starter ügyfélnél a badge egy VÉLETLENSZERŰ, korábbi manuális teszt-feltöltésből
+ * származó számot (pl. "95 AI kredit") mutatott, miközben az Előfizetés oldal helyesen
+ * "2/3 AI-hívás"-t jelzett ugyanannak a szervezetnek -- két, egymásnak ellentmondó szám
+ * ugyanarról a dologról. Mostantól a `/api/quotas/summary` (a TÉNYLEGES, Stripe-vásárlás
+ * által frissített forrás, lásd `lib/quotas.ts`) `quota.totalAiAvailable`-jét mutatja
+ * (havi + vásárolt AI-kredit összesen) -- UGYANAZ a szám, mint amit a Beállítások >
+ * Előfizetés oldal "Hátralévő AI-hívás" kártyája mutat.
+ *
+ * **Szándékosan ÖNÁLLÓAN, kliens-oldalon tölti be** az egyenleget (`useEffect`,
+ * mount-kor), NEM egy Server Component-től kapott prop-ként -- ez a projekt eddigi
+ * SSR-first adatlekérési konvenciójától (lásd pl. `DashboardHeader` props-ai, amiket
+ * `app/dashboard/page.tsx` tölt be szerver-oldalon) tudatos eltérés: a badge 3 KÜLÖNBÖZŐ,
+ * egymástól független Server Component oldal fejlécében jelenik meg (Dashboard, Új
+ * vizsgálat, Piszkozat-szerkesztő), és mindegyiknek külön kellene lekérdeznie+átadnia az
+ * egyenleget prop-drilling-gel -- egyetlen, önmagát ellátó kliens-komponensként
+ * újrafelhasználva ez a duplikáció elkerülhető. A `lib/quotas.ts` maga NEM hívható
+ * közvetlenül kliens-komponensből (a `next/headers`-re épülő szerver-oldali Supabase
+ * klienst használja), ezért a `/api/quotas/summary` REST végpont a hídelem.
  *
  * **Ismert, dokumentált korlát:** a badge egyszer, mountkor tölti be az egyenleget --
  * NEM frissül élőben, ha UGYANAZON az oldalon (pl. a wizardban) egy AI-hívás közben
@@ -54,16 +66,16 @@ export function HeaderCreditBadge() {
 
     (async () => {
       try {
-        const response = await fetch('/api/credits/summary');
+        const response = await fetch('/api/quotas/summary');
         const json = (await response.json().catch(() => null)) as
-          | { success: true; balance: { totalCreditsAvailable: number } }
+          | { success: true; quota: { totalAiAvailable: number } }
           | { success: false }
           | null;
 
         if (cancelled) return;
 
         if (response.ok && json?.success) {
-          setTotalCredits(json.balance.totalCreditsAvailable);
+          setTotalCredits(json.quota.totalAiAvailable);
           setState('ready');
         } else {
           setState('error');

@@ -9,7 +9,12 @@
  * `types/credits.ts`-nél (a régi, egyedi AI-kredit rendszernél).
  */
 
-export type QuotaPlanTier = 'starter' | 'pro';
+/** 2026-08-06, "Árazási struktúra bővítés" lépés -- `growth` (35 vizsgálat/hó, 14
+ * AI-elemzés/hó) és `business` (gyakorlatban korlátlan vizsgálat, 100 AI-elemzés/hó,
+ * EGYEDI ártárgyalás -- nem önkiszolgáló Stripe checkout tétel, lásd `BillingTab.tsx`)
+ * hozzáadva a korábbi `starter`/`pro` mellé -- lásd
+ * `supabase/migrations/20260806_pricing_tiers_growth_business_ai_credits.sql`. */
+export type QuotaPlanTier = 'starter' | 'growth' | 'pro' | 'business';
 
 export interface QuotaBalance {
   /** A KÖZÖS, szervezet-szintű kvóta-sor szervezet-azonosítója -- ugyanaz a
@@ -24,4 +29,12 @@ export interface QuotaBalance {
   totalInspectionsAvailable: number;
   monthlyAiLimit: number;
   monthlyAiRemaining: number;
+  /** Vásárolt (nem lejáró) AI-kredit keret -- 2026-08-06, "Árazási struktúra bővítés"
+   * lépés, `user_credits.purchased_ai_remaining` -- a havi keret elfogyása UTÁN
+   * vonódik le belőle (lásd `consume_ai_quota` RPC). */
+  purchasedAiRemaining: number;
+  /** monthlyAiRemaining + purchasedAiRemaining összege -- ez az a szám, amit a
+   * felhasználónak ténylegesen "AI kredit"-ként kell mutatni (lásd
+   * `HeaderCreditBadge.tsx`/`CreditDashboardModal.tsx`), NEM csak a havi rész. */
+  totalAiAvailable: number;
 }

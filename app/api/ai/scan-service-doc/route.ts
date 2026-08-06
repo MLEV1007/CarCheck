@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI, Type } from '@google/genai';
 import { createClient } from '@/lib/supabase/server';
-import { hasEnoughCredits, deductCredits } from '@/lib/credits';
 import { checkAiQuota, consumeAiQuota } from '@/lib/quotas';
 import { hasInspectionClaimedAiCredit, claimInspectionAiCredit } from '@/lib/inspectionAiCredit';
 import { SERVICE_ENTRY_TYPE_SUGGESTIONS } from '@/lib/inspections/constants';
@@ -303,16 +302,9 @@ export async function POST(request: NextRequest): Promise<NextResponse<ScanServi
   const alreadyClaimed = await hasInspectionClaimedAiCredit(user.id, inspectionId);
 
   if (!alreadyClaimed) {
-    // ELŐZETES KREDIT-ELLENŐRZÉS -- lásd `parse-equipment/route.ts` azonos elvű kommentjét.
-    const hasCredits = await hasEnoughCredits(user.id, 1);
-    if (!hasCredits) {
-      return NextResponse.json(
-        { success: false, error: 'Nincs elegendő AI kredit a művelet elvégzéséhez.', code: 'INSUFFICIENT_CREDITS' },
-        { status: 402 }
-      );
-    }
-
     // ELŐZETES AI-KVÓTA ELLENŐRZÉS -- lásd `parse-equipment/route.ts` azonos elvű kommentjét.
+    // 2026-08-06-tól ez az EGYETLEN kapu -- lásd `scan-vin/route.ts` azonos elvű kommentjét
+    // a régi kredit-gate eltávolításának indoklásáról.
     const hasAiQuota = await checkAiQuota(user.id);
     if (!hasAiQuota) {
       return NextResponse.json(
@@ -484,12 +476,6 @@ export async function POST(request: NextRequest): Promise<NextResponse<ScanServi
     }
 
     if (wonClaim) {
-      try {
-        await deductCredits(user.id, FEATURE_NAME, 1);
-      } catch (error) {
-        console.error('[scan-service-doc] Kredit levonás sikertelen a sikeres AI hívás után:', error);
-      }
-
       try {
         await consumeAiQuota(user.id);
       } catch (error) {

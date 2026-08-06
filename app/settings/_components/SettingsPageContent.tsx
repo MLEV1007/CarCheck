@@ -88,9 +88,16 @@ export async function SettingsPageContent({ initialTab, billingBanner }: Setting
   // .env.local.example), a `BillingTab.tsx` ('use client') kliens-komponensnek prop-ként
   // adjuk tovább. `?? null` -- ha egy ár még nincs beállítva Vercelen, a hozzá tartozó
   // gomb a `BillingTab`-ban `disabled` marad, nem dob build/runtime hibát.
+  // 2026-08-06, "Árazási struktúra bővítés" lépés: `growth` + 3 AI-kredit-csomag ár
+  // hozzáadva -- a `business` tier szándékosan NEM kap price ID-t (egyedi ajánlat, lásd
+  // `BillingTab.tsx` JSDoc-ját).
   const starterPriceId = process.env.STRIPE_PRICE_ID_STARTER ?? null;
+  const growthPriceId = process.env.STRIPE_PRICE_ID_GROWTH ?? null;
   const proPriceId = process.env.STRIPE_PRICE_ID_PRO ?? null;
   const topupPriceId = process.env.STRIPE_PRICE_ID_TOPUP_10 ?? null;
+  const aiTopup5PriceId = process.env.STRIPE_PRICE_ID_AI_TOPUP_5 ?? null;
+  const aiTopup15PriceId = process.env.STRIPE_PRICE_ID_AI_TOPUP_15 ?? null;
+  const aiTopup40PriceId = process.env.STRIPE_PRICE_ID_AI_TOPUP_40 ?? null;
 
   return (
     <div className="min-h-screen bg-stripe-canvas-soft">
@@ -115,8 +122,12 @@ export async function SettingsPageContent({ initialTab, billingBanner }: Setting
           teamManagementEnabled={teamManagementEnabled}
           initialTab={initialTab}
           starterPriceId={starterPriceId}
+          growthPriceId={growthPriceId}
           proPriceId={proPriceId}
           topupPriceId={topupPriceId}
+          aiTopup5PriceId={aiTopup5PriceId}
+          aiTopup15PriceId={aiTopup15PriceId}
+          aiTopup40PriceId={aiTopup40PriceId}
           billingBanner={billingBanner}
         >
           <div className="flex flex-col gap-6">

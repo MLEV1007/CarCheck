@@ -23,10 +23,16 @@ interface SettingsTabsProps {
    * Cégbeállításokat. Alapértelmezetten `'company'` (lásd `app/settings/page.tsx`). */
   initialTab?: SettingsTabKey;
   /** Az "Előfizetés" fül Stripe Price ID-jai + a Checkout után visszairányított
-   * success/canceled banner -- lásd `components/settings/BillingTab.tsx` JSDoc-ját. */
+   * success/canceled banner -- lásd `components/settings/BillingTab.tsx` JSDoc-ját.
+   * `growthPriceId` + a 3 AI-kredit-csomag ár (2026-08-06, "Árazási struktúra bővítés"
+   * lépés) -- a `business` tier szándékosan nem kap price ID-t (egyedi ajánlat). */
   starterPriceId: string | null;
+  growthPriceId: string | null;
   proPriceId: string | null;
   topupPriceId: string | null;
+  aiTopup5PriceId: string | null;
+  aiTopup15PriceId: string | null;
+  aiTopup40PriceId: string | null;
   billingBanner: 'success' | 'canceled' | null;
   /** A meglévő "Cégbeállítások" kártyák (`SettingsForm`/`DefaultPreferencesCard`/
    * `PasskeyCard`) -- a szülő (`app/settings/page.tsx`) adja át, hogy a Server Component
@@ -52,8 +58,12 @@ export function SettingsTabs({
   teamManagementEnabled,
   initialTab = 'company',
   starterPriceId,
+  growthPriceId,
   proPriceId,
   topupPriceId,
+  aiTopup5PriceId,
+  aiTopup15PriceId,
+  aiTopup40PriceId,
   billingBanner,
   children,
 }: SettingsTabsProps) {
@@ -112,8 +122,12 @@ export function SettingsTabs({
         <BillingTab
           role={role}
           starterPriceId={starterPriceId}
+          growthPriceId={growthPriceId}
           proPriceId={proPriceId}
           topupPriceId={topupPriceId}
+          aiTopup5PriceId={aiTopup5PriceId}
+          aiTopup15PriceId={aiTopup15PriceId}
+          aiTopup40PriceId={aiTopup40PriceId}
           banner={billingBanner}
         />
       )}

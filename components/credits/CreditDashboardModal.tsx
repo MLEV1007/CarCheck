@@ -3,38 +3,23 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Loader2, X, Zap } from 'lucide-react';
-import { formatDateTimeHu } from '@/lib/format';
-import type { CreditSummarySuccessResponse } from '@/app/api/credits/summary/route';
-import type { PlanTier } from '@/types/credits';
+import type { QuotaSummarySuccessResponse } from '@/app/api/quotas/summary/route';
+import type { QuotaPlanTier } from '@/types/quotas';
 
 interface CreditDashboardModalProps {
   onClose: () => void;
 }
 
-/** `plan_tier` -> magyar megjelenítendő címke (PROJEKT_INSTRUKCIOK.md 5.A "Beállítások"
- * -- ez a modul a jövőbeli `/settings` csomag-váltás UI-jának előfutára). */
-const PLAN_TIER_LABELS: Record<PlanTier, string> = {
-  free: 'Díjmentes fiók',
+/** `plan_tier` -> magyar megjelenítendő címke -- 2026-08-06, "Árazási struktúra bővítés"
+ * lépés óta a `QuotaPlanTier`-t követi (`starter`/`growth`/`pro`/`business`), NEM a régi,
+ * elavult `PlanTier`-t (`free`/`starter`/`pro`/`enterprise`, `types/credits.ts`), lásd a
+ * fájl-JSDoc "KRITIKUS hibajavítás" szakaszát. */
+const PLAN_TIER_LABELS: Record<QuotaPlanTier, string> = {
   starter: 'Starter csomag',
+  growth: 'Growth csomag',
   pro: 'Pro Előfizetés',
-  enterprise: 'Enterprise csomag',
+  business: 'Business csomag',
 };
-
-/** `usage_logs.feature_name` -> magyar, ügyfélnek/szakinak érthető funkció-név -- lásd
- * a `featureName` konstansokat az 5 `/api/ai/*` route-ban (`equipment_parse`/`vin_scan`/
- * `summary_generate`/`grammar_fix`/`service_doc_scan`). Ismeretlen (jövőbeli) `feature_name`
- * esetén magát a nyers kódot jelenítjük meg, hogy sose tűnjön el egy sor a táblázatból. */
-const FEATURE_NAME_LABELS: Record<string, string> = {
-  equipment_parse: 'Felszereltség AI-elemzés',
-  vin_scan: 'VIN / Forgalmi szkennelés',
-  summary_generate: 'AI szakvélemény-összefoglaló',
-  grammar_fix: 'Hangalapú diktálás',
-  service_doc_scan: 'Szervizbejegyzés AI-beolvasás',
-};
-
-function featureLabel(featureName: string): string {
-  return FEATURE_NAME_LABELS[featureName] ?? featureName;
-}
 
 type LoadState = 'loading' | 'ready' | 'error';
 
@@ -44,31 +29,41 @@ type LoadState = 'loading' | 'ready' | 'error';
  * Design Style, mert a badge (és ezzel a modal megnyitása) kizárólag a Szakértői
  * Munkaterület (`/dashboard`, `/inspections/*`) fejléceiben jelenik meg.
  *
- * Önállóan, kliens-oldalon tölti be a `/api/credits/summary` végpontról a friss adatot
+ * **2026-08-06, "AI kredit kijelzés javítása" lépés -- KRITIKUS hibajavítás:** korábban a
+ * `/api/credits/summary` (régi, `user_credits.monthly_credits_remaining`/`profiles.
+ * plan_tier` alapú) végpontról töltötte az adatot -- élő adatban megerősítve, hogy ez a
+ * felület egy fizető Starter ügyfélnek "Díjmentes fiók"-ot ÉS egy a valós csomagtól
+ * teljesen független kredit-számot mutatott (a `profiles.plan_tier` sosem frissül a
+ * Stripe-vásárláskor, az csak `user_credits.plan_tier`-t írja). Mostantól a
+ * `/api/quotas/summary` (a TÉNYLEGES, Stripe-vásárlás által frissített forrás) adatait
+ * mutatja, UGYANAZT a két számot (hátralévő vizsgálat + hátralévő AI-kredit), mint a
+ * Beállítások > Előfizetés oldal "Jelenlegi csomag" kártyája -- a korábbi "AI használati
+ * előzmények" táblázat (a régi, hívásonkénti `usage_logs` audit alapján) eltávolítva,
+ * mert 2026-08-06 óta (lásd `lib/inspectionAiCredit.ts` "1 AI kredit = 1 vizsgálat")
+ * ehelyett a "1 AI kredit = 1 vizsgálat" elv érvényes: nem AI-HÍVÁSONKÉNT, hanem
+ * VIZSGÁLATONKÉNT fogy 1 kredit, a régi, hívásonkénti napló ezért félrevezető lenne.
+ *
+ * Önállóan, kliens-oldalon tölti be a `/api/quotas/summary` végpontról a friss adatot
  * MINDEN megnyitáskor (nem a badge-től kapott, esetleg már elavult adatot használja) --
  * ez garantálja, hogy egy AI-hívás UTÁN megnyitva mindig a ténylegesen aktuális egyenleg
  * látszik, nem egy oldal-betöltéskori pillanatkép.
  *
- * **Valódi Stripe link (2026-08-04-től):** az "Előfizetés váltása"/"Kredit vásárlása" gomb
- * korábban PLACEHOLDER volt (a felhasználói kérés akkor explicit így specifikálta) -- a
- * Stripe Checkout/Webhook + Billing felület megépülése óta (lásd `status.md` 52. szakasz)
- * egy VALÓDI linkre cserélve, a `/settings/billing` oldalra (`app/settings/billing/
+ * A "Előfizetés kezelése" gomb a `/settings/billing` oldalra visz (`app/settings/billing/
  * page.tsx` + `components/settings/BillingTab.tsx`), ahol a Menedzser ténylegesen
- * válthat csomagot/vásárolhat Top-up-ot. Ez a modal MAGA nem hívja a Stripe checkout
- * API-t közvetlenül (nem tudja, melyik konkrét `priceId`-t akarja a user), csak átirányít
- * a felületre, ahol ez a döntés megtörténik.
+ * válthat csomagot/vásárolhat Top-up-ot vagy AI-kredit csomagot. Ez a modal MAGA nem
+ * hívja a Stripe checkout API-t közvetlenül, csak átirányít a felületre.
  */
 export function CreditDashboardModal({ onClose }: CreditDashboardModalProps) {
   const [state, setState] = useState<LoadState>('loading');
-  const [data, setData] = useState<CreditSummarySuccessResponse | null>(null);
+  const [data, setData] = useState<QuotaSummarySuccessResponse | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
       try {
-        const response = await fetch('/api/credits/summary');
-        const json = (await response.json().catch(() => null)) as CreditSummarySuccessResponse | null;
+        const response = await fetch('/api/quotas/summary');
+        const json = (await response.json().catch(() => null)) as QuotaSummarySuccessResponse | null;
 
         if (cancelled) return;
 
@@ -147,79 +142,61 @@ export function CreditDashboardModal({ onClose }: CreditDashboardModalProps) {
                   Csomag státusz
                 </span>
                 <span className="text-[13px] font-semibold text-linear-ink">
-                  {PLAN_TIER_LABELS[data.planTier]}
+                  {PLAN_TIER_LABELS[data.quota.planTier]}
                 </span>
               </div>
 
-              {/* Egyenleg Részletezés */}
+              {/* Vizsgálati keret */}
               <div>
                 <p className="mb-2 text-[12px] font-medium uppercase tracking-wide text-linear-ink-subtle">
-                  Egyenleg részletezés
+                  Vizsgálati keret
                 </p>
                 <div className="flex flex-col gap-1.5 rounded-md border border-linear-hairline px-3.5 py-3">
                   <div className="flex items-center justify-between text-[13px]">
                     <span className="text-linear-ink-subtle">Havi keretből maradt</span>
-                    <span className="font-medium text-linear-ink">{data.balance.monthlyCreditsRemaining}</span>
+                    <span className="font-medium text-linear-ink">
+                      {data.quota.monthlyInspectionsRemaining} / {data.quota.monthlyInspectionsLimit}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between text-[13px]">
-                    <span className="text-linear-ink-subtle">Vásárolt keretből maradt</span>
-                    <span className="font-medium text-linear-ink">{data.balance.purchasedCreditsRemaining}</span>
+                    <span className="text-linear-ink-subtle">Vásárolt (extra) keretből maradt</span>
+                    <span className="font-medium text-linear-ink">{data.quota.purchasedInspectionsRemaining}</span>
+                  </div>
+                  <div className="mt-1 flex items-center justify-between border-t border-linear-hairline pt-1.5 text-[14px]">
+                    <span className="font-medium text-linear-ink">Összesen elérhető</span>
+                    <span className="font-semibold text-linear-ink">{data.quota.totalInspectionsAvailable}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* AI kredit keret -- "1 AI kredit = 1 vizsgálat" (2026-08-06) */}
+              <div>
+                <p className="mb-2 text-[12px] font-medium uppercase tracking-wide text-linear-ink-subtle">
+                  AI kredit keret
+                </p>
+                <div className="flex flex-col gap-1.5 rounded-md border border-linear-hairline px-3.5 py-3">
+                  <div className="flex items-center justify-between text-[13px]">
+                    <span className="text-linear-ink-subtle">Havi keretből maradt</span>
+                    <span className="font-medium text-linear-ink">
+                      {data.quota.monthlyAiRemaining} / {data.quota.monthlyAiLimit}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[13px]">
+                    <span className="text-linear-ink-subtle">Vásárolt AI-kreditből maradt</span>
+                    <span className="font-medium text-linear-ink">{data.quota.purchasedAiRemaining}</span>
                   </div>
                   <div className="mt-1 flex items-center justify-between border-t border-linear-hairline pt-1.5 text-[14px]">
                     <span className="font-medium text-linear-ink">Összesen elérhető</span>
                     <span className="flex items-center gap-1 font-semibold text-linear-primary">
                       <Zap className="h-3.5 w-3.5" />
-                      {data.balance.totalCreditsAvailable}
+                      {data.quota.totalAiAvailable}
                     </span>
                   </div>
                 </div>
-              </div>
-
-              {/* Megújulás dátuma */}
-              {data.balance.creditsResetAt && (
-                <p className="text-[12px] text-linear-ink-subtle">
-                  A havi keret megújulása:{' '}
-                  <span className="font-medium text-linear-ink">
-                    {formatDateTimeHu(data.balance.creditsResetAt)}
-                  </span>
+                <p className="mt-2 text-[11px] text-linear-ink-subtle">
+                  1 AI-kredit egy TELJES vizsgálat összes AI-funkcióját fedezi (VIN-szkenneléstől a
+                  szakvélemény-összefoglalóig) -- nem hívásonként fogy.
                 </p>
-              )}
-
-              {/* AI Használati Előzmények */}
-              <div>
-                <p className="mb-2 text-[12px] font-medium uppercase tracking-wide text-linear-ink-subtle">
-                  AI használati előzmények
-                </p>
-                {data.usageLogs.length === 0 ? (
-                  <p className="rounded-md border border-dashed border-linear-hairline px-3.5 py-4 text-center text-[12px] text-linear-ink-subtle">
-                    Még nem történt AI-funkció-használat.
-                  </p>
-                ) : (
-                  <div className="overflow-hidden rounded-md border border-linear-hairline">
-                    <table className="w-full text-left text-[12px]">
-                      <thead>
-                        <tr className="border-b border-linear-hairline bg-linear-surface-2 text-linear-ink-subtle">
-                          <th className="px-3 py-2 font-medium">Dátum</th>
-                          <th className="px-3 py-2 font-medium">Funkció</th>
-                          <th className="px-3 py-2 text-right font-medium">Levonva</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {data.usageLogs.map((log) => (
-                          <tr key={log.id} className="border-b border-linear-hairline last:border-b-0">
-                            <td className="px-3 py-2 text-linear-ink-subtle">
-                              {formatDateTimeHu(log.createdAt, true)}
-                            </td>
-                            <td className="px-3 py-2 text-linear-ink">{featureLabel(log.featureName)}</td>
-                            <td className="px-3 py-2 text-right font-medium text-linear-ink">
-                              -{log.creditsDeducted}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
               </div>
 
               {/* Előfizetés/Top-up -- valódi link a Billing felületre (2026-08-04-től) */}

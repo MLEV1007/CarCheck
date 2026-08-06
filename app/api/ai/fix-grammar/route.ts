@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { createClient } from '@/lib/supabase/server';
-import { hasEnoughCredits, deductCredits } from '@/lib/credits';
 import { checkAiQuota, consumeAiQuota } from '@/lib/quotas';
 import { hasInspectionClaimedAiCredit, claimInspectionAiCredit } from '@/lib/inspectionAiCredit';
 
@@ -122,23 +121,10 @@ export async function POST(
   const alreadyClaimed = await hasInspectionClaimedAiCredit(user.id, inspectionId);
 
   if (!alreadyClaimed) {
-    // ELŐZETES KREDIT-ELLENŐRZÉS -- a Gemini API hívás ELŐTT. Lásd `parse-equipment/route.ts`
-    // JSDoc-ját; a tényleges levonás sikeres, érvényes válasz UTÁN, lent. A `hasEnoughCredits`
-    // 2026-08-03 óta szigorúan "fail-closed" (lásd `lib/credits.ts`) -- hiba esetén is `false`.
-    const hasCredits = await hasEnoughCredits(user.id, 1);
-    if (!hasCredits) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Nincs elegendő AI kredit a művelet elvégzéséhez.',
-          code: 'INSUFFICIENT_CREDITS',
-        },
-        { status: 402 }
-      );
-    }
-
     // ELŐZETES AI-KVÓTA ELLENŐRZÉS -- lásd `parse-equipment/route.ts` "ELŐZETES AI-KVÓTA
-    // ELLENŐRZÉS" JSDoc-kommentjét, ugyanaz a minta.
+    // ELLENŐRZÉS" JSDoc-kommentjét, ugyanaz a minta. 2026-08-06-tól ez az EGYETLEN kapu --
+    // lásd `scan-vin/route.ts` azonos elvű kommentjét a régi kredit-gate eltávolításának
+    // indoklásáról.
     const hasAiQuota = await checkAiQuota(user.id);
     if (!hasAiQuota) {
       return NextResponse.json(
@@ -207,12 +193,6 @@ export async function POST(
     }
 
     if (wonClaim) {
-      try {
-        await deductCredits(user.id, FEATURE_NAME, 1);
-      } catch (error) {
-        console.error('[fix-grammar] Kredit levonás sikertelen a sikeres AI hívás után:', error);
-      }
-
       try {
         await consumeAiQuota(user.id);
       } catch (error) {
