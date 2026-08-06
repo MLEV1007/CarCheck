@@ -220,6 +220,7 @@ function toInitialFinalAssessment(raw: unknown): FinalAssessmentState {
  * generált típus mégis `boolean | null`-t ad vissza a select-ből -- a `??` a defenzív
  * fallback, ha egy jövőbeli migráció ezt megváltoztatná). */
 function toInitialClientInfo(inspection: {
+  inspector_name: string | null;
   client_name: string | null;
   client_phone: string | null;
   client_email: string | null;
@@ -227,6 +228,7 @@ function toInitialClientInfo(inspection: {
   show_client_on_pdf: boolean | null;
 }): ClientInfoState {
   return {
+    inspectorName: inspection.inspector_name ?? '',
     clientName: inspection.client_name ?? '',
     clientPhone: inspection.client_phone ?? '',
     clientEmail: inspection.client_email ?? '',
@@ -276,7 +278,7 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
   const { data: inspection } = await supabase
     .from('inspections')
     .select(
-      'id, car_brand, car_model, year, vin, license_plate, license_plate_country, odometer, status, public_token, general_photos, service_history, diagnostics, equipment, tires, damages, final_assessment, created_at, client_name, client_phone, client_email, show_inspector_on_pdf, show_client_on_pdf'
+      'id, car_brand, car_model, year, vin, license_plate, license_plate_country, odometer, status, public_token, general_photos, service_history, diagnostics, equipment, tires, damages, final_assessment, created_at, inspector_name, client_name, client_phone, client_email, show_inspector_on_pdf, show_client_on_pdf'
     )
     .eq('id', id)
     .eq('user_id', user.id)

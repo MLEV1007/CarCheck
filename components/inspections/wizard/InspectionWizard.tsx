@@ -398,12 +398,15 @@ export function InspectionWizard({
           created_by: user.id,
           // Átvizsgáló és Ügyfél adatok (2026-08-06) -- az `inspector_id` MINDIG a
           // mentést ténylegesen végrehajtó bejelentkezett userre áll, automatikusan
-          // (nincs hozzá szerkeszthető UI-mező, lásd `ClientInfoState` JSDoc-ját a
-          // `lib/inspections/types.ts`-ben). A `client_*` mezők üresen `null`-lá
-          // alakulnak (ugyanaz a "üres string -> null" minta, mint pl. a
-          // `finalAssessmentPayload`-nál), a 2 kapcsoló (`show_*_on_pdf`) közvetlenül
-          // a `clientInfo` state-ből kerül be.
+          // (nincs hozzá szerkeszthető UI-mező). Az `inspector_name` ezzel szemben
+          // OPCIONÁLIS, kézzel szerkeszthető felülírás (lásd `ClientInfoState` JSDoc-ját
+          // a `lib/inspections/types.ts`-ben) -- üresen `null`-lá alakul, ilyenkor a
+          // `get_public_report` RPC automatikusan levezetett névre esik vissza. A
+          // `client_*` mezők üresen szintén `null`-lá alakulnak (ugyanaz a "üres
+          // string -> null" minta, mint pl. a `finalAssessmentPayload`-nál), a 2
+          // kapcsoló (`show_*_on_pdf`) közvetlenül a `clientInfo` state-ből kerül be.
           inspector_id: user.id,
+          inspector_name: clientInfo.inspectorName.trim() || null,
           client_name: clientInfo.clientName.trim() || null,
           client_phone: clientInfo.clientPhone.trim() || null,
           client_email: clientInfo.clientEmail.trim() || null,

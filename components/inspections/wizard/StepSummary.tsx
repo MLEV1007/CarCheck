@@ -123,52 +123,30 @@ export function StepSummary({
         </dl>
       </div>
 
-      {/* Átvizsgáló és Ügyfél adatok + PDF megjelenítési kapcsolók (2026-08-06) --
-          az EGYETLEN wizard-lépés, ahol az "Összegzés" mellett még ténylegesen
-          szerkeszthető mező is van: a "Megrendelő adatai" blokk (Név/Telefon/Email)
-          + a publikus riporton (PDF) az Átvizsgáló/Megrendelő blokk láthatóságát
+      {/* Átvizsgáló és Ügyfél adatok + PDF megjelenítési kapcsolók (2026-08-06,
+          kiegészítve az Átvizsgáló neve input mezővel) -- az EGYETLEN wizard-lépés,
+          ahol az "Összegzés" mellett még ténylegesen szerkeszthető mező is van: az
+          "Átvizsgáló neve" input + a "Megrendelő adatai" blokk (Név/Telefon/Email) +
+          a publikus riporton (PDF) az Átvizsgáló/Megrendelő blokk láthatóságát
           vezérlő 2 kapcsoló. Szándékosan ITT, az Összegzés & Publikálás lépésen él,
           nem egy külön wizard-lépésként -- ez a legutolsó állomás Publikálás előtt,
           ahol a "mi kerüljön a bejelentkezés nélkül elérhető nyilvános linkre"
           döntés amúgy is meghozandó (lásd `InspectionWizard.tsx` `handleSubmit`,
-          `inspector_id`/`client_*`/`show_*_on_pdf` mezők). Az Átvizsgáló NEVE nem
-          szerkeszthető itt -- azt a mentéskor a rendszer automatikusan a
-          bejelentkezett userre állítja, a kapcsoló KIZÁRÓLAG a megjelenítést
-          vezérli. */}
+          `inspector_id`/`inspector_name`/`client_*`/`show_*_on_pdf` mezők). A 2
+          kapcsoló ELŐBB jelenik meg, a hozzájuk tartozó input mező(k) pedig
+          KIZÁRÓLAG a kapcsoló BE állapotában renderelődnek -- kikapcsolt kapcsolónál
+          az input eltűnik (a state-ben megmaradó érték nem vész el, csak a UI nem
+          mutatja), hogy a felület ne kínáljon fel kitöltésre olyan mezőt, ami úgyis
+          rejtve marad a publikus riporton. */}
       <div className="rounded-lg border border-linear-hairline bg-linear-surface-1 p-5">
         <p className="text-[13px] font-semibold uppercase tracking-[0.4px] text-linear-ink-subtle">
-          Megrendelő adatai
+          Átvizsgáló és Megrendelő adatai
         </p>
         <p className="mt-1 text-[12px] text-linear-ink-subtle">
-          Opcionális -- az autó tulajdonosának/megbízójának elérhetőségei.
+          Vezérli, mi kerüljön a bejelentkezés nélkül elérhető publikus riportra.
         </p>
-        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <TextField
-            label="Név"
-            name="client-name"
-            placeholder="Kovács János"
-            value={clientInfo.clientName}
-            onChange={(e) => onClientInfoChange({ ...clientInfo, clientName: e.target.value })}
-          />
-          <TextField
-            label="Telefon"
-            name="client-phone"
-            type="tel"
-            placeholder="+36 30 123 4567"
-            value={clientInfo.clientPhone}
-            onChange={(e) => onClientInfoChange({ ...clientInfo, clientPhone: e.target.value })}
-          />
-          <TextField
-            label="Email"
-            name="client-email"
-            type="email"
-            placeholder="kovacs.janos@example.com"
-            value={clientInfo.clientEmail}
-            onChange={(e) => onClientInfoChange({ ...clientInfo, clientEmail: e.target.value })}
-          />
-        </div>
 
-        <div className="mt-5 flex flex-col divide-y divide-linear-hairline border-t border-linear-hairline pt-1">
+        <div className="mt-3 flex flex-col divide-y divide-linear-hairline">
           <ToggleField
             id="show-inspector-on-pdf"
             label="Átvizsgáló neve szerepeljen a PDF-en"
@@ -176,13 +154,53 @@ export function StepSummary({
             checked={clientInfo.showInspectorOnPdf}
             onChange={(next) => onClientInfoChange({ ...clientInfo, showInspectorOnPdf: next })}
           />
+          {clientInfo.showInspectorOnPdf && (
+            <div className="pb-3 pt-3">
+              <TextField
+                label="Átvizsgáló neve"
+                name="inspector-name"
+                placeholder="Kovács Péter"
+                hint="Üresen hagyva a bejelentkezett fiók neve jelenik meg."
+                value={clientInfo.inspectorName}
+                onChange={(e) => onClientInfoChange({ ...clientInfo, inspectorName: e.target.value })}
+              />
+            </div>
+          )}
+
           <ToggleField
             id="show-client-on-pdf"
             label="Ügyfél adatai szerepeljenek a PDF-en"
-            hint="A fenti Név/Telefon/Email a bejelentkezés nélkül elérhető riportra kerül."
+            hint="Az alábbi Név/Telefon/Email a bejelentkezés nélkül elérhető riportra kerül."
             checked={clientInfo.showClientOnPdf}
             onChange={(next) => onClientInfoChange({ ...clientInfo, showClientOnPdf: next })}
           />
+          {clientInfo.showClientOnPdf && (
+            <div className="grid grid-cols-1 gap-3 pt-3 sm:grid-cols-3">
+              <TextField
+                label="Név"
+                name="client-name"
+                placeholder="Kovács János"
+                value={clientInfo.clientName}
+                onChange={(e) => onClientInfoChange({ ...clientInfo, clientName: e.target.value })}
+              />
+              <TextField
+                label="Telefon"
+                name="client-phone"
+                type="tel"
+                placeholder="+36 30 123 4567"
+                value={clientInfo.clientPhone}
+                onChange={(e) => onClientInfoChange({ ...clientInfo, clientPhone: e.target.value })}
+              />
+              <TextField
+                label="Email"
+                name="client-email"
+                type="email"
+                placeholder="kovacs.janos@example.com"
+                value={clientInfo.clientEmail}
+                onChange={(e) => onClientInfoChange({ ...clientInfo, clientEmail: e.target.value })}
+              />
+            </div>
+          )}
         </div>
       </div>
 

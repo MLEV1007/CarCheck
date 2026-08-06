@@ -140,7 +140,10 @@ export function StepTires({
                       ? `Adatok másolása a(z) "${TIRE_POSITIONS[index - 1].label}" kerékről`
                       : 'Nincs előző kerék, amiről másolhatnál.'
                   }
-                  className="inline-flex h-8 items-center gap-1.5 rounded-md border border-linear-hairline-strong bg-linear-surface-2 px-2.5 text-[12px] font-medium text-linear-ink-muted transition-colors hover:bg-linear-surface-3 disabled:cursor-not-allowed disabled:opacity-30"
+                  className={
+                    'inline-flex h-8 items-center gap-1.5 rounded-md border border-linear-hairline-strong bg-linear-surface-2 px-2.5 text-[12px] font-medium text-linear-ink-muted transition-colors hover:bg-linear-surface-3' +
+                    (canCopy ? '' : ' invisible')
+                  }
                 >
                   <ClipboardCopy className="h-3.5 w-3.5" />
                   Másolás / Kitöltés az előzőből

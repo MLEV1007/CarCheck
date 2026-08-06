@@ -56,7 +56,7 @@ const COMFORT_PRESET_IDS = new Set([...EQUIPMENT_PRESET_BASIC, ...EQUIPMENT_PRES
 type PresetKey = 'basic' | 'comfort' | 'full' | 'reset';
 
 const PRESET_BUTTONS: { key: PresetKey; label: string }[] = [
-  { key: 'basic', label: '🥉 Alap (Fapados)' },
+  { key: 'basic', label: '🥉 Alap' },
   { key: 'comfort', label: '🥈 Átlagos / Komfort' },
   { key: 'full', label: '🥇 Full Extra' },
   { key: 'reset', label: '🔄 Visszaállítás (Minden üres)' },

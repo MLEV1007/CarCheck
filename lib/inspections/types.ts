@@ -378,16 +378,25 @@ export const EMPTY_FINAL_ASSESSMENT: FinalAssessmentState = {
 export type WizardStep = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11;
 
 /**
- * Átvizsgáló és Ügyfél adatok + PDF megjelenítési kapcsolók (2026-08-06) -- a wizard
- * "Összegzés & Publikálás" lépésén (`StepSummary.tsx`) elhelyezett "Megrendelő adatai"
- * blokk + a 2 toggle switch state-je. Az `inspector_id`-t (ki végezte a vizsgálatot)
- * SZÁNDÉKOSAN nem itt tartjuk -- az a mentéskor automatikusan a bejelentkezett userre
- * áll (lásd `InspectionWizard.tsx` `handleSubmit`), nincs hozzá szerkeszthető UI-mező.
- * `showInspectorOnPdf`/`showClientOnPdf` alapértéke 1:1 megegyezik a DB oszlopok
- * (`inspections.show_inspector_on_pdf`/`show_client_on_pdf`) default értékével --
- * lásd `supabase/migrations/20260806_inspector_and_client_fields.sql`.
+ * Átvizsgáló és Ügyfél adatok + PDF megjelenítési kapcsolók (2026-08-06, kiegészítve
+ * az Átvizsgáló neve mezővel) -- a wizard "Összegzés & Publikálás" lépésén
+ * (`StepSummary.tsx`) elhelyezett "Átvizsgáló neve" input + "Megrendelő adatai" blokk +
+ * a 2 toggle switch state-je. Az `inspector_id`-t (ki végezte a vizsgálatot) SZÁNDÉKOSAN
+ * nem itt tartjuk -- az a mentéskor automatikusan a bejelentkezett userre áll (lásd
+ * `InspectionWizard.tsx` `handleSubmit`). Az `inspectorName` ezzel szemben egy
+ * OPCIONÁLIS, kézzel szerkeszthető FELÜLÍRÁS a megjelenítendő névre (üresen a
+ * `get_public_report` RPC továbbra is az `auth.users` metaadatokból automatikusan
+ * levezetett nevet használja) -- lásd `supabase/migrations/20260806160000_inspector_name_override.sql`.
+ * Mind az `inspectorName` input, mind a "Megrendelő adatai" blokk (Név/Telefon/Email)
+ * KIZÁRÓLAG a hozzá tartozó `show*OnPdf` kapcsoló BE állapotában jelenik meg a
+ * `StepSummary.tsx`-ben -- ha a kapcsoló ki van kapcsolva, az input mezőt elrejtjük
+ * (a state-ben megmaradó érték nem vész el, csak a UI nem mutatja, amíg a kapcsoló
+ * újra be nem kapcsol). `showInspectorOnPdf`/`showClientOnPdf` alapértéke 1:1
+ * megegyezik a DB oszlopok (`inspections.show_inspector_on_pdf`/`show_client_on_pdf`)
+ * default értékével -- lásd `supabase/migrations/20260806_inspector_and_client_fields.sql`.
  */
 export interface ClientInfoState {
+  inspectorName: string;
   clientName: string;
   clientPhone: string;
   clientEmail: string;
@@ -396,6 +405,7 @@ export interface ClientInfoState {
 }
 
 export const EMPTY_CLIENT_INFO: ClientInfoState = {
+  inspectorName: '',
   clientName: '',
   clientPhone: '',
   clientEmail: '',
