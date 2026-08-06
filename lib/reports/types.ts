@@ -193,4 +193,12 @@ export interface PublicReportData {
   paint_measurements: PublicReportPaintMeasurement[];
   defects: PublicReportDefect[];
   company: PublicReportCompany | null;
+  /** "Kérdezz az AI-tól" chat panel -- IGAZ, ha a vizsgálatot végző szervezet
+   * Pro/Business csomagon van (a `get_public_report` RPC SZERVER-oldalon,
+   * `user_credits.plan_tier`-ből számolja -- lásd
+   * `supabase/migrations/20260806180000_report_ai_chat.sql` és
+   * `PLAN_ai_report_chat.md`). A kliens ez alapján dönt, megjelenítse-e a
+   * `ReportAiChat` komponenst -- Starter/Growth riporton ez a mező `false`,
+   * a komponens EGYÁLTALÁN nem renderelődik (nem "disabled", teljesen hiányzik). */
+  ai_chat_enabled: boolean;
 }

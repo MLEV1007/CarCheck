@@ -16,6 +16,7 @@ import { PaintMap } from '@/components/report/PaintMap';
 import { DamageMapCard } from '@/components/report/DamageMapCard';
 import { DefectsGallery } from '@/components/report/DefectsGallery';
 import { FinalAssessmentCard } from '@/components/report/FinalAssessmentCard';
+import { ReportAiChat } from '@/components/report/ReportAiChat';
 import { ReportNotFound } from '@/components/report/ReportNotFound';
 
 interface PublicReportPageProps {
@@ -95,6 +96,12 @@ export default async function PublicReportPage({ params }: PublicReportPageProps
           <p>A riportot {report.company?.company_name || 'a vizsgálatot végző partner'} készítette.</p>
         </div>
       </footer>
+
+      {/* "Kérdezz az AI-tól" chat -- Pro/Business exkluzív, lásd PLAN_ai_report_chat.md.
+          A gomb/panel EGYÁLTALÁN nem renderelődik Starter/Growth riporton -- a
+          `report.ai_chat_enabled` mezőt a `get_public_report` RPC szerver-oldalon,
+          a szervezet `plan_tier`-jéből számolja, a kliens ezt nem tudja megkerülni. */}
+      {report.ai_chat_enabled && <ReportAiChat token={publicToken} />}
     </div>
   );
 }
