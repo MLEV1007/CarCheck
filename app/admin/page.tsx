@@ -6,11 +6,11 @@ import { isPlatformAdmin } from '@/lib/auth/roles';
 import { AdminOrganizationsTable, type AdminOrganizationRow } from '@/components/admin/AdminOrganizationsTable';
 
 export const metadata: Metadata = {
-  title: 'Platform Admin | Autó Állapotfelmérő',
+  title: 'Platform Admin | CarPass',
 };
 
 /**
- * Platform Admin felület -- a CarCheck SaaS ÜZEMELTETŐJÉNEK (jelenleg
+ * Platform Admin felület -- a CarPass SaaS ÜZEMELTETŐJÉNEK (jelenleg
  * `manyilevente@gmail.com`, lásd `supabase/migrations/
  * 20260803_platform_admin_entitlements.sql` seed sorát) szánt belső oldal, ahol
  * eldönthető, MELYIK ÜGYFÉL (szervezet) kap Menedzser-szintű csapatkezelést
@@ -50,7 +50,7 @@ export default async function AdminPage() {
         <div className="flex max-w-sm flex-col items-center gap-3 text-center">
           <p className="text-[16px] font-semibold text-linear-ink">Hozzáférés megtagadva</p>
           <p className="text-[13px] text-linear-ink-subtle">
-            Ez a felület kizárólag a CarCheck üzemeltetőjének elérhető.
+            Ez a felület kizárólag a CarPass üzemeltetőjének elérhető.
           </p>
           <Link
             href="/dashboard"

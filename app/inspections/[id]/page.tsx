@@ -240,7 +240,7 @@ interface InspectionDetailPageProps {
 }
 
 export const metadata: Metadata = {
-  title: 'Vizsgálat | Autó Állapotfelmérő',
+  title: 'Vizsgálat | CarPass',
 };
 
 /**

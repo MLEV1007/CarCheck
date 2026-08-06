@@ -1,4 +1,4 @@
-# Autó Állapotfelmérő SaaS -- MVP alapok
+# CarPass SaaS -- MVP alapok
 
 Ez a csomag a projekt **első lépését** tartalmazza: Next.js 14+ App Router projektstruktúra,
 Supabase SSR integráció, védett route-ok middleware-rel, valamint a `/login` és `/register`

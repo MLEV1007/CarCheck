@@ -8,7 +8,7 @@ import { DEFAULT_LICENSE_PLATE_COUNTRY } from '@/lib/inspections/constants';
 import { checkInspectionQuota, InsufficientInspectionQuotaError } from '@/lib/quotas';
 
 export const metadata: Metadata = {
-  title: 'Új vizsgálat | Autó Állapotfelmérő',
+  title: 'Új vizsgálat | CarPass',
 };
 
 // Linear design system (linear.md) -- sötét canvas, tömör fejléc, a wizard maga

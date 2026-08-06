@@ -20,7 +20,7 @@ interface DashboardHeaderProps {
  * kezdőbetű-monogram, ha még nincs feltöltve logó), jobb oldalon navigáció + kijelentkezés.
  */
 export function DashboardHeader({ companyName, logoUrl, role = 'manager' }: DashboardHeaderProps) {
-  const displayName = companyName || 'Autó Állapotfelmérő';
+  const displayName = companyName || 'CarPass';
 
   return (
     <header className="flex h-16 items-center justify-between border-b border-linear-hairline px-4 sm:px-6">

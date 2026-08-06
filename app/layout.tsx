@@ -16,7 +16,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'Autó Állapotfelmérő',
+  title: 'CarPass',
   description: 'Digitális autóátvizsgálási jelentések független autóvizsgálóknak.',
 };
 

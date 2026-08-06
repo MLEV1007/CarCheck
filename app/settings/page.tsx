@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { SettingsPageContent } from '@/app/settings/_components/SettingsPageContent';
 
 export const metadata: Metadata = {
-  title: 'Cégbeállítások | Autó Állapotfelmérő',
+  title: 'Cégbeállítások | CarPass',
 };
 
 /**

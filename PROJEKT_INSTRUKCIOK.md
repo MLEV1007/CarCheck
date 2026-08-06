@@ -1,4 +1,4 @@
-# PROJEKT: Autó Állapotfelmérő SaaS (MVP)
+# PROJEKT: CarPass SaaS (MVP)
 
 ## 1. A Projekt Célja
 Egy modern, mobil-first B2B SaaS alkalmazás fejlesztése független autóvizsgáló szakemberek számára. A szoftver célja, hogy a helyszíni autóátvizsgálások dokumentációját (festékvastagság-mérés, hibák rögzítése fotókkal/videókkal, autó adatok) digitalizálja, és a manuális Word/Drive/Email folyamatot egy automatizált, interaktív, prémium ügyfélriporttá alakítsa.

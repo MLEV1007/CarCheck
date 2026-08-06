@@ -87,7 +87,7 @@ export async function requireManager(): Promise<NextResponse | null> {
 
 /**
  * Platform Admin (2026-08-03, "Platform Admin + Csapatkezelés-entitlement" lépés) --
- * ÚJ, a szervezetek FÖLÖTTI szerepkör: a CarCheck SaaS ÜZEMELTETŐJE (nem egy
+ * ÚJ, a szervezetek FÖLÖTTI szerepkör: a CarPass SaaS ÜZEMELTETŐJE (nem egy
  * autóvizsgáló cég Menedzsere!), aki a `/admin` felületen dönti el, melyik ÜGYFÉL
  * (szervezet) kap Menedzser-szintű csapatkezelést (`organizations.
  * team_management_enabled`). A `platform_admins` tábla explicit allow-list --

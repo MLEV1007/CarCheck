@@ -7,7 +7,7 @@ import { EmptyState } from '@/components/dashboard/EmptyState';
 import { PublishSuccessBanner } from '@/components/dashboard/PublishSuccessBanner';
 
 export const metadata: Metadata = {
-  title: 'Dashboard | Autó Állapotfelmérő',
+  title: 'Dashboard | CarPass',
 };
 
 interface DashboardPageProps {

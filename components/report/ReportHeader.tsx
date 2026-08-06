@@ -18,7 +18,7 @@ interface ReportHeaderProps {
  * `app/report/[public_token]/page.tsx`.
  */
 export function ReportHeader({ company }: ReportHeaderProps) {
-  const companyName = company?.company_name?.trim() || 'Autó Állapotfelmérő';
+  const companyName = company?.company_name?.trim() || 'CarPass';
   const contactLine = [company?.phone, company?.email].filter(Boolean).join(' · ');
 
   return (

@@ -4,7 +4,7 @@ import { AuthLayout } from '@/components/auth/AuthLayout';
 import { LoginForm } from '@/components/auth/LoginForm';
 
 export const metadata: Metadata = {
-  title: 'Autóvizsgáló Partner Belépés | Autó Állapotfelmérő',
+  title: 'Autóvizsgáló Partner Belépés | CarPass',
 };
 
 export default function LoginPage() {
@@ -13,7 +13,7 @@ export default function LoginPage() {
       eyebrow="Autóvizsgáló Partnereknek"
       title="Autóvizsgáló Partner Belépés"
       subtitle="Kezeld a vizsgálataidat és generálj interaktív riportokat pillanatok alatt."
-      footer={<span>© {new Date().getFullYear()} Autó Állapotfelmérő</span>}
+      footer={<span>© {new Date().getFullYear()} CarPass</span>}
     >
       {/* useSearchParams miatt (redirectTo query param) Suspense boundary szükséges */}
       <Suspense fallback={null}>
