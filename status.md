@@ -1638,6 +1638,22 @@ A tényleges hiba a **Supabase Storage `inspection-media` bucket `storage.object
 
 **Git:** ÚJ: nincs; MÓDOSÍTOTT: `components/inspections/wizard/StepServiceHistory.tsx`, `status.md`.
 
+### 66. Szervizbejegyzés AI-beolvasás -- vissza EXPLICIT gombra, az automatikus verzió helyett (2026-08-06)
+[Linear Dark Design Style]
+
+**Felhasználói visszajelzés:** "Valamiért nem működik... Tegyünk oda egy gombot ami elindítja a szervizkönyv felismerést, nem kell automatikusan amikor feltölti a képet." A 64. szakaszban bevezetett, feltöltéskor automatikusan induló felismerés a felhasználó szerint nem működött megbízhatóan (a pontos ok a sandboxból nem reprodukálható/diagnosztizálható -- feltehetően egy böngésző/eszköz-specifikus `<input onChange>`-lánc probléma, vagy egyszerűen a háttérben futó folyamat nem volt elég jól látható/érezhető), ezért a felhasználó kifejezetten egy EXPLICIT, kattintható gombot kért vissza, a "Dokumentumok fotói" blokkba integrálva (nem egy elkülönült kártyaként, mint az eredeti 63. szakaszban).
+
+**Megoldás -- `StepServiceHistory.tsx`:**
+- `handleFilesSelected()` -- a fotó(k) hozzáadása UTÁN NINCS többé automatikus `runAiScanOnPhotos()` hívás, a feltöltés önmagában, AI-hívás nélkül történik (visszaállítva a 63. szakasz előtti, egyszerű viselkedésre).
+- ÚJ "📷 Felismerés indítása (AI)" gomb a fotórács ALATT (nem egy külön kártyaként, hanem UGYANABBAN a "Dokumentumok fotói" blokkban, közvetlenül a fotók/feltöltés alatt -- így a felhasználó ugyanott találja, ahova a fotót töltötte). Kattintásra a `handleRunAiScanClick()` összegyűjti a jelenlegi galéria MÉG FEL NEM DOLGOZOTT (kliens-oldali `file`-lal rendelkező, `scannedPhotoIds`-ban még nem szereplő) fotóit, és elindítja rájuk a (változatlan logikájú) `runAiScanOnPhotos()` batch-feldolgozót.
+- ÚJ `scannedPhotoIds` (`Set<string>`) state -- megjegyzi, mely fotókat dolgozta már fel az AI, hogy ismételt gombnyomásra NE történjen duplikált (és duplán kreditet fogyasztó) újrafeldolgozás ugyanazon a fotón; egy ÚJ fotó feltöltése után a gomb újra talál feldolgozandó elemet.
+- A gomb `disabled` KIZÁRÓLAG feldolgozás közben (`isAiScanning`) -- üres galériánál vagy "minden fotó már feldolgozva" állapotnál NEM `disabled`, hanem kattintásra egy toast magyarázza el a teendőt (hálózati hívás nélkül), hogy a gomb sose tűnjön "törött/inaktív" elemnek.
+- A kredit/AI-keret kifogyás kezelése (65. szakasz, csendes toast, NINCS blokkoló modal) VÁLTOZATLANUL megmaradt -- ez a döntés a gomb visszahozásától függetlenül érvényes: a fotó ekkorra már úgyis a galériában van, a felismerés csak kényelmi gyorsítás.
+
+**Ellenőrzés:** `node node_modules/typescript/bin/tsc --noEmit -p tsconfig.json` -- SZINKRON, egyetlen bash-hívásban futtatva, hibamentes, exit code 0. Élő böngésző-teszt (a gomb ténylegesen elindítja-e a felismerést kattintásra, ismételt kattintás nem dolgozza-e fel újra ugyanazt a fotót) a sandboxból NEM futtatható -- lásd "Következő lépés".
+
+**Git:** ÚJ: nincs; MÓDOSÍTOTT: `components/inspections/wizard/StepServiceHistory.tsx`, `status.md`.
+
 ## Verziókezelés
 - GitHub repó: `https://github.com/MLEV1007/CarCheck` (`main` ág).
 - A `/inspections/[id]` szerkesztő/részletező oldalt (`d475379`) és a márka/típus dropdown + validáció + Általános autó fotók modult (`6f274d7`) tartalmazó korábbi commitok korábban push-olva lettek `origin/main`-re.
@@ -1679,7 +1695,15 @@ A tényleges hiba a **Supabase Storage `inspection-media` bucket `storage.object
 - Az `EQUIPMENT_CATALOG` katalógus (209 elem, 4 kategória) NEM bővíthető a UI-ból -- kód-szintű módosítást igényel (`lib/inspections/constants.ts`). A `toInitialEquipment` helper (`app/inspections/[id]/page.tsx`) felkészítve arra, hogy a katalógus bővítése ne törjön el régebbi, kevesebb elemet tartalmazó mentett adatot.
 
 ## Következő lépés
-- **Kézi teszt -- Szervizbejegyzés AI-beolvasás, kredit/AI-keret kifogyás NE blokkolja a feltöltést (LEGÚJABB, ÚJ, még nem futtatott, lásd 65. szakasz):** `npm run dev`, 0 AI-kerettel/kredittel (SQL Editorral levéve) bejelentkezve, `/inspections/new` 3. lépés ("Szervizmúlt & Dokumentumok").
+- **Kézi teszt -- Szervizbejegyzés AI-beolvasás, EXPLICIT gombos verzió (LEGÚJABB, ÚJ, még nem futtatott, lásd 66. szakasz -- a 64. szakasz AUTOMATIKUS verziója HELYETT):** `npm run dev`, `/inspections/new` (vagy `/inspections/[id]` szerkesztés) 3. lépés ("Szervizmúlt & Dokumentumok").
+  * A "Dokumentumok fotói" blokkban a fotórács ALATT megjelenik a "📷 Felismerés indítása (AI)" gomb -- fotó feltöltésekor a gomb NEM indul el automatikusan, csak a fotó kerül a rácsba.
+  * A gombra kattintva (legalább 1 feltöltött fotóval) a loading állapot ("AI elemzi a dokumentumot…") megjelenik, majd a felismert bejegyzések az "Idővonal" lista VÉGÉRE kerülnek, sikeres toast "X bejegyzés hozzáadva" szöveggel.
+  * Ugyanarra a gombra ISMÉT rákattintva (új fotó feltöltése NÉLKÜL) NEM indul újabb hálózati hívás -- egy toast jelzi, hogy minden fotó már fel lett dolgozva.
+  * Egy ÚJ fotó feltöltése UTÁN a gombra kattintva CSAK az új fotó megy át az elemzésen (a korábban már feldolgozott fotókra nem indul újra hívás), az eredmények a meglévő listához adódnak hozzá.
+  * Üres galériánál (0 feltöltött fotó) a gombra kattintva egy toast jelzi, hogy előbb fotót kell feltölteni -- a gomb NEM `disabled`, csak a kattintás nem indít hívást.
+  * 0 AI-kerettel/kredittel a gombra kattintva a fotó(k) továbbra is a galériában maradnak, NEM jelenik meg a blokkoló "🔒 Elfogyott a kereted" modal, csak egy csendes toast.
+  * Piszkozat mentés + `/inspections/[id]` újranyitás -- az AI-val beolvasott bejegyzések helyesen töltődnek-e vissza.
+- **Kézi teszt -- Szervizbejegyzés AI-beolvasás, kredit/AI-keret kifogyás NE blokkolja a feltöltést (ÚJ, még nem futtatott, lásd 65. szakasz -- az AUTOMATIKUS verzióra vonatkozott, a 66. szakasz óta a felismerést gomb indítja, de a kredit-kezelési logika változatlan):** `npm run dev`, 0 AI-kerettel/kredittel (SQL Editorral levéve) bejelentkezve, `/inspections/new` 3. lépés ("Szervizmúlt & Dokumentumok").
   * Fotó(k) feltöltése a "Fotók hozzáadása" gombbal -- a fotó(k)nak AZONNAL meg kell jelenniük a rácsban, UGYANÚGY, mint kredittel rendelkezve. NEM jelenhet meg a teljes képernyős "🔒 Elfogyott a kereted" modal.
   * Az "AI elemzi a feltöltött dokumentumot…" pörgő jelző rövid ideig látszik, majd egy NEM blokkoló, sárga, magától eltűnő (vagy kézzel bezárható) toast jelenik meg: "A fotó(k) feltöltve, de elfogyott az AI kereted...".
   * Az "Idővonal" lista NEM bővül automatikusan, de a "+ Új szerviz-bejegyzés rögzítése" gombbal továbbra is szabadon rögzíthető kézi bejegyzés.

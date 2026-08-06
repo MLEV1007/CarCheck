@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ExternalLink, FileText, ImagePlus, Loader2, Plus, Trash2, UploadCloud, X } from 'lucide-react';
+import { Camera, ExternalLink, FileText, ImagePlus, Loader2, Plus, Trash2, UploadCloud, X } from 'lucide-react';
 import { TextField, TextareaField } from '@/components/inspections/wizard/FormControls';
 import { VinScanToast, type VinScanToastVariant } from '@/components/inspections/wizard/VinScanToast';
 import { WizardStepFooter } from '@/components/inspections/wizard/WizardBottomBar';
@@ -24,10 +24,12 @@ const AI_SCAN_TOO_LARGE_MESSAGE =
   'Egy kép túl nagy volt a feldolgozáshoz a tömörítés után is. A fotó feltöltve, de a bejegyzést vidd fel kézzel!';
 
 const AI_SCAN_NO_ENTRIES_MESSAGE =
-  'Az AI nem talált felismerhető szerviz-bejegyzést a feltöltött képen/képeken. A fotó(k) feltöltve, a bejegyzést kézzel is felviheted.';
+  'Az AI nem talált felismerhető szerviz-bejegyzést a kijelölt képen/képeken. A bejegyzést kézzel is felviheted.';
 
 const AI_SCAN_NO_CREDITS_MESSAGE =
-  'A fotó(k) feltöltve, de elfogyott az AI kereted -- az automatikus felismerés kimaradt, a bejegyzést kézzel vidd fel. (A kereted a fejléc jelvényén/az Előfizetés oldalon tölthető fel.)';
+  'Elfogyott az AI kereted -- a felismerés nem futott le, a bejegyzést kézzel vidd fel. (A kereted a fejléc jelvényén/az Előfizetés oldalon tölthető fel.)';
+
+const AI_SCAN_NO_PHOTOS_MESSAGE = 'Előbb tölts fel legalább egy fotót a szervizkönyvről/számláról, utána indítható a felismerés.';
 
 /** A `/api/ai/scan-service-doc` route válasz-alakja (lásd `app/api/ai/scan-service-doc/route.ts`)
  * -- csak a kliens-oldalon ténylegesen felhasznált mezőket modellezi, ugyanaz az elv, mint a
@@ -60,9 +62,10 @@ const STATUS_OPTIONS: ServiceHistoryStatus[] = ['full', 'partial', 'digital', 'n
  *  A) Általános státusz -- 4 választható rádiógomb-kártya (`SERVICE_HISTORY_STATUS_LABEL`).
  *  B) Fotófeltöltés -- a szervizkönyv/számlák lefotózása, ugyanaz a minta, mint a
  *     `StepGeneralPhotos.tsx`-nél (több kép egyszerre, kliens-oldali előnézet, a tényleges
- *     Storage-feltöltés csak a végleges mentéskor történik). **2026-08-06 óta MINDEN ide
- *     feltöltött fotó AUTOMATIKUSAN, gomb nélkül átmegy a Gemini Vision AI-elemzésen
- *     (`runAiScanOnPhotos`) -- nincs külön "AI beolvasás" gomb/kártya, lásd a lenti kommentet.
+ *     Storage-feltöltés csak a végleges mentéskor történik). A rács MELLETT egy "Felismerés
+ *     indítása (AI)" gomb GOMBRA KATTINTVA (nem automatikusan feltöltéskor, lásd a lenti
+ *     kommentet) elindítja a Gemini Vision AI-elemzést (`runAiScanOnPhotos`) a MÉG felismeretlen
+ *     fotókon.
  *  C) Idővonal -- dinamikus, dátum/km óra állás/típus/megjegyzés bejegyzés-kártyák, ugyanaz a
  *     minta, mint a `StepDiagnostics.tsx` hibakód-listájánál. A sorok KÉZZEL ("+ Új
  *     szerviz-bejegyzés rögzítése" gombbal) VAGY a B) pont AI-elemzéséből is bekerülhetnek --
@@ -74,23 +77,30 @@ export function StepServiceHistory({ value, onChange, onBack, onNext, nextLabel 
 
   // Gemini Vision AI szkenner (`/api/ai/scan-service-doc`, lásd a route JSDoc-ját) --
   // szervizkönyv-oldal VAGY számla/munkalap fotójából szerviz-bejegyzések (dátum/km óra
-  // állás/típus/megjegyzés) kinyerése. **2026-08-06, "Automatikus, gomb nélküli AI-beolvasás"
-  // finomítás:** korábban ez egy KÜLÖN, saját fájlválasztóval rendelkező kártya/gomb volt --
-  // a felhasználó jelezte, hogy ez zavaró/felesleges plusz lépés, ő egyszerűen a "Dokumentumok
-  // fotói" feltöltőbe (lásd `handleFilesSelected`) várta a fotót, és nem talált külön gombot a
-  // felismertetéshez. Mostantól NINCS külön gomb/fájlválasztó: a "Dokumentumok fotói" blokkba
-  // feltöltött MINDEN kép AUTOMATIKUSAN átmegy az AI-elemzésen, feltöltés UTÁN azonnal,
-  // felhasználói interakció nélkül -- lásd `runAiScanOnPhotos()`.
+  // állás/típus/megjegyzés) kinyerése. **2026-08-06, GOMBBAL indítható, NEM automatikus
+  // finomítás:** korábban (63. szakasz) egy KÜLÖN, saját fájlválasztóval rendelkező kártya/gomb
+  // volt, majd (64. szakasz) a felhasználó kérésére automatikusra állítottuk (minden feltöltött
+  // fotó azonnal átment az elemzésen) -- ez viszont a felhasználó szerint "valamiért nem
+  // működött" (feltehetően a kamera/galéria `<input onChange>` egyes böngészőkben/eszközökön
+  // nem a várt módon triggerelte a láncot, vagy egyszerűen nem volt egyértelmű, hogy történik
+  // valami a háttérben), ezért EXPLICIT gombra váltottunk vissza: a fotók feltöltése
+  // (`handleFilesSelected`) TOVÁBBRA IS önmagában, AI-hívás NÉLKÜL történik, a felismerést a
+  // usernek a "Felismerés indítása (AI)" gombbal KELL elindítania -- ez egyértelműbb (látható,
+  // kattintható, visszajelzést ad) és megbízhatóbb (egyetlen, explicit user-akció indítja a
+  // hálózati hívást, nem egy fájlválasztó `onChange` eseményéhez láncolt mellékhatás).
   const [isAiScanning, setIsAiScanning] = useState(false);
   const [aiScanProgress, setAiScanProgress] = useState<{ current: number; total: number } | null>(null);
   const [aiScanToast, setAiScanToast] = useState<{ variant: VinScanToastVariant; message: string } | null>(null);
 
+  // A már elemzett fotók `clientId`-jai -- a gomb csak az EZEKBEN NEM szereplő (még nem
+  // felismertetett) fotókat küldi el az AI-nak, hogy ismételt gombnyomásra ne dolgozza fel
+  // (és ne számlázza le kredit szempontjából) újra ugyanazt a képet.
+  const [scannedPhotoIds, setScannedPhotoIds] = useState<Set<string>>(new Set());
+
   // A `value` prop MINDIG a legfrissebb wizard state -- egy `ref`-ben tartjuk szinkronban
   // (`useEffect`), hogy a `runAiScanOnPhotos()` több `await`-en átívelő, hosszabb ideig futó
   // ciklusa MINDIG a ténylegesen legfrissebb `entries`/`photos` tetejére merge-eljen, ne egy a
-  // ciklus INDULÁSAKOR (esetleg már elavult) `value`-t írjon vissza -- enélkül egy második,
-  // gyorsan egymás után feltöltött fotó AI-eredménye elveszíthetné az első fotó közben
-  // hozzáadott sorait (vagy fordítva).
+  // ciklus INDULÁSAKOR (esetleg már elavult) `value`-t írjon vissza.
   const valueRef = useRef(value);
   useEffect(() => {
     valueRef.current = value;
@@ -106,43 +116,67 @@ export function StepServiceHistory({ value, onChange, onBack, onNext, nextLabel 
 
     const newPhotos = imageFiles.map((file) => CREATE_GENERAL_PHOTO(file));
     onChange({ ...value, photos: [...value.photos, ...newPhotos] });
-
-    // A fotó(k) hozzáadása UTÁN, automatikusan, gomb nélkül indul az AI-elemzés -- lásd a
-    // fenti kommentet és `runAiScanOnPhotos()` JSDoc-ját. `void`: a `handleFilesSelected`
-    // maga NEM async (az `<input onChange>` szinkron), a feldolgozás a háttérben fut tovább.
-    void runAiScanOnPhotos(imageFiles);
+    // Szándékosan NINCS automatikus AI-hívás itt -- lásd a fenti kommentet. A felismerést a
+    // "Felismerés indítása (AI)" gomb (`handleRunAiScanClick`) indítja el, kézzel.
   }
 
   /**
-   * Sorban (nem párhuzamosan -- lásd lent, miért) végigmegy az ÚJONNAN feltöltött
-   * dokumentum-fotókon, mindegyiket tömöríti (`compressImageForAiScan`) és elküldi a
+   * A "Felismerés indítása (AI)" gomb kattintás-kezelője -- összegyűjti a jelenlegi
+   * `value.photos` közül azokat, amiknek van kliens-oldali `file`-juk (csak az EBBEN A
+   * session-ben, most feltöltött fotókat lehet elküldeni Base64-ként, egy korábban mentett,
+   * már Storage-ban lévő fotóhoz csak URL tartozik, `file` nélkül) ÉS még nincsenek a
+   * `scannedPhotoIds`-ban, majd elindítja rájuk a `runAiScanOnPhotos()`-t. Ha nincs ilyen fotó
+   * (mert még semmi nincs feltöltve, VAGY minden feltöltött fotó már fel lett dolgozva), egy
+   * rövid toast jelzi ezt, hálózati hívás nélkül.
+   */
+  function handleRunAiScanClick() {
+    const pending = value.photos.filter((photo) => photo.file && !scannedPhotoIds.has(photo.clientId));
+
+    if (pending.length === 0) {
+      setAiScanToast({
+        variant: 'warning',
+        message: value.photos.length === 0 ? AI_SCAN_NO_PHOTOS_MESSAGE : 'Minden feltöltött fotó már fel lett dolgozva -- tölts fel egy újabbat a további felismeréshez.',
+      });
+      return;
+    }
+
+    // Azonnal megjelöljük "elemzettnek" a most induló fotókat -- ismételt gombnyomás közben
+    // (amíg az első kérés még fut) ne induljon el rájuk egy második, párhuzamos hívás.
+    setScannedPhotoIds((prev) => {
+      const next = new Set(prev);
+      for (const photo of pending) next.add(photo.clientId);
+      return next;
+    });
+
+    void runAiScanOnPhotos(pending.map((photo) => photo.file as File));
+  }
+
+  /**
+   * A "Felismerés indítása (AI)" gomb (`handleRunAiScanClick`) által meghívott, tényleges
+   * batch-feldolgozó -- SORBAN (nem párhuzamosan -- lásd lent, miért) végigmegy a kapott
+   * fájlokon, mindegyiket tömöríti (`compressImageForAiScan`) és elküldi a
    * `/api/ai/scan-service-doc` route-nak, majd a felismert bejegyzéseket a `valueRef.current`
-   * TETEJÉRE (nem a `handleFilesSelected` hívásakor rögzített, esetleg elavult `value`-ra)
-   * fűzi hozzá.
+   * TETEJÉRE (nem a hívás INDULÁSAKOR rögzített, esetleg időközben elavult `value`-ra) fűzi
+   * hozzá.
    *
    * **Miért SOROS, nem `Promise.all`-lal párhuzamos:** (1) minden hívás kreditet/AI-keretet
    * fogyaszt -- ha a keret a 2. fotónál kifogyna, a sorosság garantálja, hogy a hátralévő
    * fotók feldolgozása azonnal leáll, nem indul el felesleges (biztosan `402`-t kapó) hívás
-   * mindegyikre; (2) a `onChange`-eket egymás UTÁN,
-   * nem egyszerre hívjuk, ami elkerüli, hogy két egyidejűleg lezáruló hívás egymás
-   * eredményét felülírja (a `valueRef` MINDEN `onChange` után frissül, de csak a KÖVETKEZŐ
-   * render/effect körben -- soros feldolgozásnál ez sosem okoz versenyhelyzetet, mert a
-   * következő hálózati hívás időtartama bőven elég a re-render lefutásához).
+   * mindegyikre; (2) a `onChange`-eket egymás UTÁN, nem egyszerre hívjuk, ami elkerüli, hogy
+   * két egyidejűleg lezáruló hívás egymás eredményét felülírja.
    *
    * A sikeres/hibás eredményt EGYETLEN összegző toast-tal jelzi a batch végén (nem
-   * fotónként), hogy több kép egyszerre feltöltésekor ne "villogjon" több egymást followuppoló
-   * üzenet.
+   * fotónként), hogy több kép egyszerre feldolgozásakor ne "villogjon" több egymást
+   * követő üzenet.
    *
    * **Kredit/AI-keret kifogyás (`402`) -- SZÁNDÉKOSAN NEM a globális "🔒 Elfogyott a kereted"
    * blokkoló modal (`useInsufficientCredits`), ellentétben a `StepCarInfo.tsx`/`StepEquipment.tsx`
-   * gombbal INDÍTOTT AI-hívásaival (2026-08-06, felhasználói kérésre javítva -- lásd status.md
-   * 65. szakasz):** mivel ez a felismerés a fotó FELTÖLTÉSÉNEK automatikus, háttérben futó
-   * mellékhatása (nem egy explicit AI-gomb kattintás), egy teljes képernyős, kattintást igénylő
-   * modal félbeszakítaná a felhasználót a dokumentum-fotózás közepén, holott a fotó feltöltése
-   * MAGA teljesen sikeres marad, csak az automatikus kitöltés marad el. Ehelyett csendben
-   * leáll a batch (a hátralévő fotókra sem indul újabb, garantáltan `402`-t kapó hívás), és a
-   * batch végén egy NEM blokkoló, magától eltűnő lokális toast (`AI_SCAN_NO_CREDITS_MESSAGE`)
-   * jelzi, hogy a fotó(k) feltöltve, de a bejegyzést kézzel kell felvinni.
+   * AI-gombjaival:** a fotó ekkorra MÁR feltöltve/elmentve van a galériába, függetlenül az
+   * AI-hívás sikerétől -- egy teljes képernyős modal itt feleslegesen félbeszakítaná a usert
+   * a wizard kitöltése közben egy olyan mellékfunkció miatt, ami csak kényelmi gyorsítás.
+   * Ehelyett csendben leáll a batch, és egy NEM blokkoló, magától eltűnő lokális toast
+   * (`AI_SCAN_NO_CREDITS_MESSAGE`) jelzi, hogy a felismerés kimaradt, a bejegyzést kézzel
+   * kell felvinni.
    */
   async function runAiScanOnPhotos(files: File[]) {
     if (files.length === 0) return;
@@ -231,7 +265,7 @@ export function StepServiceHistory({ value, onChange, onBack, onNext, nextLabel 
         variant: anyLowConfidence ? 'warning' : 'success',
         message: anyLowConfidence
           ? `Beolvasva (${totalNewEntries} bejegyzés), de kérlek ellenőrizd az adatokat -- egy vagy több kép elmosódott lehetett!`
-          : `Szervizbejegyzés(ek) automatikusan beolvasva AI-val: ${totalNewEntries} bejegyzés hozzáadva.`,
+          : `Szervizbejegyzés(ek) sikeresen beolvasva AI-val: ${totalNewEntries} bejegyzés hozzáadva.`,
       });
     } else if (lastErrorMessage) {
       setAiScanToast({ variant: 'warning', message: lastErrorMessage });
@@ -317,26 +351,12 @@ export function StepServiceHistory({ value, onChange, onBack, onNext, nextLabel 
         </div>
       </div>
 
-      {/* B) Fotófeltöltés -- 2026-08-06, "Automatikus, gomb nélküli AI-beolvasás" finomítás:
-          KÜLÖN AI-gomb/fájlválasztó helyett MINDEN ide feltöltött fotó automatikusan átmegy a
-          `/api/ai/scan-service-doc` Gemini Vision elemzésen (lásd `handleFilesSelected` /
-          `runAiScanOnPhotos` JSDoc-ját) -- a folyamat állapotát ez a szekció jelzi inline. */}
+      {/* B) Fotófeltöltés -- a fotó feltöltése ÖNMAGÁBAN nem indít AI-hívást (lásd
+          `handleFilesSelected` kommentjét); a felismerést a rács ALATTI "Felismerés indítása
+          (AI)" gomb (`handleRunAiScanClick`) indítja el, kézzel. */}
       <div className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-[13px] font-semibold uppercase tracking-[0.4px] text-linear-ink-subtle">
-            Dokumentumok fotói (szervizkönyv, számlák)
-          </p>
-          {isAiScanning && (
-            <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-linear-primary-hover">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              AI elemzi a feltöltött dokumentumot
-              {aiScanProgress && aiScanProgress.total > 1 ? ` (${aiScanProgress.current}/${aiScanProgress.total})` : ''}…
-            </span>
-          )}
-        </div>
-        <p className="text-[12px] text-linear-ink-subtle">
-          A feltöltött fotókból az AI automatikusan megpróbálja kiolvasni a szerviz-bejegyzéseket
-          (dátum, km óra állás, típus) az alábbi idővonalba -- nincs szükség külön gombra.
+        <p className="text-[13px] font-semibold uppercase tracking-[0.4px] text-linear-ink-subtle">
+          Dokumentumok fotói (szervizkönyv, számlák)
         </p>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
           {value.photos.map((photo) => (
@@ -377,6 +397,27 @@ export function StepServiceHistory({ value, onChange, onBack, onNext, nextLabel 
               }}
             />
           </button>
+        </div>
+
+        {/* "Felismerés indítása (AI)" gomb -- lásd `handleRunAiScanClick` JSDoc-ját. Mindig
+            látható (nem csak feltöltött fotónál), hogy a szaki tudja, hogy ez a funkció létezik
+            -- üres galériánál/már feldolgozott fotóknál kattintásra egy toast jelzi, mit kell
+            tenni, nincs `disabled` állapot, hogy a gomb sose tűnjön "hibásnak/inaktívnak". */}
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={handleRunAiScanClick}
+            disabled={isAiScanning}
+            className="inline-flex h-10 items-center gap-1.5 rounded-md bg-linear-primary px-4 text-[13px] font-semibold text-white transition-colors hover:bg-linear-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isAiScanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+            {isAiScanning
+              ? `AI elemzi a dokumentumot${aiScanProgress && aiScanProgress.total > 1 ? ` (${aiScanProgress.current}/${aiScanProgress.total})` : ''}…`
+              : '📷 Felismerés indítása (AI)'}
+          </button>
+          <span className="text-[12px] text-linear-ink-subtle">
+            A fenti fotókból kiolvassa a szerviz-bejegyzéseket (dátum, km óra állás, típus) az idővonalba.
+          </span>
         </div>
       </div>
 
@@ -433,9 +474,9 @@ export function StepServiceHistory({ value, onChange, onBack, onNext, nextLabel 
         )}
       </div>
 
-      {/* C) Manuális Idővonal -- a fenti B) blokkba feltöltött fotókból az AI automatikusan
-          idekerülő bejegyzéseket ugyanúgy listázza, mint a kézzel felvitteket (nincs "AI által
-          generált" megkülönböztető jelölés, mert bármelyik szabadon szerkeszthető/törölhető). */}
+      {/* C) Idővonal -- a fenti B) blokk "Felismerés indítása (AI)" gombjával kinyert
+          bejegyzéseket ugyanúgy listázza, mint a kézzel felvitteket (nincs "AI által generált"
+          megkülönböztető jelölés, mert bármelyik szabadon szerkeszthető/törölhető). */}
       <div className="flex flex-col gap-4">
         <p className="text-[13px] font-semibold uppercase tracking-[0.4px] text-linear-ink-subtle">
           Idővonal ({value.entries.length} bejegyzés)
