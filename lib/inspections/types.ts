@@ -376,3 +376,29 @@ export const EMPTY_FINAL_ASSESSMENT: FinalAssessmentState = {
 };
 
 export type WizardStep = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11;
+
+/**
+ * Átvizsgáló és Ügyfél adatok + PDF megjelenítési kapcsolók (2026-08-06) -- a wizard
+ * "Összegzés & Publikálás" lépésén (`StepSummary.tsx`) elhelyezett "Megrendelő adatai"
+ * blokk + a 2 toggle switch state-je. Az `inspector_id`-t (ki végezte a vizsgálatot)
+ * SZÁNDÉKOSAN nem itt tartjuk -- az a mentéskor automatikusan a bejelentkezett userre
+ * áll (lásd `InspectionWizard.tsx` `handleSubmit`), nincs hozzá szerkeszthető UI-mező.
+ * `showInspectorOnPdf`/`showClientOnPdf` alapértéke 1:1 megegyezik a DB oszlopok
+ * (`inspections.show_inspector_on_pdf`/`show_client_on_pdf`) default értékével --
+ * lásd `supabase/migrations/20260806_inspector_and_client_fields.sql`.
+ */
+export interface ClientInfoState {
+  clientName: string;
+  clientPhone: string;
+  clientEmail: string;
+  showInspectorOnPdf: boolean;
+  showClientOnPdf: boolean;
+}
+
+export const EMPTY_CLIENT_INFO: ClientInfoState = {
+  clientName: '',
+  clientPhone: '',
+  clientEmail: '',
+  showInspectorOnPdf: true,
+  showClientOnPdf: false,
+};

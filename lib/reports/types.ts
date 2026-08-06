@@ -52,6 +52,20 @@ export interface PublicReportInspection {
    * `null` lehet (a `get_public_report` RPC 2026-08-02-es kiegészítése óta tartalmazza).
    * Ha minden mező `null`/üres, a `FinalAssessmentCard.tsx` a teljes szekciót elrejti. */
   final_assessment: PublicReportFinalAssessment;
+  /** Átvizsgáló és Ügyfél adatok + PDF megjelenítési kapcsolók (2026-08-06) -- a
+   * `get_public_report` RPC (lásd `supabase/migrations/20260806_inspector_and_client_fields.sql`)
+   * ezeket a mezőket a megfelelő `show_*_on_pdf` kapcsoló SZERVER OLDALI ellenőrzésével
+   * adja vissza: ha a kapcsoló ki van kapcsolva, a hozzá tartozó `inspector_name`/
+   * `client_*` mező mindig `null`, MÉG AKKOR IS, ha a vizsgálónál ténylegesen van
+   * elmentve érték -- ezért a `components/report/InspectorClientCard.tsx`-nek elég
+   * csak a mező jelenlétét (nem a boolean-t) ellenőriznie, de a boolean-t is
+   * megkapja, hogy a UI-logika a szerver-oldali szándékkal 1:1 megegyezzen. */
+  show_inspector_on_pdf: boolean;
+  inspector_name: string | null;
+  show_client_on_pdf: boolean;
+  client_name: string | null;
+  client_phone: string | null;
+  client_email: string | null;
   created_at: string;
   updated_at: string;
 }

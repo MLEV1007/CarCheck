@@ -9,6 +9,7 @@ import { HeaderCreditBadge } from '@/components/credits/HeaderCreditBadge';
 import { DAMAGE_TYPES, DEFAULT_LICENSE_PLATE_COUNTRY, EQUIPMENT_ITEMS, TIRE_BRANDS } from '@/lib/inspections/constants';
 import type {
   CarInfoState,
+  ClientInfoState,
   DamagePointState,
   DamageType,
   DefectState,
@@ -25,7 +26,7 @@ import type {
   TireGeneralInfoState,
   TiresState,
 } from '@/lib/inspections/types';
-import { EMPTY_TIRE_GENERAL_INFO, EMPTY_TIRES } from '@/lib/inspections/types';
+import { EMPTY_CLIENT_INFO, EMPTY_TIRE_GENERAL_INFO, EMPTY_TIRES } from '@/lib/inspections/types';
 
 /** DB (JSONB) -> wizard state konverzió a 3 új szakértői modulhoz (PROJEKT_INSTRUKCIOK.md,
  * "3 új szakértői modul" lépés). Külön, oldal-szintű helperek, mert csak itt (piszkozat
@@ -211,6 +212,29 @@ function toInitialFinalAssessment(raw: unknown): FinalAssessmentState {
   };
 }
 
+/** DB oszlopok -> wizard state konverzió az Átvizsgáló és Ügyfél adatok + PDF
+ * megjelenítési kapcsolók modulhoz (2026-08-06) -- ugyanaz a minta, mint a többi
+ * `toInitial*` helpernél ebben a fájlban: `null` DB-mezőkből üres string lesz a
+ * kontrollált beviteli mezőkhöz, a 2 boolean kapcsoló pedig 1:1 átkerül (a DB oszlopok
+ * `not null default`-tal jönnek létre, tehát valójában sosem `null`-ok, de a Supabase
+ * generált típus mégis `boolean | null`-t ad vissza a select-ből -- a `??` a defenzív
+ * fallback, ha egy jövőbeli migráció ezt megváltoztatná). */
+function toInitialClientInfo(inspection: {
+  client_name: string | null;
+  client_phone: string | null;
+  client_email: string | null;
+  show_inspector_on_pdf: boolean | null;
+  show_client_on_pdf: boolean | null;
+}): ClientInfoState {
+  return {
+    clientName: inspection.client_name ?? '',
+    clientPhone: inspection.client_phone ?? '',
+    clientEmail: inspection.client_email ?? '',
+    showInspectorOnPdf: inspection.show_inspector_on_pdf ?? EMPTY_CLIENT_INFO.showInspectorOnPdf,
+    showClientOnPdf: inspection.show_client_on_pdf ?? EMPTY_CLIENT_INFO.showClientOnPdf,
+  };
+}
+
 interface InspectionDetailPageProps {
   params: Promise<{ id: string }>;
 }
@@ -252,7 +276,7 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
   const { data: inspection } = await supabase
     .from('inspections')
     .select(
-      'id, car_brand, car_model, year, vin, license_plate, license_plate_country, odometer, status, public_token, general_photos, service_history, diagnostics, equipment, tires, damages, final_assessment, created_at'
+      'id, car_brand, car_model, year, vin, license_plate, license_plate_country, odometer, status, public_token, general_photos, service_history, diagnostics, equipment, tires, damages, final_assessment, created_at, client_name, client_phone, client_email, show_inspector_on_pdf, show_client_on_pdf'
     )
     .eq('id', id)
     .eq('user_id', user.id)
@@ -344,6 +368,7 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
           initialDamages={toInitialDamages(inspection.damages)}
           initialDefects={initialDefects.length > 0 ? initialDefects : undefined}
           initialFinalAssessment={toInitialFinalAssessment(inspection.final_assessment)}
+          initialClientInfo={toInitialClientInfo(inspection)}
         />
       </div>
     );

@@ -102,6 +102,55 @@ export function SelectField({ label, hint, error, id, className, options, placeh
   );
 }
 
+interface ToggleFieldProps {
+  label: string;
+  hint?: string;
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  disabled?: boolean;
+  id?: string;
+}
+
+/**
+ * Linear Dark kapcsoló (toggle switch) -- Átvizsgáló és Ügyfél adatok + PDF
+ * megjelenítési kapcsolók lépés (2026-08-06), `StepSummary.tsx` "PDF megjelenítési
+ * beállítások" blokkja. Ugyanaz a `role="switch"`/`aria-checked` minta, mint a
+ * `TeamManagement.tsx` (Stripe design, `/settings` "Láthatja az összes céges
+ * riportot" kapcsolója), csak `linear-*` design-tokenekre öntve, mert ez a wizard
+ * (Linear Dark) felületén él -- a design rendszer FÜGGŐ színek (`bg-linear-primary`
+ * / `bg-linear-surface-2`) miatt nem lehetett a meglévő komponenst egy az egyben
+ * újrahasznosítani.
+ */
+export function ToggleField({ label, hint, checked, onChange, disabled, id }: ToggleFieldProps) {
+  return (
+    <label htmlFor={id} className="flex items-center justify-between gap-4 py-1">
+      <span className="min-w-0">
+        <span className="block text-[13px] font-medium text-linear-ink">{label}</span>
+        {hint && <span className="block text-[12px] text-linear-ink-subtle">{hint}</span>}
+      </span>
+      <button
+        id={id}
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        disabled={disabled}
+        onClick={() => onChange(!checked)}
+        className={cn(
+          'relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60',
+          checked ? 'bg-linear-primary' : 'bg-linear-surface-2'
+        )}
+      >
+        <span
+          className={cn(
+            'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform',
+            checked ? 'translate-x-[22px]' : 'translate-x-0.5'
+          )}
+        />
+      </button>
+    </label>
+  );
+}
+
 interface TextareaFieldProps extends TextareaHTMLAttributes<HTMLTextAreaElement>, FieldWrapperProps {
   /** Lásd `VoiceInputButton.tsx` `onDictationEnd` propját -- ha meg van adva, a diktálás
    * végén ez fut LE az alapértelmezett nyelvhelyesség-javítás HELYETT (pl.

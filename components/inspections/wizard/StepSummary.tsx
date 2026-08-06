@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import { AlertTriangle, CheckCircle2, MinusCircle, XCircle } from 'lucide-react';
 import { WizardSummaryFooter } from '@/components/inspections/wizard/WizardBottomBar';
+import { TextField, ToggleField } from '@/components/inspections/wizard/FormControls';
 import {
   FEATURE_STATUS_LABEL,
   FINAL_ASSESSMENT_RECOMMENDATION_LABEL,
@@ -21,6 +22,7 @@ import { isVideoUrl } from '@/lib/reports/media';
 import { DAMAGE_TYPE_LABEL } from '@/lib/inspections/constants';
 import type {
   CarInfoState,
+  ClientInfoState,
   DamagePointState,
   DefectState,
   DiagnosticsState,
@@ -45,6 +47,8 @@ interface StepSummaryProps {
   damages: DamagePointState[];
   defects: DefectState[];
   finalAssessment: FinalAssessmentState;
+  clientInfo: ClientInfoState;
+  onClientInfoChange: (value: ClientInfoState) => void;
   isSubmitting: boolean;
   submitError: string | null;
   onBack: () => void;
@@ -72,6 +76,8 @@ export function StepSummary({
   damages,
   defects,
   finalAssessment,
+  clientInfo,
+  onClientInfoChange,
   isSubmitting,
   submitError,
   onBack,
@@ -115,6 +121,69 @@ export function StepSummary({
           <SummaryField label="Alvázszám (VIN)" value={carInfo.vin || '—'} mono fullWidth />
           <SummaryField label="Általános fotók" value={generalPhotoCount > 0 ? `${generalPhotoCount} db` : '—'} />
         </dl>
+      </div>
+
+      {/* Átvizsgáló és Ügyfél adatok + PDF megjelenítési kapcsolók (2026-08-06) --
+          az EGYETLEN wizard-lépés, ahol az "Összegzés" mellett még ténylegesen
+          szerkeszthető mező is van: a "Megrendelő adatai" blokk (Név/Telefon/Email)
+          + a publikus riporton (PDF) az Átvizsgáló/Megrendelő blokk láthatóságát
+          vezérlő 2 kapcsoló. Szándékosan ITT, az Összegzés & Publikálás lépésen él,
+          nem egy külön wizard-lépésként -- ez a legutolsó állomás Publikálás előtt,
+          ahol a "mi kerüljön a bejelentkezés nélkül elérhető nyilvános linkre"
+          döntés amúgy is meghozandó (lásd `InspectionWizard.tsx` `handleSubmit`,
+          `inspector_id`/`client_*`/`show_*_on_pdf` mezők). Az Átvizsgáló NEVE nem
+          szerkeszthető itt -- azt a mentéskor a rendszer automatikusan a
+          bejelentkezett userre állítja, a kapcsoló KIZÁRÓLAG a megjelenítést
+          vezérli. */}
+      <div className="rounded-lg border border-linear-hairline bg-linear-surface-1 p-5">
+        <p className="text-[13px] font-semibold uppercase tracking-[0.4px] text-linear-ink-subtle">
+          Megrendelő adatai
+        </p>
+        <p className="mt-1 text-[12px] text-linear-ink-subtle">
+          Opcionális -- az autó tulajdonosának/megbízójának elérhetőségei.
+        </p>
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <TextField
+            label="Név"
+            name="client-name"
+            placeholder="Kovács János"
+            value={clientInfo.clientName}
+            onChange={(e) => onClientInfoChange({ ...clientInfo, clientName: e.target.value })}
+          />
+          <TextField
+            label="Telefon"
+            name="client-phone"
+            type="tel"
+            placeholder="+36 30 123 4567"
+            value={clientInfo.clientPhone}
+            onChange={(e) => onClientInfoChange({ ...clientInfo, clientPhone: e.target.value })}
+          />
+          <TextField
+            label="Email"
+            name="client-email"
+            type="email"
+            placeholder="kovacs.janos@example.com"
+            value={clientInfo.clientEmail}
+            onChange={(e) => onClientInfoChange({ ...clientInfo, clientEmail: e.target.value })}
+          />
+        </div>
+
+        <div className="mt-5 flex flex-col divide-y divide-linear-hairline border-t border-linear-hairline pt-1">
+          <ToggleField
+            id="show-inspector-on-pdf"
+            label="Átvizsgáló neve szerepeljen a PDF-en"
+            hint="A publikus riporton megjelenik, ki végezte a vizsgálatot."
+            checked={clientInfo.showInspectorOnPdf}
+            onChange={(next) => onClientInfoChange({ ...clientInfo, showInspectorOnPdf: next })}
+          />
+          <ToggleField
+            id="show-client-on-pdf"
+            label="Ügyfél adatai szerepeljenek a PDF-en"
+            hint="A fenti Név/Telefon/Email a bejelentkezés nélkül elérhető riportra kerül."
+            checked={clientInfo.showClientOnPdf}
+            onChange={(next) => onClientInfoChange({ ...clientInfo, showClientOnPdf: next })}
+          />
+        </div>
       </div>
 
       <div className="rounded-lg border border-linear-hairline bg-linear-surface-1 p-5">

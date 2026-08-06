@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import type { PublicReportData } from '@/lib/reports/types';
 import { ReportHeader } from '@/components/report/ReportHeader';
 import { ReportHero } from '@/components/report/ReportHero';
+import { InspectorClientCard } from '@/components/report/InspectorClientCard';
 import { GeneralPhotosGallery } from '@/components/report/GeneralPhotosGallery';
 import { ServiceHistoryCard } from '@/components/report/ServiceHistoryCard';
 import { DiagnosticsCard } from '@/components/report/DiagnosticsCard';
@@ -60,7 +61,8 @@ export default async function PublicReportPage({ params }: PublicReportPageProps
       <ReportHeader company={report.company} />
       <ReportHero inspection={report.inspection} />
 
-      <main className="mx-auto max-w-[1200px] px-4 sm:px-8 lg:px-12">
+      <main className="mx-auto max-w-[1200px] px-4 pt-16 sm:px-8 lg:px-12">
+        <InspectorClientCard inspection={report.inspection} />
         <GeneralPhotosGallery photos={report.inspection.general_photos} />
         <ServiceHistoryCard serviceHistory={report.inspection.service_history} />
         <DiagnosticsCard diagnostics={report.inspection.diagnostics} />
@@ -74,10 +76,7 @@ export default async function PublicReportPage({ params }: PublicReportPageProps
 
       <footer className="border-t border-bmw-hairline bg-bmw-surface-soft px-4 py-10 sm:px-8 lg:px-12 print:hidden">
         <div className="mx-auto max-w-[1200px] text-[13px] font-light text-bmw-muted">
-          <p>
-            Ezt a riportot {report.company?.company_name || 'a vizsgálatot végző partner'} készítette az Autó
-            Állapotfelmérő rendszerben.
-          </p>
+          <p>A riportot {report.company?.company_name || 'a vizsgálatot végző partner'} készítette.</p>
         </div>
       </footer>
     </div>

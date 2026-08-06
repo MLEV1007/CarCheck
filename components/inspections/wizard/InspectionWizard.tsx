@@ -24,6 +24,7 @@ import {
 import { isValidDot } from '@/lib/inspections/tireDot';
 import {
   EMPTY_CAR_INFO,
+  EMPTY_CLIENT_INFO,
   EMPTY_DEFECT,
   EMPTY_DIAGNOSTICS,
   EMPTY_FINAL_ASSESSMENT,
@@ -31,6 +32,7 @@ import {
   EMPTY_TIRE_GENERAL_INFO,
   EMPTY_TIRES,
   type CarInfoState,
+  type ClientInfoState,
   type DamagePointState,
   type DefectState,
   type DiagnosticsState,
@@ -78,6 +80,13 @@ interface InspectionWizardProps {
   initialDamages?: DamagePointState[];
   initialDefects?: DefectState[];
   initialFinalAssessment?: FinalAssessmentState;
+  /** Átvizsgáló és Ügyfél adatok + PDF megjelenítési kapcsolók (2026-08-06) --
+   * piszkozat szerkesztésekor a korábban mentett `client_name`/`client_phone`/
+   * `client_email`/`show_inspector_on_pdf`/`show_client_on_pdf` mezőkből épül fel
+   * (lásd `app/inspections/[id]/page.tsx` `toInitialClientInfo`), ÚJ vizsgálatnál
+   * nincs megadva -- ilyenkor `EMPTY_CLIENT_INFO` (a DB oszlopok default értékeivel
+   * megegyező alapállapot) a kezdeti érték. */
+  initialClientInfo?: ClientInfoState;
 }
 
 /**
@@ -110,6 +119,7 @@ export function InspectionWizard({
   initialDamages,
   initialDefects,
   initialFinalAssessment,
+  initialClientInfo,
 }: InspectionWizardProps = {}) {
   const router = useRouter();
   const [step, setStep] = useState<WizardStep>(1);
@@ -131,6 +141,7 @@ export function InspectionWizard({
   const [finalAssessment, setFinalAssessment] = useState<FinalAssessmentState>(
     initialFinalAssessment ?? EMPTY_FINAL_ASSESSMENT
   );
+  const [clientInfo, setClientInfo] = useState<ClientInfoState>(initialClientInfo ?? EMPTY_CLIENT_INFO);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [inspectionId] = useState<string>(() => initialInspectionId ?? crypto.randomUUID());
@@ -385,6 +396,19 @@ export function InspectionWizard({
           user_id: user.id,
           organization_id: organizationId,
           created_by: user.id,
+          // Átvizsgáló és Ügyfél adatok (2026-08-06) -- az `inspector_id` MINDIG a
+          // mentést ténylegesen végrehajtó bejelentkezett userre áll, automatikusan
+          // (nincs hozzá szerkeszthető UI-mező, lásd `ClientInfoState` JSDoc-ját a
+          // `lib/inspections/types.ts`-ben). A `client_*` mezők üresen `null`-lá
+          // alakulnak (ugyanaz a "üres string -> null" minta, mint pl. a
+          // `finalAssessmentPayload`-nál), a 2 kapcsoló (`show_*_on_pdf`) közvetlenül
+          // a `clientInfo` state-ből kerül be.
+          inspector_id: user.id,
+          client_name: clientInfo.clientName.trim() || null,
+          client_phone: clientInfo.clientPhone.trim() || null,
+          client_email: clientInfo.clientEmail.trim() || null,
+          show_inspector_on_pdf: clientInfo.showInspectorOnPdf,
+          show_client_on_pdf: clientInfo.showClientOnPdf,
           car_brand: carInfo.carBrand || null,
           car_model: carInfo.carModel || null,
           year: carInfo.year ? Number(carInfo.year) : null,
@@ -655,6 +679,8 @@ export function InspectionWizard({
               (defect) => defect.category.trim() !== '' || defect.description.trim() !== '' || defect.file
             )}
             finalAssessment={finalAssessment}
+            clientInfo={clientInfo}
+            onClientInfoChange={setClientInfo}
             isSubmitting={isSubmitting}
             submitError={submitError}
             onBack={() => setStep(10)}
