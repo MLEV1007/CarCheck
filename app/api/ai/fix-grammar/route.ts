@@ -3,6 +3,7 @@ import { GoogleGenAI } from '@google/genai';
 import { createClient } from '@/lib/supabase/server';
 import { hasEnoughCredits, deductCredits } from '@/lib/credits';
 import { checkAiQuota, consumeAiQuota } from '@/lib/quotas';
+import { hasInspectionClaimedAiCredit, claimInspectionAiCredit } from '@/lib/inspectionAiCredit';
 
 /**
  * Google Gemini backend az "Auto-Trigger AI Diktálás" lépéshez (2026-08-02) --
@@ -39,6 +40,10 @@ const FEATURE_NAME = 'grammar_fix';
 
 interface FixGrammarRequestBody {
   text: string;
+  /** A wizard-munkamenet vizsgálat-azonosítója -- lásd `scan-vin/route.ts` azonos mezőjének
+   * JSDoc-ját ("1 AI kredit = 1 vizsgálat", `lib/inspectionAiCredit.ts`). A `fix-grammar`
+   * is a KÖZÖS "1 kredit / vizsgálat" keretbe tartozik (2026-08-06-tól), nem önálló kredit. */
+  inspectionId: string;
 }
 
 interface FixGrammarSuccessResponse {
@@ -107,33 +112,44 @@ export async function POST(
     );
   }
 
-  // ELŐZETES KREDIT-ELLENŐRZÉS -- a Gemini API hívás ELŐTT. Lásd `parse-equipment/route.ts`
-  // JSDoc-ját; a tényleges levonás sikeres, érvényes válasz UTÁN, lent. A `hasEnoughCredits`
-  // 2026-08-03 óta szigorúan "fail-closed" (lásd `lib/credits.ts`) -- hiba esetén is `false`.
-  const hasCredits = await hasEnoughCredits(user.id, 1);
-  if (!hasCredits) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Nincs elegendő AI kredit a művelet elvégzéséhez.',
-        code: 'INSUFFICIENT_CREDITS',
-      },
-      { status: 402 }
-    );
+  const inspectionId = typeof body?.inspectionId === 'string' ? body.inspectionId.trim() : '';
+  if (!inspectionId) {
+    return NextResponse.json({ success: false, error: 'Az "inspectionId" mező kötelező.' }, { status: 400 });
   }
 
-  // ELŐZETES AI-KVÓTA ELLENŐRZÉS -- lásd `parse-equipment/route.ts` "ELŐZETES AI-KVÓTA
-  // ELLENŐRZÉS" JSDoc-kommentjét, ugyanaz a minta.
-  const hasAiQuota = await checkAiQuota(user.id);
-  if (!hasAiQuota) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Elfogyott a havi AI keret. A mezőt kézzel is kitöltheted.',
-        code: 'INSUFFICIENT_AI_QUOTA',
-      },
-      { status: 402 }
-    );
+  // "1 AI KREDIT = 1 VIZSGÁLAT" -- lásd `lib/inspectionAiCredit.ts` JSDoc-ját. Ha ez a
+  // vizsgálat MÁR "AI-aktív", a keret-ellenőrzést átugorjuk.
+  const alreadyClaimed = await hasInspectionClaimedAiCredit(user.id, inspectionId);
+
+  if (!alreadyClaimed) {
+    // ELŐZETES KREDIT-ELLENŐRZÉS -- a Gemini API hívás ELŐTT. Lásd `parse-equipment/route.ts`
+    // JSDoc-ját; a tényleges levonás sikeres, érvényes válasz UTÁN, lent. A `hasEnoughCredits`
+    // 2026-08-03 óta szigorúan "fail-closed" (lásd `lib/credits.ts`) -- hiba esetén is `false`.
+    const hasCredits = await hasEnoughCredits(user.id, 1);
+    if (!hasCredits) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Nincs elegendő AI kredit a művelet elvégzéséhez.',
+          code: 'INSUFFICIENT_CREDITS',
+        },
+        { status: 402 }
+      );
+    }
+
+    // ELŐZETES AI-KVÓTA ELLENŐRZÉS -- lásd `parse-equipment/route.ts` "ELŐZETES AI-KVÓTA
+    // ELLENŐRZÉS" JSDoc-kommentjét, ugyanaz a minta.
+    const hasAiQuota = await checkAiQuota(user.id);
+    if (!hasAiQuota) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Elfogyott a havi AI keret. A mezőt kézzel is kitöltheted.',
+          code: 'INSUFFICIENT_AI_QUOTA',
+        },
+        { status: 402 }
+      );
+    }
   }
 
   const ai = new GoogleGenAI({ apiKey });
@@ -179,19 +195,30 @@ export async function POST(
     return NextResponse.json({ success: false, error: 'A Gemini API üres választ adott.' }, { status: 502 });
   }
 
-  // KREDIT LEVONÁS -- KIZÁRÓLAG sikeres, érvényes Gemini-válasz UTÁN. Lásd
-  // `parse-equipment/route.ts` JSDoc-ját a hiba-esetek indoklásáról.
-  try {
-    await deductCredits(user.id, FEATURE_NAME, 1);
-  } catch (error) {
-    console.error('[fix-grammar] Kredit levonás sikertelen a sikeres AI hívás után:', error);
-  }
+  // "1 AI KREDIT = 1 VIZSGÁLAT" CLAIM + KREDIT/KVÓTA LEVONÁS -- KIZÁRÓLAG sikeres, érvényes
+  // Gemini-válasz UTÁN, és KIZÁRÓLAG ha ez a vizsgálat MÉG nem volt "AI-aktív". Lásd
+  // `lib/inspectionAiCredit.ts` JSDoc-ját a race-condition kezelésről.
+  if (!alreadyClaimed) {
+    let wonClaim = false;
+    try {
+      wonClaim = await claimInspectionAiCredit(user.id, inspectionId);
+    } catch (error) {
+      console.error('[fix-grammar] Vizsgálat AI-kredit claim sikertelen a sikeres AI hívás után:', error);
+    }
 
-  // AI-KVÓTA LEVONÁS -- lásd `parse-equipment/route.ts` ugyanezen kommentjét.
-  try {
-    await consumeAiQuota(user.id);
-  } catch (error) {
-    console.error('[fix-grammar] AI-kvóta levonás sikertelen a sikeres AI hívás után:', error);
+    if (wonClaim) {
+      try {
+        await deductCredits(user.id, FEATURE_NAME, 1);
+      } catch (error) {
+        console.error('[fix-grammar] Kredit levonás sikertelen a sikeres AI hívás után:', error);
+      }
+
+      try {
+        await consumeAiQuota(user.id);
+      } catch (error) {
+        console.error('[fix-grammar] AI-kvóta levonás sikertelen a sikeres AI hívás után:', error);
+      }
+    }
   }
 
   return NextResponse.json({ success: true, text: fixedText });

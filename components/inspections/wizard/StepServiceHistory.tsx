@@ -9,6 +9,7 @@ import { compressImageForAiScan } from '@/lib/inspections/aiImageCompression';
 import { SERVICE_ENTRY_TYPE_SUGGESTIONS, SERVICE_HISTORY_STATUS_DESCRIPTION, SERVICE_HISTORY_STATUS_LABEL } from '@/lib/inspections/constants';
 import { sanitizeServiceMileage } from '@/lib/inspections/validation';
 import { formatKmInput } from '@/lib/format';
+import { useInspectionId } from '@/components/inspections/wizard/InspectionIdContext';
 import {
   CREATE_GENERAL_PHOTO,
   EMPTY_SERVICE_DOCUMENT,
@@ -74,6 +75,7 @@ const STATUS_OPTIONS: ServiceHistoryStatus[] = ['full', 'partial', 'digital', 'n
 export function StepServiceHistory({ value, onChange, onBack, onNext, nextLabel }: StepServiceHistoryProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
+  const inspectionId = useInspectionId();
 
   // Gemini Vision AI szkenner (`/api/ai/scan-service-doc`, lásd a route JSDoc-ját) --
   // szervizkönyv-oldal VAGY számla/munkalap fotójából szerviz-bejegyzések (dátum/km óra
@@ -199,7 +201,7 @@ export function StepServiceHistory({ value, onChange, onBack, onNext, nextLabel 
         const response = await fetch('/api/ai/scan-service-doc', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image: imageDataUrl }),
+          body: JSON.stringify({ image: imageDataUrl, inspectionId }),
         });
 
         // 402 -- lásd a fenti JSDoc "Kredit/AI-keret kifogyás" szakaszát: NINCS blokkoló

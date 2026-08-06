@@ -5,6 +5,7 @@ import type { FeatureState, FeatureStatus } from '@/lib/inspections/types';
 import { createClient } from '@/lib/supabase/server';
 import { hasEnoughCredits, deductCredits } from '@/lib/credits';
 import { checkAiQuota, consumeAiQuota } from '@/lib/quotas';
+import { hasInspectionClaimedAiCredit, claimInspectionAiCredit } from '@/lib/inspectionAiCredit';
 
 /**
  * Google Gemini backend a Felszereltség modul "Hibrid Okos-Lista" hangalapú/szabadszöveges
@@ -91,6 +92,9 @@ interface ParseEquipmentRequestBody {
    * finomításnak tartjuk fenn (pl. hogy a modell tudja, mi volt már beállítva), a validáció
    * és a végleges válasz nem függ tőle. */
   currentStates?: FeatureState[];
+  /** A wizard-munkamenet vizsgálat-azonosítója -- lásd `scan-vin/route.ts` azonos mezőjének
+   * JSDoc-ját ("1 AI kredit = 1 vizsgálat", `lib/inspectionAiCredit.ts`). */
+  inspectionId: string;
 }
 
 interface ParsedEquipmentItem {
@@ -197,40 +201,51 @@ export async function POST(request: NextRequest): Promise<NextResponse<ParseEqui
     );
   }
 
-  // ELŐZETES KREDIT-ELLENŐRZÉS -- a Gemini API hívás ELŐTT, hogy elégtelen kredit esetén NE
-  // keletkezzen felesleges szerverköltség. Lásd a fenti JSDoc "Autentikáció + kredit-védelem"
-  // szakaszát; a tényleges levonás sikeres, érvényes válasz UTÁN, lent. A `hasEnoughCredits`
-  // (lásd `lib/credits.ts`) 2026-08-03 óta szigorúan "fail-closed" -- BÁRMILYEN hiba esetén
-  // (DB/hálózat/RLS) `false`-t ad vissza, SOSE dob kivételt idáig, ezért ez a `return 402`
-  // MINDEN bizonytalan állapotban lefut, a Gemini-hívás alább GARANTÁLTAN nem indul el.
-  const hasCredits = await hasEnoughCredits(user.id, 1);
-  if (!hasCredits) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Nincs elegendő AI kredit a művelet elvégzéséhez.',
-        code: 'INSUFFICIENT_CREDITS',
-      },
-      { status: 402 }
-    );
+  const inspectionId = typeof body?.inspectionId === 'string' ? body.inspectionId.trim() : '';
+  if (!inspectionId) {
+    return NextResponse.json({ success: false, error: 'Az "inspectionId" mező kötelező.' }, { status: 400 });
   }
 
-  // ELŐZETES AI-KVÓTA ELLENŐRZÉS (PROJEKT_INSTRUKCIOK.md "Keret-ellenőrző és fogyasztó
-  // logika" lépés, 2026-08-04) -- a fenti generikus kredit-ellenőrzés MELLETT, a Stripe
-  // csomaghoz (Starter/Pro) kötött havi AI-hívás keretet is ellenőrizzük. A `checkAiQuota`
-  // (lib/quotas.ts) szigorúan "fail-closed" -- hiba esetén is `false`. Ha elfogyott, ez a
-  // KONKRÉT AI-hívás blokkolódik (`INSUFFICIENT_AI_QUOTA`), DE a vizsgálat egyéb, kézi
-  // gépeléssel/kattintással kitölthető részei NEM -- ez a route nem érinti azokat.
-  const hasAiQuota = await checkAiQuota(user.id);
-  if (!hasAiQuota) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Elfogyott a havi AI keret. A mezőt kézzel is kitöltheted.',
-        code: 'INSUFFICIENT_AI_QUOTA',
-      },
-      { status: 402 }
-    );
+  // "1 AI KREDIT = 1 VIZSGÁLAT" -- lásd `lib/inspectionAiCredit.ts` JSDoc-ját. Ha ez a
+  // vizsgálat MÁR "AI-aktív", a keret-ellenőrzést átugorjuk.
+  const alreadyClaimed = await hasInspectionClaimedAiCredit(user.id, inspectionId);
+
+  if (!alreadyClaimed) {
+    // ELŐZETES KREDIT-ELLENŐRZÉS -- a Gemini API hívás ELŐTT, hogy elégtelen kredit esetén NE
+    // keletkezzen felesleges szerverköltség. Lásd a fenti JSDoc "Autentikáció + kredit-védelem"
+    // szakaszát; a tényleges levonás sikeres, érvényes válasz UTÁN, lent. A `hasEnoughCredits`
+    // (lásd `lib/credits.ts`) 2026-08-03 óta szigorúan "fail-closed" -- BÁRMILYEN hiba esetén
+    // (DB/hálózat/RLS) `false`-t ad vissza, SOSE dob kivételt idáig, ezért ez a `return 402`
+    // MINDEN bizonytalan állapotban lefut, a Gemini-hívás alább GARANTÁLTAN nem indul el.
+    const hasCredits = await hasEnoughCredits(user.id, 1);
+    if (!hasCredits) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Nincs elegendő AI kredit a művelet elvégzéséhez.',
+          code: 'INSUFFICIENT_CREDITS',
+        },
+        { status: 402 }
+      );
+    }
+
+    // ELŐZETES AI-KVÓTA ELLENŐRZÉS (PROJEKT_INSTRUKCIOK.md "Keret-ellenőrző és fogyasztó
+    // logika" lépés, 2026-08-04) -- a fenti generikus kredit-ellenőrzés MELLETT, a Stripe
+    // csomaghoz (Starter/Pro) kötött havi AI-hívás keretet is ellenőrizzük. A `checkAiQuota`
+    // (lib/quotas.ts) szigorúan "fail-closed" -- hiba esetén is `false`. Ha elfogyott, ez a
+    // KONKRÉT AI-hívás blokkolódik (`INSUFFICIENT_AI_QUOTA`), DE a vizsgálat egyéb, kézi
+    // gépeléssel/kattintással kitölthető részei NEM -- ez a route nem érinti azokat.
+    const hasAiQuota = await checkAiQuota(user.id);
+    if (!hasAiQuota) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Elfogyott a havi AI keret. A mezőt kézzel is kitöltheted.',
+          code: 'INSUFFICIENT_AI_QUOTA',
+        },
+        { status: 402 }
+      );
+    }
   }
 
   const ai = new GoogleGenAI({ apiKey });
@@ -381,20 +396,30 @@ export async function POST(request: NextRequest): Promise<NextResponse<ParseEqui
     seenIds.add(item.id);
   }
 
-  // KREDIT LEVONÁS -- KIZÁRÓLAG sikeres, érvényes Gemini-válasz UTÁN, lásd a fenti JSDoc
-  // "Autentikáció + kredit-védelem" szakaszát a hiba-esetek indoklásáról.
-  try {
-    await deductCredits(user.id, FEATURE_NAME, 1);
-  } catch (error) {
-    console.error('[parse-equipment] Kredit levonás sikertelen a sikeres AI hívás után:', error);
-  }
+  // "1 AI KREDIT = 1 VIZSGÁLAT" CLAIM + KREDIT/KVÓTA LEVONÁS -- KIZÁRÓLAG sikeres, érvényes
+  // Gemini-válasz UTÁN, és KIZÁRÓLAG ha ez a vizsgálat MÉG nem volt "AI-aktív". Lásd
+  // `lib/inspectionAiCredit.ts` JSDoc-ját a race-condition kezelésről.
+  if (!alreadyClaimed) {
+    let wonClaim = false;
+    try {
+      wonClaim = await claimInspectionAiCredit(user.id, inspectionId);
+    } catch (error) {
+      console.error('[parse-equipment] Vizsgálat AI-kredit claim sikertelen a sikeres AI hívás után:', error);
+    }
 
-  // AI-KVÓTA LEVONÁS -- ugyanaz az elv, mint a fenti generikus kredit-levonásnál: KIZÁRÓLAG
-  // sikeres, érvényes Gemini-válasz UTÁN, best-effort (hiba esetén csak logolva).
-  try {
-    await consumeAiQuota(user.id);
-  } catch (error) {
-    console.error('[parse-equipment] AI-kvóta levonás sikertelen a sikeres AI hívás után:', error);
+    if (wonClaim) {
+      try {
+        await deductCredits(user.id, FEATURE_NAME, 1);
+      } catch (error) {
+        console.error('[parse-equipment] Kredit levonás sikertelen a sikeres AI hívás után:', error);
+      }
+
+      try {
+        await consumeAiQuota(user.id);
+      } catch (error) {
+        console.error('[parse-equipment] AI-kvóta levonás sikertelen a sikeres AI hívás után:', error);
+      }
+    }
   }
 
   return NextResponse.json({ success: true, updates });

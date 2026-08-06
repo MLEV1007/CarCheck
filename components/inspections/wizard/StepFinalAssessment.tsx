@@ -11,6 +11,7 @@ import {
 import { sanitizeCostAmount } from '@/lib/inspections/validation';
 import { formatHufInput } from '@/lib/format';
 import { useInsufficientCredits } from '@/components/credits/InsufficientCreditsProvider';
+import { useInspectionId } from '@/components/inspections/wizard/InspectionIdContext';
 import type {
   CarInfoState,
   DamagePointState,
@@ -146,6 +147,7 @@ export function StepFinalAssessment({
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const { notifyInsufficientCredits } = useInsufficientCredits();
+  const inspectionId = useInspectionId();
 
   function setRecommendation(recommendation: FinalAssessmentRecommendation) {
     onChange({ ...value, recommendation: value.recommendation === recommendation ? null : recommendation });
@@ -163,7 +165,7 @@ export function StepFinalAssessment({
       const response = await fetch('/api/ai/generate-summary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ inspectionData: buildInspectionSnapshot(aiSummaryContext) }),
+        body: JSON.stringify({ inspectionData: buildInspectionSnapshot(aiSummaryContext), inspectionId }),
       });
 
       // 402 -- lásd `InsufficientCreditsProvider.tsx` (`INSUFFICIENT_CREDITS` VAGY az ÚJ

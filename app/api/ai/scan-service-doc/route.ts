@@ -3,6 +3,7 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { createClient } from '@/lib/supabase/server';
 import { hasEnoughCredits, deductCredits } from '@/lib/credits';
 import { checkAiQuota, consumeAiQuota } from '@/lib/quotas';
+import { hasInspectionClaimedAiCredit, claimInspectionAiCredit } from '@/lib/inspectionAiCredit';
 import { SERVICE_ENTRY_TYPE_SUGGESTIONS } from '@/lib/inspections/constants';
 
 /**
@@ -96,6 +97,9 @@ interface ScanServiceDocRequestBody {
    * kontraktus, mint a `scan-vin` route-nál. */
   image: string;
   mimeType?: string;
+  /** A wizard-munkamenet vizsgálat-azonosítója -- lásd `scan-vin/route.ts` azonos mezőjének
+   * JSDoc-ját ("1 AI kredit = 1 vizsgálat", `lib/inspectionAiCredit.ts`). */
+  inspectionId: string;
 }
 
 interface RawServiceEntry {
@@ -289,26 +293,37 @@ export async function POST(request: NextRequest): Promise<NextResponse<ScanServi
     );
   }
 
-  // ELŐZETES KREDIT-ELLENŐRZÉS -- lásd `parse-equipment/route.ts` azonos elvű kommentjét.
-  const hasCredits = await hasEnoughCredits(user.id, 1);
-  if (!hasCredits) {
-    return NextResponse.json(
-      { success: false, error: 'Nincs elegendő AI kredit a művelet elvégzéséhez.', code: 'INSUFFICIENT_CREDITS' },
-      { status: 402 }
-    );
+  const inspectionId = typeof body?.inspectionId === 'string' ? body.inspectionId.trim() : '';
+  if (!inspectionId) {
+    return NextResponse.json({ success: false, error: 'Az "inspectionId" mező kötelező.' }, { status: 400 });
   }
 
-  // ELŐZETES AI-KVÓTA ELLENŐRZÉS -- lásd `parse-equipment/route.ts` azonos elvű kommentjét.
-  const hasAiQuota = await checkAiQuota(user.id);
-  if (!hasAiQuota) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Elfogyott a havi AI keret. A mezőt kézzel is kitöltheted.',
-        code: 'INSUFFICIENT_AI_QUOTA',
-      },
-      { status: 402 }
-    );
+  // "1 AI KREDIT = 1 VIZSGÁLAT" -- lásd `lib/inspectionAiCredit.ts` JSDoc-ját. Ha ez a
+  // vizsgálat MÁR "AI-aktív", a keret-ellenőrzést átugorjuk.
+  const alreadyClaimed = await hasInspectionClaimedAiCredit(user.id, inspectionId);
+
+  if (!alreadyClaimed) {
+    // ELŐZETES KREDIT-ELLENŐRZÉS -- lásd `parse-equipment/route.ts` azonos elvű kommentjét.
+    const hasCredits = await hasEnoughCredits(user.id, 1);
+    if (!hasCredits) {
+      return NextResponse.json(
+        { success: false, error: 'Nincs elegendő AI kredit a művelet elvégzéséhez.', code: 'INSUFFICIENT_CREDITS' },
+        { status: 402 }
+      );
+    }
+
+    // ELŐZETES AI-KVÓTA ELLENŐRZÉS -- lásd `parse-equipment/route.ts` azonos elvű kommentjét.
+    const hasAiQuota = await checkAiQuota(user.id);
+    if (!hasAiQuota) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Elfogyott a havi AI keret. A mezőt kézzel is kitöltheted.',
+          code: 'INSUFFICIENT_AI_QUOTA',
+        },
+        { status: 402 }
+      );
+    }
   }
 
   const ai = new GoogleGenAI({ apiKey });
@@ -457,18 +472,30 @@ export async function POST(request: NextRequest): Promise<NextResponse<ScanServi
     detectedDocumentType: modelResponse.detectedDocumentType,
   };
 
-  // KREDIT + AI-KVÓTA LEVONÁS -- KIZÁRÓLAG sikeres, érvényes Gemini-válasz UTÁN, best-effort
-  // (hiba esetén csak logolva) -- lásd `parse-equipment/route.ts` JSDoc-ját az indoklásról.
-  try {
-    await deductCredits(user.id, FEATURE_NAME, 1);
-  } catch (error) {
-    console.error('[scan-service-doc] Kredit levonás sikertelen a sikeres AI hívás után:', error);
-  }
+  // "1 AI KREDIT = 1 VIZSGÁLAT" CLAIM + KREDIT/KVÓTA LEVONÁS -- KIZÁRÓLAG sikeres, érvényes
+  // Gemini-válasz UTÁN, és KIZÁRÓLAG ha ez a vizsgálat MÉG nem volt "AI-aktív". Lásd
+  // `lib/inspectionAiCredit.ts` JSDoc-ját a race-condition kezelésről.
+  if (!alreadyClaimed) {
+    let wonClaim = false;
+    try {
+      wonClaim = await claimInspectionAiCredit(user.id, inspectionId);
+    } catch (error) {
+      console.error('[scan-service-doc] Vizsgálat AI-kredit claim sikertelen a sikeres AI hívás után:', error);
+    }
 
-  try {
-    await consumeAiQuota(user.id);
-  } catch (error) {
-    console.error('[scan-service-doc] AI-kvóta levonás sikertelen a sikeres AI hívás után:', error);
+    if (wonClaim) {
+      try {
+        await deductCredits(user.id, FEATURE_NAME, 1);
+      } catch (error) {
+        console.error('[scan-service-doc] Kredit levonás sikertelen a sikeres AI hívás után:', error);
+      }
+
+      try {
+        await consumeAiQuota(user.id);
+      } catch (error) {
+        console.error('[scan-service-doc] AI-kvóta levonás sikertelen a sikeres AI hívás után:', error);
+      }
+    }
   }
 
   return NextResponse.json({ success: true, data });

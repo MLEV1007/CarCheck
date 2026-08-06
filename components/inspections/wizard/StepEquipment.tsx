@@ -16,6 +16,7 @@ import { TextareaField } from '@/components/inspections/wizard/FormControls';
 import { VinScanToast, type VinScanToastVariant } from '@/components/inspections/wizard/VinScanToast';
 import { WizardStepFooter } from '@/components/inspections/wizard/WizardBottomBar';
 import { useInsufficientCredits } from '@/components/credits/InsufficientCreditsProvider';
+import { useInspectionId } from '@/components/inspections/wizard/InspectionIdContext';
 import { joinDictatedText } from '@/lib/utils';
 import {
   EQUIPMENT_CATEGORY_LABEL,
@@ -329,6 +330,7 @@ function EquipmentAiAssistant({
   const [text, setText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const { notifyInsufficientCredits } = useInsufficientCredits();
+  const inspectionId = useInspectionId();
 
   /** "Auto-Trigger AI Diktálás" lépés (2026-08-02) -- `overrideText` az
    * `onDictationEnd`-ből érkezik (lásd a `TextareaField` hívását lent): a diktálás
@@ -349,7 +351,7 @@ function EquipmentAiAssistant({
       const response = await fetch('/api/ai/parse-equipment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: trimmed }),
+        body: JSON.stringify({ text: trimmed, inspectionId }),
       });
 
       // 402 -- lásd `InsufficientCreditsProvider.tsx` (`INSUFFICIENT_CREDITS` VAGY az ÚJ

@@ -18,6 +18,7 @@ import {
 import { formatKmInput } from '@/lib/format';
 import { LICENSE_PLATE_COUNTRIES } from '@/lib/inspections/constants';
 import { useInsufficientCredits } from '@/components/credits/InsufficientCreditsProvider';
+import { useInspectionId } from '@/components/inspections/wizard/InspectionIdContext';
 import type { CarInfoState } from '@/lib/inspections/types';
 
 const AI_SCAN_FAILURE_MESSAGE = 'Nem sikerült az AI-alapú beolvasás. Próbáld újra, vagy gépeld be manuálisan!';
@@ -112,6 +113,7 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
   const aiScanFileInputRef = useRef<HTMLInputElement>(null);
   const [isAiScanning, setIsAiScanning] = useState(false);
   const { notifyInsufficientCredits } = useInsufficientCredits();
+  const inspectionId = useInspectionId();
 
   const errors = getCarInfoErrors(value);
   const showError = (field: keyof CarInfoState) => (touched[field] || attemptedNext ? errors[field] : undefined);
@@ -177,7 +179,7 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
       const response = await fetch('/api/ai/scan-vin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: imageDataUrl }),
+        body: JSON.stringify({ image: imageDataUrl, inspectionId }),
       });
 
       // 402 -- lásd `InsufficientCreditsProvider.tsx` (`INSUFFICIENT_CREDITS` VAGY az ÚJ

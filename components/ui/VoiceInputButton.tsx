@@ -5,6 +5,7 @@ import { Loader2, Mic } from 'lucide-react';
 import { useSpeechToText } from '@/lib/hooks/useSpeechToText';
 import { cn, joinDictatedText } from '@/lib/utils';
 import { useInsufficientCredits } from '@/components/credits/InsufficientCreditsProvider';
+import { useInspectionId } from '@/components/inspections/wizard/InspectionIdContext';
 
 interface VoiceInputButtonProps {
   /** A cél mező (textarea/input) JELENLEGI tartalma -- a felismert szöveg ehhez fűződik. */
@@ -62,6 +63,7 @@ export function VoiceInputButton({
 }: VoiceInputButtonProps) {
   const [isFixingGrammar, setIsFixingGrammar] = useState(false);
   const { notifyInsufficientCredits } = useInsufficientCredits();
+  const inspectionId = useInspectionId();
 
   /** Alapértelmezett diktálás-vége viselkedés -- KIZÁRÓLAG akkor fut, ha a hívó fél NEM
    * adott meg egyedi `onDictationEnd`-et. Lásd a `/api/ai/fix-grammar` route JSDoc-ját a
@@ -74,7 +76,7 @@ export function VoiceInputButton({
       const response = await fetch('/api/ai/fix-grammar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: sessionText }),
+        body: JSON.stringify({ text: sessionText, inspectionId }),
       });
 
       // 402 -- lásd `InsufficientCreditsProvider.tsx` (`INSUFFICIENT_CREDITS` VAGY az ÚJ
