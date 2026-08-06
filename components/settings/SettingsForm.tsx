@@ -52,14 +52,28 @@ export function SettingsForm({
     setIsSaving(true);
 
     const supabase = createClient();
-    const { error: upsertError } = await supabase.from('profiles').upsert({
-      id: userId,
-      company_name: companyName.trim() || null,
-      phone: phone.trim() || null,
-      email: email.trim() || null,
-      logo_url: logoUrl,
-      primary_color: primaryColor.trim() || null,
-    });
+    // FONTOS (2026-08-07-es hibajavítás): SZÁNDÉKOSAN `.update().eq('id', userId)`, NEM
+    // `.upsert({ id: userId, ... })` -- a `profiles` sor mindig LÉTEZIK egy bejelentkezett
+    // userhez (regisztrációkor jön létre), tehát itt sosem szükséges INSERT ág. Az
+    // `.upsert()` viszont PostgREST alatt `INSERT ... ON CONFLICT (id) DO UPDATE`-et
+    // generál, ami a JELEN payloadban NEM szereplő, de NOT NULL (és default NÉLKÜLI)
+    // oszlopokra (pl. `organization_id`) MÉG EGY MEGLÉVŐ sor UPDATE-jénél IS lefuttatja a
+    // NOT NULL ellenőrzést a beszúrandó tuple megkonstruálásakor -- ez a valódi ok
+    // ("null value in column \"organization_id\" ... violates not-null constraint"), amiért
+    // ez a mentés korábban MINDIG hibával elszállt, "A mentés sikertelen volt" üzenettel.
+    // Egy sima `.update()` csak a megadott oszlopokat módosítja a MEGLÉVŐ soron, nem épít
+    // fel új tuple-t, ezért ez a probléma nála fel sem merül. Lásd `ReportThresholdsCard.tsx`
+    // ugyanerről a javításról.
+    const { error: upsertError } = await supabase
+      .from('profiles')
+      .update({
+        company_name: companyName.trim() || null,
+        phone: phone.trim() || null,
+        email: email.trim() || null,
+        logo_url: logoUrl,
+        primary_color: primaryColor.trim() || null,
+      })
+      .eq('id', userId);
 
     setIsSaving(false);
 

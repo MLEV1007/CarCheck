@@ -71,13 +71,23 @@ export function ReportThresholdsCard({ userId, initialThresholds }: ReportThresh
     setIsSaving(true);
 
     const supabase = createClient();
-    const { error: upsertError } = await supabase.from('profiles').upsert({
-      id: userId,
-      paint_threshold_gyari_max_micron: gyari,
-      paint_threshold_ujrafujt_max_micron: ujrafujt,
-      tire_age_warning_years: ageYears,
-      tire_tread_warning_mm: treadMm,
-    });
+    // FONTOS (2026-08-07-es hibajavítás): SZÁNDÉKOSAN `.update().eq('id', userId)`, NEM
+    // `.upsert({ id: userId, ... })` -- lásd a részletes indoklást `SettingsForm.tsx`
+    // ugyanerről a javításról. Röviden: az `.upsert()` PostgREST alatt egy `INSERT ...
+    // ON CONFLICT DO UPDATE`-et generál, ami a payloadban NEM szereplő, de NOT NULL (és
+    // default NÉLKÜLI) `organization_id` oszlopra MEGLÉVŐ sor UPDATE-jénél IS lefuttatta a
+    // NOT NULL ellenőrzést -- emiatt ez a mentés MINDIG hibával elszállt ("A mentés
+    // sikertelen volt"), a `profiles` tábla `null value in column "organization_id" ...
+    // violates not-null constraint` Postgres-hibájával a háttérben.
+    const { error: upsertError } = await supabase
+      .from('profiles')
+      .update({
+        paint_threshold_gyari_max_micron: gyari,
+        paint_threshold_ujrafujt_max_micron: ujrafujt,
+        tire_age_warning_years: ageYears,
+        tire_tread_warning_mm: treadMm,
+      })
+      .eq('id', userId);
 
     setIsSaving(false);
 
