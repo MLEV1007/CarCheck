@@ -14,6 +14,12 @@ interface LicensePlateBadgeProps {
    * (alapértelmezett) mindenhol máshol (Wizard Áttekintés, `/inspections/[id]` adatlap,
    * Publikus Riport hero). */
   size?: 'sm' | 'md';
+  /** Alapértelmezetten `true` -- a kék sávban a betűkód mellett megjelenő EU-csillag.
+   * A Publikus Riport hero-ja (`ReportHero.tsx`) `false`-ra állítja (felhasználói kérés,
+   * 2026-08-06): az ügyfélnek szánt riporton a csillag feleslegesnek/zajosnak hatott,
+   * a szakértői felületeken (Wizard Áttekintés, `/inspections/[id]`) VÁLTOZATLANUL
+   * megmarad. */
+  showStar?: boolean;
 }
 
 /**
@@ -51,7 +57,13 @@ interface LicensePlateBadgeProps {
  * Ha nincs megadva rendszám, egyszerű "—" jelenik meg badge nélkül (ugyanaz a fallback,
  * mint a rendszám eddigi sima szöveges megjelenítésénél).
  */
-export function LicensePlateBadge({ value, className, countryCode, size = 'md' }: LicensePlateBadgeProps) {
+export function LicensePlateBadge({
+  value,
+  className,
+  countryCode,
+  size = 'md',
+  showStar = true,
+}: LicensePlateBadgeProps) {
   if (!value) return <span className={className}>—</span>;
 
   const isCompact = size === 'sm';
@@ -71,7 +83,9 @@ export function LicensePlateBadge({ value, className, countryCode, size = 'md' }
           isCompact ? 'min-w-[24px] px-1.5 text-[10px]' : 'min-w-[28px] px-2 text-[11px]'
         )}
       >
-        <Star className={cn('shrink-0 fill-[#ffcc00] text-[#ffcc00]', isCompact ? 'h-[7px] w-[7px]' : 'h-2 w-2')} />
+        {showStar && (
+          <Star className={cn('shrink-0 fill-[#ffcc00] text-[#ffcc00]', isCompact ? 'h-[7px] w-[7px]' : 'h-2 w-2')} />
+        )}
         {resolvedCountryCode}
       </span>
       <span

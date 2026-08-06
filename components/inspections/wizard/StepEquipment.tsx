@@ -309,9 +309,13 @@ export function StepEquipment({ value, onChange, onBack, onNext, nextLabel }: St
  * így nem kellett külön mikrofon-komponenst építeni -- ugyanaz a bevált, projekt-szintű
  * hangalapú bevitel, mint minden más hosszabb Megjegyzés/Leírás mezőnél.
  *
- * A "Feldolgozás AI-val" gomb a `/api/ai/parse-equipment` route-ot hívja (lásd az előző
- * fejlesztési lépés) -- a válasz `updates` tömbjét az `onApplyUpdates` callback-en
- * keresztül adja tovább a szülőnek, a siker/hiba visszajelzést pedig az `onToast`-on.
+ * A mikrofon kikapcsolásakor a `TextareaField` `onDictationEnd` callback-je AUTOMATIKUSAN
+ * meghívja a `/api/ai/parse-equipment` route-ot hívó `handleProcess()`-t -- külön "Feldolgozás
+ * AI-val" gomb NEM kell, mert a diktálás vége önmagában elindítja a feldolgozást (lásd
+ * "Auto-Trigger AI Diktálás", 39. szakasz). A gomb 2026-08-06-án el lett távolítva, mert a
+ * kézi indítás redundáns volt a beépített auto-trigger mellett. A válasz `updates` tömbjét
+ * az `onApplyUpdates` callback-en keresztül adja tovább a szülőnek, a siker/hiba
+ * visszajelzést pedig az `onToast`-on.
  */
 function EquipmentAiAssistant({
   value,
@@ -332,8 +336,10 @@ function EquipmentAiAssistant({
    * át, NEM a `text` React state-re támaszkodva -- ez elkerüli azt az elméleti
    * race condition-t, hogy a `text` state a `onSessionEnd` böngésző-esemény
    * lefutásakor még nem feltétlenül frissült a legutolsó `onresult`-ból (a state-
-   * frissítés aszinkron). Kézi gombnyomásnál (`overrideText` nincs megadva) a
-   * jelenlegi `text` state-et használja, változatlanul. */
+   * frissítés aszinkron). A kézi "Feldolgozás AI-val" gomb 2026-08-06-án eltávolításra
+   * került (redundáns volt az auto-trigger mellett), így `overrideText` a gyakorlatban
+   * MINDIG megadott -- az opcionális paraméter csak azért maradt, hogy a függvény
+   * jövőbeli, kézi hívási móddal is kompatibilis maradjon módosítás nélkül. */
   async function handleProcess(overrideText?: string) {
     const trimmed = (overrideText ?? text).trim();
     if (!trimmed || isProcessing) return;
@@ -421,18 +427,13 @@ function EquipmentAiAssistant({
         }}
       />
 
-      <div className="mt-3 flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={() => handleProcess()}
-          disabled={!text.trim() || isProcessing}
-          className="inline-flex h-10 items-center gap-1.5 rounded-md bg-linear-primary px-4 text-[13px] font-semibold text-white transition-colors hover:bg-linear-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
-          {isProcessing ? 'AI értelmezi a diktálást…' : 'Feldolgozás AI-val'}
-        </button>
-        {isProcessing && <span className="text-[12px] text-linear-ink-subtle">Ez néhány másodpercig tarthat…</span>}
-      </div>
+      {isProcessing && (
+        <div className="mt-3 flex items-center gap-1.5 text-[13px] font-medium text-linear-ink-subtle">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          AI értelmezi a diktálást…
+          <span className="text-[12px] text-linear-ink-subtle">Ez néhány másodpercig tarthat…</span>
+        </div>
+      )}
     </div>
   );
 }
