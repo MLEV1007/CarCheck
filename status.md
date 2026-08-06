@@ -1728,6 +1728,17 @@ A tényleges hiba a **Supabase Storage `inspection-media` bucket `storage.object
 
 **Git:** ÚJ: nincs; MÓDOSÍTOTT: `components/settings/SettingsForm.tsx`, `components/settings/ReportThresholdsCard.tsx`, `status.md`.
 
+### 70. Dashboard navbar közepén lévő CarPass logó nagyítása (2026-08-07)
+[Linear Dark Design Style]
+
+**Felhasználói kérés:** a `DashboardHeader.tsx` navbar KÖZEPÉN elhelyezett teljes CarPass logó-lockup (ikon + wordmark + alcím) túl kicsi volt, screenshot alapján -- "vedd nagyobbra, szép könnyen olvasható méretű legyen".
+
+**Megoldás:** `DashboardHeader.tsx` -- a `<CarPassLogo variant="auto" size={28} />` -> `size={40}` (a `CarPassLogo` komponens alapértelmezett mérete, lásd `CarPassLogo.tsx`). A wordmark/alcím betűmérete a `size`-ból arányosan skálázódik (`wordmarkFontSize = size * 0.55`, `subtitleFontSize`), tehát ez az egyetlen módosítás mind az ikont, mind a szöveget nagyobbra állítja, arányosan. A header `h-16` (64px) magassága bőven elegendő hely a 40px-es ikonhoz + a fölé/alá kerülő wordmark/alcím szöveg-stackhez, nem csordul túl.
+
+**Ellenőrzés:** `npx tsc --noEmit` -- SZINKRON, egyetlen bash-hívásban futtatva, hibamentes, exit code 0. Élő böngésző-teszt (a nagyított logó ténylegesen nem lóg-e ki a 64px-es navbarból, mobil nézeten -- ahol a középső logó amúgy is rejtve marad `sm:` alatt -- nincs hatása) MÉG HÁTRAVAN.
+
+**Git:** ÚJ: nincs; MÓDOSÍTOTT: `components/dashboard/DashboardHeader.tsx`, `status.md`.
+
 ## Verziókezelés
 - GitHub repó: `https://github.com/MLEV1007/CarCheck` (`main` ág).
 - A `/inspections/[id]` szerkesztő/részletező oldalt (`d475379`) és a márka/típus dropdown + validáció + Általános autó fotók modult (`6f274d7`) tartalmazó korábbi commitok korábban push-olva lettek `origin/main`-re.

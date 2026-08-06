@@ -49,7 +49,7 @@ export function DashboardHeader({ companyName, logoUrl, role = 'manager' }: Dash
         aria-label="CarPass -- vissza a dashboardra"
         className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 sm:block"
       >
-        <CarPassLogo variant="auto" size={28} />
+        <CarPassLogo variant="auto" size={40} />
       </Link>
 
       <div className="flex shrink-0 items-center gap-3">
