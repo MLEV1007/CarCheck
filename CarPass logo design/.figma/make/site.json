@@ -1,0 +1,10 @@
+{
+  "description": "Streamline vehicle inspection processes with an intuitive platform designed for car owners and service providers, ensuring thorough assessments and transparency.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

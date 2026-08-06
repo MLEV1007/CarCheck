@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { CarPassLogo } from '@/components/branding/CarPassLogo';
 
 interface AuthLayoutProps {
   eyebrow: string;
@@ -34,14 +35,10 @@ export function AuthLayout({ eyebrow, title, subtitle, children, footer }: AuthL
       </div>
 
       <div className="relative z-10 flex w-full flex-col items-center">
-        {/* Logo / wordmark helye -- cseréld le a tényleges céglogóra */}
-        <div className="mb-10 flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-stripe-md bg-stripe-primary font-sohne text-[15px] font-medium text-white">
-            C
-          </div>
-          <span className="font-sohne text-[16px] font-normal text-stripe-ink">
-            CarPass
-          </span>
+        {/* CarPass logó -- a felhasználó által mellékelt referencia-design "light" (világos
+            hátterű) variánsa, lásd `components/branding/CarPassLogo.tsx`. */}
+        <div className="mb-10">
+          <CarPassLogo variant="light" size={34} />
         </div>
 
         <div className="w-full max-w-[420px] rounded-stripe-lg border border-stripe-hairline bg-white p-8 shadow-stripe-1">

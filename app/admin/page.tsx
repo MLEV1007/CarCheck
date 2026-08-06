@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ArrowLeft, ShieldCheck } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { isPlatformAdmin } from '@/lib/auth/roles';
 import { AdminOrganizationsTable, type AdminOrganizationRow } from '@/components/admin/AdminOrganizationsTable';
+import { CarPassMark } from '@/components/branding/CarPassLogo';
 
 export const metadata: Metadata = {
   title: 'Platform Admin | CarPass',
@@ -103,7 +104,7 @@ export default async function AdminPage() {
         >
           <ArrowLeft className="h-4 w-4" />
         </Link>
-        <ShieldCheck className="h-4 w-4 text-linear-primary" />
+        <CarPassMark size={20} />
         <span className="flex-1 text-[14px] font-medium text-linear-ink">Platform Admin -- Szervezetek</span>
       </header>
 

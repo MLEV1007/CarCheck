@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Settings } from 'lucide-react';
 import { SignOutButton } from '@/components/auth/SignOutButton';
 import { HeaderCreditBadge } from '@/components/credits/HeaderCreditBadge';
+import { CarPassMark } from '@/components/branding/CarPassLogo';
 
 interface DashboardHeaderProps {
   companyName: string | null;
@@ -16,8 +17,11 @@ interface DashboardHeaderProps {
 
 /**
  * Linear design system (linear.md): `top-nav` -- canvas háttér, hairline alsó szegély,
- * 56-64px magasság, body-sm tipográfia. Bal oldalon a céges branding (logó vagy
- * kezdőbetű-monogram, ha még nincs feltöltve logó), jobb oldalon navigáció + kijelentkezés.
+ * 56-64px magasság, body-sm tipográfia. Bal oldalon a platform-márka (CarPass ikon,
+ * lásd `components/branding/CarPassLogo.tsx`) + egy elválasztó vonal + a céges branding
+ * (logó vagy kezdőbetű-monogram, ha még nincs feltöltve logó) -- a kettő SZÁNDÉKOSAN
+ * elkülönül: a CarPass ikon a szoftver-terméket, a mellette lévő név/logó a bejelentkezett
+ * autóvizsgáló céget (bérlőt) azonosítja. Jobb oldalon navigáció + kijelentkezés.
  */
 export function DashboardHeader({ companyName, logoUrl, role = 'manager' }: DashboardHeaderProps) {
   const displayName = companyName || 'CarPass';
@@ -25,6 +29,8 @@ export function DashboardHeader({ companyName, logoUrl, role = 'manager' }: Dash
   return (
     <header className="flex h-16 items-center justify-between border-b border-linear-hairline px-4 sm:px-6">
       <div className="flex min-w-0 items-center gap-2.5">
+        <CarPassMark size={22} className="shrink-0" />
+        <div className="h-5 w-px shrink-0 bg-linear-hairline" aria-hidden="true" />
         {logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- a logó a Supabase Storage-ból, tetszőleges méretben érkezik
           <img src={logoUrl} alt={displayName} className="h-7 w-7 shrink-0 rounded-md object-cover" />

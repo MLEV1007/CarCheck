@@ -1,0 +1,48 @@
+<svg width="52" height="58" viewBox="0 0 52 58" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="shieldGrad" x1="0" y1="0" x2="52" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1a7cff" />
+      <stop offset="100%" stop-color="#0a4fcc" />
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0" y1="0" x2="52" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#22d3a5" />
+      <stop offset="100%" stop-color="#16b28a" />
+    </linearGradient>
+  </defs>
+
+  <path
+    d="M26 1.5L3 10.2v16.5C3 39.3 13.1 51.1 26 54.5 38.9 51.1 49 39.3 49 26.7V10.2L26 1.5Z"
+    fill="url(#shieldGrad)"
+  />
+  <path
+    d="M26 5.5L6.5 13.2v13.5C6.5 37.5 15.3 48.1 26 51 36.7 48.1 45.5 37.5 45.5 26.7V13.2L26 5.5Z"
+    fill="rgba(255,255,255,0.07)"
+  />
+
+  <g transform="translate(12, 20)">
+    <path
+      d="M2 10 L4 6 Q5.5 3.5 9 3 L19 3 Q22.5 3.5 24 6 L26 10 L27 10 Q28.2 10 28.2 11.2 L28.2 14 Q28.2 15 27 15 L1 15 Q0 15 0 14 L0 11.2 Q0 10 1 10 Z"
+      fill="rgba(255,255,255,0.9)"
+    />
+    <path
+      d="M5.5 9.5 L7.5 5.2 Q8.2 4 9.5 3.8 L18.5 3.8 Q19.8 4 20.5 5.2 L22.5 9.5 Z"
+      fill="rgba(34, 211, 165, 0.85)"
+    />
+    <circle cx="6" cy="15" r="3.5" fill="#0d1a35" />
+    <circle cx="6" cy="15" r="2" fill="#4a7fff" />
+    <circle cx="22" cy="15" r="3.5" fill="#0d1a35" />
+    <circle cx="22" cy="15" r="2" fill="#4a7fff" />
+    <rect x="8" y="11" width="12" height="1.2" rx="0.6" fill="rgba(255,255,255,0.15)" />
+  </g>
+
+  <circle cx="40" cy="44" r="10" fill="#0d1117" />
+  <circle cx="40" cy="44" r="8.5" fill="url(#accentGrad)" />
+  <path
+    d="M35.5 44 L38.5 47 L44.5 41"
+    stroke="#ffffff"
+    stroke-width="2.2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    fill="none"
+  />
+</svg>
