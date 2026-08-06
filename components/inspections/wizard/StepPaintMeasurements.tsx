@@ -1,10 +1,10 @@
 'use client';
 
-import { getOverallPaintAverage, getPaintStatus } from '@/lib/inspections/constants';
+import { DEFAULT_REPORT_THRESHOLDS, getOverallPaintAverage, getPaintStatus } from '@/lib/inspections/constants';
 import { PaintCanvas } from '@/components/inspections/PaintCanvas';
 import { PaintStatusBadge } from '@/components/inspections/wizard/PaintStatusBadge';
 import { WizardStepFooter } from '@/components/inspections/wizard/WizardBottomBar';
-import type { PaintPointState } from '@/lib/inspections/types';
+import type { PaintPointState, ReportThresholds } from '@/lib/inspections/types';
 
 interface StepPaintMeasurementsProps {
   value: PaintPointState[];
@@ -13,6 +13,9 @@ interface StepPaintMeasurementsProps {
   onNext: () => void;
   /** A KÖVETKEZŐ lépés rövid címe -- lásd StepCarInfo.tsx ugyanerről a propról. */
   nextLabel: string;
+  /** Riport küszöbértékek (2026-08-07) -- lásd `InspectionWizard.tsx` JSDoc-ját.
+   * Alapértéke `DEFAULT_REPORT_THRESHOLDS`, ha a szülő nem adja át. */
+  thresholds?: ReportThresholds;
 }
 
 /**
@@ -24,9 +27,16 @@ interface StepPaintMeasurementsProps {
  * törölhető. A lépés tetején egy kiemelt kártya mutatja a TELJES AUTÓ ÁTLAGÁT (az
  * összes felvett pont egyszerű matematikai átlaga) és a felvett pontok számát.
  */
-export function StepPaintMeasurements({ value, onChange, onBack, onNext, nextLabel }: StepPaintMeasurementsProps) {
+export function StepPaintMeasurements({
+  value,
+  onChange,
+  onBack,
+  onNext,
+  nextLabel,
+  thresholds = DEFAULT_REPORT_THRESHOLDS,
+}: StepPaintMeasurementsProps) {
   const overallAverage = getOverallPaintAverage(value);
-  const overallStatus = overallAverage !== null ? getPaintStatus(overallAverage) : null;
+  const overallStatus = overallAverage !== null ? getPaintStatus(overallAverage, thresholds) : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -36,8 +46,9 @@ export function StepPaintMeasurements({ value, onChange, onBack, onNext, nextLab
           Kattints az autó-képen BÁRHOVA egy mérési pont (µm) felvételéhez -- nincs előre
           megadott elem, szabadon annyi pontot vehetsz fel, amennyire szükséged van. Egy
           meglévő buborékra kattintva módosíthatod az értékét, vagy törölheted a pontot.
-          Státusz: 80–150 µm Gyári, 151–250 µm Újrafújt / Javított, 250 µm felett Gittelt
-          / Sérült.
+          Státusz: 0–{thresholds.paintGyariMaxMicron} µm Gyári, {thresholds.paintGyariMaxMicron + 1}–
+          {thresholds.paintUjrafujtMaxMicron} µm Újrafújt / Javított, {thresholds.paintUjrafujtMaxMicron} µm felett
+          Gittelt / Sérült (a küszöbök a Beállítások oldalon testreszabhatók).
         </p>
       </div>
 
@@ -56,7 +67,7 @@ export function StepPaintMeasurements({ value, onChange, onBack, onNext, nextLab
         {overallStatus && <PaintStatusBadge status={overallStatus} />}
       </div>
 
-      <PaintCanvas points={value} mode="edit" onChange={onChange} theme="dark" />
+      <PaintCanvas points={value} mode="edit" onChange={onChange} theme="dark" thresholds={thresholds} />
 
       <WizardStepFooter onBack={onBack} onNext={onNext} nextLabel={nextLabel} />
     </div>

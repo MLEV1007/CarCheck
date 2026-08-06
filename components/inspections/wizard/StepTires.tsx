@@ -3,10 +3,24 @@
 import { AlertTriangle, ClipboardCopy } from 'lucide-react';
 import { SelectField, TextField } from '@/components/inspections/wizard/FormControls';
 import { WizardStepFooter } from '@/components/inspections/wizard/WizardBottomBar';
-import { RIM_TYPES, RIM_TYPE_LABEL, TIRE_BRAND_OTHER, TIRE_BRANDS, TIRE_POSITIONS } from '@/lib/inspections/constants';
-import { decodeDot, getMaxDotYearSuffix } from '@/lib/inspections/tireDot';
+import {
+  DEFAULT_REPORT_THRESHOLDS,
+  RIM_TYPES,
+  RIM_TYPE_LABEL,
+  TIRE_BRAND_OTHER,
+  TIRE_BRANDS,
+  TIRE_POSITIONS,
+} from '@/lib/inspections/constants';
+import { decodeDot, getMaxDotYearSuffix, isTreadWorn } from '@/lib/inspections/tireDot';
 import { sanitizeDotCode, sanitizeMm } from '@/lib/inspections/validation';
-import type { RimType, TireGeneralInfoState, TireMeasurementState, TirePosition, TiresState } from '@/lib/inspections/types';
+import type {
+  ReportThresholds,
+  RimType,
+  TireGeneralInfoState,
+  TireMeasurementState,
+  TirePosition,
+  TiresState,
+} from '@/lib/inspections/types';
 
 interface StepTiresProps {
   value: TiresState;
@@ -17,6 +31,10 @@ interface StepTiresProps {
   onNext: () => void;
   /** A KÖVETKEZŐ lépés rövid címe -- lásd StepCarInfo.tsx ugyanerről a propról. */
   nextLabel: string;
+  /** Riport küszöbértékek (2026-08-07) -- lásd `InspectionWizard.tsx` JSDoc-ját. A
+   * "Koros gumiabroncs" (DOT-kor) ÉS az ÚJ "Kopott gumiabroncs" (profilmélység)
+   * figyelmeztetés is ezekkel számol. Alapértéke `DEFAULT_REPORT_THRESHOLDS`. */
+  thresholds?: ReportThresholds;
 }
 
 /**
@@ -48,6 +66,7 @@ export function StepTires({
   onBack,
   onNext,
   nextLabel,
+  thresholds = DEFAULT_REPORT_THRESHOLDS,
 }: StepTiresProps) {
   const maxYearSuffix = getMaxDotYearSuffix();
   const hasInvalidDot = TIRE_POSITIONS.some(
@@ -123,9 +142,11 @@ export function StepTires({
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {TIRE_POSITIONS.map(({ position, label }, index) => {
           const tire = value[position];
-          const decoded = tire.dot.length === 4 ? decodeDot(tire.dot) : null;
+          const decoded = tire.dot.length === 4 ? decodeDot(tire.dot, undefined, thresholds) : null;
           const showInvalidError = tire.dot.length === 4 && !decoded;
           const canCopy = index > 0;
+          const mmValue = tire.mm.trim() === '' ? null : Number(tire.mm);
+          const treadWorn = mmValue !== null && !Number.isNaN(mmValue) && isTreadWorn(mmValue, thresholds);
 
           return (
             <div key={position} className="rounded-lg border border-linear-hairline bg-linear-surface-1 p-4">
@@ -191,6 +212,18 @@ export function StepTires({
                     Gyártás: {decoded.label}
                     {decoded.isOld ? ' -- Koros gumiabroncs' : ''}
                   </span>
+                </div>
+              )}
+
+              {/* "Kopott gumiabroncs" figyelmeztetés (ÚJ, 2026-08-07) -- korábban a
+                  profilmélységhez (mm) egyáltalán nem létezett automatikus jelzés, csak a
+                  nyers érték volt látható. UGYANAZ a vizuális minta, mint a fenti "Koros
+                  gumiabroncs" DOT-figyelmeztetésnél, hogy a két jelzés konzisztensnek
+                  tűnjön -- lásd `isTreadWorn()` a `lib/inspections/tireDot.ts`-ben. */}
+              {treadWorn && (
+                <div className="mt-2 flex items-center gap-2 rounded-md bg-linear-warning-soft px-3 py-2 text-[12px] font-medium text-linear-warning">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  <span>Kopott profilmélység (≤{thresholds.tireTreadWarningMm} mm)</span>
                 </div>
               )}
             </div>

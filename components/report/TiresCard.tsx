@@ -1,11 +1,16 @@
 import { AlertTriangle } from 'lucide-react';
 import { SectionHeading } from '@/components/report/SectionHeading';
-import { RIM_TYPE_LABEL, TIRE_AGE_WARNING_YEARS, TIRE_POSITIONS } from '@/lib/inspections/constants';
-import { decodeDot } from '@/lib/inspections/tireDot';
+import { DEFAULT_REPORT_THRESHOLDS, RIM_TYPE_LABEL, TIRE_POSITIONS } from '@/lib/inspections/constants';
+import { decodeDot, isTreadWorn } from '@/lib/inspections/tireDot';
 import type { PublicReportTiresData } from '@/lib/reports/types';
+import type { ReportThresholds } from '@/lib/inspections/types';
 
 interface TiresCardProps {
   tires: PublicReportTiresData;
+  /** Riport küszöbértékek (2026-08-07) -- a vizsgálatot végző cég `profiles` sorából,
+   * a `get_public_report` RPC `company` objektumán keresztül (lásd
+   * `app/report/[public_token]/page.tsx`). Alapértéke `DEFAULT_REPORT_THRESHOLDS`. */
+  thresholds?: ReportThresholds;
 }
 
 /**
@@ -17,7 +22,7 @@ interface TiresCardProps {
  * számolt értéket jeleníti meg, hanem a tárolt DOT kódból mindig frissen számolja ki a
  * gyártási hetet/évet és a "koros gumiabroncs" (5+ év) figyelmeztetést.
  */
-export function TiresCard({ tires }: TiresCardProps) {
+export function TiresCard({ tires, thresholds = DEFAULT_REPORT_THRESHOLDS }: TiresCardProps) {
   const hasAnyData = TIRE_POSITIONS.some(({ position }) => {
     const tire = tires[position];
     return tire && (tire.mm != null || tire.dot);
@@ -51,37 +56,49 @@ export function TiresCard({ tires }: TiresCardProps) {
       <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
         {TIRE_POSITIONS.map(({ position, label }) => {
           const tire = tires[position];
-          const decoded = tire?.dot ? decodeDot(tire.dot) : null;
+          const decoded = tire?.dot ? decodeDot(tire.dot, undefined, thresholds) : null;
           const isOld = decoded?.isOld ?? false;
+          const treadWorn = tire?.mm != null && isTreadWorn(tire.mm, thresholds);
+          const hasWarning = isOld || treadWorn;
 
           return (
             <div
               key={position}
               className={
                 'rounded-none border px-5 py-4 ' +
-                (isOld ? 'border-bmw-warning bg-[#fef8ec]' : 'border-bmw-hairline-strong bg-bmw-surface-card')
+                (hasWarning ? 'border-bmw-warning bg-[#fef8ec]' : 'border-bmw-hairline-strong bg-bmw-surface-card')
               }
             >
               <p className="text-[13px] font-bold uppercase tracking-[0.5px] text-bmw-muted">{label}</p>
 
               <div className="mt-2 flex items-end justify-between gap-3">
-                <span className="text-[28px] font-bold tabular-nums text-bmw-ink">
+                <span className={'text-[28px] font-bold tabular-nums ' + (treadWorn ? 'text-[#92620a]' : 'text-bmw-ink')}>
                   {tire?.mm != null ? tire.mm : '—'}
                   <span className="ml-1 text-[14px] font-light text-bmw-muted">mm</span>
                 </span>
                 {tire?.dot && <span className="font-mono text-[13px] text-bmw-muted">DOT {tire.dot}</span>}
               </div>
 
+              {/* "Kopott gumiabroncs" figyelmeztetés (ÚJ, 2026-08-07) -- korábban a
+                  profilmélységhez egyáltalán nem létezett automatikus jelzés a publikus
+                  riporton sem, csak a nyers mm-érték. Lásd `isTreadWorn()`. */}
+              {treadWorn && (
+                <p className="mt-3 flex items-center gap-1.5 text-[12px] font-bold text-[#92620a]">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  Kopott profilmélység (≤{thresholds.tireTreadWarningMm} mm)
+                </p>
+              )}
+
               {decoded && (
                 <p
                   className={
-                    'mt-3 flex items-center gap-1.5 text-[12px] font-bold ' +
+                    'mt-2 flex items-center gap-1.5 text-[12px] font-bold ' +
                     (isOld ? 'text-[#92620a]' : 'text-bmw-muted')
                   }
                 >
                   {isOld && <AlertTriangle className="h-3.5 w-3.5 shrink-0" />}
                   Gyártás: {decoded.label}
-                  {isOld ? ` -- Koros gumiabroncs (${TIRE_AGE_WARNING_YEARS}+ év)` : ''}
+                  {isOld ? ` -- Koros gumiabroncs (${thresholds.tireAgeWarningYears}+ év)` : ''}
                 </p>
               )}
             </div>

@@ -1,4 +1,5 @@
-import { TIRE_AGE_WARNING_YEARS } from '@/lib/inspections/constants';
+import { DEFAULT_REPORT_THRESHOLDS } from '@/lib/inspections/constants';
+import type { ReportThresholds } from '@/lib/inspections/types';
 
 /**
  * Gumiabroncs DOT (Department of Transportation) gyártási kód dekódolása
@@ -20,7 +21,8 @@ export interface DotDecodeResult {
   manufactureDate: Date;
   /** A gumi kora években, tört értékkel (pl. 5.3). */
   ageYears: number;
-  /** Igaz, ha a gumi kora eléri/meghaladja a `TIRE_AGE_WARNING_YEARS` (5 év) küszöböt. */
+  /** Igaz, ha a gumi kora eléri/meghaladja a `thresholds.tireAgeWarningYears` (2026-08-07
+   * előtt hardkódoltan 5 év, azóta a Settings oldalon testreszabható) küszöböt. */
   isOld: boolean;
   /** Megjelenítésre kész felirat, pl. "2022. 11. hét". */
   label: string;
@@ -29,7 +31,17 @@ export interface DotDecodeResult {
 const DOT_PATTERN = /^\d{4}$/;
 const MS_PER_YEAR = 1000 * 60 * 60 * 24 * 365.25;
 
-export function decodeDot(rawDot: string, referenceDate: Date = new Date()): DotDecodeResult | null {
+/**
+ * @param thresholds A "koros gumiabroncs" küszöb (`tireAgeWarningYears`) forrása --
+ * alapértéke `DEFAULT_REPORT_THRESHOLDS` (2026-08-07 előtti, hardkódolt 5 év), a
+ * hívóhelyek a betöltött `profiles` sorból (Settings oldalon testreszabott érték)
+ * adhatnak át egyedi értéket, lásd `ReportThresholds` JSDoc-ját.
+ */
+export function decodeDot(
+  rawDot: string,
+  referenceDate: Date = new Date(),
+  thresholds: ReportThresholds = DEFAULT_REPORT_THRESHOLDS
+): DotDecodeResult | null {
   const dot = rawDot.trim();
   if (!DOT_PATTERN.test(dot)) return null;
 
@@ -54,7 +66,7 @@ export function decodeDot(rawDot: string, referenceDate: Date = new Date()): Dot
     year,
     manufactureDate,
     ageYears,
-    isOld: ageYears >= TIRE_AGE_WARNING_YEARS,
+    isOld: ageYears >= thresholds.tireAgeWarningYears,
     label: `${year}. ${week}. hét`,
   };
 }
@@ -70,7 +82,21 @@ export function getMaxDotYearSuffix(referenceDate: Date = new Date()): string {
 
 /** Igaz, ha a 4 karakteres DOT kód formailag ÉS tartalmilag érvényes (lásd `decodeDot()`
  * szabályai) -- kényelmi wrapper, amikor csak a validitásra van szükség, nem a teljes
- * dekódolt eredményre (pl. `StepTires.tsx` "Tovább" gomb letiltásához). */
+ * dekódolt eredményre (pl. `StepTires.tsx` "Tovább" gomb letiltásához). A validitás
+ * FÜGGETLEN a "koros gumiabroncs" küszöbtől, ezért ez a függvény NEM kap `thresholds`
+ * paramétert. */
 export function isValidDot(rawDot: string, referenceDate: Date = new Date()): boolean {
   return decodeDot(rawDot, referenceDate) !== null;
+}
+
+/**
+ * "Kopott gumiabroncs" (profilmélység) figyelmeztetés (ÚJ, 2026-08-07, "Testreszabható
+ * festékvastagság/gumiabroncs küszöbértékek" lépés) -- korábban a profilmélység (mm)
+ * mezőhöz EGYÁLTALÁN NEM létezett automatikus figyelmeztetés, csak a nyers érték volt
+ * megjelenítve. Igaz, ha a megadott profilmélység (mm) ELÉRI/ALATTA van a
+ * `thresholds.tireTreadWarningMm` küszöbnek (alapértéke `DEFAULT_TIRE_TREAD_WARNING_MM`,
+ * 3 mm -- tájékoztató jellegű, NEM az EU jogszabályi minimum 1.6 mm).
+ */
+export function isTreadWorn(mm: number, thresholds: ReportThresholds = DEFAULT_REPORT_THRESHOLDS): boolean {
+  return mm <= thresholds.tireTreadWarningMm;
 }

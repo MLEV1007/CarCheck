@@ -6,7 +6,13 @@ import { InspectionWizard } from '@/components/inspections/wizard/InspectionWiza
 import { InspectionDetailView } from '@/components/inspections/detail/InspectionDetailView';
 import { InspectionNotFound } from '@/components/inspections/detail/InspectionNotFound';
 import { HeaderCreditBadge } from '@/components/credits/HeaderCreditBadge';
-import { DAMAGE_TYPES, DEFAULT_LICENSE_PLATE_COUNTRY, EQUIPMENT_ITEMS, TIRE_BRANDS } from '@/lib/inspections/constants';
+import {
+  DAMAGE_TYPES,
+  DEFAULT_LICENSE_PLATE_COUNTRY,
+  DEFAULT_REPORT_THRESHOLDS,
+  EQUIPMENT_ITEMS,
+  TIRE_BRANDS,
+} from '@/lib/inspections/constants';
 import type {
   CarInfoState,
   ClientInfoState,
@@ -20,6 +26,7 @@ import type {
   FinalAssessmentState,
   GeneralPhotoState,
   PaintPointState,
+  ReportThresholds,
   RimType,
   ServiceHistoryState,
   ServiceHistoryStatus,
@@ -291,8 +298,25 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
   // Szervezeti RBAC (PROJEKT_INSTRUKCIOK.md "Átvizsgálói UI" lépés): az Átvizsgáló NEM
   // láthatja a céges AI kredit-egyenleget -- a `HeaderCreditBadge` szerver-oldalon,
   // renderelés ELŐTT marad ki `role === 'inspector'` esetén (nincs kliens-oldali villanás).
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle();
+  // Ugyanez a lekérdezés adja a Riport küszöbértékeket is (2026-08-07, lásd
+  // `ReportThresholdsCard.tsx`) -- MIND a piszkozat-szerkesztő wizard, MIND a befejezett
+  // vizsgálat read-only adatlapja (`InspectionDetailView`) ezekkel jeleníti meg a
+  // "Gyári/Újrafújt/Gittelt" ill. "Koros/Kopott gumiabroncs" jelzéseket.
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select(
+      'role, paint_threshold_gyari_max_micron, paint_threshold_ujrafujt_max_micron, tire_age_warning_years, tire_tread_warning_mm'
+    )
+    .eq('id', user.id)
+    .maybeSingle();
   const role = profile?.role === 'inspector' ? 'inspector' : 'manager';
+  const reportThresholds: ReportThresholds = {
+    paintGyariMaxMicron: profile?.paint_threshold_gyari_max_micron ?? DEFAULT_REPORT_THRESHOLDS.paintGyariMaxMicron,
+    paintUjrafujtMaxMicron:
+      profile?.paint_threshold_ujrafujt_max_micron ?? DEFAULT_REPORT_THRESHOLDS.paintUjrafujtMaxMicron,
+    tireAgeWarningYears: profile?.tire_age_warning_years ?? DEFAULT_REPORT_THRESHOLDS.tireAgeWarningYears,
+    tireTreadWarningMm: profile?.tire_tread_warning_mm ?? DEFAULT_REPORT_THRESHOLDS.tireTreadWarningMm,
+  };
 
   const [{ data: paintMeasurements }, { data: defects }] = await Promise.all([
     supabase
@@ -371,6 +395,7 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
           initialDefects={initialDefects.length > 0 ? initialDefects : undefined}
           initialFinalAssessment={toInitialFinalAssessment(inspection.final_assessment)}
           initialClientInfo={toInitialClientInfo(inspection)}
+          reportThresholds={reportThresholds}
         />
       </div>
     );
@@ -389,6 +414,7 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
       tireGeneralInfo={toInitialTireGeneralInfo(inspection.tires)}
       damages={toInitialDamages(inspection.damages)}
       finalAssessment={toInitialFinalAssessment(inspection.final_assessment)}
+      reportThresholds={reportThresholds}
     />
   );
 }

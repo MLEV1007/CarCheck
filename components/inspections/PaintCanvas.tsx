@@ -4,10 +4,10 @@ import { useRef, useState } from 'react';
 import Image from 'next/image';
 import { Trash2, X } from 'lucide-react';
 import { CAR_IMAGE_HEIGHT, CAR_IMAGE_SRC, CAR_IMAGE_WIDTH } from '@/lib/inspections/carImageMap';
-import { PAINT_STATUS_LABEL, getPaintStatus } from '@/lib/inspections/constants';
+import { DEFAULT_REPORT_THRESHOLDS, PAINT_STATUS_LABEL, getPaintStatus } from '@/lib/inspections/constants';
 import { sanitizeMicron } from '@/lib/inspections/validation';
 import { CarPointPin } from '@/components/inspections/CarPointPin';
-import type { PaintPointState, PaintStatus } from '@/lib/inspections/types';
+import type { PaintPointState, PaintStatus, ReportThresholds } from '@/lib/inspections/types';
 
 interface PaintCanvasProps {
   points: PaintPointState[];
@@ -22,6 +22,9 @@ interface PaintCanvasProps {
   /** `dark` = Linear design tokenek (Wizard), `light` = BMW design tokenek (Publikus riport). */
   theme: 'dark' | 'light';
   className?: string;
+  /** Riport küszöbértékek (2026-08-07) -- a buborék-színezéshez és a jelmagyarázat
+   * (`LEGEND_ITEMS`) tartományaihoz. Alapértéke `DEFAULT_REPORT_THRESHOLDS`. */
+  thresholds?: ReportThresholds;
 }
 
 const STATUS_FILL: Record<PaintStatus, string> = {
@@ -30,11 +33,17 @@ const STATUS_FILL: Record<PaintStatus, string> = {
   gittelt: '#dc2626',
 };
 
-const LEGEND_ITEMS: Array<{ status: PaintStatus; range: string }> = [
-  { status: 'gyari', range: '80–150 µm' },
-  { status: 'ujrafujt', range: '151–250 µm' },
-  { status: 'gittelt', range: '250+ µm' },
-];
+/** Jelmagyarázat-tartományok a `thresholds`-ból számolva (2026-08-07 előtt statikus
+ * `80–150 µm`/`151–250 µm`/`250+ µm` szöveg volt -- mostantól a ténylegesen beállított
+ * küszöbök szerint jelenik meg, hogy a jelmagyarázat SOSE térjen el a tényleges
+ * színezéstől egy testreszabott küszöbnél). */
+function getLegendItems(thresholds: ReportThresholds): Array<{ status: PaintStatus; range: string }> {
+  return [
+    { status: 'gyari', range: `0–${thresholds.paintGyariMaxMicron} µm` },
+    { status: 'ujrafujt', range: `${thresholds.paintGyariMaxMicron + 1}–${thresholds.paintUjrafujtMaxMicron} µm` },
+    { status: 'gittelt', range: `${thresholds.paintUjrafujtMaxMicron}+ µm` },
+  ];
+}
 
 const ACCENT = { dark: '#5e6ad2', light: '#1c69d4' };
 
@@ -65,10 +74,18 @@ interface PendingPoint {
  *  3. A buborék színe a mentett érték alapján élőben számolt zöld/sárga/piros
  *     (`getPaintStatus`).
  */
-export function PaintCanvas({ points, mode, onChange, theme, className }: PaintCanvasProps) {
+export function PaintCanvas({
+  points,
+  mode,
+  onChange,
+  theme,
+  className,
+  thresholds = DEFAULT_REPORT_THRESHOLDS,
+}: PaintCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [pending, setPending] = useState<PendingPoint | null>(null);
   const accent = ACCENT[theme];
+  const legendItems = getLegendItems(thresholds);
 
   function closePending() {
     setPending(null);
@@ -146,7 +163,7 @@ export function PaintCanvas({ points, mode, onChange, theme, className }: PaintC
         />
 
         {points.map((point) => {
-          const status = getPaintStatus(point.value);
+          const status = getPaintStatus(point.value, thresholds);
           const isSelected = pending?.id === point.id;
           return (
             <CarPointPin
@@ -231,7 +248,7 @@ export function PaintCanvas({ points, mode, onChange, theme, className }: PaintC
                 </div>
               ) : (
                 <p className={theme === 'dark' ? 'mt-1 text-[12px] text-linear-ink-subtle' : 'mt-1 text-[12px] font-light text-bmw-muted'}>
-                  {pending.value} µm · {PAINT_STATUS_LABEL[getPaintStatus(Number(pending.value))]}
+                  {pending.value} µm · {PAINT_STATUS_LABEL[getPaintStatus(Number(pending.value), thresholds)]}
                 </p>
               )}
             </div>
@@ -241,7 +258,7 @@ export function PaintCanvas({ points, mode, onChange, theme, className }: PaintC
 
       {/* Jelmagyarázat. */}
       <div className="mt-4 flex flex-wrap justify-center gap-x-5 gap-y-2">
-        {LEGEND_ITEMS.map((item) => (
+        {legendItems.map((item) => (
           <span
             key={item.status}
             className={

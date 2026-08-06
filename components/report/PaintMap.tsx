@@ -1,6 +1,7 @@
 import { PaintCanvas } from '@/components/inspections/PaintCanvas';
-import { PAINT_STATUS_LABEL, getOverallPaintAverage, getPaintStatus } from '@/lib/inspections/constants';
+import { DEFAULT_REPORT_THRESHOLDS, PAINT_STATUS_LABEL, getOverallPaintAverage, getPaintStatus } from '@/lib/inspections/constants';
 import type { PublicReportPaintMeasurement } from '@/lib/reports/types';
+import type { ReportThresholds } from '@/lib/inspections/types';
 import { SectionHeading } from '@/components/report/SectionHeading';
 
 /**
@@ -16,13 +17,21 @@ import { SectionHeading } from '@/components/report/SectionHeading';
  * A TELJES AUTÓ ÁTLAGA + a mért pontok száma egy kiemelt kártyában látszik a canvas
  * fölött.
  */
-export function PaintMap({ measurements }: { measurements: PublicReportPaintMeasurement[] }) {
+export function PaintMap({
+  measurements,
+  thresholds = DEFAULT_REPORT_THRESHOLDS,
+}: {
+  measurements: PublicReportPaintMeasurement[];
+  /** Riport küszöbértékek (2026-08-07) -- lásd `TiresCard.tsx` JSDoc-ját ugyanerről a
+   * mintáról. Alapértéke `DEFAULT_REPORT_THRESHOLDS`. */
+  thresholds?: ReportThresholds;
+}) {
   if (measurements.length === 0) return null;
 
   const points = measurements.map((m) => ({ id: m.id, x: m.x, y: m.y, value: m.value }));
 
   const overallAverage = getOverallPaintAverage(points);
-  const overallStatusLabel = overallAverage !== null ? PAINT_STATUS_LABEL[getPaintStatus(overallAverage)] : '—';
+  const overallStatusLabel = overallAverage !== null ? PAINT_STATUS_LABEL[getPaintStatus(overallAverage, thresholds)] : '—';
 
   return (
     <section className="border-t border-bmw-hairline py-16 first:border-t-0 first:pt-0">
@@ -43,7 +52,7 @@ export function PaintMap({ measurements }: { measurements: PublicReportPaintMeas
       </div>
 
       <div className="mt-8">
-        <PaintCanvas points={points} mode="view" theme="light" />
+        <PaintCanvas points={points} mode="view" theme="light" thresholds={thresholds} />
       </div>
     </section>
   );

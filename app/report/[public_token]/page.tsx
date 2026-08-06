@@ -2,6 +2,8 @@ import type { CSSProperties } from 'react';
 import type { Metadata } from 'next';
 import { createClient } from '@/lib/supabase/server';
 import type { PublicReportData } from '@/lib/reports/types';
+import { DEFAULT_REPORT_THRESHOLDS } from '@/lib/inspections/constants';
+import type { ReportThresholds } from '@/lib/inspections/types';
 import { ReportHeader } from '@/components/report/ReportHeader';
 import { ReportHero } from '@/components/report/ReportHero';
 import { InspectorClientCard } from '@/components/report/InspectorClientCard';
@@ -56,6 +58,20 @@ export default async function PublicReportPage({ params }: PublicReportPageProps
   // minden akcentus-elemig lefelé prop-drillelni.
   const accentColor = report.company?.primary_color?.trim() || '#1c69d4';
 
+  // Riport küszöbértékek (2026-08-07, "Testreszabható festékvastagság/gumiabroncs
+  // küszöbértékek" lépés) -- a vizsgálatot végző cég `profiles` sorából, a
+  // `get_public_report` RPC `company` objektumán keresztül (lásd `ReportThresholds`
+  // JSDoc-ját, `lib/inspections/types.ts`). `?? DEFAULT_REPORT_THRESHOLDS` mezőnkénti
+  // fallback, ha egy régi (a migráció előtti) `company` objektum valamiért mégis
+  // hiányozna egy mezőt.
+  const reportThresholds: ReportThresholds = {
+    paintGyariMaxMicron: report.company?.paint_threshold_gyari_max_micron ?? DEFAULT_REPORT_THRESHOLDS.paintGyariMaxMicron,
+    paintUjrafujtMaxMicron:
+      report.company?.paint_threshold_ujrafujt_max_micron ?? DEFAULT_REPORT_THRESHOLDS.paintUjrafujtMaxMicron,
+    tireAgeWarningYears: report.company?.tire_age_warning_years ?? DEFAULT_REPORT_THRESHOLDS.tireAgeWarningYears,
+    tireTreadWarningMm: report.company?.tire_tread_warning_mm ?? DEFAULT_REPORT_THRESHOLDS.tireTreadWarningMm,
+  };
+
   return (
     <div className="min-h-screen bg-bmw-canvas" style={{ '--report-accent': accentColor } as CSSProperties}>
       <ReportHeader company={report.company} />
@@ -67,8 +83,8 @@ export default async function PublicReportPage({ params }: PublicReportPageProps
         <ServiceHistoryCard serviceHistory={report.inspection.service_history} />
         <DiagnosticsCard diagnostics={report.inspection.diagnostics} />
         <EquipmentMatrix equipment={report.inspection.equipment} />
-        <TiresCard tires={report.inspection.tires} />
-        <PaintMap measurements={report.paint_measurements} />
+        <TiresCard tires={report.inspection.tires} thresholds={reportThresholds} />
+        <PaintMap measurements={report.paint_measurements} thresholds={reportThresholds} />
         <DamageMapCard damages={report.inspection.damages} />
         <DefectsGallery defects={report.defects} />
         <FinalAssessmentCard finalAssessment={report.inspection.final_assessment} />

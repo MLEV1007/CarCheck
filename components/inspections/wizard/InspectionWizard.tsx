@@ -17,6 +17,7 @@ import { StepFinalAssessment } from '@/components/inspections/wizard/StepFinalAs
 import { StepSummary } from '@/components/inspections/wizard/StepSummary';
 import {
   DEFAULT_LICENSE_PLATE_COUNTRY,
+  DEFAULT_REPORT_THRESHOLDS,
   EQUIPMENT_ITEMS,
   TIRE_BRAND_OTHER,
   WIZARD_STEP_META,
@@ -40,6 +41,7 @@ import {
   type FinalAssessmentState,
   type GeneralPhotoState,
   type PaintPointState,
+  type ReportThresholds,
   type ServiceHistoryState,
   type TireGeneralInfoState,
   type TiresState,
@@ -87,6 +89,12 @@ interface InspectionWizardProps {
    * nincs megadva -- ilyenkor `EMPTY_CLIENT_INFO` (a DB oszlopok default értékeivel
    * megegyező alapállapot) a kezdeti érték. */
   initialClientInfo?: ClientInfoState;
+  /** Riport küszöbértékek (2026-08-07, "Testreszabható festékvastagság/gumiabroncs
+   * küszöbértékek" lépés) -- a bejelentkezett vizsgáló `profiles` sorából töltve
+   * (`app/inspections/new/page.tsx`/`app/inspections/[id]/page.tsx`), a Festékvastagság-
+   * mérés/Gumiabroncsok/Összegzés lépéseknek adja tovább. Ha nincs megadva,
+   * `DEFAULT_REPORT_THRESHOLDS` a fallback (1:1 a korábbi hardkódolt viselkedéssel). */
+  reportThresholds?: ReportThresholds;
 }
 
 /**
@@ -120,6 +128,7 @@ export function InspectionWizard({
   initialDefects,
   initialFinalAssessment,
   initialClientInfo,
+  reportThresholds = DEFAULT_REPORT_THRESHOLDS,
 }: InspectionWizardProps = {}) {
   const router = useRouter();
   const [step, setStep] = useState<WizardStep>(1);
@@ -617,6 +626,7 @@ export function InspectionWizard({
             onBack={() => setStep(5)}
             onNext={() => setStep(7)}
             nextLabel={NEXT_STEP_SHORT_LABEL[7]}
+            thresholds={reportThresholds}
           />
         )}
         {step === 7 && (
@@ -626,6 +636,7 @@ export function InspectionWizard({
             onBack={() => setStep(6)}
             onNext={() => setStep(8)}
             nextLabel={NEXT_STEP_SHORT_LABEL[8]}
+            thresholds={reportThresholds}
           />
         )}
         {step === 8 && (
@@ -689,6 +700,7 @@ export function InspectionWizard({
             onBack={() => setStep(10)}
             onSaveDraft={() => handleSubmit('draft')}
             onPublish={() => handleSubmit('completed')}
+            thresholds={reportThresholds}
           />
         )}
       </div>

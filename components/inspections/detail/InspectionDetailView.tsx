@@ -20,6 +20,7 @@ import { PaintStatusBadge } from '@/components/inspections/wizard/PaintStatusBad
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { isVideoUrl } from '@/lib/reports/media';
 import {
+  DEFAULT_REPORT_THRESHOLDS,
   FEATURE_STATUS_LABEL,
   FINAL_ASSESSMENT_RECOMMENDATION_LABEL,
   RIM_TYPE_LABEL,
@@ -29,7 +30,7 @@ import {
   getOverallPaintAverage,
   getPaintStatus,
 } from '@/lib/inspections/constants';
-import { decodeDot } from '@/lib/inspections/tireDot';
+import { decodeDot, isTreadWorn } from '@/lib/inspections/tireDot';
 import { formatHuf, formatKm, formatServiceDate } from '@/lib/format';
 import { LicensePlateBadge } from '@/components/ui/LicensePlateBadge';
 import { DamageCanvas } from '@/components/inspections/DamageCanvas';
@@ -38,6 +39,7 @@ import type {
   DiagnosticsState,
   FeatureFormState,
   FinalAssessmentState,
+  ReportThresholds,
   ServiceHistoryState,
   TireGeneralInfoState,
   TirePosition,
@@ -83,6 +85,9 @@ interface InspectionDetailViewProps {
   tireGeneralInfo: TireGeneralInfoState;
   damages: DamagePointState[];
   finalAssessment: FinalAssessmentState;
+  /** Riport küszöbértékek (2026-08-07) -- lásd `InspectionWizard.tsx` JSDoc-ját.
+   * Alapértéke `DEFAULT_REPORT_THRESHOLDS`. */
+  reportThresholds?: ReportThresholds;
 }
 
 const FEATURE_ICON = { working: CheckCircle2, defective: XCircle, not_present: MinusCircle } as const;
@@ -115,10 +120,11 @@ export function InspectionDetailView({
   tireGeneralInfo,
   damages,
   finalAssessment,
+  reportThresholds = DEFAULT_REPORT_THRESHOLDS,
 }: InspectionDetailViewProps) {
   const router = useRouter();
   const overallPaintAverage = getOverallPaintAverage(paintMeasurements);
-  const overallPaintStatus = overallPaintAverage !== null ? getPaintStatus(overallPaintAverage) : null;
+  const overallPaintStatus = overallPaintAverage !== null ? getPaintStatus(overallPaintAverage, reportThresholds) : null;
   const diagnosticCodes = diagnostics.codes.filter((entry) => entry.code.trim() !== '');
   const relevantEquipment = equipment.filter((item) => item.status !== 'not_present');
   const filledTirePositions = Object.entries(tires).filter(
@@ -445,12 +451,18 @@ export function InspectionDetailView({
           ) : (
             <ul className="mt-3 flex flex-col divide-y divide-linear-hairline">
               {filledTirePositions.map(([position, tire]) => {
-                const decoded = tire.dot.length === 4 ? decodeDot(tire.dot) : null;
+                const decoded = tire.dot.length === 4 ? decodeDot(tire.dot, undefined, reportThresholds) : null;
+                const mmValue = tire.mm.trim() === '' ? null : Number(tire.mm);
+                const treadWorn = mmValue !== null && !Number.isNaN(mmValue) && isTreadWorn(mmValue, reportThresholds);
                 return (
                   <li key={position} className="flex items-center justify-between gap-3 py-2">
                     <span className="text-[13px] text-linear-ink">{TIRE_POSITION_LABEL[position as TirePosition]}</span>
                     <span className="flex items-center gap-3 text-[13px] text-linear-ink-muted">
-                      {tire.mm && <span className="font-mono">{tire.mm} mm</span>}
+                      {tire.mm && (
+                        <span className={'font-mono ' + (treadWorn ? 'text-linear-warning' : '')}>
+                          {tire.mm} mm{treadWorn ? ' ⚠' : ''}
+                        </span>
+                      )}
                       {tire.dot && <span className="font-mono">DOT {tire.dot}</span>}
                       {decoded && (
                         <span className={decoded.isOld ? 'text-linear-warning' : 'text-linear-ink-subtle'}>
@@ -487,7 +499,7 @@ export function InspectionDetailView({
                   <span className="text-[13px] text-linear-ink">{index + 1}. pont</span>
                   <div className="flex items-center gap-3">
                     <span className="font-mono text-[13px] text-linear-ink-muted">{measurement.value} µm</span>
-                    <PaintStatusBadge status={getPaintStatus(measurement.value)} />
+                    <PaintStatusBadge status={getPaintStatus(measurement.value, reportThresholds)} />
                   </div>
                 </li>
               ))}

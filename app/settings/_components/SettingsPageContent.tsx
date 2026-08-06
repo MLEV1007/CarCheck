@@ -4,9 +4,11 @@ import { createClient } from '@/lib/supabase/server';
 import { SettingsForm } from '@/components/settings/SettingsForm';
 import { PasskeyCard } from '@/components/settings/PasskeyCard';
 import { DefaultPreferencesCard } from '@/components/settings/DefaultPreferencesCard';
+import { ReportThresholdsCard } from '@/components/settings/ReportThresholdsCard';
 import { SettingsTabs } from '@/components/settings/SettingsTabs';
 import { DeleteAccountCard } from '@/components/settings/DeleteAccountCard';
-import { DEFAULT_LICENSE_PLATE_COUNTRY } from '@/lib/inspections/constants';
+import { DEFAULT_LICENSE_PLATE_COUNTRY, DEFAULT_REPORT_THRESHOLDS } from '@/lib/inspections/constants';
+import type { ReportThresholds } from '@/lib/inspections/types';
 
 interface SettingsPageContentProps {
   /** `app/settings/page.tsx` -> `'company'`, `app/settings/billing/page.tsx` -> `'billing'`
@@ -41,11 +43,24 @@ export async function SettingsPageContent({ initialTab, billingBanner }: Setting
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('company_name, phone, email, logo_url, primary_color, role, organization_id')
+    .select(
+      'company_name, phone, email, logo_url, primary_color, role, organization_id, paint_threshold_gyari_max_micron, paint_threshold_ujrafujt_max_micron, tire_age_warning_years, tire_tread_warning_mm'
+    )
     .eq('id', user.id)
     .maybeSingle();
 
   const role = profile?.role === 'inspector' ? 'inspector' : 'manager';
+
+  // Riport küszöbértékek (2026-08-07) -- lásd `ReportThresholdsCard.tsx` JSDoc-ját. A
+  // `??` fallback a `DEFAULT_REPORT_THRESHOLDS`-re csak defenzív biztonsági háló (a DB
+  // oszlopok `not null default`-tal jönnek létre, gyakorlatban sosem `null`-ok).
+  const initialThresholds: ReportThresholds = {
+    paintGyariMaxMicron: profile?.paint_threshold_gyari_max_micron ?? DEFAULT_REPORT_THRESHOLDS.paintGyariMaxMicron,
+    paintUjrafujtMaxMicron:
+      profile?.paint_threshold_ujrafujt_max_micron ?? DEFAULT_REPORT_THRESHOLDS.paintUjrafujtMaxMicron,
+    tireAgeWarningYears: profile?.tire_age_warning_years ?? DEFAULT_REPORT_THRESHOLDS.tireAgeWarningYears,
+    tireTreadWarningMm: profile?.tire_tread_warning_mm ?? DEFAULT_REPORT_THRESHOLDS.tireTreadWarningMm,
+  };
 
   const { data: organization } = profile?.organization_id
     ? await supabase
@@ -114,6 +129,7 @@ export async function SettingsPageContent({ initialTab, billingBanner }: Setting
               initialPrimaryColor={profile?.primary_color ?? '#1c69d4'}
             />
             <DefaultPreferencesCard initialDefaultLicenseCountry={initialDefaultLicenseCountry} />
+            <ReportThresholdsCard userId={user.id} initialThresholds={initialThresholds} />
             <PasskeyCard />
             <DeleteAccountCard
               email={profile?.email ?? user.email ?? ''}

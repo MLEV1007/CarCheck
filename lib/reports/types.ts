@@ -174,6 +174,18 @@ export interface PublicReportCompany {
   primary_color: string | null;
   phone: string | null;
   email: string | null;
+  /** Riport küszöbértékek (2026-08-07, "Testreszabható festékvastagság/gumiabroncs
+   * küszöbértékek" lépés) -- a `get_public_report` RPC (lásd
+   * `supabase/migrations/20260807090000_report_thresholds.sql`) óta a `company`
+   * objektum része, UGYANÚGY mint a `primary_color`. `null` csak akkor fordulhat elő,
+   * ha a `profiles` sor valamiért hiányzik (lásd a `company: PublicReportCompany | null`
+   * felső szintű mezőt) -- a DB oszlopok maguk `not null default`-tal jönnek létre,
+   * `app/report/[public_token]/page.tsx` mindenképp `DEFAULT_REPORT_THRESHOLDS`-re esik
+   * vissza, ha ezek a mezők hiányoznának. */
+  paint_threshold_gyari_max_micron: number | null;
+  paint_threshold_ujrafujt_max_micron: number | null;
+  tire_age_warning_years: number | null;
+  tire_tread_warning_mm: number | null;
 }
 
 export interface PublicReportData {

@@ -378,6 +378,35 @@ export const EMPTY_FINAL_ASSESSMENT: FinalAssessmentState = {
 export type WizardStep = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11;
 
 /**
+ * Riport küszöbértékek (2026-08-07, "Testreszabható festékvastagság/gumiabroncs
+ * küszöbértékek" lépés) -- a Settings oldal "Riport küszöbértékek" kártyáján
+ * (`ReportThresholdsCard.tsx`) szerkeszthető, a `profiles` táblában tárolt 4 érték
+ * (lásd `supabase/migrations/20260807090000_report_thresholds.sql`). Korábban ez a 4
+ * szám a `getPaintStatus()`/`decodeDot()` függvényekben HARDKÓDOLVA élt -- mostantól
+ * ezek a függvények egy opcionális `ReportThresholds` paramétert fogadnak (alapértéke
+ * `DEFAULT_REPORT_THRESHOLDS`, `lib/inspections/constants.ts`, ami 1:1 megegyezik a
+ * korábbi hardkódolt számokkal, tehát a testreszabás NÉLKÜLI viselkedés változatlan).
+ * A wizard/riport oldalak (Server Component-ek: `app/inspections/new/page.tsx`,
+ * `app/inspections/[id]/page.tsx`, `app/report/[public_token]/page.tsx`) töltik be a
+ * bejelentkezett vizsgáló (vagy a publikus riportnál a vizsgálatot végző cég)
+ * `profiles` sorából, és adják tovább prop-ként a wizard-lépéseknek/riport-kártyáknak.
+ */
+export interface ReportThresholds {
+  /** Festékvastagság-mérés "Gyári" felső küszöbe µm-ben -- ennél kisebb/egyenlő érték
+   * "Gyári" besorolást kap (lásd `getPaintStatus()`). */
+  paintGyariMaxMicron: number;
+  /** Festékvastagság-mérés "Újrafújt / Javított" felső küszöbe µm-ben -- e fölött
+   * "Gittelt / Sérült" a besorolás. */
+  paintUjrafujtMaxMicron: number;
+  /** "Koros gumiabroncs" figyelmeztetés küszöbe években (DOT kódból számolt gyártási
+   * kor), lásd `decodeDot()` `isOld` mezője. */
+  tireAgeWarningYears: number;
+  /** "Kopott gumiabroncs" (profilmélység) figyelmeztetés küszöbe mm-ben -- ÚJ funkció,
+   * lásd `isTreadWorn()` a `lib/inspections/tireDot.ts`-ben. */
+  tireTreadWarningMm: number;
+}
+
+/**
  * Átvizsgáló és Ügyfél adatok + PDF megjelenítési kapcsolók (2026-08-06, kiegészítve
  * az Átvizsgáló neve mezővel) -- a wizard "Összegzés & Publikálás" lépésén
  * (`StepSummary.tsx`) elhelyezett "Átvizsgáló neve" input + "Megrendelő adatai" blokk +

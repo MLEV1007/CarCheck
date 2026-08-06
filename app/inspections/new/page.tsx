@@ -4,8 +4,9 @@ import { ArrowLeft, Lock } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { InspectionWizard } from '@/components/inspections/wizard/InspectionWizard';
 import { HeaderCreditBadge } from '@/components/credits/HeaderCreditBadge';
-import { DEFAULT_LICENSE_PLATE_COUNTRY } from '@/lib/inspections/constants';
+import { DEFAULT_LICENSE_PLATE_COUNTRY, DEFAULT_REPORT_THRESHOLDS } from '@/lib/inspections/constants';
 import { checkInspectionQuota, InsufficientInspectionQuotaError } from '@/lib/quotas';
+import type { ReportThresholds } from '@/lib/inspections/types';
 
 export const metadata: Metadata = {
   title: 'Új vizsgálat | CarPass',
@@ -33,10 +34,27 @@ export default async function NewInspectionPage() {
   // Szervezeti RBAC (PROJEKT_INSTRUKCIOK.md "Átvizsgálói UI" lépés): az Átvizsgáló NEM
   // láthatja a céges AI kredit-egyenleget -- a `HeaderCreditBadge` szerver-oldalon,
   // renderelés ELŐTT marad ki `role === 'inspector'` esetén (nincs kliens-oldali villanás).
+  // Ugyanez a lekérdezés adja a Riport küszöbértékeket is (2026-08-07, lásd
+  // `ReportThresholdsCard.tsx`) -- a wizard Festékvastagság/Gumiabroncsok/Összegzés
+  // lépései ezekkel jelenítik meg élőben a "Gyári/Újrafújt/Gittelt" ill.
+  // "Koros/Kopott gumiabroncs" jelzéseket, NEM a korábban hardkódolt konstansokkal.
   const { data: profile } = user
-    ? await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
+    ? await supabase
+        .from('profiles')
+        .select(
+          'role, paint_threshold_gyari_max_micron, paint_threshold_ujrafujt_max_micron, tire_age_warning_years, tire_tread_warning_mm'
+        )
+        .eq('id', user.id)
+        .maybeSingle()
     : { data: null };
   const role = profile?.role === 'inspector' ? 'inspector' : 'manager';
+  const reportThresholds: ReportThresholds = {
+    paintGyariMaxMicron: profile?.paint_threshold_gyari_max_micron ?? DEFAULT_REPORT_THRESHOLDS.paintGyariMaxMicron,
+    paintUjrafujtMaxMicron:
+      profile?.paint_threshold_ujrafujt_max_micron ?? DEFAULT_REPORT_THRESHOLDS.paintUjrafujtMaxMicron,
+    tireAgeWarningYears: profile?.tire_age_warning_years ?? DEFAULT_REPORT_THRESHOLDS.tireAgeWarningYears,
+    tireTreadWarningMm: profile?.tire_tread_warning_mm ?? DEFAULT_REPORT_THRESHOLDS.tireTreadWarningMm,
+  };
 
   // VIZSGÁLATI KVÓTA ELLENŐRZÉS (PROJEKT_INSTRUKCIOK.md "Keret-ellenőrző és fogyasztó
   // logika" lépés, 2026-08-04) -- "Új autó vizsgálat indításakor ellenőrizze, hogy van-e
@@ -98,7 +116,7 @@ export default async function NewInspectionPage() {
           )}
         </div>
       ) : (
-        <InspectionWizard defaultLicensePlateCountry={defaultLicensePlateCountry} />
+        <InspectionWizard defaultLicensePlateCountry={defaultLicensePlateCountry} reportThresholds={reportThresholds} />
       )}
     </div>
   );

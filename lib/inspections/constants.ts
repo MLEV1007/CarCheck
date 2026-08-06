@@ -5,6 +5,7 @@ import type {
   FinalAssessmentRecommendation,
   PaintPointState,
   PaintStatus,
+  ReportThresholds,
   RimType,
   ServiceHistoryStatus,
   TirePosition,
@@ -30,13 +31,20 @@ export const PAINT_STATUS_LABEL: Record<PaintStatus, string> = {
 
 /**
  * Mikron érték -> státusz besorolás (PROJEKT_INSTRUKCIOK.md, "Rétegvastagság-mérő modul
- * újratervezése" lépés, B pont): 80-150 -> Gyári, 151-250 -> Újrafújt/Javított, 250
- * felett -> Gittelt/Sérült. (80 alatti érték -- gyakorlatban ritka mérési hiba -- is
- * Gyáriként van besorolva, mert a specifikáció csak felső küszöböket ad meg.)
+ * újratervezése" lépés, B pont): alapértelmezetten 80-150 -> Gyári, 151-250 ->
+ * Újrafújt/Javított, 250 felett -> Gittelt/Sérült. (80 alatti érték -- gyakorlatban
+ * ritka mérési hiba -- is Gyáriként van besorolva, mert a specifikáció csak felső
+ * küszöböket ad meg.)
+ *
+ * A 2 küszöb (2026-08-07 óta, "Testreszabható festékvastagság/gumiabroncs
+ * küszöbértékek" lépés) a vizsgáló Settings oldalán testreszabható -- a `thresholds`
+ * paraméter alapértéke `DEFAULT_REPORT_THRESHOLDS` (a fenti, korábban hardkódolt
+ * 150/250 érték), tehát a paramétert el nem adó, régi hívóhelyek viselkedése
+ * VÁLTOZATLAN marad.
  */
-export function getPaintStatus(micronValue: number): PaintStatus {
-  if (micronValue <= 150) return 'gyari';
-  if (micronValue <= 250) return 'ujrafujt';
+export function getPaintStatus(micronValue: number, thresholds: ReportThresholds = DEFAULT_REPORT_THRESHOLDS): PaintStatus {
+  if (micronValue <= thresholds.paintGyariMaxMicron) return 'gyari';
+  if (micronValue <= thresholds.paintUjrafujtMaxMicron) return 'ujrafujt';
   return 'gittelt';
 }
 
@@ -456,9 +464,34 @@ export const TIRE_POSITIONS: { position: TirePosition; label: string }[] = [
   { position: 'rr', label: TIRE_POSITION_LABEL.rr },
 ];
 
-/** A gumiabroncs "koros" figyelmeztetés küszöbe (PROJEKT_INSTRUKCIOK.md: "Ha a gumik
- * életkora meghaladja az 5 évet"), lásd `lib/inspections/tireDot.ts` `decodeDot()`. */
+/** A gumiabroncs "koros" figyelmeztetés ALAPÉRTELMEZETT küszöbe (PROJEKT_INSTRUKCIOK.md:
+ * "Ha a gumik életkora meghaladja az 5 évet"), lásd `lib/inspections/tireDot.ts`
+ * `decodeDot()`. 2026-08-07 óta ez az érték a Settings oldalon testreszabható (lásd
+ * `DEFAULT_REPORT_THRESHOLDS` lent) -- ez a konstans mostantól KIZÁRÓLAG az
+ * alapértelmezett/fallback értéket jelöli, önmagában közvetlenül már csak a
+ * `DEFAULT_REPORT_THRESHOLDS` inicializálásához használt. */
 export const TIRE_AGE_WARNING_YEARS = 5;
+
+/** "Kopott gumiabroncs" (profilmélység) figyelmeztetés ALAPÉRTELMEZETT küszöbe mm-ben --
+ * ÚJ konstans (2026-08-07), lásd `isTreadWorn()` a `lib/inspections/tireDot.ts`-ben.
+ * Tájékoztató jellegű alapérték, NEM jogszabályi minimum (az EU jogszabályi minimum
+ * 1.6 mm) -- a Settings oldalon testreszabható. */
+export const DEFAULT_TIRE_TREAD_WARNING_MM = 3;
+
+/**
+ * A `getPaintStatus()`/`decodeDot()`/`isTreadWorn()` alapértelmezett `ReportThresholds`
+ * paramétere -- 1:1 megegyezik a 2026-08-07 ELŐTTI hardkódolt viselkedéssel, hogy a
+ * migráció (`supabase/migrations/20260807090000_report_thresholds.sql`) alapértékei és
+ * ez a kliens-oldali fallback SOHA ne térjenek el egymástól. Minden hívóhely, ami nem
+ * kap explicit `thresholds` propot (pl. mert a szülő Server Component még nem töltötte
+ * be a `profiles` sort), erre esik vissza.
+ */
+export const DEFAULT_REPORT_THRESHOLDS: ReportThresholds = {
+  paintGyariMaxMicron: 150,
+  paintUjrafujtMaxMicron: 250,
+  tireAgeWarningYears: TIRE_AGE_WARNING_YEARS,
+  tireTreadWarningMm: DEFAULT_TIRE_TREAD_WARNING_MM,
+};
 
 /** Felni típusa (PROJEKT_INSTRUKCIOK.md, "Gumiabroncs & Felni modul bővítése" lépés, A
  * pont) -- Segmented Control / Toggle a Gumiabroncsok lépés tetején. */
