@@ -97,10 +97,16 @@ export function CarPassMark({ size = 32, className }: CarPassMarkProps) {
 
 interface CarPassLogoProps {
   /**
-   * `dark` -- sötét háttérre (fehér "Car" + zöld "Pass"), pl. Linear Dark navbar.
-   * `light` -- világos háttérre (sötét tintakék "Car" + zöld "Pass"), pl. Stripe auth-oldalak.
+   * `dark` -- fixen sötét háttérre (fehér "Car" + zöld "Pass").
+   * `light` -- fixen világos háttérre (sötét tintakék "Car" + zöld "Pass"), pl. Stripe
+   * auth-oldalak, ahol a háttér SOSEM váltogat (lásd `ThemeProvider.tsx`: a Stripe/BMW
+   * felületek szándékosan NEM `dark:`-tudatosak).
+   * `auto` -- Tailwind `dark:` osztályokkal követi a `<html>` elem `dark` class-ét
+   * (`next-themes`, `enableSystem`) -- ott kell használni, ahol a háttér maga is a
+   * Rendszer-témával vált (pl. a Linear Dark navbar `bg-linear-canvas`-a világos OS-témán
+   * TÉNYLEGESEN fehér, nem fekete -- lásd `app/globals.css` `:root`/`.dark`).
    */
-  variant?: 'dark' | 'light';
+  variant?: 'dark' | 'light' | 'auto';
   /** "JÁRMŰÁTVIZSGÁLÁS" alcím megjelenítése a wordmark alatt. Alapértelmezetten látszik. */
   withSubtitle?: boolean;
   /** Az ikon magassága px-ben -- a wordmark betűmérete ehhez arányosan skálázódik. */
@@ -114,19 +120,27 @@ interface CarPassLogoProps {
  * variánsa) alapján. Lásd `CarPassMark` a forrás/névtér-megjegyzésekért.
  */
 export function CarPassLogo({ variant = 'dark', withSubtitle = true, size = 40, className }: CarPassLogoProps) {
+  const isAuto = variant === 'auto';
   const isDark = variant === 'dark';
-  const textColor = isDark ? '#ffffff' : '#0d1117';
-  const subtitleColor = isDark ? 'rgba(255,255,255,0.4)' : 'rgba(13,17,23,0.45)';
   const wordmarkFontSize = Math.round(size * 0.55);
+  const subtitleFontSize = Math.max(8, Math.round(wordmarkFontSize * 0.28));
+
+  const wordmarkColorClass = isAuto ? 'text-[#0d1117] dark:text-white' : '';
+  const wordmarkColorStyle = isAuto ? undefined : { color: isDark ? '#ffffff' : '#0d1117' };
+
+  const subtitleColorClass = isAuto ? 'text-[rgba(13,17,23,0.45)] dark:text-white/40' : '';
+  const subtitleColorStyle = isAuto
+    ? undefined
+    : { color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(13,17,23,0.45)' };
 
   return (
     <div className={`flex items-center ${className ?? ''}`} style={{ gap: size * 0.35 }}>
       <CarPassMark size={size} />
       <div className="flex flex-col leading-none">
         <span
-          className={outfit.className}
+          className={`${outfit.className} ${wordmarkColorClass}`}
           style={{
-            color: textColor,
+            ...wordmarkColorStyle,
             fontSize: wordmarkFontSize,
             fontWeight: 800,
             letterSpacing: '-0.03em',
@@ -137,10 +151,10 @@ export function CarPassLogo({ variant = 'dark', withSubtitle = true, size = 40, 
         </span>
         {withSubtitle && (
           <span
-            className={dmMono.className}
+            className={`${dmMono.className} ${subtitleColorClass}`}
             style={{
-              color: subtitleColor,
-              fontSize: Math.max(8, Math.round(wordmarkFontSize * 0.28)),
+              ...subtitleColorStyle,
+              fontSize: subtitleFontSize,
               fontWeight: 500,
               letterSpacing: '0.2em',
               textTransform: 'uppercase',

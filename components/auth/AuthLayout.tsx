@@ -36,9 +36,10 @@ export function AuthLayout({ eyebrow, title, subtitle, children, footer }: AuthL
 
       <div className="relative z-10 flex w-full flex-col items-center">
         {/* CarPass logó -- a felhasználó által mellékelt referencia-design "light" (világos
-            hátterű) variánsa, lásd `components/branding/CarPassLogo.tsx`. */}
+            hátterű) variánsa, lásd `components/branding/CarPassLogo.tsx`. Nagyobb méret
+            (52px), hogy az auth-oldal hero-eleme legyen, ne csak egy apró fejléc-jelvény. */}
         <div className="mb-10">
-          <CarPassLogo variant="light" size={34} />
+          <CarPassLogo variant="light" size={52} />
         </div>
 
         <div className="w-full max-w-[420px] rounded-stripe-lg border border-stripe-hairline bg-white p-8 shadow-stripe-1">

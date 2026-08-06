@@ -1575,6 +1575,23 @@ A tényleges hiba a **Supabase Storage `inspection-media` bucket `storage.object
 
 **Git:** ÚJ: `components/branding/CarPassLogo.tsx`, `components/branding/fonts.ts`, `app/icon.svg`; MÓDOSÍTOTT: `components/auth/AuthLayout.tsx`, `components/dashboard/DashboardHeader.tsx`, `app/admin/page.tsx`, `tsconfig.json`, `status.md`.
 
+### 62. Logó-méretezés és elhelyezés finomhangolása (nagyobb auth-logó, középre igazított navbar-logó, kicsi ikon eltávolítása mindenhonnan a favicon kivételével) (2026-08-06)
+[Stripe (auth-oldalak) + Linear Dark/Light (post-login navbar) + Platform Admin]
+
+**Felhasználói kérés (a 61. szakasz közvetlen finomhangolása):** (1) a `/login`/`/register` oldalon legyen nagyobb a logó, (2) a bejelentkezés utáni navbarban KÖZÉPEN jelenjen meg a teljes logó (nem csak az ikon), (3) a kicsi, ikon-only verzió KIZÁRÓLAG a böngésző-faviconban maradjon, sehol máshol.
+
+**A) `components/auth/AuthLayout.tsx`:** a `CarPassLogo` mérete `size={34}` -> `size={52}`, hogy valódi hero-elemként hasson az auth-oldalakon, ne apró fejléc-jelvényként.
+
+**B) `components/dashboard/DashboardHeader.tsx` -- teljes logó középre:** a korábbi bal oldali kicsi `CarPassMark` + elválasztó vonal TÖRÖLVE (a bal oldal visszaállt a tiszta céges brandingre). Helyette a `<header>` `relative`-re váltott, és egy `absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2` pozicionálású, `/dashboard`-ra mutató `Link` KÖZÉPEN jeleníti meg a teljes `CarPassLogo`-t (ikon+wordmark+alcím, `size={28}`). Mobilon (`< sm`) a középső logó `hidden` -- a bal/jobb oldali tartalom (cégnév, AI kredit-jelvény) már eleve szűkös keskeny képernyőn, egy harmadik, középre pozicionált elem ütközne velük.
+
+**C) KRITIKUS felfedezés menet közben -- a Linear navbar HÁTTERE maga is Rendszer-téma-függő:** a `CarPassLogo` eredeti `variant="dark"`-ja FIX fehér szöveget rajzol, ám a Linear-felület `bg-linear-canvas`-a a `ThemeProvider.tsx` (`enableSystem`) miatt VILÁGOS OS-témán ténylegesen FEHÉR (nem fekete) -- ha a felhasználó eszköze világos témán fut, egy fix fehér "Car" szöveg egy fehér navbaron LÁTHATATLAN lett volna. Javítás: a `CarPassLogo` ÚJ, harmadik `variant="auto"` opciót kapott -- ez NEM inline JS-színt, hanem Tailwind `dark:` osztályokat használ (`text-[#0d1117] dark:text-white` a wordmarkon, hasonló minta az alcímen), amivel automatikusan követi a `<html>` elem `next-themes` által rátett `dark` class-át, UGYANÚGY, ahogy a `bg-linear-canvas`/`text-linear-ink` tokenek is teszik. A `DashboardHeader` mostantól `variant="auto"`-t ad át (nem `"dark"`-ot). A `variant="dark"`/`"light"` (fix szín) továbbra is megmarad a Stripe auth-oldalakhoz, ahol a háttér a design rendszer szerint SOSEM vált (lásd `ThemeProvider.tsx` kommentje: "A Stripe... felületek szándékosan NEM dark:-tudatosak").
+
+**D) `app/admin/page.tsx` -- visszaállítva:** a 61. szakaszban bevezetett kicsi `CarPassMark` ikon TÖRÖLVE a Platform Admin fejlécből, a `lucide-react` `ShieldCheck` ikon visszaállítva (a felhasználó explicit kérése szerint a kicsi, ikon-only márkajelzés KIZÁRÓLAG a faviconban maradhat).
+
+**Ellenőrzés:** `node node_modules/typescript/bin/tsc --noEmit -p tsconfig.json` -- SZINKRON, hibamentes, exit code 0. Élő böngésző-teszt (a navbar-logó tényleges láthatósága/kontrasztja MINDKÉT rendszer-témán -- világos ÉS sötét OS-beállítással is --, a középre igazítás mobilon való rejtése, az auth-oldal nagyobb logójának elrendezése) a sandboxból NEM futtatható.
+
+**Git:** MÓDOSÍTOTT: `components/branding/CarPassLogo.tsx`, `components/auth/AuthLayout.tsx`, `components/dashboard/DashboardHeader.tsx`, `app/admin/page.tsx`, `status.md`.
+
 ## Verziókezelés
 - GitHub repó: `https://github.com/MLEV1007/CarCheck` (`main` ág).
 - A `/inspections/[id]` szerkesztő/részletező oldalt (`d475379`) és a márka/típus dropdown + validáció + Általános autó fotók modult (`6f274d7`) tartalmazó korábbi commitok korábban push-olva lettek `origin/main`-re.
