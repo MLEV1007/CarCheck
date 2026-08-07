@@ -13,8 +13,15 @@
  * AI-elemzés/hó) és `business` (gyakorlatban korlátlan vizsgálat, 100 AI-elemzés/hó,
  * EGYEDI ártárgyalás -- nem önkiszolgáló Stripe checkout tétel, lásd `BillingTab.tsx`)
  * hozzáadva a korábbi `starter`/`pro` mellé -- lásd
- * `supabase/migrations/20260806_pricing_tiers_growth_business_ai_credits.sql`. */
-export type QuotaPlanTier = 'starter' | 'growth' | 'pro' | 'business';
+ * `supabase/migrations/20260806_pricing_tiers_growth_business_ai_credits.sql`.
+ *
+ * 2026-08-07, "Ingyenes alap-kvóta bevezetése" lépés -- `free` hozzáadva: ez az az
+ * állapot, amit egy szervezet a legelső `user_credits` sor létrejöttekor kap, MIELŐTT
+ * bármilyen fizetős csomagot választott volna (5 vizsgálat / 3 AI-kredit havonta) --
+ * KORÁBBAN ilyenkor is `starter`-t kapott, ami a Billing felületen tévesen "Egyéni
+ * csomag / Aktív csomag"-ként jelent meg egy sosem fizető usernek is, lásd
+ * `supabase/migrations/20260807_free_tier_default_quota.sql`. */
+export type QuotaPlanTier = 'free' | 'starter' | 'growth' | 'pro' | 'business';
 
 export interface QuotaBalance {
   /** A KÖZÖS, szervezet-szintű kvóta-sor szervezet-azonosítója -- ugyanaz a

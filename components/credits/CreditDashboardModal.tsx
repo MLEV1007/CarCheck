@@ -13,8 +13,10 @@ interface CreditDashboardModalProps {
 /** `plan_tier` -> magyar megjelenítendő címke -- 2026-08-06, "Árazási struktúra bővítés"
  * lépés óta a `QuotaPlanTier`-t követi (`starter`/`growth`/`pro`/`business`), NEM a régi,
  * elavult `PlanTier`-t (`free`/`starter`/`pro`/`enterprise`, `types/credits.ts`), lásd a
- * fájl-JSDoc "KRITIKUS hibajavítás" szakaszát. */
+ * fájl-JSDoc "KRITIKUS hibajavítás" szakaszát. 2026-08-07-től `free` is szerepel (lásd
+ * `BillingTab.tsx` ugyanezen címke-térképének JSDoc-ját -- ugyanaz a forrás/indoklás). */
 const PLAN_TIER_LABELS: Record<QuotaPlanTier, string> = {
+  free: 'Ingyenes csomag',
   starter: 'Egyéni csomag',
   growth: 'Műhely / Kereskedői csomag',
   pro: 'Profi csomag',

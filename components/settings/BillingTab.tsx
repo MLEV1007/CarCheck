@@ -51,8 +51,12 @@ interface BillingTabProps {
  * `CreditDashboardModal.tsx`-ben (a két felület szándékosan azonos szóhasználatot ad).
  * 2026-08-07, "Fizetések átnevezése" lépés: a belső `starter`/`growth`/`pro`/`business`
  * azonosító VÁLTOZATLAN maradt (DB enum, Stripe webhook leképezés), csak a felhasználónak
- * mutatott név cserélődött -- lásd PROJEKT_INSTRUKCIOK.md-hez tartozó kérést. */
+ * mutatott név cserélődött -- lásd PROJEKT_INSTRUKCIOK.md-hez tartozó kérést.
+ * 2026-08-07, "Ingyenes alap-kvóta bevezetése" lépés: `free` hozzáadva -- ez a fizetés
+ * nélküli kezdőállapot címkéje, SZÁNDÉKOSAN nem szerepel a `plans` tömbben (lent), tehát
+ * egy ilyen usernek egyik fizetős kártyán sem jelenik meg "Aktív csomag". */
 const PLAN_TIER_LABELS: Record<QuotaPlanTier, string> = {
+  free: 'Ingyenes csomag',
   starter: 'Egyéni csomag',
   growth: 'Műhely / Kereskedői csomag',
   pro: 'Profi csomag',

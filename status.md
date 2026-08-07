@@ -2169,3 +2169,50 @@ NEM része ennek a javításnak.
   egy újabb kikérése után), a user a `/login?error=confirmation_failed`-re kerüljön, és a "A
   belépési link érvénytelen vagy lejárt. Kérj egy újat." üzenetet lássa (NEM a "megszakadt
   bejelentkezés" szöveget).
+
+## 2026-08-07 (folyt.) -- Ingyenes alap-kvóta bevezetése (66. szakasz)
+
+**A hiba (felhasználói jelzés, "nagy hiba"):** minden új regisztráló automatikusan a fizetős
+Egyéni (Starter) csomag TELJES keretét kapta (20 vizsgálat / 6 AI-kredit havonta), ingyen, örökre
+-- a `user_credits` tábla `plan_tier` oszlopának alapértéke `'starter'` volt, a
+`monthly_inspections_limit`/`monthly_ai_limit` oszlopoké pedig 20/6, tehát egy vadonatúj,
+SOHA nem fizető szervezet ugyanazt a `user_credits` sort kapta, mint egy ténylegesen fizető Egyéni
+előfizető. Élő adatban ellenőrizve: a `nsejmkcwvksbwxscvrvb` projekt akkori MIND A 4 szervezetének
+(`test@buildmysite.hu`/Nagy Autó Kft., `manyilevente@gmail.com`, `shadiness4584@gmail.com`,
+`vajna.barbara@gmail.com`) `profiles.stripe_subscription_id`-ja NULL volt -- egyik sem fizetett
+valaha, mégis mind `plan_tier='starter'`, 20/6 kerettel futott, és a Beállítások > Előfizetés
+oldalon az Egyéni kártyán "Aktív csomag" jelzést kaptak.
+
+**Döntés (a felhasználónak feltett tisztázó kérdésre adott válasz alapján):** NEM elég csak a
+számokat csökkenteni ugyanazon a `'starter'` címkén (az továbbra is a fizetős Egyéni csomaggal
+azonos "Aktív csomag" jelzést mutatta volna) -- külön `'free'` plan_tier bevezetve.
+
+**Javítás (Supabase MCP-vel, élesben `nsejmkcwvksbwxscvrvb`-n, `supabase/migrations/
+20260807_free_tier_default_quota.sql`):**
+* `user_credits.plan_tier` CHECK constraint bővítve `'free'`-vel.
+* `plan_tier` oszlop alapértéke `'starter'` -> `'free'`.
+* `monthly_inspections_limit`/`monthly_inspections_remaining` oszlop-alapérték 20 -> 5.
+* `monthly_ai_limit`/`monthly_ai_remaining` oszlop-alapérték 6 -> 3.
+* Egyszeri backfill: a jelenleg is nem-fizető (NULL `stripe_subscription_id`) szervezetek
+  `'free'`-re állítva, 5/3 keretre (egyik érintett szervezetnek sem volt felhasznált kerete,
+  remaining == limit mindenhol a migráció időpontjában, tehát nem vont el elkezdett munkát).
+* `apply_plan_purchase` RPC VÁLTOZATLAN -- a ténylegesen fizetett Egyéni csomag (Stripe checkout
+  webhookon keresztül) továbbra is explicit 20/6-ot állít be, ezt a változás nem érinti.
+* Kód: `types/quotas.ts` (`QuotaPlanTier` unió), `lib/quotas.ts` (`toPlanTier()` -- az ismeretlen
+  DB-érték védelmi ága is `'starter'`-ről `'free'`-re változott, biztonságosabb alapállás),
+  `components/settings/BillingTab.tsx` és `components/credits/CreditDashboardModal.tsx`
+  (`PLAN_TIER_LABELS` -- `free: 'Ingyenes csomag'`) frissítve. A `BillingTab.tsx` `plans` tömbje
+  SZÁNDÉKOSAN nem tartalmaz `'free'` kártyát, tehát egy ilyen usernek egyik fizetős kártyán sem
+  jelenik meg "Aktív csomag".
+
+**Ellenőrzés:** `tsc --noEmit` szinkron, egyetlen bash-hívásban -- 0 hiba. DB-oldali
+visszaellenőrzés (`select plan_tier, monthly_inspections_limit, monthly_ai_limit from
+user_credits`) -- mind a 4 szervezet helyesen `free`/5/3. `get_advisors` (security) -- nincs új
+figyelmeztetés, a meglévők a változástól függetlenek.
+
+**Kézi teszt (LEGÚJABB, ÚJ, még nem futtatott, lásd 66. szakasz):**
+* Egy vadonatúj email címmel regisztrálva, a `/settings/billing` oldalon "Ingyenes csomag" jelenjen
+  meg "Jelenlegi csomag"-ként, 5 vizsgálat / 3 AI-kredit kerettel -- és EGYIK fizetős kártyán (Egyéni/
+  Műhely-Kereskedői/Profi/Autóház) se legyen "Aktív csomag" jelzés.
+* Ugyanaz a user Stripe teszt-checkout-tal Egyéni csomagra váltva -- a webhook lefutása UTÁN a
+  keret 20/6-ra nőjön, és az Egyéni kártyán jelenjen meg az "Aktív csomag" jelzés.

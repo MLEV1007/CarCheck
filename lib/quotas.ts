@@ -67,17 +67,20 @@ const QUOTA_COLUMNS =
  * fordított volna, ami a `growth`/`business` bevezetésével MÁR TÉNYLEGESEN hibás lett
  * volna). Igazán ismeretlen (jövőbeli, itt még nem kezelt) DB-érték esetén -- ami csak a
  * DB CHECK constraint (`user_credits_plan_tier_check`) és ez a leképezés szétcsúszása
- * esetén fordulhatna elő -- defenzíven `'starter'`-re esik vissza, DE ez mostantól
- * kifejezetten a "nem várt" ág, nem a normál `pro` eset mellékhatása. */
+ * esetén fordulhatna elő -- defenzíven `'free'`-re esik vissza (2026-08-07 óta, korábban
+ * `'starter'`-re esett vissza -- ez tévesen egy fizetős csomag megjelenítését okozta
+ * volna egy ismeretlen/hibás DB-értékre, holott a biztonságos, "nem járhat neki több,
+ * mint amennyit fizetett" alapállás a `free`). */
 function toPlanTier(rawPlanTier: string): QuotaPlanTier {
   switch (rawPlanTier) {
+    case 'free':
     case 'starter':
     case 'growth':
     case 'pro':
     case 'business':
       return rawPlanTier;
     default:
-      return 'starter';
+      return 'free';
   }
 }
 
@@ -110,8 +113,9 @@ async function resolveOrganizationId(userId: string): Promise<string> {
  * Visszaadja a SZERVEZET aktuális kvóta-egyenlegét (`user_credits` sor, plan_tier +
  * vizsgálati/AI kvóta oszlopok). Ha a szervezethez még nem létezik `user_credits` rekord
  * (pl. a szervezet eddig sem AI-funkciót, sem vizsgálatot nem indított), létrehozza az
- * alapértelmezett (Starter: 20 vizsgálat / 3 AI-hívás) sort, ugyanazzal a lazy-create +
- * race-condition-visszaolvasás mintával, mint a `lib/credits.ts`
+ * alapértelmezett (2026-08-07 óta: `free`, 5 vizsgálat / 3 AI-hívás -- lásd
+ * `supabase/migrations/20260807_free_tier_default_quota.sql`) sort, ugyanazzal a
+ * lazy-create + race-condition-visszaolvasás mintával, mint a `lib/credits.ts`
  * `getOrganizationCreditBalance`-je.
  */
 export async function getQuotaBalance(userId: string): Promise<QuotaBalance> {
