@@ -106,7 +106,7 @@ export async function SettingsPageContent({ initialTab, billingBanner }: Setting
   return (
     <div className="min-h-screen bg-stripe-canvas-soft">
       <header className="border-b border-stripe-hairline bg-white">
-        <div className="mx-auto flex max-w-3xl items-center gap-4 px-4 py-5 sm:px-6">
+        <div className="mx-auto flex max-w-5xl items-center gap-4 px-4 py-5 sm:px-6">
           <Link
             href="/dashboard"
             className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-stripe-hairline-input px-3.5 font-sohne text-[13px] font-normal text-stripe-ink-secondary transition-colors hover:bg-stripe-canvas-soft"
@@ -118,7 +118,7 @@ export async function SettingsPageContent({ initialTab, billingBanner }: Setting
         </div>
       </header>
 
-      <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-10 sm:px-6">
+      <main className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-10 sm:px-6">
         <SettingsTabs
           role={role}
           organizationId={profile?.organization_id ?? ''}

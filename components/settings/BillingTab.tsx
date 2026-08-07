@@ -355,7 +355,7 @@ export function BillingTab({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {plans.map((plan) => {
             const showYearly = billingPeriod === 'yearly' && plan.yearlyPrice !== null;
             const activePriceId = showYearly ? (plan.yearlyPriceId ?? plan.monthlyPriceId) : plan.monthlyPriceId;
@@ -368,24 +368,24 @@ export function BillingTab({
             return (
               <div
                 key={plan.key}
-                className={`flex flex-col gap-4 rounded-stripe-lg border bg-white p-6 shadow-stripe-1 transition-all duration-200 hover:-translate-y-1 hover:shadow-stripe-2 ${
+                className={`flex flex-col gap-5 rounded-stripe-lg border bg-white p-7 shadow-stripe-1 transition-all duration-200 hover:-translate-y-1 hover:shadow-stripe-2 ${
                   plan.highlight ? 'border-stripe-primary ring-1 ring-stripe-primary' : 'border-stripe-hairline'
                 }`}
               >
                 <div>
                   {plan.highlight && (
-                    <span className="mb-2 inline-flex items-center rounded-full bg-stripe-primary/10 px-2.5 py-0.5 font-sohne text-[11px] font-medium text-stripe-primary">
+                    <span className="mb-2.5 inline-flex items-center rounded-full bg-stripe-primary/10 px-2.5 py-0.5 font-sohne text-[11px] font-medium text-stripe-primary">
                       Legnépszerűbb
                     </span>
                   )}
-                  <h3 className="font-sohne text-[15px] font-medium text-stripe-ink">{plan.title}</h3>
+                  <h3 className="font-sohne text-[16px] font-medium leading-snug text-stripe-ink">{plan.title}</h3>
                   {displayedMonthlyEquivalent !== null ? (
                     <>
-                      <p className="mt-1 font-sohne text-[24px] font-medium tabular-nums text-stripe-ink">
+                      <p className="mt-2 whitespace-nowrap font-sohne text-[26px] font-medium tabular-nums text-stripe-ink">
                         {formatHuf(displayedMonthlyEquivalent)}
                         <span className="font-sohne text-[13px] font-light text-stripe-ink-mute">/hó</span>
                       </p>
-                      <p className="mt-0.5 font-sohne text-[12px] font-light text-stripe-ink-mute">
+                      <p className="mt-1 font-sohne text-[12px] font-light leading-relaxed text-stripe-ink-mute">
                         {showYearly
                           ? `évente egyben számlázva (${formatHuf(plan.yearlyPrice)}) -- spórolsz ${formatHuf(
                               yearlySavings
@@ -394,15 +394,15 @@ export function BillingTab({
                       </p>
                     </>
                   ) : (
-                    <p className="mt-1 font-sohne text-[20px] font-medium text-stripe-ink">Egyedi ajánlat</p>
+                    <p className="mt-2 font-sohne text-[20px] font-medium text-stripe-ink">Egyedi ajánlat</p>
                   )}
                 </div>
 
-                <ul className="flex flex-1 flex-col gap-2">
+                <ul className="flex flex-1 flex-col gap-2.5">
                   {plan.features.map((feature) => (
                     <li
                       key={feature}
-                      className="flex items-start gap-2 font-sohne text-[13px] font-light text-stripe-ink-secondary"
+                      className="flex items-start gap-2 font-sohne text-[14px] font-light leading-relaxed text-stripe-ink-secondary"
                     >
                       <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-stripe-primary" />
                       {feature}
