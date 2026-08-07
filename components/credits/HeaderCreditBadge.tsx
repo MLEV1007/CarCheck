@@ -114,36 +114,36 @@ export function HeaderCreditBadge() {
   if (state === 'error') return null;
 
   return (
-    <div className="flex shrink-0 items-center gap-2">
+    <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
       <Link
         href="/settings/billing"
-        className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-linear-hairline px-3 text-[13px] font-medium text-linear-ink-subtle transition-colors hover:bg-linear-surface-2 hover:text-linear-ink"
+        className="hidden h-8 shrink-0 items-center gap-1.5 rounded-md border border-linear-hairline px-3 text-[13px] font-medium text-linear-ink-subtle transition-colors hover:bg-linear-surface-2 hover:text-linear-ink sm:inline-flex"
         aria-label="Ugrás az Előfizetés oldalra"
       >
         <CreditCard className="h-3.5 w-3.5" />
-        <span className="hidden sm:inline">Előfizetés</span>
+        <span>Előfizetés</span>
       </Link>
 
       <button
         type="button"
         onClick={() => setIsModalOpen(true)}
         disabled={state === 'loading'}
-        className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-linear-hairline bg-linear-surface-2 px-3 text-[13px] font-medium text-linear-ink transition-colors hover:bg-linear-surface-3 disabled:cursor-wait disabled:opacity-70"
+        className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md border border-linear-hairline bg-linear-surface-2 px-2 text-[13px] font-medium text-linear-ink transition-colors hover:bg-linear-surface-3 disabled:cursor-wait disabled:opacity-70 sm:gap-1.5 sm:px-3"
         aria-label="Hátralévő vizsgálati keret -- kattints a részletekért"
       >
-        <ClipboardCheck className="h-3.5 w-3.5 text-linear-primary" />
-        <span>{state === 'loading' ? '…' : quota?.totalInspectionsAvailable} vizsgálat</span>
+        <ClipboardCheck className="h-3.5 w-3.5 shrink-0 text-linear-primary" />
+        <span className="whitespace-nowrap">{state === 'loading' ? '…' : quota?.totalInspectionsAvailable} vizsgálat</span>
       </button>
 
       <button
         type="button"
         onClick={() => setIsModalOpen(true)}
         disabled={state === 'loading'}
-        className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-linear-hairline bg-linear-surface-2 px-3 text-[13px] font-medium text-linear-ink transition-colors hover:bg-linear-surface-3 disabled:cursor-wait disabled:opacity-70"
+        className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md border border-linear-hairline bg-linear-surface-2 px-2 text-[13px] font-medium text-linear-ink transition-colors hover:bg-linear-surface-3 disabled:cursor-wait disabled:opacity-70 sm:gap-1.5 sm:px-3"
         aria-label="AI kredit egyenleg -- kattints a részletekért"
       >
-        <Zap className="h-3.5 w-3.5 text-linear-primary" />
-        <span>{state === 'loading' ? '…' : quota?.totalAiAvailable} AI kredit</span>
+        <Zap className="h-3.5 w-3.5 shrink-0 text-linear-primary" />
+        <span className="whitespace-nowrap">{state === 'loading' ? '…' : quota?.totalAiAvailable} AI kredit</span>
       </button>
 
       {isModalOpen && <CreditDashboardModal onClose={() => setIsModalOpen(false)} />}

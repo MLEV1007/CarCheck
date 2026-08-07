@@ -31,8 +31,8 @@ export function DashboardHeader({ companyName, logoUrl, role = 'manager' }: Dash
   const displayName = companyName || 'CarPass';
 
   return (
-    <header className="relative flex h-16 items-center justify-between border-b border-linear-hairline px-4 sm:px-6">
-      <div className="flex min-w-0 items-center gap-2.5">
+    <header className="relative flex h-16 items-center justify-between gap-2 border-b border-linear-hairline px-3 sm:px-6">
+      <div className="flex min-w-0 shrink items-center gap-2.5">
         {logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- a logó a Supabase Storage-ból, tetszőleges méretben érkezik
           <img src={logoUrl} alt={displayName} className="h-7 w-7 shrink-0 rounded-md object-cover" />
@@ -41,7 +41,7 @@ export function DashboardHeader({ companyName, logoUrl, role = 'manager' }: Dash
             {displayName.charAt(0).toUpperCase()}
           </div>
         )}
-        <span className="truncate text-[14px] font-medium text-linear-ink">{displayName}</span>
+        <span className="min-w-0 truncate text-[14px] font-medium text-linear-ink">{displayName}</span>
       </div>
 
       <Link
@@ -52,11 +52,12 @@ export function DashboardHeader({ companyName, logoUrl, role = 'manager' }: Dash
         <CarPassLogo variant="auto" size={40} />
       </Link>
 
-      <div className="flex shrink-0 items-center gap-3">
+      <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
         {role !== 'inspector' && <HeaderCreditBadge />}
         <Link
           href="/settings"
-          className="inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-[13px] font-medium text-linear-ink-subtle transition-colors hover:bg-linear-surface-1 hover:text-linear-ink"
+          aria-label="Beállítások"
+          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2 text-[13px] font-medium text-linear-ink-subtle transition-colors hover:bg-linear-surface-1 hover:text-linear-ink sm:px-3"
         >
           <Settings className="h-4 w-4" />
           <span className="hidden sm:inline">Beállítások</span>
