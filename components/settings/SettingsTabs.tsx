@@ -29,6 +29,11 @@ interface SettingsTabsProps {
   starterPriceId: string | null;
   growthPriceId: string | null;
   proPriceId: string | null;
+  /** Éves Price ID-k -- lásd `components/settings/BillingTab.tsx` JSDoc-ját (2026-08-07,
+   * "Havi/éves kapcsoló" lépés). */
+  starterYearlyPriceId: string | null;
+  growthYearlyPriceId: string | null;
+  proYearlyPriceId: string | null;
   topupPriceId: string | null;
   aiTopup5PriceId: string | null;
   aiTopup15PriceId: string | null;
@@ -60,6 +65,9 @@ export function SettingsTabs({
   starterPriceId,
   growthPriceId,
   proPriceId,
+  starterYearlyPriceId,
+  growthYearlyPriceId,
+  proYearlyPriceId,
   topupPriceId,
   aiTopup5PriceId,
   aiTopup15PriceId,
@@ -124,6 +132,9 @@ export function SettingsTabs({
           starterPriceId={starterPriceId}
           growthPriceId={growthPriceId}
           proPriceId={proPriceId}
+          starterYearlyPriceId={starterYearlyPriceId}
+          growthYearlyPriceId={growthYearlyPriceId}
+          proYearlyPriceId={proYearlyPriceId}
           topupPriceId={topupPriceId}
           aiTopup5PriceId={aiTopup5PriceId}
           aiTopup15PriceId={aiTopup15PriceId}

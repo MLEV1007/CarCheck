@@ -35,14 +35,25 @@ export const runtime = 'nodejs';
  * 20260806_pricing_tiers_growth_business_ai_credits.sql` bővített `apply_plan_purchase`
  * `p_plan_action` enumját. A `business` tier SZÁNDÉKOSAN NINCS itt leképezve -- nem
  * önkiszolgáló Stripe Checkout tétel (egyedi ártárgyalás, lásd `BillingTab.tsx`), ezért
- * sosem érkezik `checkout.session.completed` esemény hozzá ezen a felületen keresztül. */
+ * sosem érkezik `checkout.session.completed` esemény hozzá ezen a felületen keresztül.
+ *
+ * **2026-08-07, "Fizetések átnevezése + Havi/éves kapcsoló" lépés:** a `*_YEARLY` env
+ * price ID-k (`STRIPE_PRICE_ID_STARTER_YEARLY` stb.) UGYANARRA a `plan_tier`-re képeződnek
+ * le, mint a havi párjuk -- a `p_plan_action`/`plan_tier` a csomag SZINTJÉT jelöli, nem a
+ * számlázási periódust, a `user_credits` táblának nincs külön "yearly" állapota. A
+ * megjelenített csomagnevek (Egyéni/Műhely Kereskedői/Profi) csak UI-réteg
+ * (`BillingTab.tsx` `PLAN_TIER_LABELS`), a belső `starter`/`growth`/`pro` azonosító
+ * változatlan maradt, hogy a meglévő DB-adatok/RPC ne törjenek. */
 function resolvePlanAction(
   priceId: string | undefined
 ): 'starter' | 'growth' | 'pro' | 'topup10' | 'ai_topup5' | 'ai_topup15' | 'ai_topup40' | null {
   if (!priceId) return null;
   if (priceId === process.env.STRIPE_PRICE_ID_STARTER) return 'starter';
+  if (priceId === process.env.STRIPE_PRICE_ID_STARTER_YEARLY) return 'starter';
   if (priceId === process.env.STRIPE_PRICE_ID_GROWTH) return 'growth';
+  if (priceId === process.env.STRIPE_PRICE_ID_GROWTH_YEARLY) return 'growth';
   if (priceId === process.env.STRIPE_PRICE_ID_PRO) return 'pro';
+  if (priceId === process.env.STRIPE_PRICE_ID_PRO_YEARLY) return 'pro';
   if (priceId === process.env.STRIPE_PRICE_ID_TOPUP_10) return 'topup10';
   if (priceId === process.env.STRIPE_PRICE_ID_AI_TOPUP_5) return 'ai_topup5';
   if (priceId === process.env.STRIPE_PRICE_ID_AI_TOPUP_15) return 'ai_topup15';

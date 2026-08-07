@@ -15,10 +15,10 @@ interface CreditDashboardModalProps {
  * elavult `PlanTier`-t (`free`/`starter`/`pro`/`enterprise`, `types/credits.ts`), lásd a
  * fájl-JSDoc "KRITIKUS hibajavítás" szakaszát. */
 const PLAN_TIER_LABELS: Record<QuotaPlanTier, string> = {
-  starter: 'Starter csomag',
-  growth: 'Growth csomag',
-  pro: 'Pro Előfizetés',
-  business: 'Business csomag',
+  starter: 'Egyéni csomag',
+  growth: 'Műhely / Kereskedői csomag',
+  pro: 'Profi csomag',
+  business: 'Autóház csomag',
 };
 
 type LoadState = 'loading' | 'ready' | 'error';

@@ -1993,3 +1993,38 @@ A tényleges hiba a **Supabase Storage `inspection-media` bucket `storage.object
 - Kézi funkcionális teszt élesben (korábbi lépésekből maradt, még nem futtatott tesztek): márka/típus dropdown + "Egyéb/Más", évjárat/km óra állás/VIN/rendszám hibás értékekkel, több általános fotó feltöltése/törlése, "Visszaállítás piszkozatba" -> publikus link 404 majd helyreállás.
 - Logó feltöltés (nagy/hibás fájl elutasítása is), márkaszín mentése és megjelenése a `/report/[public_token]` oldalon, `email` mező mentése a `profiles` táblába -- a `/settings` lépésből maradt kézi tesztek, még nem futtattuk le élesben.
 - Rendszer-téma kézi teszt (világos/sötét OS beállítással) -- az előző lépésből maradt, még nem futtatott teszt, lásd a 9. pontot fent.
+
+## 2026-08-07 -- Fizetések átnevezése + Stripe integráció bekötése (sandbox) + Havi/éves kapcsoló (60. szakasz)
+
+**Mi történt:**
+* **Csomagnevek átnevezve** (KIZÁRÓLAG a felhasználónak mutatott felirat -- a belső `starter`/`growth`/`pro`/`business` Stripe/DB azonosító VÁLTOZATLAN maradt, hogy a meglévő `user_credits`/webhook logika ne törjön):
+  * Starter -> **Egyéni**
+  * Growth -> **Műhely / Kereskedői**
+  * Pro -> **Profi**
+  * Business -> **Autóház**
+  * Érintett fájlok: `components/settings/BillingTab.tsx` (`PLAN_TIER_LABELS` + `plans` tömb `title` mezői), `components/credits/CreditDashboardModal.tsx` (`PLAN_TIER_LABELS`).
+* **Stripe TESZT (sandbox) integráció ténylegesen bekötve** a csatlakoztatott Stripe MCP-n (`BuildMySite sandbox`, `acct_1U0F2DJGt439RxFU`) keresztül -- a `.env.local`-ban korábban EGYETLEN `STRIPE_*` változó sem volt beállítva, a checkout/webhook route-ok kódilag készen álltak, de gyakorlatban nem működtek. Létrehozott Stripe Product+Price objektumok (mind `livemode: false`, TESZT adatok, nincs valós pénzmozgás):
+  * CarCheck – Egyéni: havi `price_1U1lkcJGt439RxFUGj2nykXO` (18 990 Ft), éves `price_1U1lkyJGt439RxFUqNJwwip7` (182 300 Ft)
+  * CarCheck – Műhely / Kereskedői: havi `price_1U1lkfJGt439RxFUKftPLDTm` (27 990 Ft), éves `price_1U1ll2JGt439RxFU5dqwZEGe` (268 700 Ft)
+  * CarCheck – Profi: havi `price_1U1lkqJGt439RxFUS0u3UkYS` (37 990 Ft), éves `price_1U1ll7JGt439RxFU6j7wiin5` (364 700 Ft)
+  * CarCheck – +10 Autó Top-up: `price_1U1llLJGt439RxFUTuUfnp0N` (8 500 Ft, egyszeri)
+  * CarCheck – 5/15/40 AI-kredit: `price_1U1llPJGt439RxFUGR4s9Ibi` / `price_1U1llSJGt439RxFUktlzuUlY` / `price_1U1llVJGt439RxFU93IVzMc0` (4 990 / 12 990 / 29 990 Ft, egyszeri)
+  * Az "Autóház" (business) tier-nek SZÁNDÉKOSAN nincs Stripe Price-a -- egyedi ártárgyalás, `mailto:` kapcsolatfelvétel gomb marad.
+  * Mindegyik ár `.env.local`-ba beírva (`STRIPE_PRICE_ID_*` + ÚJ `STRIPE_PRICE_ID_*_YEARLY`), és `.env.local.example`-be is dokumentálva placeholder + magyarázat formában.
+  * **STRIPE_SECRET_KEY és STRIPE_WEBHOOK_SECRET -- EZ MÉG NINCS beállítva**, ezt API-n keresztül biztonsági okból nem lehet lekérdezni/generálni:
+    * `STRIPE_SECRET_KEY`: Dashboard -> https://dashboard.stripe.com/acct_1U0F2DJGt439RxFU/apikeys (Test mode -> Secret key) -> bemásolni `.env.local`-ba a `sk_test_REPLACE_WITH_YOUR_OWN_KEY` helyére.
+    * `STRIPE_WEBHOOK_SECRET`: helyi teszteléshez `stripe listen --forward-to localhost:3000/api/stripe/webhook` (a Stripe CLI kiírja a `whsec_...`-t); Vercel/production-höz Dashboard -> Developers -> Webhooks -> Add endpoint -> a `whsec_...` Signing secret bemásolása.
+    * A `STRIPE_SECRET_KEY` nélkül a Checkout gombok jelenleg `MissingStripeSecretKeyError`-t dobnak szerver-oldalon -- ez a KÖVETKEZŐ, ELVÉGZENDŐ lépés a felhasználó részéről, utána a fenti Price ID-kkal a fizetés végponttól-végpontig működni fog.
+* **Havi/Éves kapcsoló hozzáadva a `BillingTab.tsx`-hez** (a felhasználóval egyeztetett döntés alapján): könnyű, függőségmentes szegmentált pill-kapcsoló (NINCS `@radix-ui/react-switch`/`framer-motion`/`canvas-confetti`/`@number-flow/react` -- a felhasználó a "könnyű adaptáció" opciót választotta a referencia shadcn `pricing.tsx` helyett, hogy a Stripe Design System tokenjei és a projekt jelenlegi függőség-készlete ne sérüljön). Éves nézetben a nagy szám a HAVI EKVIVALENS árat mutatja, alatta "évente egyben számlázva (X Ft) -- spórolsz Y Ft-ot/év" felirattal (kb. 20% kedvezmény).
+  * `webhook/route.ts` `resolvePlanAction` kiegészítve: a `*_YEARLY` price ID-k UGYANARRA a `plan_tier`-re képeződnek le, mint a havi párjuk.
+  * `checkout/route.ts`-t NEM kellett módosítani -- az éves ár is `'subscription'` módban indul a meglévő `oneTimePurchasePriceIds` logika szerint.
+  * A prop-lánc bővítve: `SettingsPageContent.tsx` -> `SettingsTabs.tsx` -> `BillingTab.tsx` (`starterYearlyPriceId`/`growthYearlyPriceId`/`proYearlyPriceId`).
+
+**Ellenőrzés:** `tsc --noEmit` szinkron, egyetlen bash-hívásban lefuttatva -- **0 hiba**. `npx next build` NEM futott le végig a sandboxban (a build ~80 másodperc után is még a compile fázisban volt, a sandbox parancsonkénti 45 másodperces korlátja miatt nem futtatható megbízhatóan végig egyetlen szinkron hívásban) -- **ez a lépés kézi `npm run build` futtatást igényel a felhasználó gépén**, mielőtt Vercelre push-olnánk. `next lint` NEM futtatható a sandboxban (a projektben nincs `eslint` konfiguráció, a `next lint` interaktív "How would you like to configure ESLint?" promptot dobna, ami a nem-interaktív sandboxban elakad -- ez egy MEGLÉVŐ, ettől a lépéstől független állapot, nem regresszió).
+
+**Kézi teszt -- Fizetések átnevezése + Havi/éves kapcsoló (LEGÚJABB, ÚJ, még nem futtatott, lásd 60. szakasz):** a fenti `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET` beállítása UTÁN, `npm run build` helyi sikeres lefutása UTÁN, `npm run dev`.
+* `/settings` -> "Előfizetés" fül: a 4 kártya felirata "Egyéni"/"Műhely / Kereskedői"/"Profi"/"Autóház" (NEM a régi "Starter"/"Growth"/"Pro"/"Business"), a "Jelenlegi csomag" jelvény is az új nevet mutatja.
+* A "Havi"/"Éves -20%" kapcsoló átváltásra a 3 önkiszolgáló kártya ára frissül (havi-ekvivalens szám + "évente egyben számlázva" felirat), a gomb `disabled` státusza NEM változik hibásan, a hover-effekt (enyhe felfelé mozdulás + árnyék) látszik.
+* "Váltás erre a csomagra" gombra kattintva (bármelyik nézetben) a Stripe Checkoutra kell átirányulnia, teszt-kártyával (`4242 4242 4242 4242`) fizetve a webhook-nak a HELYES `plan_tier`-t kell beírnia (éves vásárlás is a havi párjával megegyező `plan_tier`-re állítja a `user_credits` sort).
+* Az "Autóház" kártyán VÁLTOZATLANUL a "Kapcsolatfelvétel" `mailto:` gomb jelenik meg, nem próbál Stripe Checkoutot indítani.
+* A "+10 Autó" Top-up és a 3 AI-kredit csomag gombjai is TÉNYLEGESEN működnek (korábban `disabled` maradtak hiányzó Price ID miatt).

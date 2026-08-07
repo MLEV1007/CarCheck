@@ -94,6 +94,10 @@ export async function SettingsPageContent({ initialTab, billingBanner }: Setting
   const starterPriceId = process.env.STRIPE_PRICE_ID_STARTER ?? null;
   const growthPriceId = process.env.STRIPE_PRICE_ID_GROWTH ?? null;
   const proPriceId = process.env.STRIPE_PRICE_ID_PRO ?? null;
+  // Éves (kb. 20% kedvezményes) Price ID-k -- 2026-08-07, "Havi/éves kapcsoló" lépés.
+  const starterYearlyPriceId = process.env.STRIPE_PRICE_ID_STARTER_YEARLY ?? null;
+  const growthYearlyPriceId = process.env.STRIPE_PRICE_ID_GROWTH_YEARLY ?? null;
+  const proYearlyPriceId = process.env.STRIPE_PRICE_ID_PRO_YEARLY ?? null;
   const topupPriceId = process.env.STRIPE_PRICE_ID_TOPUP_10 ?? null;
   const aiTopup5PriceId = process.env.STRIPE_PRICE_ID_AI_TOPUP_5 ?? null;
   const aiTopup15PriceId = process.env.STRIPE_PRICE_ID_AI_TOPUP_15 ?? null;
@@ -124,6 +128,9 @@ export async function SettingsPageContent({ initialTab, billingBanner }: Setting
           starterPriceId={starterPriceId}
           growthPriceId={growthPriceId}
           proPriceId={proPriceId}
+          starterYearlyPriceId={starterYearlyPriceId}
+          growthYearlyPriceId={growthYearlyPriceId}
+          proYearlyPriceId={proYearlyPriceId}
           topupPriceId={topupPriceId}
           aiTopup5PriceId={aiTopup5PriceId}
           aiTopup15PriceId={aiTopup15PriceId}

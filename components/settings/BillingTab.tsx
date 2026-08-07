@@ -29,6 +29,14 @@ interface BillingTabProps {
   starterPriceId: string | null;
   growthPriceId: string | null;
   proPriceId: string | null;
+  /** Éves (kb. 20% kedvezményes) Price ID-k -- 2026-08-07, "Havi/éves kapcsoló" lépés.
+   * `null`, ha még nincs beállítva -- ilyenkor az éves nézetben a kártya gombja az
+   * érvényes havi árra esik vissza (lásd a kártya-renderelésnél az `activePriceId`
+   * `?? plan.monthlyPriceId` fallback-et), hogy a vásárlás gomb ne váljon haszontalanná
+   * egy hiányzó env változó miatt. */
+  starterYearlyPriceId: string | null;
+  growthYearlyPriceId: string | null;
+  proYearlyPriceId: string | null;
   topupPriceId: string | null;
   aiTopup5PriceId: string | null;
   aiTopup15PriceId: string | null;
@@ -40,24 +48,31 @@ interface BillingTabProps {
 }
 
 /** `plan_tier` -> magyar megjelenítendő címke -- ugyanaz a forrás, mint
- * `CreditDashboardModal.tsx`-ben (a két felület szándékosan azonos szóhasználatot ad). */
+ * `CreditDashboardModal.tsx`-ben (a két felület szándékosan azonos szóhasználatot ad).
+ * 2026-08-07, "Fizetések átnevezése" lépés: a belső `starter`/`growth`/`pro`/`business`
+ * azonosító VÁLTOZATLAN maradt (DB enum, Stripe webhook leképezés), csak a felhasználónak
+ * mutatott név cserélődött -- lásd PROJEKT_INSTRUKCIOK.md-hez tartozó kérést. */
 const PLAN_TIER_LABELS: Record<QuotaPlanTier, string> = {
-  starter: 'Starter csomag',
-  growth: 'Growth csomag',
-  pro: 'Pro Előfizetés',
-  business: 'Business csomag',
+  starter: 'Egyéni csomag',
+  growth: 'Műhely / Kereskedői csomag',
+  pro: 'Profi csomag',
+  business: 'Autóház csomag',
 };
 
 type LoadState = 'loading' | 'ready' | 'error';
+type BillingPeriod = 'monthly' | 'yearly';
 
 interface PlanCardDef {
   key: 'starter' | 'growth' | 'pro' | 'business';
   title: string;
   /** `null` a `business` tier-nél -- egyedi ártárgyalás, nincs fix, nyilvánosan
    * megjelenített ár (lásd a kártya renderelésénél a "Egyedi ajánlat" ágat). */
-  price: number | null;
-  priceSuffix: string;
-  priceId: string | null;
+  monthlyPrice: number | null;
+  /** Éves ár TELJES (12 havi) összege, kb. 20% kedvezménnyel -- `null` a `business`
+   * tier-nél, ugyanúgy, mint a `monthlyPrice`-nál. */
+  yearlyPrice: number | null;
+  monthlyPriceId: string | null;
+  yearlyPriceId: string | null;
   features: string[];
   isCurrentPlan?: boolean;
   highlight?: boolean;
@@ -101,6 +116,9 @@ export function BillingTab({
   starterPriceId,
   growthPriceId,
   proPriceId,
+  starterYearlyPriceId,
+  growthYearlyPriceId,
+  proYearlyPriceId,
   topupPriceId,
   aiTopup5PriceId,
   aiTopup15PriceId,
@@ -111,6 +129,10 @@ export function BillingTab({
   const [data, setData] = useState<QuotaSummarySuccessResponse | null>(null);
   const [checkoutLoadingKey, setCheckoutLoadingKey] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  /** Havi/éves kapcsoló -- 2026-08-07, "Havi/éves kapcsoló" lépés. Csak a 3 önkiszolgáló
+   * előfizetési kártyát (Egyéni/Műhely Kereskedői/Profi) érinti, az Autóház (egyedi
+   * ajánlat) és a Top-up/AI-kredit szekciók változatlanok maradnak. */
+  const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
 
   useEffect(() => {
     let cancelled = false;
@@ -176,38 +198,42 @@ export function BillingTab({
   const plans: PlanCardDef[] = [
     {
       key: 'starter',
-      title: 'Starter',
-      price: 18990,
-      priceSuffix: '/hó',
-      priceId: starterPriceId,
+      title: 'Egyéni',
+      monthlyPrice: 18990,
+      yearlyPrice: 182300,
+      monthlyPriceId: starterPriceId,
+      yearlyPriceId: starterYearlyPriceId,
       features: ['20 vizsgálat / hó', '6 AI-kredit / hó', 'Publikus ügyfélriport', 'Alap támogatás'],
       isCurrentPlan: currentPlanTier === 'starter',
     },
     {
       key: 'growth',
-      title: 'Growth',
-      price: 27990,
-      priceSuffix: '/hó',
-      priceId: growthPriceId,
+      title: 'Műhely / Kereskedői',
+      monthlyPrice: 27990,
+      yearlyPrice: 268700,
+      monthlyPriceId: growthPriceId,
+      yearlyPriceId: growthYearlyPriceId,
       features: ['35 vizsgálat / hó', '14 AI-kredit / hó', 'Publikus ügyfélriport', 'Kiemelt támogatás'],
       isCurrentPlan: currentPlanTier === 'growth',
       highlight: true,
     },
     {
       key: 'pro',
-      title: 'Pro',
-      price: 37990,
-      priceSuffix: '/hó',
-      priceId: proPriceId,
+      title: 'Profi',
+      monthlyPrice: 37990,
+      yearlyPrice: 364700,
+      monthlyPriceId: proPriceId,
+      yearlyPriceId: proYearlyPriceId,
       features: ['50 vizsgálat / hó', '25 AI-kredit / hó', 'Publikus ügyfélriport', 'Kiemelt támogatás'],
       isCurrentPlan: currentPlanTier === 'pro',
     },
     {
       key: 'business',
-      title: 'Business',
-      price: null,
-      priceSuffix: '',
-      priceId: null,
+      title: 'Autóház',
+      monthlyPrice: null,
+      yearlyPrice: null,
+      monthlyPriceId: null,
+      yearlyPriceId: null,
       features: ['Gyakorlatban korlátlan vizsgálat', '100 AI-kredit / hó', 'Dedikált támogatás', 'Egyedi feltételek'],
       isCurrentPlan: currentPlanTier === 'business',
     },
@@ -294,77 +320,130 @@ export function BillingTab({
         )}
       </div>
 
-      {/* 4 előfizetési csomag-kártya */}
+      {/* 4 előfizetési csomag-kártya + Havi/Éves kapcsoló (2026-08-07, "Havi/éves kapcsoló"
+          lépés) -- könnyű, függőségmentes szegmentált kapcsoló (nincs @radix-ui/react-switch,
+          hogy ne kerüljön be egy csak erre az egy helyre importált új csomag). */}
       <div>
-        <h2 className="mb-3 font-sohne text-[15px] font-medium text-stripe-ink">Előfizetési csomagok</h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {plans.map((plan) => (
-            <div
-              key={plan.key}
-              className={`flex flex-col gap-4 rounded-stripe-lg border bg-white p-6 shadow-stripe-1 ${
-                plan.highlight ? 'border-stripe-primary ring-1 ring-stripe-primary' : 'border-stripe-hairline'
+        <div className="mb-4 flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
+          <h2 className="font-sohne text-[15px] font-medium text-stripe-ink">Előfizetési csomagok</h2>
+          <div className="inline-flex items-center rounded-full border border-stripe-hairline bg-stripe-canvas-soft p-1">
+            <button
+              type="button"
+              onClick={() => setBillingPeriod('monthly')}
+              className={`rounded-full px-3.5 py-1.5 font-sohne text-[13px] font-normal transition-colors ${
+                billingPeriod === 'monthly'
+                  ? 'bg-white text-stripe-ink shadow-stripe-1'
+                  : 'text-stripe-ink-mute hover:text-stripe-ink-secondary'
               }`}
             >
-              <div>
-                {plan.highlight && (
-                  <span className="mb-2 inline-flex items-center rounded-full bg-stripe-primary/10 px-2.5 py-0.5 font-sohne text-[11px] font-medium text-stripe-primary">
-                    Legnépszerűbb
-                  </span>
-                )}
-                <h3 className="font-sohne text-[15px] font-medium text-stripe-ink">{plan.title}</h3>
-                {plan.price !== null ? (
-                  <p className="mt-1 font-sohne text-[24px] font-medium tabular-nums text-stripe-ink">
-                    {formatHuf(plan.price)}
-                    <span className="font-sohne text-[13px] font-light text-stripe-ink-mute">{plan.priceSuffix}</span>
-                  </p>
+              Havi
+            </button>
+            <button
+              type="button"
+              onClick={() => setBillingPeriod('yearly')}
+              className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 font-sohne text-[13px] font-normal transition-colors ${
+                billingPeriod === 'yearly'
+                  ? 'bg-white text-stripe-ink shadow-stripe-1'
+                  : 'text-stripe-ink-mute hover:text-stripe-ink-secondary'
+              }`}
+            >
+              Éves
+              <span className="rounded-full bg-stripe-primary/10 px-1.5 py-0.5 font-sohne text-[11px] font-medium text-stripe-primary">
+                -20%
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {plans.map((plan) => {
+            const showYearly = billingPeriod === 'yearly' && plan.yearlyPrice !== null;
+            const activePriceId = showYearly ? (plan.yearlyPriceId ?? plan.monthlyPriceId) : plan.monthlyPriceId;
+            const displayedMonthlyEquivalent = showYearly
+              ? Math.round((plan.yearlyPrice as number) / 12)
+              : plan.monthlyPrice;
+            const yearlySavings =
+              showYearly && plan.monthlyPrice !== null ? plan.monthlyPrice * 12 - (plan.yearlyPrice as number) : 0;
+
+            return (
+              <div
+                key={plan.key}
+                className={`flex flex-col gap-4 rounded-stripe-lg border bg-white p-6 shadow-stripe-1 transition-all duration-200 hover:-translate-y-1 hover:shadow-stripe-2 ${
+                  plan.highlight ? 'border-stripe-primary ring-1 ring-stripe-primary' : 'border-stripe-hairline'
+                }`}
+              >
+                <div>
+                  {plan.highlight && (
+                    <span className="mb-2 inline-flex items-center rounded-full bg-stripe-primary/10 px-2.5 py-0.5 font-sohne text-[11px] font-medium text-stripe-primary">
+                      Legnépszerűbb
+                    </span>
+                  )}
+                  <h3 className="font-sohne text-[15px] font-medium text-stripe-ink">{plan.title}</h3>
+                  {displayedMonthlyEquivalent !== null ? (
+                    <>
+                      <p className="mt-1 font-sohne text-[24px] font-medium tabular-nums text-stripe-ink">
+                        {formatHuf(displayedMonthlyEquivalent)}
+                        <span className="font-sohne text-[13px] font-light text-stripe-ink-mute">/hó</span>
+                      </p>
+                      <p className="mt-0.5 font-sohne text-[12px] font-light text-stripe-ink-mute">
+                        {showYearly
+                          ? `évente egyben számlázva (${formatHuf(plan.yearlyPrice)}) -- spórolsz ${formatHuf(
+                              yearlySavings
+                            )}-ot/év`
+                          : 'havonta számlázva'}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="mt-1 font-sohne text-[20px] font-medium text-stripe-ink">Egyedi ajánlat</p>
+                  )}
+                </div>
+
+                <ul className="flex flex-1 flex-col gap-2">
+                  {plan.features.map((feature) => (
+                    <li
+                      key={feature}
+                      className="flex items-start gap-2 font-sohne text-[13px] font-light text-stripe-ink-secondary"
+                    >
+                      <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-stripe-primary" />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+
+                {role === 'manager' ? (
+                  plan.isCurrentPlan ? (
+                    <span className="inline-flex h-9 items-center justify-center rounded-full border border-stripe-hairline font-sohne text-[13px] font-normal text-stripe-ink-mute">
+                      Aktív csomag
+                    </span>
+                  ) : plan.key === 'business' ? (
+                    <a
+                      href="mailto:levente.manyi@buildmysite.hu?subject=Aut%C3%B3h%C3%A1z%20csomag%20-%20egyedi%20aj%C3%A1nlat"
+                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full border border-stripe-primary px-4 font-sohne text-[13px] font-normal text-stripe-primary transition-colors hover:bg-stripe-primary/5"
+                    >
+                      <Mail className="h-3.5 w-3.5" />
+                      Kapcsolatfelvétel
+                    </a>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handlePurchase(activePriceId, `${plan.key}_${billingPeriod}`)}
+                      disabled={checkoutLoadingKey === `${plan.key}_${billingPeriod}` || !activePriceId}
+                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-stripe-primary px-4 font-sohne text-[13px] font-normal text-white transition-colors hover:bg-stripe-primary-deep disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {checkoutLoadingKey === `${plan.key}_${billingPeriod}` && (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      )}
+                      Váltás erre a csomagra
+                    </button>
+                  )
                 ) : (
-                  <p className="mt-1 font-sohne text-[20px] font-medium text-stripe-ink">Egyedi ajánlat</p>
+                  <span className="font-sohne text-[12px] font-light text-stripe-ink-mute">
+                    Csak a Menedzser vásárolhat/válthat csomagot.
+                  </span>
                 )}
               </div>
-
-              <ul className="flex flex-1 flex-col gap-2">
-                {plan.features.map((feature) => (
-                  <li
-                    key={feature}
-                    className="flex items-start gap-2 font-sohne text-[13px] font-light text-stripe-ink-secondary"
-                  >
-                    <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-stripe-primary" />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-
-              {role === 'manager' ? (
-                plan.isCurrentPlan ? (
-                  <span className="inline-flex h-9 items-center justify-center rounded-full border border-stripe-hairline font-sohne text-[13px] font-normal text-stripe-ink-mute">
-                    Aktív csomag
-                  </span>
-                ) : plan.key === 'business' ? (
-                  <a
-                    href="mailto:levente.manyi@buildmysite.hu?subject=Business%20csomag%20-%20egyedi%20aj%C3%A1nlat"
-                    className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full border border-stripe-primary px-4 font-sohne text-[13px] font-normal text-stripe-primary transition-colors hover:bg-stripe-primary/5"
-                  >
-                    <Mail className="h-3.5 w-3.5" />
-                    Kapcsolatfelvétel
-                  </a>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => handlePurchase(plan.priceId, plan.key)}
-                    disabled={checkoutLoadingKey === plan.key || !plan.priceId}
-                    className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-stripe-primary px-4 font-sohne text-[13px] font-normal text-white transition-colors hover:bg-stripe-primary-deep disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {checkoutLoadingKey === plan.key && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                    Váltás erre a csomagra
-                  </button>
-                )
-              ) : (
-                <span className="font-sohne text-[12px] font-light text-stripe-ink-mute">
-                  Csak a Menedzser vásárolhat/válthat csomagot.
-                </span>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
