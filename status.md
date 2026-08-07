@@ -2028,3 +2028,14 @@ A tényleges hiba a **Supabase Storage `inspection-media` bucket `storage.object
 * "Váltás erre a csomagra" gombra kattintva (bármelyik nézetben) a Stripe Checkoutra kell átirányulnia, teszt-kártyával (`4242 4242 4242 4242`) fizetve a webhook-nak a HELYES `plan_tier`-t kell beírnia (éves vásárlás is a havi párjával megegyező `plan_tier`-re állítja a `user_credits` sort).
 * Az "Autóház" kártyán VÁLTOZATLANUL a "Kapcsolatfelvétel" `mailto:` gomb jelenik meg, nem próbál Stripe Checkoutot indítani.
 * A "+10 Autó" Top-up és a 3 AI-kredit csomag gombjai is TÉNYLEGESEN működnek (korábban `disabled` maradtak hiányzó Price ID miatt).
+
+## 2026-08-07 (folyt.) -- Kártya-szélesítés + pontos, kódból ellenőrzött feature-listák (61. szakasz)
+
+* **Kártyák szélesítése:** a Beállítások oldal konténere `max-w-3xl` -> `max-w-5xl` (768px -> 1024px, `SettingsPageContent.tsx` header + main), a `BillingTab.tsx` kártyák paddingje/betűmérete/sortávolsága nőtt (`p-6`->`p-7`, cím 15px->16px, ár 24px->26px `whitespace-nowrap`-pal, feature-sor 13px->14px `leading-relaxed`-del) -- a felhasználó visszajelzése alapján ("túl zsúfoltnak" látta a kártyákat).
+* **Feature-listák pontosítva a TÉNYLEGES, kódban kikényszerített különbségek alapján** (nem csak marketing-szöveg) -- forrás: `supabase/migrations/20260806_pricing_tiers_growth_business_ai_credits.sql` (`apply_plan_purchase` limitjei) + `supabase/migrations/20260806180000_report_ai_chat.sql` (`get_public_report`/`check_and_increment_report_chat_usage`, `plan_tier in ('pro','business')`):
+  * Mind a 4 csomagnál egységesen szerepel: "Publikus, márkázott ügyfélriport (PDF-exporttal)" -- ez korábban az "Autóház" kártyáról LEMARADT (inkonzisztencia javítva, a PDF-export a `window.print()`-alapú `ReportHeader.tsx` gombbal MINDEN csomagon egyformán elérhető, nincs tier-gate rajta).
+  * ÚJ sor: "AI szakértő chat az ügyfélriporton" -- KIZÁRÓLAG a Profi és Autóház kártyán szerepel, mert ez a `get_public_report` RPC-ben ténylegesen `plan_tier in ('pro', 'business')`-re van kódolva (Egyéni/Műhely-Kereskedői riporton a chat komponens `ai_chat_enabled === false` miatt egyáltalán nem renderelődik).
+  * A "Csapatkezelés" (több felhasználó/szervezeten belüli meghívás) SZÁNDÉKOSAN NEM került fel egyik csomag feature-listájára sem -- ez `organizations.team_management_enabled` alapján a Platform Admin kézzel, ügyfelenként engedélyezi (`/admin`), NEM a Stripe-csomaghoz kötött automatikus jog, tehát tier-feature-ként feltüntetni félrevezető lenne.
+  * Az AI-kredit mennyiség (6/14/25/100) és a vizsgálati keret (20/35/50/korlátlan) VÁLTOZATLAN maradt, csak a fenti 2 pont pontosodott.
+
+**Ellenőrzés:** `tsc --noEmit` szinkron, egyetlen bash-hívásban -- 0 hiba.

@@ -203,7 +203,12 @@ export function BillingTab({
       yearlyPrice: 182300,
       monthlyPriceId: starterPriceId,
       yearlyPriceId: starterYearlyPriceId,
-      features: ['20 vizsgálat / hó', '6 AI-kredit / hó', 'Publikus ügyfélriport', 'Alap támogatás'],
+      features: [
+        '20 vizsgálat / hó',
+        '6 AI-kredit / hó',
+        'Publikus, márkázott ügyfélriport (PDF-exporttal)',
+        'Alap e-mail támogatás',
+      ],
       isCurrentPlan: currentPlanTier === 'starter',
     },
     {
@@ -213,7 +218,12 @@ export function BillingTab({
       yearlyPrice: 268700,
       monthlyPriceId: growthPriceId,
       yearlyPriceId: growthYearlyPriceId,
-      features: ['35 vizsgálat / hó', '14 AI-kredit / hó', 'Publikus ügyfélriport', 'Kiemelt támogatás'],
+      features: [
+        '35 vizsgálat / hó',
+        '14 AI-kredit / hó',
+        'Publikus, márkázott ügyfélriport (PDF-exporttal)',
+        'Kiemelt támogatás',
+      ],
       isCurrentPlan: currentPlanTier === 'growth',
       highlight: true,
     },
@@ -224,7 +234,13 @@ export function BillingTab({
       yearlyPrice: 364700,
       monthlyPriceId: proPriceId,
       yearlyPriceId: proYearlyPriceId,
-      features: ['50 vizsgálat / hó', '25 AI-kredit / hó', 'Publikus ügyfélriport', 'Kiemelt támogatás'],
+      features: [
+        '50 vizsgálat / hó',
+        '25 AI-kredit / hó',
+        'Publikus, márkázott ügyfélriport (PDF-exporttal)',
+        'AI szakértő chat az ügyfélriporton (ÚJ)',
+        'Kiemelt támogatás',
+      ],
       isCurrentPlan: currentPlanTier === 'pro',
     },
     {
@@ -234,7 +250,13 @@ export function BillingTab({
       yearlyPrice: null,
       monthlyPriceId: null,
       yearlyPriceId: null,
-      features: ['Gyakorlatban korlátlan vizsgálat', '100 AI-kredit / hó', 'Dedikált támogatás', 'Egyedi feltételek'],
+      features: [
+        'Gyakorlatban korlátlan vizsgálat / hó',
+        '100 AI-kredit / hó',
+        'Publikus, márkázott ügyfélriport (PDF-exporttal)',
+        'AI szakértő chat az ügyfélriporton',
+        'Dedikált támogatás + egyedi feltételek',
+      ],
       isCurrentPlan: currentPlanTier === 'business',
     },
   ];
