@@ -2057,3 +2057,20 @@ A tényleges hiba a **Supabase Storage `inspection-media` bucket `storage.object
 * Ugyanazzal a szervezettel Stripe teszt-kártyával Műhely / Kereskedői (vagy magasabb) csomagra váltva -- a webhook lefutása UTÁN a "Csapatkezelés" fül AUTOMATIKUSAN feloldódik (frissítés/újranyitás után), anélkül, hogy a Platform Admin bármit kapcsolt volna.
 * A meghívó-link (`/register?invite=<organization_id>`) egy MÁSIK, vadonatúj email címmel megnyitva -- a regisztrációnak SIKERESEN a meghívó Menedzser szervezetéhez kell csatlakoznia (NEM egy új, üres szervezetbe), pontosan ez volt a korábbi hiba, amit az RPC-szintű javítás megelőz.
 * `/admin` Platform Admin felület: a Growth+ tesztszervezet sorában a kapcsoló már bekapcsolva látszik a fenti csomagváltás után; kikapcsolva majd egy ÚJABB csomag-műveletet (pl. Top-up vásárlás UGYANAZON a tier-en -- FIGYELEM: a jelenlegi implementáció csak a growth/pro/business ÁGAKBAN fut le, tehát csak egy TÉNYLEGES tier-váltás/megújítás kapcsolja vissza, nem bármilyen vásárlás) kiváltva a kapcsolónak vissza kell kapcsolódnia.
+
+## 2026-08-07 (folyt.) -- Csapatkezelés Egyéni-tier hibajavítás (63. szakasz)
+
+**A hiba (élő adaton reprodukálva, felhasználói jelzés):** a `test@buildmysite.hu` (Nagy Autó Kft. szervezet) fiókot Profiról Egyénire váltottam (`apply_plan_purchase('starter')` közvetlen RPC-hívással, a felhasználó kérésére) -- a csomagváltás UTÁN a Csapatkezelés fül TOVÁBBRA IS aktív maradt, a Menedzser továbbra is tudott volna csapattagot meghívni, HOLOTT az Egyéni tier-nek ez NEM jár. Az ok: a 62. szakaszban bevezetett `apply_plan_purchase` 'starter' ága SZÁNDÉKOSAN nem kapcsolta vissza `false`-ra a `team_management_enabled`-et (grandfathering-elv, hogy egy visszaváltás ne törjön el egy már felépített csapatot) -- ez tévedés volt, a felhasználó explicit felülbírálta: Egyéni tier-en SOSE legyen elérhető.
+
+**Javítás (Supabase MCP-vel, élesben `nsejmkcwvksbwxscvrvb`-n):**
+* `apply_plan_purchase` 'starter' ága MOSTANTÓL AKTÍVAN `false`-ra állítja a `team_management_enabled`-et minden Egyéni tier-re (vissza)váltáskor.
+* Egyszeri korrekció: MINDEN jelenleg nem-growth/pro/business szervezet (starter VAGY user_credits sor nélküli) Csapatkezelése azonnal kikapcsolva -- ez mindhárom jelenlegi szervezetet érintette (`Nagy Autó Kft.`, a fejlesztő saját `manyilevente@gmail.com` szervezete, és egy harmadik, plan_tier nélküli teszt-szervezet) -- visszaellenőrizve, mindhárom `team_management_enabled = false` most.
+* Dokumentálva: `supabase/migrations/20260807_team_management_starter_revoke_fix.sql`.
+* `components/settings/SettingsTabs.tsx` `teamManagementEnabled` prop JSDoc-ja frissítve, a "grandfathering" leírás eltávolítva/javítva.
+
+**Ellenőrzés:** `tsc --noEmit` szinkron, egyetlen bash-hívásban -- 0 hiba. DB-oldali visszaellenőrzés (`select team_management_enabled, plan_tier from organizations join user_credits...`) -- mindhárom szervezet helyesen `false`.
+
+**Kézi teszt -- Csapatkezelés Egyéni-tier hibajavítás (LEGÚJABB, ÚJ, még nem futtatott, lásd 63. szakasz):**
+* `test@buildmysite.hu`-val bejelentkezve `/settings` -> "Csapatkezelés" fül -- MOSTANTÓL zárolt állapotot kell mutatnia (nem a csapattag-listát), "Csomagváltás" CTA-val.
+* Egy Growth+ szervezetet Egyénire visszaváltva (Stripe teszt-checkout-tal) -- a webhook lefutása UTÁN a Csapatkezelés fülnek AZONNAL zárolttá kell válnia (nem csak egy következő oldal-frissítésnél, hanem ténylegesen az adatbázisban is).
+* Egy Egyéni szervezetet Növekedésire/Profira/Autóházra váltva -- a Csapatkezelés helyesen újra feloldódik (ez a 62. szakaszban már tesztelt útvonal, itt csak regresszió-ellenőrzés).

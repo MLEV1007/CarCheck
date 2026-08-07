@@ -16,13 +16,23 @@ interface SettingsTabsProps {
    * feloldás" lépés óta ELSŐDLEGESEN a csomag-szinttől függ: a Stripe-vásárlást
    * feldolgozó `apply_plan_purchase` RPC automatikusan `true`-ra állítja Műhely /
    * Kereskedői (growth) tier-től felfelé (lásd
-   * `supabase/migrations/20260807_team_management_tier_unlock.sql`), 'starter'-re
-   * visszaváltáskor SZÁNDÉKOSAN nem kapcsolja vissza (grandfathering). A Platform Admin
+   * `supabase/migrations/20260807_team_management_tier_unlock.sql`).
+   *
+   * **2026-08-07, "Csapatkezelés Egyéni-tier hibajavítás" lépés:** a korábbi
+   * verzió 'starter'-re visszaváltáskor SZÁNDÉKOSAN nem kapcsolta vissza `false`-ra
+   * (grandfathering) -- ez HIBÁS volt (élő adatban reprodukálva: egy Egyéni
+   * csomagra visszaváltott szervezet Menedzsere továbbra is tudott csapattagot
+   * meghívni), a felhasználó explicit kérésére javítva, lásd
+   * `supabase/migrations/20260807_team_management_starter_revoke_fix.sql`. Az
+   * Egyéni (starter) tier-en MOST MÁR SOSE elérhető a Csapatkezelés, függetlenül a
+   * korábbi állapottól -- az `apply_plan_purchase` 'starter' ága minden
+   * starter-re (vissza)váltáskor aktívan `false`-ra állítja. A Platform Admin
    * (`/admin`, "Platform Admin + Csapatkezelés-entitlement" lépés, 2026-08-03) kézi
-   * kapcsolója egy KIEGÉSZÍTŐ override marad (pl. egyedi kivétel egy Starter
-   * ügyfélnek). `false` esetén a fül LÁTSZIK (a Menedzser tudja, hogy a funkció
-   * létezik), de zárolt állapotot mutat a tényleges csapattag-lista/meghívás helyett,
-   * egy "Csomagváltás" CTA-val a Beállítások > Előfizetés fülre. */
+   * kapcsolója egy KIEGÉSZÍTŐ override marad Growth+ ügyfeleknél (pl. időleges
+   * letiltás), DE Egyéni ügyfélnél a KÖVETKEZŐ 'starter' plan-művelet ezt is
+   * felülírja `false`-ra. `false` esetén a fül LÁTSZIK (a Menedzser tudja, hogy a
+   * funkció létezik), de zárolt állapotot mutat a tényleges csapattag-lista/
+   * meghívás helyett, egy "Csomagváltás" CTA-val a Beállítások > Előfizetés fülre. */
   teamManagementEnabled: boolean;
   /** Melyik fül legyen kezdetben aktív -- `app/settings/billing/page.tsx` (a Stripe
    * Checkout `success_url`/`cancel_url` célja) ezt `'billing'`-re állítja, hogy a
