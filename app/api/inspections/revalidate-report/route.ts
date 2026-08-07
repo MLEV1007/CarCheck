@@ -18,6 +18,16 @@ import { createClient } from '@/lib/supabase/server';
  * egy sikertelen revalidáció legrosszabb esetben is csak azt jelenti, hogy a cache a normál
  * 60 másodperces ablakon belül magától frissül -- nem hibázhat el emiatt a MÁR sikeresen
  * elmentett vizsgálat.
+ *
+ * **Szerveroldali jogosultság-ellenőrzés (2026-08-07, biztonsági audit):** korábban BÁRMELY
+ * bejelentkezett user (bármelyik szervezetből) tetszőleges `publicToken`-re rá tudta
+ * kényszeríteni az ISR cache invalidálását -- ez önmagában NEM szivárogtatott adatot (a
+ * `revalidatePath` nem ad vissza semmilyen riport-tartalmat), de a projekt szigorú
+ * "minden lekérdezés ellenőrizze a szervezeti hovatartozást" szabálya (PROJEKT_INSTRUKCIOK.md
+ * 3. pont) alapján ez a végpont is szigorítva lett: a `publicToken`-hez tartozó vizsgálatot a
+ * hívó cookie-alapú (RLS-jogosultsággal futó) kliensével kérdezzük le -- ha a sor nem
+ * található (nem létezik, VAGY a hívó szervezete/szerepköre alapján az `inspections_select_org`
+ * RLS policy nem engedi látni), `404`-et adunk vissza, a revalidáció NEM fut le.
  */
 export const runtime = 'nodejs';
 
@@ -42,11 +52,29 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json({ success: false, error: 'Érvénytelen kérés törzs.' }, { status: 400 });
   }
 
-  if (!body.publicToken || typeof body.publicToken !== 'string') {
+  const publicToken = body.publicToken;
+  if (!publicToken || typeof publicToken !== 'string') {
     return NextResponse.json({ success: false, error: 'Hiányzó publicToken.' }, { status: 400 });
   }
 
-  revalidatePath(`/report/${body.publicToken}`);
+  // Jogosultság-ellenőrzés -- lásd a fenti JSDoc-ot. A cookie-alapú kliens SAJÁT
+  // RLS-jogosultságával fut (`inspections_select_org`), tehát ez a lekérdezés kizárólag akkor
+  // ad vissza sort, ha a hívó ténylegesen jogosult megtekinteni ezt a vizsgálatot (saját maga
+  // rögzítette, VAGY a szervezetéhez tartozik Menedzserként/`can_view_all_reports`-tal).
+  const { data: inspection } = await supabase
+    .from('inspections')
+    .select('id')
+    .eq('public_token', publicToken)
+    .maybeSingle();
+
+  if (!inspection) {
+    return NextResponse.json(
+      { success: false, error: 'A vizsgálat nem található, vagy nincs jogosultságod hozzá.' },
+      { status: 404 }
+    );
+  }
+
+  revalidatePath(`/report/${publicToken}`);
 
   return NextResponse.json({ success: true });
 }
