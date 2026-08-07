@@ -319,8 +319,7 @@ export function StepServiceHistory({ value, onChange, onBack, onNext, nextLabel 
       <div>
         <h2 className="text-[18px] font-semibold tracking-[-0.3px] text-linear-ink">Szervizmúlt & Dokumentumok</h2>
         <p className="mt-1 text-[13px] text-linear-ink-subtle">
-          Rögzítsd a jármű szervizmúltjának állapotát, a dokumentumok fotóit, és -- ha rendelkezésre áll --
-          a korábbi szerviz-események idővonalát.
+          Fotózd be a meglévő iratokat, és rögzítsd a korábbi szervizeseményeket.
         </p>
       </div>
 

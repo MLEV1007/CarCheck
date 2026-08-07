@@ -30,9 +30,8 @@ export function StepDamageMap({ value, onChange, onBack, onNext, nextLabel }: St
       <div>
         <h2 className="text-[18px] font-semibold tracking-[-0.3px] text-linear-ink">Sérülés- és Hibatérkép</h2>
         <p className="mt-1 text-[13px] text-linear-ink-subtle">
-          Kattints az autó-képen BÁRHOVA egy sérülés/esztétikai hiba rögzítéséhez -- válaszd ki a
-          kategóriát ("Egyéb" esetén add meg, mi a hiba pontosan), és -- ha van -- csatolj fotót.
-          Egy meglévő markerre kattintva módosíthatod vagy törölheted a bejegyzést.
+          Kattints a képre a karosszéria vagy a beltér sérüléseinek megjelöléséhez, válaszd ki a
+          kategóriát, és csatolj fotót.
         </p>
       </div>
 

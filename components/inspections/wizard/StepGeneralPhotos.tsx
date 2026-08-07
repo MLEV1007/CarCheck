@@ -14,8 +14,6 @@ interface StepGeneralPhotosProps {
   nextLabel: string;
 }
 
-const SUGGESTED_ANGLES = ['elölről', 'hátulról', 'bal oldalról', 'jobb oldalról', 'beltér', 'műszerfal'];
-
 /**
  * LÉPÉS 2 -- Általános autó fotók (PROJEKT_INSTRUKCIOK.md, "Általános autó fotók modul"
  * lépés). A hiba-fotóktól (StepDefects.tsx) függetlenül, egyetlen `inspections.general_photos`
@@ -48,8 +46,8 @@ export function StepGeneralPhotos({ value, onChange, onBack, onNext, nextLabel }
       <div>
         <h2 className="text-[18px] font-semibold tracking-[-0.3px] text-linear-ink">Általános autó fotók</h2>
         <p className="mt-1 text-[13px] text-linear-ink-subtle">
-          Tölts fel áttekintő fotókat a járműről (pl. {SUGGESTED_ANGLES.join(', ')}). Ezek a képek a publikus
-          riport "Gépjármű fotók" galériájában jelennek meg -- nem kötelezőek, de ajánlottak.
+          Tölts fel áttekintő képeket az autóról kívül-belül. A képek bekerülnek a publikus riport
+          galériájába. (Opcionális)
         </p>
       </div>
 

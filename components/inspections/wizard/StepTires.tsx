@@ -90,9 +90,8 @@ export function StepTires({
       <div>
         <h2 className="text-[18px] font-semibold tracking-[-0.3px] text-linear-ink">Gumiabroncsok állapota</h2>
         <p className="mt-1 text-[13px] text-linear-ink-subtle">
-          Add meg a felni típusát, a gumi márkáját, majd kerékpozíciónként a profilmélységet (mm) és a
-          DOT kódot (4 számjegy, pl. 1122). A "📋 Adatok másolása" gombbal egy kattintással átveheted az
-          előző kerék mért értékeit.
+          Add meg a felni és gumi adatait, a DOT kódot és a profilmélységet (mm). Az előző kerék
+          értékeit a „📋 Adatok másolása” gombbal egy kattintással átveheted.
         </p>
       </div>
 

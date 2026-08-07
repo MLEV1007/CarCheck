@@ -43,12 +43,11 @@ export function StepPaintMeasurements({
       <div>
         <h2 className="text-[18px] font-semibold tracking-[-0.3px] text-linear-ink">Festékvastagság-mérés</h2>
         <p className="mt-1 text-[13px] text-linear-ink-subtle">
-          Kattints az autó-képen BÁRHOVA egy mérési pont (µm) felvételéhez -- nincs előre
-          megadott elem, szabadon annyi pontot vehetsz fel, amennyire szükséged van. Egy
-          meglévő buborékra kattintva módosíthatod az értékét, vagy törölheted a pontot.
-          Státusz: 0–{thresholds.paintGyariMaxMicron} µm Gyári, {thresholds.paintGyariMaxMicron + 1}–
-          {thresholds.paintUjrafujtMaxMicron} µm Újrafújt / Javított, {thresholds.paintUjrafujtMaxMicron} µm felett
-          Gittelt / Sérült (a küszöbök a Beállítások oldalon testreszabhatók).
+          Kattints a képre a mérési pontok (µm) elhelyezéséhez. A meglévő pontokra kattintva
+          módosíthatsz vagy törölhetsz. A státuszértékek (Gyári / Újrafújt / Gittelt) a Beállítások
+          oldalon megadott dinamikus küszöbértékek alapján jelennek meg
+          (Gyári: 0–{thresholds.paintGyariMaxMicron} µm, Újrafújt: {thresholds.paintGyariMaxMicron + 1}–
+          {thresholds.paintUjrafujtMaxMicron} µm, Gittelt: {thresholds.paintUjrafujtMaxMicron}+ µm).
         </p>
       </div>
 

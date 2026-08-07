@@ -198,8 +198,8 @@ export function StepFinalAssessment({
           Végső Szakvélemény & Várható Költségek
         </h2>
         <p className="mt-1 text-[13px] text-linear-ink-subtle">
-          Ez a lépés teljesen opcionális -- ha üresen hagyod, a publikus riportban egyáltalán nem jelenik meg ez a
-          szekció.
+          Ellenőrizd az adatokat, majd mentsd piszkozatként, vagy fejezd be és publikáld az
+          ügyfélriportot.
         </p>
       </div>
 

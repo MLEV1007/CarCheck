@@ -50,9 +50,8 @@ export function StepDefects({ value, onChange, onBack, onNext, nextLabel }: Step
       <div>
         <h2 className="text-[18px] font-semibold tracking-[-0.3px] text-linear-ink">Hibák és Média rögzítése</h2>
         <p className="mt-1 text-[13px] text-linear-ink-subtle">
-          Rögzítsd a technikai/belső hibákat kategóriánként, leírással és -- ha van -- fotóval vagy videóval.
-          Látható karosszéria-sérülést (karcolás, horpadás stb.) az előző, Sérülés- és Hibatérkép lépésben
-          jelölj be a képen. Ha nincs hiba, ugorj tovább üresen az összegzéshez.
+          Rögzítsd a mechanikai és elektronikai hibákat leírással, képpel vagy videóval. (A felületi
+          sérüléseket az előző, Hibatérkép lépésben jelöld). Ha nincs hiba, lépj tovább.
         </p>
       </div>
 
