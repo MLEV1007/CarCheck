@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import type { Metadata } from 'next';
-import { createClient } from '@/lib/supabase/server';
+import { createPublicClient } from '@/lib/supabase/public';
 import type { PublicReportData } from '@/lib/reports/types';
 import { DEFAULT_REPORT_THRESHOLDS } from '@/lib/inspections/constants';
 import type { ReportThresholds } from '@/lib/inspections/types';
@@ -28,6 +28,26 @@ export const metadata: Metadata = {
 };
 
 /**
+ * ISR (Incremental Static Regeneration, 2026-08-07, "Teljesítmény-audit és refaktorálás"
+ * lépés, D pont: "Publikus Riport Caching") -- KORÁBBAN ez az oldal a `lib/supabase/server.ts`
+ * `createClient()`-jét használta, ami a `next/headers` `cookies()`-t hívja, ezért a Next.js
+ * automatikusan TELJESEN DINAMIKUSNAK (per-kérés SSR-nek) minősítette a route-ot -- MINDEN
+ * egyes megnyitás (akár ugyanaz a látogató frissíti az oldalt, akár a link több emberrel
+ * megosztásra kerül) egy ÚJ `get_public_report` RPC hívást futtatott a DB-n, feleslegesen.
+ * A `lib/supabase/public.ts` cookie-mentes klienssel párosítva az alábbi `revalidate` már
+ * ténylegesen érvényesül: az adott `public_token`-hez tartozó renderelt HTML a Next.js
+ * Data Cache-ében marad legfeljebb ennyi másodpercig, ez alatt UGYANAZT a cache-elt HTML-t
+ * szolgálja ki új DB-lekérdezés nélkül -- a lejárat után az ELSŐ kérés még a régi (stale)
+ * HTML-t kapja, a háttérben újragenerálódik a lap ("stale-while-revalidate"), a KÖVETKEZŐ
+ * kérés már a frisset. Ha egy vizsgáló egy MÁR publikált riportot szerkeszt/újra ment, az
+ * `InspectionWizard.tsx` `handleSubmit`-ja emellett explicit on-demand revalidációt is indít
+ * (`/api/inspections/revalidate-report`, lásd annak JSDoc-ját) -- ez a `revalidate` időablak
+ * tehát a GYAKORLATBAN csak a legfeljebb néhány másodperces "in-flight" édesélet-ablakra
+ * vonatkozik, nem egy több perces/órás bizonytalan elavulási időre.
+ */
+export const revalidate = 60;
+
+/**
  * Publikus Ügyfélriport (PROJEKT_INSTRUKCIOK.md 5.C) -- NEM igényel bejelentkezést,
  * nincs a middleware PROTECTED_PREFIXES listáján (lib/supabase/middleware.ts).
  *
@@ -40,7 +60,7 @@ export const metadata: Metadata = {
  */
 export default async function PublicReportPage({ params }: PublicReportPageProps) {
   const { public_token: publicToken } = await params;
-  const supabase = await createClient();
+  const supabase = createPublicClient();
 
   const { data, error } = await supabase.rpc('get_public_report', { p_token: publicToken });
 

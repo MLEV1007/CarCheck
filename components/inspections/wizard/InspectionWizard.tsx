@@ -195,61 +195,205 @@ export function InspectionWizard({
 
       const organizationId = profileRow.organization_id;
 
-      // Általános autó fotók feltöltése (PROJEKT_INSTRUKCIOK.md, "Általános autó fotók modul"
-      // lépés) -- ugyanaz a minta, mint a hiba-médiánál: a most kiválasztott (`file` !== null)
-      // képek most töltődnek fel, a piszkozat szerkesztésekor már meglévő, még mindig a listában
-      // lévő URL-eket (`previewUrl`, nem `blob:`) nem töltjük fel újra, csak megtartjuk. A
-      // `general_photos` egyetlen oszlop az `inspections` sorban, ezért nincs szükség külön
-      // törlés+beszúrás ciklusra, mint a `paint_measurements`/`defects` gyerek-tábláknál -- az
-      // UPSERT egyszerűen felülírja a teljes tömböt a jelenlegi state-nek megfelelően.
-      const generalPhotoUrls = await Promise.all(
-        generalPhotos.map(async (photo) => {
-          if (photo.file) {
-            const safeName = photo.file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-            const path = `${user.id}/${inspectionId}/general/${crypto.randomUUID()}-${safeName}`;
-            const { error: uploadError } = await supabase.storage
-              .from('inspection-media')
-              .upload(path, photo.file, { upsert: true });
-            if (uploadError) throw uploadError;
-            return supabase.storage.from('inspection-media').getPublicUrl(path).data.publicUrl;
-          }
-          return photo.previewUrl;
-        })
-      );
+      // `userId`-t KÜLÖN, nem-nullázható const-ba emeljük ki -- a TypeScript a lenti,
+      // beágyazott (nested) `function` deklarációkban (a `Promise.all`-lal párhuzamosított
+      // feltöltő/mentő függvényekben) NEM tartja meg a fenti `if (!user) throw ...`
+      // null-ellenőrzésből fakadó szűkítést `user`-re (ismert TS-korlát, a beágyazott
+      // function deklarációk hoisting miatt nem kapnak control-flow szűkítést a záró
+      // scope-ból) -- emiatt korábban `userId` mindenhol "possibly null" hibát adott
+      // ezekben a függvényekben. `userId` viszont már egyszerű `string`, nincs mit szűkíteni.
+      const userId = user.id;
 
-      // Szervizmúlt & Dokumentumok modul -- fotók feltöltése: PONTOSAN ugyanaz a minta, mint
-      // az általános autó fotóknál fentebb (külön Storage almappa, `service/`, hogy ne
-      // keveredjen a `general/` képekkel), csak most a `service_history.photos` state-ből.
-      const serviceHistoryPhotoUrls = await Promise.all(
-        serviceHistory.photos.map(async (photo) => {
-          if (photo.file) {
-            const safeName = photo.file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-            const path = `${user.id}/${inspectionId}/service/${crypto.randomUUID()}-${safeName}`;
-            const { error: uploadError } = await supabase.storage
-              .from('inspection-media')
-              .upload(path, photo.file, { upsert: true });
-            if (uploadError) throw uploadError;
-            return supabase.storage.from('inspection-media').getPublicUrl(path).data.publicUrl;
-          }
-          return photo.previewUrl;
-        })
-      );
+      // TELJESÍTMÉNY-OPTIMALIZÁCIÓ (2026-08-07, "Teljesítmény-audit és refaktorálás" lépés):
+      // az alábbi 6 Storage-feltöltési/adatelőkészítési blokk (általános fotók, szervizmúlt
+      // fotók, CarVertical PDF, felszereltség hibafotók, sérülés-fotók, hiba-média) EGYMÁSTÓL
+      // TELJESEN FÜGGETLEN -- egyik sem használja fel a másik eredményét, mindegyik csak
+      // `userId`/`inspectionId`-t (és a saját state-szeletét) igényli, amik már ismertek.
+      // A KORÁBBI verzióban ez a 6 blokk EGYMÁS UTÁN, szekvenciálisan futott (mindegyik saját
+      // `await Promise.all(...)`-lal), ezért a teljes várakozási idő az ÖSSZES csoport
+      // időtartamának ÖSSZEGE volt. Az alábbi, egyetlen közös `Promise.all`-lal a várakozási
+      // idő a LEGLASSABB csoport időtartamára csökken -- több fotóval/médiával rendelkező
+      // vizsgálatnál ez érdemben (akár több másodperccel) gyorsítja a "Piszkozat mentése"/
+      // "Publikálás" gombra kattintás utáni várakozást. Az egyes blokkok belső logikája
+      // (blob vs. már feltöltött Storage URL megkülönböztetés stb.) VÁLTOZATLAN, csak a
+      // futtatás módja lett párhuzamos.
+      async function uploadGeneralPhotos() {
+        // Általános autó fotók feltöltése (PROJEKT_INSTRUKCIOK.md, "Általános autó fotók
+        // modul" lépés) -- a most kiválasztott (`file` !== null) képek most töltődnek fel, a
+        // piszkozat szerkesztésekor már meglévő, még mindig a listában lévő URL-eket
+        // (`previewUrl`, nem `blob:`) nem töltjük fel újra, csak megtartjuk. A
+        // `general_photos` egyetlen oszlop az `inspections` sorban, ezért nincs szükség külön
+        // törlés+beszúrás ciklusra, mint a `paint_measurements`/`defects` gyerek-tábláknál --
+        // az UPSERT egyszerűen felülírja a teljes tömböt a jelenlegi state-nek megfelelően.
+        return Promise.all(
+          generalPhotos.map(async (photo) => {
+            if (photo.file) {
+              const safeName = photo.file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+              const path = `${userId}/${inspectionId}/general/${crypto.randomUUID()}-${safeName}`;
+              const { error: uploadError } = await supabase.storage
+                .from('inspection-media')
+                .upload(path, photo.file, { upsert: true });
+              if (uploadError) throw uploadError;
+              return supabase.storage.from('inspection-media').getPublicUrl(path).data.publicUrl;
+            }
+            return photo.previewUrl;
+          })
+        );
+      }
 
-      // CarVertical (vagy hasonló autó-előéleti szolgáltatás) PDF riport -- EGYETLEN fájl,
-      // ezért nincs Promise.all/tömb, mint a fotóknál. Ugyanaz a "blob vs. már feltöltött
-      // Storage URL" logika: ha `file` van, most töltjük fel; ha nincs, de `url` már megvan
-      // (piszkozat szerkesztése), azt tartjuk meg; ha egyik sincs, `null` kerül a payloadba.
-      let carVerticalPdfUrl: string | null = serviceHistory.carVerticalPdf.url;
-      if (serviceHistory.carVerticalPdf.file) {
+      async function uploadServiceHistoryPhotos() {
+        // Szervizmúlt & Dokumentumok modul -- fotók feltöltése: PONTOSAN ugyanaz a minta,
+        // mint az általános autó fotóknál (külön Storage almappa, `service/`, hogy ne
+        // keveredjen a `general/` képekkel), csak most a `service_history.photos` state-ből.
+        return Promise.all(
+          serviceHistory.photos.map(async (photo) => {
+            if (photo.file) {
+              const safeName = photo.file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+              const path = `${userId}/${inspectionId}/service/${crypto.randomUUID()}-${safeName}`;
+              const { error: uploadError } = await supabase.storage
+                .from('inspection-media')
+                .upload(path, photo.file, { upsert: true });
+              if (uploadError) throw uploadError;
+              return supabase.storage.from('inspection-media').getPublicUrl(path).data.publicUrl;
+            }
+            return photo.previewUrl;
+          })
+        );
+      }
+
+      async function uploadCarVerticalPdf(): Promise<string | null> {
+        // CarVertical (vagy hasonló autó-előéleti szolgáltatás) PDF riport -- EGYETLEN fájl,
+        // ezért nincs Promise.all/tömb, mint a fotóknál. Ugyanaz a "blob vs. már feltöltött
+        // Storage URL" logika: ha `file` van, most töltjük fel; ha nincs, de `url` már megvan
+        // (piszkozat szerkesztése), azt tartjuk meg; ha egyik sincs, `null` kerül a payloadba.
+        if (!serviceHistory.carVerticalPdf.file) return serviceHistory.carVerticalPdf.url;
         const pdfFile = serviceHistory.carVerticalPdf.file;
         const safeName = pdfFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-        const path = `${user.id}/${inspectionId}/service/carvertical-${crypto.randomUUID()}-${safeName}`;
+        const path = `${userId}/${inspectionId}/service/carvertical-${crypto.randomUUID()}-${safeName}`;
         const { error: pdfUploadError } = await supabase.storage
           .from('inspection-media')
           .upload(path, pdfFile, { upsert: true });
         if (pdfUploadError) throw pdfUploadError;
-        carVerticalPdfUrl = supabase.storage.from('inspection-media').getPublicUrl(path).data.publicUrl;
+        return supabase.storage.from('inspection-media').getPublicUrl(path).data.publicUrl;
       }
+
+      async function uploadEquipmentPhotos() {
+        // Felszereltség -- UX teljes újratervezés (2026-08-02): a teljes katalógust mentjük
+        // (a `not_present` állapotú elemeket is), hogy a publikus riport mátrixa mindig
+        // ugyanazt a fix listát tudja megjeleníteni. A hibafotó feltöltése PONTOSAN ugyanazt
+        // a "blob vs. már feltöltött Storage URL" mintát követi, mint a hiba-/sérülés-média
+        // -- csak a most kiválasztott (`file !== null`) fotók töltődnek fel most, piszkozat
+        // szerkesztésekor a már meglévő URL-eket (`previewUrl`, NEM `blob:`) csak megtartjuk.
+        // `notes`/`photo_url` KIZÁRÓLAG `status === 'defective'` esetén kerül be a mentett
+        // objektumba -- ha a user egy korábban hibásra jelölt, majd visszaállított
+        // (működő/nincs benne) elemhez írt megjegyzést/fotót, az a mentéskor eldobódik,
+        // mert a `FeatureState` DB-alak szerint ezek csak defektnél értelmezettek.
+        return Promise.all(
+          equipment.map(async (item) => {
+            const base: { id: string; status: typeof item.status; notes?: string; photo_url?: string } = {
+              id: item.id,
+              status: item.status,
+            };
+            if (item.status !== 'defective') return base;
+
+            if (item.notes.trim() !== '') base.notes = item.notes;
+
+            if (item.file) {
+              const safeName = item.file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+              const path = `${userId}/${inspectionId}/equipment/${crypto.randomUUID()}-${safeName}`;
+              const { error: uploadError } = await supabase.storage
+                .from('inspection-media')
+                .upload(path, item.file, { upsert: true });
+              if (uploadError) throw uploadError;
+              base.photo_url = supabase.storage.from('inspection-media').getPublicUrl(path).data.publicUrl;
+            } else if (item.previewUrl && !item.previewUrl.startsWith('blob:')) {
+              base.photo_url = item.previewUrl;
+            }
+
+            return base;
+          })
+        );
+      }
+
+      async function uploadDamagePhotos() {
+        // Sérülés- és Hibatérkép modul -- fotó feltöltés pontonként: PONTOSAN ugyanaz a
+        // "blob vs. már feltöltött Storage URL" minta, mint a hiba-médiánál lentebb -- csak a
+        // most kiválasztott (`file !== null`) fotók töltődnek fel most, piszkozat
+        // szerkesztésekor a már meglévő Storage URL-eket (`previewUrl`, NEM `blob:`) csak
+        // megtartjuk. A `damages` egyetlen JSONB oszlop az `inspections` sorban (nincs
+        // gyerek-tábla, ugyanaz az elv, mint a `general_photos`/`diagnostics`/`equipment`/
+        // `tires`-nél), ezért nincs szükség külön törlés+beszúrás ciklusra -- az UPSERT
+        // egyszerűen felülírja a teljes tömböt a jelenlegi state-nek megfelelően.
+        return Promise.all(
+          damages.map(async (damage) => {
+            let photoUrl: string | null = null;
+            if (damage.file) {
+              const safeName = damage.file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+              const path = `${userId}/${inspectionId}/damages/${crypto.randomUUID()}-${safeName}`;
+              const { error: uploadError } = await supabase.storage
+                .from('inspection-media')
+                .upload(path, damage.file, { upsert: true });
+              if (uploadError) throw uploadError;
+              photoUrl = supabase.storage.from('inspection-media').getPublicUrl(path).data.publicUrl;
+            } else if (damage.previewUrl && !damage.previewUrl.startsWith('blob:')) {
+              photoUrl = damage.previewUrl;
+            }
+            return {
+              id: damage.id,
+              x: damage.x,
+              y: damage.y,
+              type: damage.type,
+              title: damage.title,
+              description: damage.description,
+              photo_url: photoUrl,
+            };
+          })
+        );
+      }
+
+      async function uploadDefectMedia() {
+        // Hiba-média feltöltés (StepDefects.tsx) -- korábban ez a blokk az `inspections`
+        // UPSERT és a gyerek-táblák törlése UTÁN futott le, teljesen szekvenciálisan; most a
+        // többi feltöltési blokkal EGYÜTT, párhuzamosan fut, mert a hiba-média Storage-útvonala
+        // is csak `userId`/`inspectionId`-t igényel, az `inspections` sor létezését nem.
+        if (relevantDefects.length === 0) return [];
+        return Promise.all(
+          relevantDefects.map(async (defect) => {
+            let mediaUrl: string | null = null;
+            if (defect.file) {
+              const safeName = defect.file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+              const path = `${userId}/${inspectionId}/${crypto.randomUUID()}-${safeName}`;
+              const { error: uploadError } = await supabase.storage
+                .from('inspection-media')
+                .upload(path, defect.file, { upsert: true });
+              if (uploadError) throw uploadError;
+              mediaUrl = supabase.storage.from('inspection-media').getPublicUrl(path).data.publicUrl;
+            } else if (defect.previewUrl && !defect.previewUrl.startsWith('blob:')) {
+              // Piszkozat szerkesztésekor a korábban már feltöltött médiát (a `previewUrl`
+              // ilyenkor a Storage publikus URL-je, NEM egy kliens-oldali `blob:` object URL)
+              // nem töltjük fel újra -- csak az URL-t hivatkozzuk az újra beszúrt sorban.
+              mediaUrl = defect.previewUrl;
+            }
+            return {
+              inspection_id: inspectionId,
+              user_id: userId,
+              category: defect.category || 'Egyéb',
+              description: defect.description,
+              media_url: mediaUrl,
+            };
+          })
+        );
+      }
+
+      const [generalPhotoUrls, serviceHistoryPhotoUrls, carVerticalPdfUrl, equipmentPayload, damagesPayload, defectRows] =
+        await Promise.all([
+          uploadGeneralPhotos(),
+          uploadServiceHistoryPhotos(),
+          uploadCarVerticalPdf(),
+          uploadEquipmentPhotos(),
+          uploadDamagePhotos(),
+          uploadDefectMedia(),
+        ]);
 
       // Csak a ténylegesen kitöltött (legalább dátum/km óra állás/típus valamelyike megadott)
       // idővonal-bejegyzések kerülnek mentésre -- egy üresen otthagyott "+ Új bejegyzés"
@@ -287,42 +431,6 @@ export function InspectionWizard({
               .map((entry) => ({ code: entry.code, description: entry.description })),
           };
 
-      // Felszereltség -- UX teljes újratervezés (2026-08-02): a teljes katalógust mentjük
-      // (a `not_present` állapotú elemeket is), hogy a publikus riport mátrixa mindig
-      // ugyanazt a fix listát tudja megjeleníteni. A hibafotó feltöltése PONTOSAN ugyanazt
-      // a "blob vs. már feltöltött Storage URL" mintát követi, mint a hiba-/sérülés-média
-      // -- csak a most kiválasztott (`file !== null`) fotók töltődnek fel most, piszkozat
-      // szerkesztésekor a már meglévő URL-eket (`previewUrl`, NEM `blob:`) csak megtartjuk.
-      // `notes`/`photo_url` KIZÁRÓLAG `status === 'defective'` esetén kerül be a mentett
-      // objektumba -- ha a user egy korábban hibásra jelölt, majd visszaállított
-      // (működő/nincs benne) elemhez írt megjegyzést/fotót, az a mentéskor eldobódik,
-      // mert a `FeatureState` DB-alak szerint ezek csak defektnél értelmezettek.
-      const equipmentPayload = await Promise.all(
-        equipment.map(async (item) => {
-          const base: { id: string; status: typeof item.status; notes?: string; photo_url?: string } = {
-            id: item.id,
-            status: item.status,
-          };
-          if (item.status !== 'defective') return base;
-
-          if (item.notes.trim() !== '') base.notes = item.notes;
-
-          if (item.file) {
-            const safeName = item.file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-            const path = `${user.id}/${inspectionId}/equipment/${crypto.randomUUID()}-${safeName}`;
-            const { error: uploadError } = await supabase.storage
-              .from('inspection-media')
-              .upload(path, item.file, { upsert: true });
-            if (uploadError) throw uploadError;
-            base.photo_url = supabase.storage.from('inspection-media').getPublicUrl(path).data.publicUrl;
-          } else if (item.previewUrl && !item.previewUrl.startsWith('blob:')) {
-            base.photo_url = item.previewUrl;
-          }
-
-          return base;
-        })
-      );
-
       // Gumiabroncsok (C pont): mind a 4 pozíciót mentjük, üres/hiányos mezőknél `null`-lal --
       // a `mm` numerikus, a `dot` KIZÁRÓLAG akkor kerül be, ha a 4 számjegyű kód formailag ÉS
       // tartalmilag is érvényes (`isValidDot` -- hét 01-53, év a jelenlegi évig) -- lásd
@@ -340,40 +448,6 @@ export function InspectionWizard({
         tireGeneralInfo.brand === TIRE_BRAND_OTHER
           ? tireGeneralInfo.customBrand.trim() || null
           : tireGeneralInfo.brand.trim() || null;
-
-      // Sérülés- és Hibatérkép modul -- fotó feltöltés pontonként: PONTOSAN ugyanaz a
-      // "blob vs. már feltöltött Storage URL" minta, mint a hiba-médiánál lentebb -- csak a
-      // most kiválasztott (`file !== null`) fotók töltődnek fel most, piszkozat
-      // szerkesztésekor a már meglévő Storage URL-eket (`previewUrl`, NEM `blob:`) csak
-      // megtartjuk. A `damages` egyetlen JSONB oszlop az `inspections` sorban (nincs
-      // gyerek-tábla, ugyanaz az elv, mint a `general_photos`/`diagnostics`/`equipment`/
-      // `tires`-nél), ezért nincs szükség külön törlés+beszúrás ciklusra -- az UPSERT
-      // egyszerűen felülírja a teljes tömböt a jelenlegi state-nek megfelelően.
-      const damagesPayload = await Promise.all(
-        damages.map(async (damage) => {
-          let photoUrl: string | null = null;
-          if (damage.file) {
-            const safeName = damage.file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-            const path = `${user.id}/${inspectionId}/damages/${crypto.randomUUID()}-${safeName}`;
-            const { error: uploadError } = await supabase.storage
-              .from('inspection-media')
-              .upload(path, damage.file, { upsert: true });
-            if (uploadError) throw uploadError;
-            photoUrl = supabase.storage.from('inspection-media').getPublicUrl(path).data.publicUrl;
-          } else if (damage.previewUrl && !damage.previewUrl.startsWith('blob:')) {
-            photoUrl = damage.previewUrl;
-          }
-          return {
-            id: damage.id,
-            x: damage.x,
-            y: damage.y,
-            type: damage.type,
-            title: damage.title,
-            description: damage.description,
-            photo_url: photoUrl,
-          };
-        })
-      );
 
       const tiresPayload = {
         rim_type: tireGeneralInfo.rimType || null,
@@ -403,9 +477,9 @@ export function InspectionWizard({
         .from('inspections')
         .upsert({
           id: inspectionId,
-          user_id: user.id,
+          user_id: userId,
           organization_id: organizationId,
-          created_by: user.id,
+          created_by: userId,
           // Átvizsgáló és Ügyfél adatok (2026-08-06) -- az `inspector_id` MINDIG a
           // mentést ténylegesen végrehajtó bejelentkezett userre áll, automatikusan
           // (nincs hozzá szerkeszthető UI-mező). Az `inspector_name` ezzel szemben
@@ -415,7 +489,7 @@ export function InspectionWizard({
           // `client_*` mezők üresen szintén `null`-lá alakulnak (ugyanaz a "üres
           // string -> null" minta, mint pl. a `finalAssessmentPayload`-nál), a 2
           // kapcsoló (`show_*_on_pdf`) közvetlenül a `clientInfo` state-ből kerül be.
-          inspector_id: user.id,
+          inspector_id: userId,
           inspector_name: clientInfo.inspectorName.trim() || null,
           client_name: clientInfo.clientName.trim() || null,
           client_phone: clientInfo.clientPhone.trim() || null,
@@ -458,15 +532,22 @@ export function InspectionWizard({
       // vizsgálatot nem dobjuk el emiatt -- ugyanaz az elv, mint a `deductCredits`/
       // `lib/credits.ts` "kredit levonás a sikeres AI-hívás UTÁN, hiba esetén csak logolva"
       // mintájánál.
+      // TELJESÍTMÉNY-OPTIMALIZÁCIÓ (2026-08-07): mivel ez a hívás MÁR ELEVE best-effort
+      // (a hiba csak logolásra kerül, a MÁR elmentett vizsgálatot nem befolyásolja), NEM
+      // várjuk meg (`await` nélkül, `void`-dal indítva) -- a user AZONNAL a dashboardra
+      // navigálhat a lenti `router.push`-sal, a kvóta levonása a háttérben fejeződik be.
+      // Korábban ez a szinkron `await` feleslegesen egy teljes hálózati kör-utat adott
+      // hozzá a mentés utáni várakozási időhöz.
       if (!isEditMode) {
-        try {
-          const quotaResponse = await fetch('/api/inspections/consume-quota', { method: 'POST' });
-          if (!quotaResponse.ok) {
-            console.error('[InspectionWizard] Vizsgálati kvóta levonása sikertelen:', await quotaResponse.text());
-          }
-        } catch (quotaError) {
-          console.error('[InspectionWizard] Vizsgálati kvóta levonása sikertelen:', quotaError);
-        }
+        void fetch('/api/inspections/consume-quota', { method: 'POST' })
+          .then(async (quotaResponse) => {
+            if (!quotaResponse.ok) {
+              console.error('[InspectionWizard] Vizsgálati kvóta levonása sikertelen:', await quotaResponse.text());
+            }
+          })
+          .catch((quotaError) => {
+            console.error('[InspectionWizard] Vizsgálati kvóta levonása sikertelen:', quotaError);
+          });
       }
 
       // Piszkozat szerkesztésekor a korábbi mérés-/hiba-sorok a jelenlegi state-tel NEM
@@ -475,67 +556,75 @@ export function InspectionWizard({
       // teljes gyerek-sor-halmaz törlése, majd újbóli beszúrása. Új vizsgálatnál ez a
       // törlés no-op (még nincs semmi az `inspectionId`-hez), szerkesztésnél pedig
       // garantáltan nem hoz létre duplikátumokat.
-      const { error: paintDeleteError } = await supabase
-        .from('paint_measurements')
-        .delete()
-        .eq('inspection_id', inspectionId);
-      if (paintDeleteError) throw paintDeleteError;
+      //
+      // TELJESÍTMÉNY-OPTIMALIZÁCIÓ (2026-08-07): a `paint_measurements` és a `defects`
+      // tábla EGYMÁSTÓL FÜGGETLEN (nincs közös FK/hivatkozás közöttük) -- a két "töröld a
+      // régi sorokat, majd szúrd be az újakat" lánc korábban EGYMÁS UTÁN, szekvenciálisan
+      // futott (4 egymást követő DB-kör-út: paint törlés -> paint beszúrás -> defect
+      // törlés -> defect beszúrás). Az alábbi `Promise.all` a két, egyenként 2 lépéses
+      // láncot PÁRHUZAMOSAN futtatja -- a `defectRows` már a fenti, párhuzamosított
+      // feltöltési fázisban (`uploadDefectMedia`) elkészült, itt már csak a DB-műveletek
+      // vannak hátra. Mindkét lánc a MÁR sikeresen létrehozott/frissített `inspections`
+      // sor UTÁN fut (FK-biztonság: új vizsgálatnál a szülő sor csak a fenti UPSERT után
+      // létezik), de egymással nincs sorrendi függőségük.
+      async function persistPaintMeasurements() {
+        const { error: paintDeleteError } = await supabase
+          .from('paint_measurements')
+          .delete()
+          .eq('inspection_id', inspectionId);
+        if (paintDeleteError) throw paintDeleteError;
 
-      // Szabadkézi (free-form) mérési pontok (Rétegvastagság-mérő "Szabadkézi (Free-form
-      // Canvas)" átalakítása) -- minden felvett pont egy önálló sor `id`/`x`/`y`/`value`
-      // mezőkkel, nincs többé fix karosszéria-elem/3-pontos átlagolás. Az `id`-t a
-      // kliens generálja (`crypto.randomUUID()`, lásd `PaintCanvas.tsx`), és a beszúráskor
-      // is ugyanaz az érték kerül a sorba, hogy a UI és a DB sor 1:1 megfeleljen.
-      if (paintMeasurements.length > 0) {
-        const { error: paintError } = await supabase.from('paint_measurements').insert(
-          paintMeasurements.map((point) => ({
-            id: point.id,
-            inspection_id: inspectionId,
-            user_id: user.id,
-            x: point.x,
-            y: point.y,
-            value: point.value,
-          }))
-        );
-        if (paintError) throw paintError;
+        // Szabadkézi (free-form) mérési pontok (Rétegvastagság-mérő "Szabadkézi (Free-form
+        // Canvas)" átalakítása) -- minden felvett pont egy önálló sor `id`/`x`/`y`/`value`
+        // mezőkkel, nincs többé fix karosszéria-elem/3-pontos átlagolás. Az `id`-t a
+        // kliens generálja (`crypto.randomUUID()`, lásd `PaintCanvas.tsx`), és a
+        // beszúráskor is ugyanaz az érték kerül a sorba, hogy a UI és a DB sor 1:1
+        // megfeleljen. EGYETLEN tömbösített `insert([...])` hívás (nem ciklusban egyesével).
+        if (paintMeasurements.length > 0) {
+          const { error: paintError } = await supabase.from('paint_measurements').insert(
+            paintMeasurements.map((point) => ({
+              id: point.id,
+              inspection_id: inspectionId,
+              user_id: userId,
+              x: point.x,
+              y: point.y,
+              value: point.value,
+            }))
+          );
+          if (paintError) throw paintError;
+        }
       }
 
-      const { error: defectsDeleteError } = await supabase
-        .from('defects')
-        .delete()
-        .eq('inspection_id', inspectionId);
-      if (defectsDeleteError) throw defectsDeleteError;
+      async function persistDefects() {
+        const { error: defectsDeleteError } = await supabase
+          .from('defects')
+          .delete()
+          .eq('inspection_id', inspectionId);
+        if (defectsDeleteError) throw defectsDeleteError;
 
-      if (relevantDefects.length > 0) {
-        const defectRows = await Promise.all(
-          relevantDefects.map(async (defect) => {
-            let mediaUrl: string | null = null;
-            if (defect.file) {
-              const safeName = defect.file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-              const path = `${user.id}/${inspectionId}/${crypto.randomUUID()}-${safeName}`;
-              const { error: uploadError } = await supabase.storage
-                .from('inspection-media')
-                .upload(path, defect.file, { upsert: true });
-              if (uploadError) throw uploadError;
-              mediaUrl = supabase.storage.from('inspection-media').getPublicUrl(path).data.publicUrl;
-            } else if (defect.previewUrl && !defect.previewUrl.startsWith('blob:')) {
-              // Piszkozat szerkesztésekor a korábban már feltöltött médiát (a `previewUrl`
-              // ilyenkor a Storage publikus URL-je, NEM egy kliens-oldali `blob:` object URL)
-              // nem töltjük fel újra -- csak az URL-t hivatkozzuk az újra beszúrt sorban.
-              mediaUrl = defect.previewUrl;
-            }
-            return {
-              inspection_id: inspectionId,
-              user_id: user.id,
-              category: defect.category || 'Egyéb',
-              description: defect.description,
-              media_url: mediaUrl,
-            };
-          })
-        );
+        // `defectRows` a fenti párhuzamosított `uploadDefectMedia()`-ból származik --
+        // EGYETLEN tömbösített `insert([...])` hívás (nem ciklusban egyesével).
+        if (defectRows.length > 0) {
+          const { error: defectsError } = await supabase.from('defects').insert(defectRows);
+          if (defectsError) throw defectsError;
+        }
+      }
 
-        const { error: defectsError } = await supabase.from('defects').insert(defectRows);
-        if (defectsError) throw defectsError;
+      await Promise.all([persistPaintMeasurements(), persistDefects()]);
+
+      // On-demand ISR revalidáció (2026-08-07, "Publikus Riport Caching" lépés) -- KIZÁRÓLAG
+      // publikált (`completed`) állapotban van értelme, mert a `/report/[public_token]` oldal
+      // csak a publikus riportot kesseli, egy piszkozatnak nincs elérhető publikus URL-je.
+      // Best-effort, NEM blokkoló (`void`, `await` nélkül) -- lásd
+      // `app/api/inspections/revalidate-report/route.ts` JSDoc-ját a teljes indoklásért.
+      if (status === 'completed' && inspectionRow?.public_token) {
+        void fetch('/api/inspections/revalidate-report', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ publicToken: inspectionRow.public_token }),
+        }).catch((revalidateError) => {
+          console.error('[InspectionWizard] Publikus riport revalidálása sikertelen:', revalidateError);
+        });
       }
 
       if (status === 'draft') {
