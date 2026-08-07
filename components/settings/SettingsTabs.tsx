@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
+import Link from 'next/link';
 import { Lock } from 'lucide-react';
 import { TeamManagement } from '@/components/settings/TeamManagement';
 import { BillingTab } from '@/components/settings/BillingTab';
@@ -11,11 +12,17 @@ interface SettingsTabsProps {
   role: 'manager' | 'inspector';
   organizationId: string;
   currentUserId: string;
-  /** Platform Admin entitlement (2026-08-03, "Platform Admin + Csapatkezelés-
-   * entitlement" lépés) -- az üzemeltető (`/admin`) engedélyezi ügyfelenként
-   * (`organizations.team_management_enabled`). `false` esetén a fül LÁTSZIK (a
-   * Menedzser tudja, hogy a funkció létezik), de zárolt állapotot mutat a tényleges
-   * csapattag-lista/meghívás helyett. */
+  /** `organizations.team_management_enabled` -- 2026-08-07, "Csapatkezelés tier-
+   * feloldás" lépés óta ELSŐDLEGESEN a csomag-szinttől függ: a Stripe-vásárlást
+   * feldolgozó `apply_plan_purchase` RPC automatikusan `true`-ra állítja Műhely /
+   * Kereskedői (growth) tier-től felfelé (lásd
+   * `supabase/migrations/20260807_team_management_tier_unlock.sql`), 'starter'-re
+   * visszaváltáskor SZÁNDÉKOSAN nem kapcsolja vissza (grandfathering). A Platform Admin
+   * (`/admin`, "Platform Admin + Csapatkezelés-entitlement" lépés, 2026-08-03) kézi
+   * kapcsolója egy KIEGÉSZÍTŐ override marad (pl. egyedi kivétel egy Starter
+   * ügyfélnek). `false` esetén a fül LÁTSZIK (a Menedzser tudja, hogy a funkció
+   * létezik), de zárolt állapotot mutat a tényleges csapattag-lista/meghívás helyett,
+   * egy "Csomagváltás" CTA-val a Beállítások > Előfizetés fülre. */
   teamManagementEnabled: boolean;
   /** Melyik fül legyen kezdetben aktív -- `app/settings/billing/page.tsx` (a Stripe
    * Checkout `success_url`/`cancel_url` célja) ezt `'billing'`-re állítja, hogy a
@@ -146,9 +153,14 @@ export function SettingsTabs({
   );
 }
 
-/** Zárolt állapot, ha az üzemeltető MÉG NEM engedélyezte a csapatkezelést ennek a
- * szervezetnek (`team_management_enabled = false`, lásd fent) -- a Menedzser lássa,
- * hogy a funkció LÉTEZIK (nem tűnik el nyomtalanul), de ne tudja használni. */
+/** Zárolt állapot, ha a szervezet (még) NEM jogosult csapatkezelésre -- 2026-08-07,
+ * "Csapatkezelés tier-feloldás" lépés óta ez elsősorban a csomag-szinttől függ (Műhely /
+ * Kereskedői tier-től felfelé automatikusan jár, lásd
+ * `supabase/migrations/20260807_team_management_tier_unlock.sql`), a Platform Admin
+ * (`/admin`) kézi kapcsolója egy kiegészítő override marad. A Menedzser lássa, hogy a
+ * funkció LÉTEZIK (nem tűnik el nyomtalanul), és egyértelmű CTA-val a Beállítások >
+ * Előfizetés fülre irányítjuk (NEM "vedd fel velünk a kapcsolatot", mert ez mostantól
+ * önkiszolgáló csomagváltással is megoldható). */
 function TeamManagementLocked() {
   return (
     <div className="flex flex-col items-center gap-3 rounded-stripe-lg border border-stripe-hairline bg-white p-10 text-center shadow-stripe-1">
@@ -157,9 +169,15 @@ function TeamManagementLocked() {
       </div>
       <p className="font-sohne text-[15px] font-medium text-stripe-ink">A Csapatkezelés még nincs engedélyezve</p>
       <p className="max-w-sm font-sohne text-[13px] font-light text-stripe-ink-mute">
-        Ez a funkció csomag-bővítéssel érhető el. Vedd fel a kapcsolatot velünk, ha
-        szeretnéd, hogy Átvizsgáló csapattagokat is meghívhass a fiókodhoz.
+        Ez a funkció a Műhely / Kereskedői csomagtól felfelé jár -- válts csomagot, hogy
+        Átvizsgáló csapattagokat is meghívhass a fiókodhoz.
       </p>
+      <Link
+        href="/settings/billing"
+        className="mt-1 inline-flex h-9 items-center justify-center rounded-full bg-stripe-primary px-4 font-sohne text-[13px] font-normal text-white transition-colors hover:bg-stripe-primary-deep"
+      >
+        Csomagváltás
+      </Link>
     </div>
   );
 }

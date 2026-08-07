@@ -24,6 +24,16 @@ interface AdminOrganizationsTableProps {
  * érhető el, ami már Server Component-szinten ellenőrizte a `platform_admins`
  * tagságot -- ez a kliens-komponens a tényleges kapcsolgatást végzi.
  *
+ * **2026-08-07, "Csapatkezelés tier-feloldás" lépés:** a `team_management_enabled`
+ * mezőt AZÓTA a Stripe-vásárlást feldolgozó `apply_plan_purchase` RPC IS beállítja
+ * `true`-ra Műhely / Kereskedői (growth) tier-től felfelé, automatikusan (lásd
+ * `supabase/migrations/20260807_team_management_tier_unlock.sql`) -- ez az itteni
+ * kapcsoló ezért egy Growth+ előfizetőnél már bekapcsolva fog mutatkozni ANÉLKÜL, hogy
+ * a Platform Admin bármit tett volna. A kapcsoló KIKAPCSOLÁSA egy Growth+ ügyfélnél
+ * IDEIGLENESEN letiltja a hozzáférést, DE a KÖVETKEZŐ csomag-vásárlás/-megújítás
+ * (`apply_plan_purchase` újrafutása) automatikusan visszakapcsolja -- ha egy ügyfél
+ * tartósan ki legyen zárva, az egy külön, ezen a felületen NEM kezelt eset.
+ *
  * A módosítás közvetlenül a böngésző-kliens Supabase-en keresztül történik (nincs
  * külön API route rá szükség) -- ezt az `organizations_update_platform_admin` RLS
  * policy teszi biztonságossá (lásd `supabase/migrations/

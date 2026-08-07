@@ -19,6 +19,13 @@ export const metadata: Metadata = {
  * manageri fiók és csapattagok hozzáadása") épített, PROJEKT_INSTRUKCIOK.md-n
  * kívüli, önálló admin-szegmens.
  *
+ * **2026-08-07, "Csapatkezelés tier-feloldás" lépés:** azóta a Stripe-vásárlást
+ * feldolgozó `apply_plan_purchase` RPC IS beállítja ezt a mezőt Műhely / Kereskedői
+ * (growth) tier-től felfelé automatikusan (lásd
+ * `supabase/migrations/20260807_team_management_tier_unlock.sql`) -- az itteni kézi
+ * kapcsoló mostantól egy KIEGÉSZÍTŐ override (pl. egyedi kivétel egy Starter
+ * ügyfélnek), NEM az egyetlen forrás.
+ *
  * KÉTRÉTEGŰ védelem: a `middleware.ts` (PROTECTED_PREFIXES) már megköveteli a
  * bejelentkezést; ITT, Server Component-szinten pedig a `platform_admins` allow-list
  * tagságát ellenőrizzük -- ha a hívó NEM platform admin, egyszerű "Hozzáférés
