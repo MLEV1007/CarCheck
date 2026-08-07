@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { getQuotaBalance } from '@/lib/quotas';
+import { getOrganizationQuotaBalance } from '@/lib/quotas';
 import { getUserRoleContext } from '@/lib/auth/roles';
 import type { OrganizationRole } from '@/types/credits';
 import type { QuotaBalance } from '@/types/quotas';
@@ -44,12 +44,25 @@ export async function GET(): Promise<NextResponse<QuotaSummarySuccessResponse | 
   }
 
   try {
-    const [quota, roleContext] = await Promise.all([getQuotaBalance(user.id), getUserRoleContext(user.id)]);
+    // TELJESÍTMÉNY-JAVÍTÁS (2026-08-07, "Vercel-en is lassú" hibaelhárítás) -- korábban
+    // `Promise.all([getQuotaBalance(user.id), getUserRoleContext(user.id)])` futott, ami
+    // ÚGY TŰNT párhuzamos, de a `getQuotaBalance` BELÜL MAGA is meghívja a
+    // `getUserRoleContext`-et (a szervezet feloldásához) -- vagyis a `profiles` tábla
+    // egyetlen kéréshez KÉTSZER lett lekérdezve, feleslegesen. Itt a szerepkör-kontextust
+    // EGYETLEN alkalommal kérjük le, és a MÁR ismert `organizationId`-val hívjuk közvetlenül
+    // a `getOrganizationQuotaBalance`-t -- lásd a `lib/quotas.ts`-beli JSDoc-ot a részletes
+    // indoklásért/mért adatokért.
+    const roleContext = await getUserRoleContext(user.id);
+    if (!roleContext) {
+      throw new Error('Nem sikerült feloldani a felhasználó szervezetét.');
+    }
+
+    const quota = await getOrganizationQuotaBalance(roleContext.organizationId);
 
     return NextResponse.json({
       success: true,
       quota,
-      role: roleContext?.role ?? 'manager',
+      role: roleContext.role,
     });
   } catch (error) {
     console.error('[quotas/summary] Nem sikerült összeállítani a kvóta-áttekintést:', error);

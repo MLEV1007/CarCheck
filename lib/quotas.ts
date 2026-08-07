@@ -119,7 +119,21 @@ export async function getQuotaBalance(userId: string): Promise<QuotaBalance> {
   return getOrganizationQuotaBalance(organizationId);
 }
 
-async function getOrganizationQuotaBalance(organizationId: string): Promise<QuotaBalance> {
+/**
+ * EXPORTÁLVA (2026-08-07, "Vercel-en is lassú" hibaelhárítás) -- a `/api/quotas/summary`
+ * route korábban `Promise.all([getQuotaBalance(user.id), getUserRoleContext(user.id)])`-t
+ * hívott: ez ÚGY TŰNT párhuzamos, de a `getQuotaBalance` MAGA is meghívja belül a
+ * `resolveOrganizationId`-n keresztül a `getUserRoleContext`-et -- vagyis a `profiles`
+ * tábla EGYETLEN kéréshez KÉTSZER lett lekérdezve (egyszer feleslegesen), és emellett a
+ * `getQuotaBalance` belső lánca (role-lookup -> quota-lookup) is szekvenciális 2 DB-kör-út,
+ * NEM párhuzamosítható a másikkal. Élő Vercel-adatban (`car-check` projekt, Region IAD1,
+ * a Supabase projekt `eu-central-1`-ben) ez a route P75 4,55 másodpercet mutatott -- a
+ * transzatlanti kör-utak (auth + 2x profiles + user_credits, részben feleslegesen
+ * duplikálva) összeadódtak. Ha a hívó MÁR ismeri az `organizationId`-t (mert ő maga
+ * hívta a `getUserRoleContext`-et), ezt a függvényt KÖZVETLENÜL hívva a felesleges
+ * második `profiles`-lekérdezés elkerülhető -- lásd `app/api/quotas/summary/route.ts`.
+ */
+export async function getOrganizationQuotaBalance(organizationId: string): Promise<QuotaBalance> {
   const supabase = await createClient();
 
   const { data: existing, error: selectError } = await supabase
