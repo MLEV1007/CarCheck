@@ -2130,3 +2130,42 @@ mivel ez szabad szöveges céges adat, nem választós döntés).
 * A dokumentumban szereplő céges adatok (adószám, cím, kapcsolattartó email) egyeznek a
   ténylegesen bejegyzett Mányi Levente EV. adataival -- ezt érdemes a felhasználónak saját maga is
   még egyszer átnéznie kiadás előtt, mivel jogi dokumentum.
+
+## 2026-08-07 (folyt.) -- Magic Link belépési hiba kivizsgálása és javítása (65. szakasz)
+
+**A hiba (élő felhasználói jelzés, `vajna.barbara@gmail.com`, első regisztráció):** a Supabase auth
+logok (`nsejmkcwvksbwxscvrvb`, `get_logs` + `auth.users` lekérdezés) alapján rekonstruálva: 17:55:06
+kiment a megerősítő Magic Link, 17:55:16-kor a fiók létrejött és megerősítődött (`user_signedup`),
+de UTÁNA nem történt tényleges session-csere ehhez a kattintáshoz (nincs rá `/token` hívás a
+logban) -- vagyis a userig sosem jutott el a bejelentkezett session, valószínűleg mert a linket
+valami (email-biztonsági szűrő/linkelőnézet) már a tényleges kattintás előtt "elhasználta" az
+egyszer-használatos tokent. Ezután a user 3x kért új linket (17:55:45, 17:57:48, végül 17:58:54
+sikerrel), közben 2x kapott `"One-time token not found" / "403: Email link is invalid or has
+expired"` hibát GoTrue-tól -- összesen kb. 3 perc 49 másodpercig tartott, mire be tudott lépni.
+
+**Kódhiba, amit ez felszínre hozott (`app/auth/callback/route.ts`):** a GoTrue `/verify`-tól
+`error`/`error_description` paraméterekkel visszatérő ÖSSZES eset (tehát a fenti, lejárt/érvénytelen
+linkes eset IS) a `oauth_failed` ("A bejelentkezés megszakadt vagy sikertelen volt. Próbáld újra.")
+üzenetre futott ki -- holott a pontosabb, már létező `confirmation_failed` üzenet ("A belépési link
+érvénytelen vagy lejárt. Kérj egy újat.") EBBEN AZ ESETBEN igaz és hasznosabb lett volna. Mivel a
+Google OAuth gomb jelenleg SEHOL nincs kitéve a felületen (`LoginForm`/`RegisterForm` kizárólag
+Passkey + Magic Link -- lásd a fájlok JSDoc-ját), ez a hibaág a gyakorlatban KIZÁRÓLAG a lejárt
+Magic Linkes esetet fedi le, tehát a régi `oauth_failed`-re irányítás mindig félrevezető volt.
+
+**Javítás:** `app/auth/callback/route.ts` -- a `providerError` ág mostantól `confirmation_failed`-re
+irányít `oauth_failed` helyett, a JSDoc frissítve az itteni kivizsgálás eredményével.
+
+**Nyitva maradt, mélyebb megbízhatósági kérdés (a felhasználónak jelezve, döntésre vár):** ez a
+javítás a HIBAÜZENETET pontosítja, de nem szünteti meg magát a jelenséget, hogy egy email-szűrő
+"elégetheti" a linket a tényleges kattintás előtt. Ennek strukturális megoldása egy 6-jegyű,
+begépelendő OTP-kód bevezetése lenne a kattintható link mellé/helyett (`supabase.auth.verifyOtp`) --
+ez nagyobb, külön egyeztetést igénylő UI-változás (Login/Register form + kódbeviteli mező), ezért
+NEM része ennek a javításnak.
+
+**Ellenőrzés:** `tsc --noEmit` szinkron, egyetlen bash-hívásban -- 0 hiba.
+
+**Kézi teszt (LEGÚJABB, ÚJ, még nem futtatott, lásd 65. szakasz):**
+* Egy Magic Linket a kiküldés után szándékosan elévülni hagyva (vagy egy régebbi linkre kattintva
+  egy újabb kikérése után), a user a `/login?error=confirmation_failed`-re kerüljön, és a "A
+  belépési link érvénytelen vagy lejárt. Kérj egy újat." üzenetet lássa (NEM a "megszakadt
+  bejelentkezés" szöveget).
