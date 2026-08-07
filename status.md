@@ -2074,3 +2074,46 @@ A tényleges hiba a **Supabase Storage `inspection-media` bucket `storage.object
 * `test@buildmysite.hu`-val bejelentkezve `/settings` -> "Csapatkezelés" fül -- MOSTANTÓL zárolt állapotot kell mutatnia (nem a csapattag-listát), "Csomagváltás" CTA-val.
 * Egy Growth+ szervezetet Egyénire visszaváltva (Stripe teszt-checkout-tal) -- a webhook lefutása UTÁN a Csapatkezelés fülnek AZONNAL zárolttá kell válnia (nem csak egy következő oldal-frissítésnél, hanem ténylegesen az adatbázisban is).
 * Egy Egyéni szervezetet Növekedésire/Profira/Autóházra váltva -- a Csapatkezelés helyesen újra feloldódik (ez a 62. szakaszban már tesztelt útvonal, itt csak regresszió-ellenőrzés).
+
+## 2026-08-07 (folyt.) -- Adatkezelési tájékoztató (`/adatkezeles`) (64. szakasz)
+
+**Mi történt:** a felhasználó kérésére elkészült a teljes, GDPR/Infotv.-kompatibilis adatkezelési
+tájékoztató, mint publikus, bejelentkezés nélkül elérhető oldal (`app/adatkezeles/page.tsx`,
+Stripe design system). A felhasználó explicit egyeztetés után adta meg az Adatkezelő jogi adatait
+(Mányi Levente EV., 1033 Bp. Hévízi út 29., adószám: 91557542-1-41, kapcsolattartó:
+info@buildmysite.hu, domain: carpass.hu) -- ezek NÉLKÜL a dokumentum nem lett volna jogilag érvényes,
+ezért ezt megelőzően tisztázó kérdéseket tettem fel (AskUserQuestion helyett közvetlen chat-kérdés,
+mivel ez szabad szöveges céges adat, nem választós döntés).
+
+* **Kétrészes jogi szerkezet** (a felhasználó kifejezett kérésére, "mind a 2 adatkezelési kör legyen
+  benne, teljes kell, ez már nem MVP"):
+  * **I. rész -- Adatkezelőként:** a CarPass-előfizető vizsgáló cégek/felhasználóik saját fiók-,
+    csapatkezelési, AI-funkció-használati (Google Gemini API) és számlázási (Stripe) adatai.
+  * **II. rész -- Adatfeldolgozóként:** a publikus riporton (`/report/[public_token]`) opcionálisan
+    megjelenő Megrendelői (autó vevője) adatok -- itt az Adatkezelő maga az előfizető vizsgáló cég,
+    mi csak GDPR 28. cikk szerinti technikai feldolgozók vagyunk. Ez tükrözi a tényleges kódot:
+    `show_client_on_pdf` alapértelmezetten `false`, szerveroldali (nem csak UI-szintű) elrejtéssel
+    (lásd `20260806_inspector_and_client_fields.sql`, `get_public_report` RPC).
+* **Tartalom a valós rendszerre épül, nem generikus sablon** -- a kódbázis átvizsgálásával
+  (`SettingsForm.tsx`, `PasskeyButton.tsx`/`RegisterForm.tsx` jelszómentes auth, `.env.local.example`
+  integrációk, `app/api/account/delete/route.ts` törlési logika, `20260803_organizations_rbac.sql`
+  csapatkezelés) derült ki pontosan, milyen adatkörök, jogalapok, adatfeldolgozók (Supabase --
+  Frankfurt/eu-central-1 régió, Supabase MCP `get_project`-tel ellenőrizve; Google Gemini API; Stripe;
+  Vercel) és megőrzési idők (fiókadatok a törlésig, számlák Sztv. szerint 8 év, AI-naplók Ptk.
+  elévülési idő) szerepelnek ténylegesen a tájékoztatóban. Nincs analitikai/marketing süti a
+  rendszerben (nincs analytics csomag a `package.json`-ban) -- ezt a tájékoztató is így tükrözi.
+* **Fiók törlése szakasz** kifejezetten kiemeli: a személyes fiók törlésekor a korábbi vizsgálatok
+  (fotók, riportok) a CÉGnél megmaradnak, csak a törölt userre mutató hivatkozás válik NULL-lá --
+  ez pontosan megfelel az `app/api/account/delete/route.ts`-ben már meglévő, szándékos viselkedésnek.
+* **Linkelés:** `/login` és `/register` oldal lábléce (`AuthLayout` `footer` propján keresztül)
+  mostantól hivatkozik az `/adatkezeles` oldalra.
+
+**Ellenőrzés:** `tsc --noEmit` szinkron, egyetlen bash-hívásban -- 0 hiba.
+
+**Kézi teszt (LEGÚJABB, ÚJ, még nem futtatott, lásd 64. szakasz):**
+* `/adatkezeles` bejelentkezés nélkül (inkognitó ablakban) is megnyílik, nem irányít `/login`-ra.
+* `/login` és `/register` lábjegyzetében az "Adatkezelési tájékoztató" link az `/adatkezeles`
+  oldalra visz, új fülön/ugyanazon fülön megnyitva olvasható.
+* A dokumentumban szereplő céges adatok (adószám, cím, kapcsolattartó email) egyeznek a
+  ténylegesen bejegyzett Mányi Levente EV. adataival -- ezt érdemes a felhasználónak saját maga is
+  még egyszer átnéznie kiadás előtt, mivel jogi dokumentum.

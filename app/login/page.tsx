@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { LoginForm } from '@/components/auth/LoginForm';
 
@@ -13,7 +14,14 @@ export default function LoginPage() {
       eyebrow="Autóvizsgáló Partnereknek"
       title="Autóvizsgáló Partner Belépés"
       subtitle="Kezeld a vizsgálataidat és generálj interaktív riportokat pillanatok alatt."
-      footer={<span>© {new Date().getFullYear()} CarPass</span>}
+      footer={
+        <span>
+          © {new Date().getFullYear()} CarPass ·{' '}
+          <Link href="/adatkezeles" className="hover:underline">
+            Adatkezelési tájékoztató
+          </Link>
+        </span>
+      }
     >
       {/* useSearchParams miatt (redirectTo query param) Suspense boundary szükséges */}
       <Suspense fallback={null}>

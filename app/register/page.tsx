@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
+import Link from 'next/link';
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { RegisterForm } from '@/components/auth/RegisterForm';
 
@@ -13,7 +14,15 @@ export default function RegisterPage() {
       eyebrow="Autóvizsgáló Partnereknek"
       title="Autóvizsgáló Fiók Létrehozása"
       subtitle="Kezeld a vizsgálataidat és generálj interaktív riportokat pillanatok alatt."
-      footer={<span>© {new Date().getFullYear()} CarPass</span>}
+      footer={
+        <span>
+          © {new Date().getFullYear()} CarPass · A regisztrációval elfogadod az{' '}
+          <Link href="/adatkezeles" className="hover:underline">
+            Adatkezelési tájékoztatót
+          </Link>
+          .
+        </span>
+      }
     >
       {/* `RegisterForm` a `useSearchParams()`-t használja a `?invite=<organization_id>`
           csapattag-meghívó link kiolvasásához -- a Next.js App Router ezt Suspense
