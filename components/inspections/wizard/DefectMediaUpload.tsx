@@ -60,7 +60,6 @@ export function DefectMediaUpload({ file, previewUrl, onSelect, onRemove }: Defe
         ref={inputRef}
         type="file"
         accept="image/*,video/*"
-        capture="environment"
         className="hidden"
         onChange={(e) => {
           const selected = e.target.files?.[0];

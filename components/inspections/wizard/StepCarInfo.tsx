@@ -333,7 +333,6 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
           ref={aiScanFileInputRef}
           type="file"
           accept="image/*"
-          capture="environment"
           className="hidden"
           onChange={handleAiScanPhotoSelected}
         />

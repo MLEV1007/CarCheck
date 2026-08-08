@@ -82,7 +82,6 @@ export function StepGeneralPhotos({ value, onChange, onBack, onNext, nextLabel }
             type="file"
             accept="image/*"
             multiple
-            capture="environment"
             className="hidden"
             onChange={(e) => {
               if (e.target.files?.length) handleFilesSelected(e.target.files);

@@ -2261,3 +2261,35 @@ hairline szegéllyel) a `PartyPopper` ikon helyett; feltöltött logó hiányáb
 * Egy vizsgálat publikálása után a `/dashboard?published=<token>` bannerben, ha a
   Beállításokban fel van töltve céglogó, az jelenjen meg a link fölötti jelvényben a
   konfetti-ikon helyett; feltöltött logó nélkül a régi konfetti-ikon látszódjon továbbra is.
+
+## 2026-08-08 (folyt.) -- Galériából/albumból is feltölthető kép a kamera mellett (68. szakasz)
+
+**Igény (felhasználói kérés):** a helyszíni felvételezés közben ne csak a kamerát lehessen
+azonnal elindítani a fotó/média feltöltésekor, hanem a telefon galériájából/albumából is ki
+lehessen választani már meglévő képet.
+
+**Ok:** a három érintett file-input mezőn (`StepGeneralPhotos.tsx` -- általános autó fotók,
+`DefectMediaUpload.tsx` -- hiba fotó/videó, `StepCarInfo.tsx` -- forgalmi engedély/alvázszám
+AI-beolvasás) a `capture="environment"` attribútum volt beállítva. Ez az attribútum mobil
+böngészőn (Safari/Chrome) KÉNYSZERÍTI a natív kamera azonnali megnyitását, és emiatt a böngésző
+natív fájlválasztójából eltűnik a "Fotókönyvtár"/"Galéria" opció -- kizárólag fényképezésre volt
+lehetőség, meglévő kép kiválasztására nem.
+
+**Javítás:** a `capture="environment"` attribútum eltávolítva mind a három `<input type="file">`
+elemről (`StepGeneralPhotos.tsx`, `DefectMediaUpload.tsx`, `StepCarInfo.tsx`). Az `accept="image/*"`
+(ill. `DefectMediaUpload.tsx`-nél `image/*,video/*`) és a `multiple` (ahol volt) változatlan
+maradt. `capture` nélkül a böngésző natív file-választója jelenik meg, ami mobilon magától
+felkínálja mind a "Fénykép/videó készítése", mind a "Fotókönyvtár"/"Fájlok" opciót -- ez böngésző-
+alap viselkedés, nem igényelt új komponenst, csomagot vagy Supabase Storage-oldali változtatást.
+A `LogoUploader.tsx`-ben eleve nem volt `capture` attribútum, ott ez már korábban is működött.
+
+**Ellenőrzés:** `tsc --noEmit` szinkron, egyetlen bash-hívásban -- 0 hiba.
+
+**Kézi teszt (LEGÚJABB, ÚJ, még nem futtatott, lásd 68. szakasz):**
+* Mobil eszközön (iOS Safari és Android Chrome is, ha lehetséges) a vizsgálati wizard "Általános
+  autó fotók" lépésében a "Fotók hozzáadása" gombra kattintva a natív választó mutassa mind a
+  kamera, mind a galéria opciót, és galériából kiválasztott kép is helyesen bekerüljön az
+  előnézetbe.
+* Ugyanez a "Hibák & Média" lépésben a hiba fotó/videó feltöltésénél (`DefectMediaUpload.tsx`).
+* Ugyanez az "Autó adatok" lépés "Adatok beolvasása" kártyáján (forgalmi engedély/alvázszám
+  AI-beolvasás) -- galériából választott kép is elinduljon vele az AI auto-fill.
