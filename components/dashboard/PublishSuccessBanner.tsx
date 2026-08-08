@@ -6,6 +6,13 @@ import { Check, Copy, ExternalLink, PartyPopper, X } from 'lucide-react';
 
 interface PublishSuccessBannerProps {
   publicToken: string;
+  /** A vizsgálatot végző cég logója (`profiles.logo_url`, lásd `app/dashboard/page.tsx`) --
+   * ha van feltöltve logó, az jelenik meg a link fölötti jelvényben a generikus
+   * `PartyPopper` ikon helyett (2026-08-08, felhasználói jelzés: "a link küldésnél
+   * jelenjen meg a link fölött a logóm, jelenleg ott nem jelenik meg semmi"). Nincs
+   * feltöltött logó esetén marad a korábbi `PartyPopper` jelvény. */
+  logoUrl?: string | null;
+  companyName?: string | null;
 }
 
 /**
@@ -14,7 +21,7 @@ interface PublishSuccessBannerProps {
  * paramétert az InspectionWizard.tsx redirect-je állítja be. Linear design system:
  * primary/10 kitöltésű surface, hairline szegély, egy kattintásos link-másolás.
  */
-export function PublishSuccessBanner({ publicToken }: PublishSuccessBannerProps) {
+export function PublishSuccessBanner({ publicToken, logoUrl, companyName }: PublishSuccessBannerProps) {
   const router = useRouter();
   const [copied, setCopied] = useState(false);
   const reportUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/report/${publicToken}`;
@@ -36,9 +43,18 @@ export function PublishSuccessBanner({ publicToken }: PublishSuccessBannerProps)
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-linear-primary/30 bg-linear-primary/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-start gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-linear-primary/20 text-linear-primary">
-          <PartyPopper className="h-4 w-4" />
-        </span>
+        {logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- a logó a Supabase Storage-ból, tetszőleges méretben érkezik
+          <img
+            src={logoUrl}
+            alt={companyName || 'Cég logó'}
+            className="h-9 w-9 shrink-0 rounded-full border border-linear-hairline-strong object-cover"
+          />
+        ) : (
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-linear-primary/20 text-linear-primary">
+            <PartyPopper className="h-4 w-4" />
+          </span>
+        )}
         <div className="min-w-0">
           <p className="text-[14px] font-medium text-linear-ink">A vizsgálat sikeresen publikálva!</p>
           <p className="mt-0.5 truncate font-mono text-[12px] text-linear-ink-subtle">{reportUrl}</p>

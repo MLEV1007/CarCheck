@@ -23,9 +23,22 @@ interface DashboardHeaderProps {
  * pozicionálva -- ez a felhasználó explicit kérése ("a navbarban középen legyen az a
  * logó"), a kicsi, ikon-only márkajelzés SZÁNDÉKOSAN NEM jelenik meg itt (a felhasználó
  * kérésére a kicsi verzió KIZÁRÓLAG a böngésző-favicon, lásd `app/icon.svg`). Jobb
- * oldalon navigáció + kijelentkezés. Mobilon (< `sm`) a középső logó rejtve marad, hogy
- * ne ütközzön a bal/jobb oldali, egyébként is szűkös tartalommal (lásd a `HeaderCreditBadge`
- * és a cégnév `truncate` viselkedését keskeny képernyőn).
+ * oldalon navigáció + kijelentkezés.
+ *
+ * **Tablet-egymásracsúszás javítás (2026-08-08):** korábban a középső logó `sm:block`-kal
+ * (>= 640px) jelent meg, UGYANAKKOR a jobb oldali `HeaderCreditBadge` "Előfizetés" felirata
+ * és a `Beállítások`/`Kijelentkezés` szövegek is `sm:`-nél váltak láthatóvá -- tableten
+ * (kb. 640--1024px, pl. iPad álló/fekvő) mind a négy elem EGYSZERRE jelent meg, a bal
+ * oldali cégnév + jobb oldali (Előfizetés + vizsgálat-jelvény + AI-jelvény + Beállítások +
+ * Kijelentkezés, mind teljes szöveggel) összesített szélessége pedig már ezen a
+ * képernyőméreten TÖBB volt, mint a rendelkezésre álló hely -- az `absolute`-tal középre
+ * pozicionált logó emiatt ténylegesen RÁCSÚSZOTT a bal/jobb oldali flow-tartalomra (az
+ * `absolute` elem nem "foglal helyet" a flexboxban, tehát semmi nem tolta el mellőle a
+ * szöveget). Javítás: a jobb oldali szöveges labelek (lásd lent + `HeaderCreditBadge.tsx`,
+ * `SignOutButton.tsx`) mostantól `lg:` (>= 1024px) breakpointnál jelennek meg (tableten
+ * továbbra is kompakt, csak-ikon nézet, mint mobilon), a középső logó pedig csak `xl:`-nél
+ * (>= 1280px) -- így a két réteg (szöveges jobb oldal / középső logó) SOSEM aktiválódik
+ * ugyanazon a szélességen, biztos térköz marad közöttük.
  */
 export function DashboardHeader({ companyName, logoUrl, role = 'manager' }: DashboardHeaderProps) {
   const displayName = companyName || 'CarPass';
@@ -47,7 +60,7 @@ export function DashboardHeader({ companyName, logoUrl, role = 'manager' }: Dash
       <Link
         href="/dashboard"
         aria-label="CarPass -- vissza a dashboardra"
-        className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 sm:block"
+        className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 xl:block"
       >
         <CarPassLogo variant="auto" size={40} />
       </Link>
@@ -57,10 +70,10 @@ export function DashboardHeader({ companyName, logoUrl, role = 'manager' }: Dash
         <Link
           href="/settings"
           aria-label="Beállítások"
-          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2 text-[13px] font-medium text-linear-ink-subtle transition-colors hover:bg-linear-surface-1 hover:text-linear-ink sm:px-3"
+          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2 text-[13px] font-medium text-linear-ink-subtle transition-colors hover:bg-linear-surface-1 hover:text-linear-ink lg:px-3"
         >
           <Settings className="h-4 w-4" />
-          <span className="hidden sm:inline">Beállítások</span>
+          <span className="hidden lg:inline">Beállítások</span>
         </Link>
         <SignOutButton />
       </div>

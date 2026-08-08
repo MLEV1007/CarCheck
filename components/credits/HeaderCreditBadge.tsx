@@ -117,7 +117,7 @@ export function HeaderCreditBadge() {
     <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
       <Link
         href="/settings/billing"
-        className="hidden h-8 shrink-0 items-center gap-1.5 rounded-md border border-linear-hairline px-3 text-[13px] font-medium text-linear-ink-subtle transition-colors hover:bg-linear-surface-2 hover:text-linear-ink sm:inline-flex"
+        className="hidden h-8 shrink-0 items-center gap-1.5 rounded-md border border-linear-hairline px-3 text-[13px] font-medium text-linear-ink-subtle transition-colors hover:bg-linear-surface-2 hover:text-linear-ink lg:inline-flex"
         aria-label="Ugrás az Előfizetés oldalra"
       >
         <CreditCard className="h-3.5 w-3.5" />

@@ -18,10 +18,10 @@ export function SignOutButton() {
     <button
       onClick={handleSignOut}
       aria-label="Kijelentkezés"
-      className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-linear-hairline bg-linear-surface-1 px-2.5 text-[13px] font-medium text-linear-ink transition-colors hover:bg-linear-surface-2 sm:px-3"
+      className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-linear-hairline bg-linear-surface-1 px-2.5 text-[13px] font-medium text-linear-ink transition-colors hover:bg-linear-surface-2 lg:px-3"
     >
       <LogOut className="h-3.5 w-3.5" />
-      <span className="hidden sm:inline">Kijelentkezés</span>
+      <span className="hidden lg:inline">Kijelentkezés</span>
     </button>
   );
 }

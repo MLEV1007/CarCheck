@@ -2216,3 +2216,48 @@ figyelmeztetés, a meglévők a változástól függetlenek.
   Műhely-Kereskedői/Profi/Autóház) se legyen "Aktív csomag" jelzés.
 * Ugyanaz a user Stripe teszt-checkout-tal Egyéni csomagra váltva -- a webhook lefutása UTÁN a
   keret 20/6-ra nőjön, és az Egyéni kártyán jelenjen meg az "Aktív csomag" jelzés.
+
+## 2026-08-08 -- Tablet navbar egymásracsúszás + cég logó a publikált link fölött (67. szakasz)
+
+**Hiba 1 (felhasználói jelzés): "Tablet verzióban nem szépen jelenik meg a navbar. Minden
+egymásra csúszik."** `components/dashboard/DashboardHeader.tsx`-ben a KÖZÉPRE, `absolute`-tal
+pozicionált CarPass logó-lockup (`sm:block`, >= 640px) és a jobb oldali szöveges elemek
+(`HeaderCreditBadge.tsx` "Előfizetés" felirata, `Beállítások`/`Kijelentkezés` szövegek, mind
+`sm:`-nél váltak láthatóvá) UGYANAZON a breakpointon (640px) egyszerre jelentek meg. Tableten
+(kb. 640--1024px, pl. iPad álló/fekvő) a bal oldali cégnév + a most már teljes szöveggel
+megjelenő jobb oldali blokk (Előfizetés + vizsgálat-jelvény + AI-jelvény + Beállítások +
+Kijelentkezés) összesített szélessége már meghaladta a rendelkezésre álló helyet -- az
+`absolute` logó emiatt ténylegesen rácsúszott a bal/jobb oldali flow-tartalomra (az `absolute`
+elem nem foglal helyet a flexboxban, semmi nem tolta el mellőle a szöveget).
+
+**Javítás:** a jobb oldali szöveges labelek breakpointja `sm:` (640px) -> `lg:` (1024px) --
+`DashboardHeader.tsx` (Beállítások felirat), `components/credits/HeaderCreditBadge.tsx`
+(Előfizetés link), `components/auth/SignOutButton.tsx` (Kijelentkezés felirat). A középső
+CarPass logó breakpointja `sm:` -> `xl:` (1280px). Így a két réteg (szöveges jobb oldal /
+középső logó) SOSEM aktiválódik ugyanazon a szélességen -- tableten a header a mobilos,
+kompakt, csak-ikon nézetet tartja meg (nincs átfedés), a teljes szöveg + középső logó csak
+valódi desktop szélességen (>= 1280px) jelenik meg együtt, ahol biztosan elfér.
+
+**Hiba 2 (felhasználói jelzés): "szeretném ha a link küldésnél megjelenne a link fölött a
+logóm. Jelenleg ott nem jelenik meg semmi."** A publikált vizsgálati link ténylegesen a
+`components/dashboard/PublishSuccessBanner.tsx`-ben jelenik meg (`/dashboard?published=<token>`,
+`app/dashboard/page.tsx` rendereli publikálás utáni redirect után) -- a link fölötti/melletti
+jelvényben eddig egy generikus `PartyPopper` ikon volt, a cég feltöltött logója (`profiles.logo_url`,
+`LogoUploader.tsx`) sehol nem jelent meg ezen a felületen.
+
+**Javítás:** `PublishSuccessBanner` két új, opcionális propot kapott (`logoUrl`, `companyName`).
+`app/dashboard/page.tsx` a már amúgy is lekérdezett `profile.logo_url`/`profile.company_name`
+mezőket adja át. Ha van feltöltött logó, az jelenik meg a jelvényben (kör alakú, `object-cover`,
+hairline szegéllyel) a `PartyPopper` ikon helyett; feltöltött logó hiányában marad a korábbi
+`PartyPopper` jelvény (visszafelé kompatibilis, nincs törött/üres állapot).
+
+**Ellenőrzés:** `tsc --noEmit` szinkron, egyetlen bash-hívásban -- 0 hiba.
+
+**Kézi teszt (LEGÚJABB, ÚJ, még nem futtatott, lásd 67. szakasz):**
+* Böngésző-ablak/eszköz-emulátor kb. 768--1024px szélességen (pl. iPad álló/fekvő) --
+  a `/dashboard` fejlécben a bal oldali cégnév, a jobb oldali kredit-jelvények és a
+  Beállítások/Kijelentkezés gombok NE csússzanak egymásra, és NE jelenjen meg középen a
+  CarPass logó-lockup (csak >= 1280px szélességen kell megjelennie).
+* Egy vizsgálat publikálása után a `/dashboard?published=<token>` bannerben, ha a
+  Beállításokban fel van töltve céglogó, az jelenjen meg a link fölötti jelvényben a
+  konfetti-ikon helyett; feltöltött logó nélkül a régi konfetti-ikon látszódjon továbbra is.

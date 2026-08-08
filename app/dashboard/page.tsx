@@ -73,7 +73,13 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           </p>
         </div>
 
-        {published && <PublishSuccessBanner publicToken={published} />}
+        {published && (
+          <PublishSuccessBanner
+            publicToken={published}
+            logoUrl={profile?.logo_url ?? null}
+            companyName={profile?.company_name ?? null}
+          />
+        )}
 
         <StatsBar total={total} draft={draftCount} completed={completedCount} />
 
