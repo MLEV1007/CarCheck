@@ -19,5 +19,5 @@ export const metadata: Metadata = {
  * már véd minden `/settings` route-ot.
  */
 export default function SettingsPage() {
-  return <SettingsPageContent initialTab="company" billingBanner={null} />;
+  return <SettingsPageContent initialTab="company" billingBanner={null} sessionId={null} />;
 }

@@ -17,6 +17,10 @@ interface SettingsPageContentProps {
   /** `?success=true`/`?canceled=true` a Stripe Checkout visszairányításából -- kizárólag a
    * `/settings/billing` route adja át, `/settings`-nél mindig `null`. */
   billingBanner: 'success' | 'canceled' | null;
+  /** `?session_id=` a Stripe Checkout `success_url`-jéből -- lásd `BillingTab.tsx`
+   * JSDoc-ját ("Nincs számla-email" lépés, 2026-08-09). `null`, ha `/settings`-ről nyílt
+   * meg, vagy nincs ilyen query param. */
+  sessionId: string | null;
 }
 
 /**
@@ -30,7 +34,7 @@ interface SettingsPageContentProps {
  * A fájl az `app/settings/_components/` mappában él -- a vezető `_` miatt a Next.js App
  * Router NEM kezeli route-ként, tisztán belső, megosztott komponens.
  */
-export async function SettingsPageContent({ initialTab, billingBanner }: SettingsPageContentProps) {
+export async function SettingsPageContent({ initialTab, billingBanner, sessionId }: SettingsPageContentProps) {
   const supabase = await createClient();
 
   const {
@@ -136,6 +140,7 @@ export async function SettingsPageContent({ initialTab, billingBanner }: Setting
           aiTopup15PriceId={aiTopup15PriceId}
           aiTopup40PriceId={aiTopup40PriceId}
           billingBanner={billingBanner}
+          sessionId={sessionId}
         >
           <div className="flex flex-col gap-6">
             <SettingsForm

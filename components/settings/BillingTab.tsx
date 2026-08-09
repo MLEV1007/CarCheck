@@ -45,6 +45,13 @@ interface BillingTabProps {
    * visszairányításából (lásd `app/api/stripe/checkout/route.ts`) -- a szülő oldal
    * (`app/settings/billing/page.tsx`) olvassa ki a `searchParams`-ból. */
   banner: 'success' | 'canceled' | null;
+  /** `?session_id=` a Stripe Checkout `success_url`-jéből -- 2026-08-09, "Nincs
+   * számla-email" lépés. `null`, ha nincs (pl. `canceled` banner esetén). Ebből kérjük le
+   * a `/api/stripe/checkout-session` route-tól a számla linkjét, hogy MEGBÍZHATÓAN
+   * megjelenítsük, függetlenül attól, hogy a Stripe `sendInvoice` e-mailje eljutott-e a
+   * vevőhöz (lásd `app/api/stripe/webhook/route.ts` JSDoc-ját -- ez időszakosan,
+   * indokolatlanul hibázik ugyanolyan felépítésű Session-öknél). */
+  sessionId: string | null;
 }
 
 /** `plan_tier` -> magyar megjelenítendő címke -- ugyanaz a forrás, mint
@@ -128,9 +135,14 @@ export function BillingTab({
   aiTopup15PriceId,
   aiTopup40PriceId,
   banner,
+  sessionId,
 }: BillingTabProps) {
   const [state, setState] = useState<LoadState>('loading');
   const [data, setData] = useState<QuotaSummarySuccessResponse | null>(null);
+  /** A sikeres fizetés banner számla-linkje -- lásd a `sessionId` prop JSDoc-ját.
+   * `undefined` = még nem érkezett válasz (nincs link megjelenítve), `null` = lekérdezve,
+   * de nincs számla ehhez a Session-höz (pl. előfizetés, nem egyszeri vásárlás). */
+  const [invoiceUrl, setInvoiceUrl] = useState<string | null | undefined>(undefined);
   const [checkoutLoadingKey, setCheckoutLoadingKey] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   /** Havi/éves kapcsoló -- 2026-08-07, "Havi/éves kapcsoló" lépés. Csak a 3 önkiszolgáló
@@ -163,6 +175,30 @@ export function BillingTab({
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (banner !== 'success' || !sessionId) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const response = await fetch(`/api/stripe/checkout-session?session_id=${encodeURIComponent(sessionId)}`);
+        const json = (await response.json().catch(() => null)) as
+          | { success: true; invoiceUrl: string | null }
+          | { success: false; error: string }
+          | null;
+
+        if (cancelled) return;
+        setInvoiceUrl(response.ok && json?.success ? json.invoiceUrl : null);
+      } catch {
+        if (!cancelled) setInvoiceUrl(null);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [banner, sessionId]);
 
   async function handlePurchase(priceId: string | null, key: string) {
     if (!priceId) {
@@ -278,8 +314,20 @@ export function BillingTab({
     <div className="flex flex-col gap-6">
       {banner === 'success' && (
         <div className="rounded-stripe-md border border-green-200 bg-green-50 px-4 py-3 font-sohne text-[13px] text-green-800">
-          Sikeres fizetés! A csomagod/keretkiegészítésed néhány másodpercen belül megjelenik itt lent -- ha nem
-          látod azonnal, frissítsd az oldalt.
+          <p>
+            Sikeres fizetés! A csomagod/keretkiegészítésed néhány másodpercen belül megjelenik itt lent -- ha nem
+            látod azonnal, frissítsd az oldalt.
+          </p>
+          {invoiceUrl && (
+            <a
+              href={invoiceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1.5 inline-block font-medium underline underline-offset-2"
+            >
+              Számla megnyitása
+            </a>
+          )}
         </div>
       )}
       {banner === 'canceled' && (

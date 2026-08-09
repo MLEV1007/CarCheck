@@ -131,7 +131,12 @@ export async function POST(
         organizationId: roleContext.organizationId,
         priceId,
       },
-      success_url: `${origin}/settings/billing?success=true`,
+      // `session_id={CHECKOUT_SESSION_ID}` -- 2026-08-09, "Nincs számla-email" lépés: a
+      // Stripe ezt a sablon-változót a valódi Session ID-ra cseréli az átirányításkor. A
+      // `BillingTab.tsx` ezzel kéri le a `/api/stripe/checkout-session` route-tól a számla
+      // linkjét, mert a `stripe.invoices.sendInvoice()` (webhook route) megbízhatatlan
+      // ugyanilyen Session-öknél -- lásd `app/api/stripe/checkout-session/route.ts` JSDoc-ját.
+      success_url: `${origin}/settings/billing?success=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/settings/billing?canceled=true`,
     });
 

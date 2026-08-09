@@ -56,6 +56,10 @@ interface SettingsTabsProps {
   aiTopup15PriceId: string | null;
   aiTopup40PriceId: string | null;
   billingBanner: 'success' | 'canceled' | null;
+  /** `?session_id=` a Stripe Checkout `success_url`-jéből -- lásd `BillingTab.tsx`
+   * JSDoc-ját ("Nincs számla-email" lépés, 2026-08-09). `null`, ha nincs (pl. `canceled`
+   * banner esetén, vagy ha a fül nem a Checkout-visszairányításból nyílt meg). */
+  sessionId: string | null;
   /** A meglévő "Cégbeállítások" kártyák (`SettingsForm`/`DefaultPreferencesCard`/
    * `PasskeyCard`) -- a szülő (`app/settings/page.tsx`) adja át, hogy a Server Component
    * ott maradjon felelős a kezdeti adatok betöltéséért, ez a komponens csak a fül-váltás
@@ -90,6 +94,7 @@ export function SettingsTabs({
   aiTopup15PriceId,
   aiTopup40PriceId,
   billingBanner,
+  sessionId,
   children,
 }: SettingsTabsProps) {
   const [activeTab, setActiveTab] = useState<SettingsTabKey>(initialTab);
@@ -157,6 +162,7 @@ export function SettingsTabs({
           aiTopup15PriceId={aiTopup15PriceId}
           aiTopup40PriceId={aiTopup40PriceId}
           banner={billingBanner}
+          sessionId={sessionId}
         />
       )}
     </div>

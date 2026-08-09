@@ -2455,3 +2455,43 @@ automatikus számla-emailjei (Dashboard "Customer emails" beállítás) felelnek
 **Még nem történt meg:** a fenti kód commit + deploy, és egy ÚJ (nem "Resend") teszt-vásárlás
 a még érvényes `CARPASSTESZT100` kóddal, hogy a tényleges e-mail-kiküldést élesben
 igazoljuk.
+
+---
+
+## 2026-08-09 -- "Nincs számla-email" -- Stripe `sendInvoice` megbízhatatlan, számla-link a saját UI-ban
+
+**Megerősítés:** a felhasználó valós, ellenőrzött postafiókkal (`test@buildmysite.hu`)
+tesztelt tovább. A Stripe Workbench Inspector-jában talált egy konkrét hibát: egy MÁSIK,
+azonos felépítésű vásárlásnál (Top-up 10, `in_1U2UiGR6L4Z0c1HTUVhcClS1`) a
+`POST /v1/invoices/{id}/send` `400 invalid_request_error`-t adott:
+`"This invoice cannot be sent right now. Please contact us via https://support.stripe.
+com/contact..."` -- egy generikus, Stripe-oldali, API-n keresztül nem diagnosztizálható
+hibaüzenet. A KORÁBBI vásárlásnál (AI-kredit 40) UGYANOLYAN felépítésű Invoice-nál a küldés
+sikeres volt (lásd az előző szakasz "invoice ... was sent" Events-bejegyzését). **Következtetés:**
+a `stripe.invoices.sendInvoice()` `invoice_creation`-nel létrehozott Checkout-számláknál
+IDŐSZAKOSAN, indoklás nélkül hibázik -- ez nem javítható a mi kódunkból, mert a hiba oka a
+Stripe-oldalon van, és a support-hoz irányít.
+
+**Javítás (megbízható, nem a hibás Stripe-viselkedésre épülő megoldás):** a számla linkjét
+MOSTANTÓL a SAJÁT felületünkön is megjelenítjük, a Stripe e-mail-kiküldésétől függetlenül:
+* `app/api/stripe/checkout/route.ts` -- a `success_url` kiegészítve a Stripe
+  `{CHECKOUT_SESSION_ID}` sablon-változójával (`&session_id={CHECKOUT_SESSION_ID}`).
+* ÚJ `app/api/stripe/checkout-session/route.ts` (GET) -- Menedzser-guard, majd lekérdezi a
+  Session-t, ELLENŐRZI, hogy a `metadata.organizationId` a hívó SAJÁT szervezete (biztonsági
+  guard, különben más szervezet számláját is meg lehetne nézni a `session_id` kitalálásával),
+  és ha van hozzá Invoice, visszaadja a `hosted_invoice_url`-t.
+* `app/settings/billing/page.tsx` -> `SettingsPageContent.tsx` -> `SettingsTabs.tsx` ->
+  `BillingTab.tsx` -- új `sessionId` prop átvezetve a láncon.
+* `BillingTab.tsx` -- sikeres fizetés banner: ha van `sessionId`, lekéri a fenti route-ot,
+  és ha van hozzá számla, egy "Számla megnyitása" linket jelenít meg a bannerben.
+* `app/api/stripe/webhook/route.ts` -- a korábbi (2026-08-09, "Nincs számla-email"
+  gyökérok) `stripe.invoices.sendInvoice()` hívás VÁLTOZATLANUL marad, best-effort (nem dob
+  hibát) -- amikor sikeres, bónusz e-mail is megy, de a fenti in-app link a MEGBÍZHATÓ,
+  elsődleges csatorna.
+
+**Felhasználónak ajánlott, kód nélküli kiegészítés:** Stripe Dashboard -> Settings ->
+Customer emails -> **"Successful payments"** bekapcsolása -- ez a Stripe natív, mindig
+megbízható fizetési visszaigazoló e-mailje (nem ugyanaz, mint a `sendInvoice`), kódmódosítás
+nélkül, minden sikeres Checkout-fizetés után automatikusan kimegy.
+
+**Ellenőrzés:** `tsc --noEmit` szinkron, egyetlen bash-hívásban -- 0 hiba.
