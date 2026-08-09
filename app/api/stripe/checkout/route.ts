@@ -107,6 +107,14 @@ export async function POST(
       mode,
       customer_email: user.email ?? undefined,
       line_items: [{ price: priceId, quantity: 1 }],
+      // `allow_promotion_codes` -- 2026-08-09, "Fizetési folyamat élő tesztelése" lépés:
+      // megjeleníti a "Kedvezménykód hozzáadása" mezőt a Stripe Checkout oldalon. Eredetileg
+      // egy 0 Ft-os, 100%-os teszt-kupon miatt kellett (hogy a teljes checkout -> webhook ->
+      // `apply_plan_purchase` láncot valós pénz nélkül lehessen élesben leellenőrizni), de a
+      // felhasználóval egyeztetve VÉGLEGESEN bekapcsolva marad -- jövőbeli marketing
+      // kedvezménykampányokhoz is kell, és a mező önmagában biztonsági kockázatot nem jelent
+      // (csak érvényes, a Stripe Dashboardon létrehozott kóddal használható).
+      allow_promotion_codes: true,
       metadata: {
         userId: user.id,
         organizationId: roleContext.organizationId,

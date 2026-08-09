@@ -2330,3 +2330,36 @@ vásárlása" szekció alcímének szövegcseréjét, marketing/copy pontosítá
 Csak szöveg (JSX) módosítás, logika/props változatlan.
 
 **Ellenőrzés:** `tsc --noEmit` szinkron, egyetlen bash-hívásban -- 0 hiba.
+
+---
+
+## 2026-08-09 -- "Fizetési folyamat élő tesztelése" (allow_promotion_codes + teszt kupon)
+
+**Igény:** a felhasználó élesben (valódi Stripe termékekkel) szerette volna leellenőrizni a
+teljes fizetési láncot (Checkout -> webhook -> `apply_plan_purchase` RPC -> Supabase
+`user_credits`), pénz mozgatása nélkül.
+
+**Előzmény, ami a lépéshez vezetett:** a Stripe API-n keresztül ellenőriztük, hogy a live
+módú webhook endpoint (`https://carpass.hu/api/stripe/webhook`, destination név "CarPass")
+helyesen létre van hozva, `enabled` státuszú, és pontosan a `checkout.session.completed`
+eseményre figyel. A jelenlegi Stripe Workbench UI-n (Event destinations) NINCS "Send test
+webhook" gomb élő, account-scope destination-höz (ez a régi Dashboardból tűnt el) -- a
+`stripe trigger` CLI-parancs is csak Sandbox/Test módban működik. Emiatt a legmegbízhatóbb
+pénz nélküli teszt egy 100%-os kedvezménykóddal indított VALÓDI Checkout Session, ami 0 Ft-os
+`checkout.session.completed` eseményt generál.
+
+**Javítás:** `app/api/stripe/checkout/route.ts` -- a `stripe.checkout.sessions.create()`
+hívásba `allow_promotion_codes: true` hozzáadva, hogy megjelenjen a "Kedvezménykód
+hozzáadása" mező a Stripe Checkout oldalon. A felhasználóval egyeztetve ez VÉGLEGESEN
+bekapcsolva marad (nem csak a teszthez) -- jövőbeli marketing kedvezménykampányokhoz is
+hasznos, és önmagában nem jelent biztonsági kockázatot (csak érvényes, Dashboardon
+létrehozott kóddal használható, és a `stripe_api_write` MCP-n keresztül létrehozott teszt
+kupon `max_redemptions: 1` + rövid `redeem_by` + egy konkrét, olcsó (AI-kredit 5) termékre
+korlátozva lett, hogy ne lehessen visszaélni vele).
+
+**Ellenőrzés:** `tsc --noEmit` szinkron, egyetlen bash-hívásban -- 0 hiba.
+
+**Kézi teszt (a felhasználóval közösen, folyamatban):** a Stripe Dashboardon létrehozott
+100%-os, egyszer felhasználható promóciókóddal egy valódi (0 Ft-os) vásárlás az AI-kredit
+5-ös csomagra, majd a Stripe "Event deliveries" fülön a webhook válaszkód (200) és a
+Supabase `user_credits` tábla frissülésének ellenőrzése.
