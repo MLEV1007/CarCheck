@@ -483,8 +483,8 @@ export function BillingTab({
           <div>
             <p className="font-sohne text-[15px] font-medium text-stripe-ink">+10 vizsgálat csomag</p>
             <p className="mt-1 font-sohne text-[13px] font-light text-stripe-ink-secondary">
-              Ha elfogy a havi vizsgálati kereted, egyszeri vásárlással azonnal +10 vizsgálatot kapsz -- nem jár le,
-              bármely csomag mellé megvehető.
+              Bővítsd a havi keretedet bármikor. A megvásárolt extra vizsgálatok nem járnak le, és bármelyik csomag
+              mellett tetszőlegesen felhasználhatók.
             </p>
             <p className="mt-2 font-sohne text-[20px] font-medium tabular-nums text-stripe-ink">
               {formatHuf(8500)}
@@ -513,8 +513,8 @@ export function BillingTab({
       <div>
         <h2 className="mb-1 font-sohne text-[15px] font-medium text-stripe-ink">AI-kredit vásárlása</h2>
         <p className="mb-3 font-sohne text-[13px] font-light text-stripe-ink-secondary">
-          Ha elfogy a havi AI-kereted, nem kell csomagot váltanod -- vegyél külön AI-kreditet. 1 AI-kredit egy TELJES
-          vizsgálat összes AI-funkcióját fedezi, és nem jár le.
+          Vásárolj kiegészítő AI-kreditet csomagváltás nélkül. 1 kredit egy teljes átvizsgálás összes intelligens
+          funkcióját (diktálás, forgalmi-szkenner, összefoglaló) fedezi. A megvásárolt kreditek nem járnak le.
         </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {aiPacks.map((pack) => (

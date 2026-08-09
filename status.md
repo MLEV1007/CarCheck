@@ -2310,3 +2310,23 @@ rövid szövegű, nem érintett.
 
 **Ellenőrzés:** `tsc --noEmit` szinkron, egyetlen bash-hívásban -- 0 hiba. Vizuális kézi teszt
 (böngészőben a `/settings` Előfizetés fülön) még nem történt.
+
+---
+
+## 2026-08-09 -- "Extra vizsgálat / AI-kredit szekció szövegek frissítése" (BillingTab)
+
+**Igény:** a felhasználó kérte az "Extra vizsgálat" kártya leírásának és az "AI-kredit
+vásárlása" szekció alcímének szövegcseréjét, marketing/copy pontosítás céljából.
+
+**Javítás:** `components/settings/BillingTab.tsx`:
+* Extra vizsgálat kártya leírása: "Ha elfogy a havi vizsgálati kereted..." ->
+  "Bővítsd a havi keretedet bármikor. A megvásárolt extra vizsgálatok nem járnak le, és
+  bármelyik csomag mellett tetszőlegesen felhasználhatók."
+* AI-kredit vásárlása szekció alcíme: "Ha elfogy a havi AI-kereted..." -> "Vásárolj kiegészítő
+  AI-kreditet csomagváltás nélkül. 1 kredit egy teljes átvizsgálás összes intelligens
+  funkcióját (diktálás, forgalmi-szkenner, összefoglaló) fedezi. A megvásárolt kreditek nem
+  járnak le."
+
+Csak szöveg (JSX) módosítás, logika/props változatlan.
+
+**Ellenőrzés:** `tsc --noEmit` szinkron, egyetlen bash-hívásban -- 0 hiba.
