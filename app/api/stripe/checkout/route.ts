@@ -115,6 +115,17 @@ export async function POST(
       // kedvezménykampányokhoz is kell, és a mező önmagában biztonsági kockázatot nem jelent
       // (csak érvényes, a Stripe Dashboardon létrehozott kóddal használható).
       allow_promotion_codes: true,
+      // `invoice_creation` -- 2026-08-09, "Fizetési folyamat élő tesztelése" lépés: az egyik
+      // teszt-vásárlás után kiderült, hogy a Stripe NEM küld automatikusan számlát/PDF-et
+      // 'payment' módú (egyszeri) Checkout Session után -- ez csak akkor jön létre, ha
+      // KIFEJEZETTEN kérjük. 'subscription' módra (havi előfizetés) ez a paraméter NEM
+      // adható át (Stripe API hibát dob rá), mert ott a Billing automatikusan generál
+      // Invoice-ot minden számlázási ciklushoz -- ezért csak `mode === 'payment'` esetén
+      // kapcsoljuk be. FIGYELEM: a Stripe-számla e-mailben történő automatikus kiküldését
+      // a Stripe Dashboard Settings -> "Customer emails" -> "Email customers about
+      // finalized invoices" kapcsolója vezérli, ezt manuálisan kell bekapcsolni a
+      // Dashboardon, API-n keresztül nem állítható be.
+      ...(mode === 'payment' ? { invoice_creation: { enabled: true } } : {}),
       metadata: {
         userId: user.id,
         organizationId: roleContext.organizationId,

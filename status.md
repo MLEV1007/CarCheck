@@ -2363,3 +2363,59 @@ korlátozva lett, hogy ne lehessen visszaélni vele).
 100%-os, egyszer felhasználható promóciókóddal egy valódi (0 Ft-os) vásárlás az AI-kredit
 5-ös csomagra, majd a Stripe "Event deliveries" fülön a webhook válaszkód (200) és a
 Supabase `user_credits` tábla frissülésének ellenőrzése.
+
+---
+
+## 2026-08-09 -- "Élő teszt-vásárlás utáni hibák kivizsgálása" (kredit hiánya, nincs számla, banner szöveg)
+
+**Bejelentés (felhasználó, `test@buildmysite.hu`):** egy sikeres (0 Ft-os, 100%-os teszt-kuponos)
+AI-kredit 5 vásárlás után 1) a szervezet NEM kapta meg az 5 AI-kreditet, 2) a Stripe nem
+küldött se számlát, se visszaigazolást, 3) a sikeres fizetés banner szövege
+("...a Stripe visszaigazolása alapján") ügyfél-oldalon helytelen, belső implementációs
+részletet szivárogtat ki.
+
+**Kivizsgálás (Stripe API + Supabase MCP-n keresztül):**
+* A `checkout.session.completed`-hez tartozó Checkout Session (`cs_live_b1okq...`) le lett
+  kérdezve: `payment_status: "paid"`, `status: "complete"`, helyes `metadata`
+  (`organizationId: 40d88bf6-ee63-4442-87f4-1cab3d731125`, `priceId:
+  price_1U1nlRR6L4Z0c1HTddValfIn` -- ez az AI-kredit 5 ára). A fizetés MAGA tehát rendben
+  lezajlott.
+* Supabase `user_credits` tábla lekérdezve a fenti `organization_id`-ra:
+  `purchased_ai_remaining: 0`, `updated_at: 2026-08-07 19:17:31` -- vagyis a sor
+  UTOLSÓ MÓDOSÍTÁSA két nappal a teszt-vásárlás ELŐTTRŐL származik. Ez bizonyítja, hogy az
+  `apply_plan_purchase` RPC EGYÁLTALÁN NEM futott le a vásárlás után.
+* Az `apply_plan_purchase` RPC forráskódja (Supabase-ből lekérdezve) HELYES -- az
+  `ai_topup5` ág megfelelően `purchased_ai_remaining + 5`-öt ír. A Postgres logokban nincs
+  hozzá tartozó hibabejegyzés (nem is futott le, se hibásan, se sikeresen).
+* **Következtetés:** a webhook esemény (`checkout.session.completed`) vagy egyáltalán nem
+  jutott el a `/api/stripe/webhook` végpontig, vagy eljutott, de a Stripe aláírás-ellenőrzés
+  (`STRIPE_WEBHOOK_SECRET`) elbukott, MIELŐTT a kód elérte volna az `apply_plan_purchase`
+  hívást (mindkét eset ugyanígy nézne ki: nincs DB-módosítás, nincs Postgres hiba, mert a
+  webhook route ezekben az esetekben a Supabase admin klienst meg sem hívja). **Ez pontosan
+  ugyanaz a hibaosztály, mint a `STRIPE_SECRET_KEY` korábbi hibás fiók/mód probléma** -- erős
+  gyanú, hogy a `STRIPE_WEBHOOK_SECRET` Vercel env változó vagy elavult, vagy nem történt
+  redeploy a beállítása után. **Megerősítés a felhasználótól még függőben van** (Stripe
+  Dashboard "Event deliveries" fül HTTP státuszkódja, ill. Vercel function logok a
+  `/api/stripe/webhook` route-ra a vásárlás időpontja körül, kb. 2026-08-09 10:40 CEST).
+
+**Eddig elvégzett javítások (a fenti kivizsgálástól függetlenül, biztosan szükségesek):**
+1. `components/settings/BillingTab.tsx` -- a sikeres fizetés banner szövege módosítva:
+   "Sikeres fizetés -- a csomagod/keretkiegészítésed rövidesen aktiválódik (a Stripe
+   visszaigazolása alapján)." -> "Sikeres fizetés! A csomagod/keretkiegészítésed néhány
+   másodpercen belül megjelenik itt lent -- ha nem látod azonnal, frissítsd az oldalt."
+   (nem hivatkozunk többé a "Stripe"-ra ügyfél-oldali szövegben).
+2. `app/api/stripe/checkout/route.ts` -- `invoice_creation: { enabled: true }` hozzáadva,
+   de KIZÁRÓLAG `mode === 'payment'` (egyszeri vásárlás) esetén, mert `subscription` módra a
+   Stripe API elutasítja ezt a paramétert (ott a Billing automatikusan generál invoice-ot).
+   Ez oldja meg, hogy egyszeri vásárlás (Top-up/AI-kredit) után legyen tényleges Stripe
+   Invoice/PDF. FONTOS: az invoice automatikus e-mailben történő kiküldését a Stripe
+   Dashboard Settings -> "Customer emails" -> "Email customers about finalized invoices"
+   kapcsolója vezérli -- ezt manuálisan kell a felhasználónak bekapcsolnia a Dashboardon,
+   API-n keresztül nem állítható.
+
+**Ellenőrzés:** `tsc --noEmit` szinkron, egyetlen bash-hívásban -- 0 hiba.
+
+**Nyitott, felhasználói megerősítésre váró lépés:** a webhook "Event deliveries" HTTP
+státuszkódjának ellenőrzése a teszt-vásárlás időpontjára, hogy a kredit-jóváírási hiba
+gyökérokát (aláírás-eltérés vs. sosem-kézbesített esemény) egyértelműen behatárolhassuk,
+mielőtt konkrét javítást alkalmaznánk rá.

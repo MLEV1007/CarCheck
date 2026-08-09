@@ -278,7 +278,8 @@ export function BillingTab({
     <div className="flex flex-col gap-6">
       {banner === 'success' && (
         <div className="rounded-stripe-md border border-green-200 bg-green-50 px-4 py-3 font-sohne text-[13px] text-green-800">
-          Sikeres fizetés -- a csomagod/keretkiegészítésed rövidesen aktiválódik (a Stripe visszaigazolása alapján).
+          Sikeres fizetés! A csomagod/keretkiegészítésed néhány másodpercen belül megjelenik itt lent -- ha nem
+          látod azonnal, frissítsd az oldalt.
         </div>
       )}
       {banner === 'canceled' && (
