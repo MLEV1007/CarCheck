@@ -2419,3 +2419,39 @@ részletet szivárogtat ki.
 státuszkódjának ellenőrzése a teszt-vásárlás időpontjára, hogy a kredit-jóváírási hiba
 gyökérokát (aláírás-eltérés vs. sosem-kézbesített esemény) egyértelműen behatárolhassuk,
 mielőtt konkrét javítást alkalmaznánk rá.
+
+---
+
+## 2026-08-09 -- "Nincs számla-email" gyökérok megtalálva + javítás (webhook route)
+
+**Megerősítés:** a felhasználó jelezte, hogy a kredit-jóváírás már működik (a `STRIPE_WEBHOOK_SECRET`
+javítás után), de a legutóbbi valódi teszt-vásárlás után továbbra sem kapott sem
+visszaigazoló, sem számla e-mailt.
+
+**Kivizsgálás (Stripe API-n keresztül):** a legutóbbi Checkout Session (`cs_live_b1tXc0g...`,
+AI-kredit 40 csomag, 100%-os teszt-kuponnal) `invoice_creation.enabled: true`, és TÉNYLEGESEN
+létrejött hozzá egy Invoice (`in_1U2UWVR6L4Z0c1HTXCKHduRi`, `status: "paid"`,
+`hosted_invoice_url`/`invoice_pdf` mezőkkel) -- tehát az előző lépésben bekapcsolt
+`invoice_creation` JÓL MŰKÖDIK, a számla objektum létrejön és finalizálódik. A Stripe
+dokumentációja (`docs.stripe.com/invoicing/integration`, és megerősítő Discord-válaszok a
+support csapattól) szerint azonban **a `invoice_creation`/finalizálás önmagában NEM küld
+e-mailt** -- ehhez KIFEJEZETTEN meg kell hívni a Stripe "Send an Invoice" API-t
+(`POST /v1/invoices/{id}/send`, Node SDK: `stripe.invoices.sendInvoice(id)`). A korábbi
+kódunk ezt sosem hívta meg.
+
+**Javítás:** `app/api/stripe/webhook/route.ts` -- a `handleCheckoutSessionCompleted`-ben,
+KÖZVETLENÜL az `apply_plan_purchase` RPC sikeres lefutása UTÁN, ha `session.invoice` egy
+string (azaz létrejött hozzá Invoice), meghívjuk a `stripe.invoices.sendInvoice(...)`-t. A
+hívás SAJÁT `try/catch`-ben van, és HIBA ESETÉN NEM dob tovább kivételt -- ha itt `throw`-nánk,
+a Stripe a teljes webhookot újrapróbálná, és az `apply_plan_purchase` RPC (nem idempotens,
+`+5`/`+15`/`+40` jellegű összeadás -- lásd a `2026-08-06 "Árazási struktúra bővítés"` migrációt)
+EGY ÚJABB, DUPLIKÁLT kredit-jóváírást hajtana végre ugyanarra a vásárlásra. Egy elmaradt e-mail
+kisebb kár, mint egy duplikált jóváírás, ezért a küldési hiba csak logolva van.
+`mode: 'subscription'` Session-öknél ezt szándékosan NEM duplikáljuk -- ott a Stripe Billing
+automatikus számla-emailjei (Dashboard "Customer emails" beállítás) felelnek a kiküldésért.
+
+**Ellenőrzés:** `tsc --noEmit` szinkron, egyetlen bash-hívásban -- 0 hiba.
+
+**Még nem történt meg:** a fenti kód commit + deploy, és egy ÚJ (nem "Resend") teszt-vásárlás
+a még érvényes `CARPASSTESZT100` kóddal, hogy a tényleges e-mail-kiküldést élesben
+igazoljuk.

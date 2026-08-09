@@ -93,6 +93,35 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session):
   }
 
   console.log('[stripe/webhook] Csomag/Top-up sikeresen alkalmazva:', { organizationId, planAction, sessionId: session.id });
+
+  // `session.invoice` -- 2026-08-09, "Élő teszt-vásárlás utáni hibák kivizsgálása" lépés:
+  // kiderült, hogy a `checkout/route.ts`-ben bekapcsolt `invoice_creation` CSAK létrehozza
+  // és finalizálja a Stripe Invoice-ot, de NEM küldi el automatikusan e-mailben -- ehhez
+  // KIFEJEZETTEN meg kell hívni a `send` végpontot (Stripe dokumentáció: "Send an Invoice...
+  // Stripe finalizes the invoice as soon as you send it", és a `invoice_creation` a
+  // finalizálást már elvégezte, tehát itt csak a kiküldés hiányzik). `mode: 'subscription'`
+  // Checkout Session-nél `session.invoice` is létezik, de ott a Stripe Billing automatikus
+  // számla-emailjei (Dashboard "Customer emails" beállítás) felelnek a kiküldésért, azt itt
+  // NEM duplikáljuk.
+  //
+  // Szándékosan NEM dobunk hibát, ha a küldés sikertelen -- a kredit/csomag jóváírása (fent)
+  // ekkorra már megtörtént, egy `throw` itt a teljes webhook-ot hiba-státuszra állítaná,
+  // amire a Stripe újrapróbálkozna, és az `apply_plan_purchase` RPC (nem idempotens, `+5`
+  // jellegű összeadás) EGY ÚJABB kredit-jóváírást hajtana végre ugyanarra a vásárlásra --
+  // ez rosszabb, mint egy elmaradt e-mail. Az e-mail hiba csak logolva van.
+  if (typeof session.invoice === 'string') {
+    try {
+      const stripe = getStripeClient();
+      await stripe.invoices.sendInvoice(session.invoice);
+      console.log('[stripe/webhook] Számla e-mail elküldve:', { organizationId, invoiceId: session.invoice });
+    } catch (sendError) {
+      console.error('[stripe/webhook] Számla e-mail küldése sikertelen (a kredit jóváírása ettől függetlenül megtörtént):', {
+        organizationId,
+        invoiceId: session.invoice,
+        sendError,
+      });
+    }
+  }
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
