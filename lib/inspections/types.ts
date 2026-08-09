@@ -20,6 +20,21 @@ export interface CarInfoState {
    * lásd `InspectionWizard.tsx` és `app/inspections/new/page.tsx` / `app/inspections/[id]/page.tsx`. */
   licensePlateCountry: string;
   odometer: string;
+  /** Motor típusa/üzemanyag a forgalmi engedélyről (2026-08-09, "Motor/Teljesítmény/
+   * Össztömeg mezők" lépés) -- szabad szöveges (pl. "1.6 TDI, dízel, 1968 cm³"), a Km óra
+   * álláshoz hasonlóan a `lib/inspections/validation.ts` szerint OPCIONÁLIS mező. Az AI
+   * fotószkenner (`/api/ai/scan-vin`) a forgalmi P.1/P.3 mezőiből (hengerűrtartalom/
+   * üzemanyag) tölti elő, ha van rajta ilyen adat -- lásd `StepCarInfo.tsx`. */
+  engineType: string;
+  /** Motor teljesítménye kW-ban a forgalmi P.2 mezőjéről -- MINDIG nyers számjegy-string
+   * (ugyanaz a minta, mint az `odometer`-nél), a lóerő (LE/PS) érték SOHA nem külön
+   * tárolt/beírt mező, mindig ebből számolt élőben (`lib/format.ts` `kwToHp()`) mind a
+   * beviteli mezőnél, mind a riportnál -- lásd a felhasználói kérés "mögötte lóerőre
+   * átváltva" pontját. */
+  powerKw: string;
+  /** Megengedett legnagyobb össztömeg kg-ban a forgalmi F.2 (vagy F.1) mezőjéről --
+   * ugyanaz a "nyers számjegy-string" minta, mint az `odometer`/`powerKw`-nál. */
+  grossWeight: string;
 }
 
 export const EMPTY_CAR_INFO: CarInfoState = {
@@ -30,6 +45,9 @@ export const EMPTY_CAR_INFO: CarInfoState = {
   licensePlate: '',
   licensePlateCountry: 'H',
   odometer: '',
+  engineType: '',
+  powerKw: '',
+  grossWeight: '',
 };
 
 export type PaintStatus = 'gyari' | 'ujrafujt' | 'gittelt';

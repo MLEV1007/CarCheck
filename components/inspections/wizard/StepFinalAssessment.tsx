@@ -74,6 +74,9 @@ function buildInspectionSnapshot(context: AiSummaryContext) {
       tipus: carInfo.carModel || null,
       evjarat: carInfo.year || null,
       kmOraAllas: carInfo.odometer || null,
+      motorTipus: carInfo.engineType || null,
+      teljesitmenyKw: carInfo.powerKw || null,
+      osszTomegKg: carInfo.grossWeight || null,
     },
     diagnosztika: diagnostics.noDtc
       ? { obdTiszta: true, hibakodok: [] }

@@ -10,12 +10,15 @@ import { compressImageForAiScan } from '@/lib/inspections/aiImageCompression';
 import { CAR_BRANDS, CAR_CATALOG, OTHER_OPTION } from '@/lib/inspections/carCatalog';
 import {
   getCarInfoErrors,
+  sanitizeEngineType,
+  sanitizeGrossWeight,
   sanitizeLicensePlate,
   sanitizeOdometer,
+  sanitizePowerKw,
   sanitizeVin,
   sanitizeYear,
 } from '@/lib/inspections/validation';
-import { formatKmInput } from '@/lib/format';
+import { formatKmInput, kwToHp } from '@/lib/format';
 import { LICENSE_PLATE_COUNTRIES } from '@/lib/inspections/constants';
 import { useInsufficientCredits } from '@/components/credits/InsufficientCreditsProvider';
 import { useInspectionId } from '@/components/inspections/wizard/InspectionIdContext';
@@ -40,6 +43,15 @@ interface ScanVinApiResponse {
       make?: string;
       model?: string;
       registrationYear?: string;
+      /** Motor típusa/üzemanyag (pl. "Dízel, 1968 cm³") -- lásd `route.ts`
+       * `buildSystemInstruction()` "P.1"/"P.3" pontjait. */
+      engineType?: string;
+      /** Nyers számjegy-string (kW, mértékegység nélkül) -- lásd `route.ts`
+       * `sanitizeExtractedDetails()`. */
+      powerKw?: string;
+      /** Nyers számjegy-string (kg, mértékegység nélkül) -- lásd `route.ts`
+       * `sanitizeExtractedDetails()`. */
+      grossWeight?: string;
     };
   };
   error?: string;
@@ -159,6 +171,11 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
    *  - `extractedDetails.model` -> Típus -- a Típus mező MINDIG sima szabad szöveges mező
    *    (nincs katalógus-illesztés), a nyers AI-szöveg közvetlenül ide kerül.
    *  - `extractedDetails.registrationYear` -> Évjárat (`sanitizeYear`).
+   *  - `extractedDetails.engineType` -> Motor típusa -- szabad szöveges, a nyers AI-szöveg
+   *    közvetlenül ide kerül (`sanitizeEngineType` csak a max hosszra vágja).
+   *  - `extractedDetails.powerKw` -> Teljesítmény (kW) (`sanitizePowerKw`) -- a lóerő (LE)
+   *    élőben számolódik ebből, lásd a mező `hint`-jét lent.
+   *  - `extractedDetails.grossWeight` -> Megengedett össztömeg (kg) (`sanitizeGrossWeight`).
    *  - A Km óra állás mezőt az AI SOSEM tölti ki -- a Forgalmi Engedély nem tartalmaz
    *    kilométeróra-állást, ez a `/api/ai/scan-vin` válasz-sémájának SOSEM volt és nem is
    *    lesz része, a mezőt a szakinak mindig manuálisan kell kitöltenie.
@@ -260,6 +277,30 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
         if (cleanedYear) {
           next.year = cleanedYear;
           newlyTouched.year = true;
+          filledCount += 1;
+        }
+      }
+
+      if (details?.engineType) {
+        next.engineType = sanitizeEngineType(details.engineType.trim());
+        newlyTouched.engineType = true;
+        filledCount += 1;
+      }
+
+      if (details?.powerKw) {
+        const cleanedPowerKw = sanitizePowerKw(details.powerKw);
+        if (cleanedPowerKw) {
+          next.powerKw = cleanedPowerKw;
+          newlyTouched.powerKw = true;
+          filledCount += 1;
+        }
+      }
+
+      if (details?.grossWeight) {
+        const cleanedGrossWeight = sanitizeGrossWeight(details.grossWeight);
+        if (cleanedGrossWeight) {
+          next.grossWeight = cleanedGrossWeight;
+          newlyTouched.grossWeight = true;
           filledCount += 1;
         }
       }
@@ -418,6 +459,41 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
           value={formatKmInput(value.odometer)}
           onChange={(e) => set('odometer', sanitizeOdometer(e.target.value))}
           onBlur={() => markTouched('odometer')}
+        />
+
+        <TextField
+          label="Motor típusa"
+          name="engineType"
+          placeholder="pl. 1.6 TDI, dízel"
+          hint="opcionális"
+          error={showError('engineType')}
+          value={value.engineType}
+          onChange={(e) => set('engineType', sanitizeEngineType(e.target.value))}
+          onBlur={() => markTouched('engineType')}
+        />
+
+        <TextField
+          label="Teljesítmény (kW)"
+          name="powerKw"
+          inputMode="numeric"
+          placeholder="pl. 110"
+          hint={value.powerKw ? `≈ ${kwToHp(Number(value.powerKw))} LE` : 'opcionális'}
+          error={showError('powerKw')}
+          value={formatKmInput(value.powerKw)}
+          onChange={(e) => set('powerKw', sanitizePowerKw(e.target.value))}
+          onBlur={() => markTouched('powerKw')}
+        />
+
+        <TextField
+          label="Megengedett össztömeg (kg)"
+          name="grossWeight"
+          inputMode="numeric"
+          placeholder="pl. 2150"
+          hint="opcionális"
+          error={showError('grossWeight')}
+          value={formatKmInput(value.grossWeight)}
+          onChange={(e) => set('grossWeight', sanitizeGrossWeight(e.target.value))}
+          onBlur={() => markTouched('grossWeight')}
         />
 
         <TextField

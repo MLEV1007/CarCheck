@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { formatKm } from '@/lib/format';
+import { formatKg, formatKm, formatKw } from '@/lib/format';
 import { LicensePlateBadge } from '@/components/ui/LicensePlateBadge';
 import type { PublicReportInspection } from '@/lib/reports/types';
 
@@ -36,11 +36,20 @@ function buildSpecs(inspection: PublicReportInspection): SpecItem[] {
         />
       ) : undefined,
     },
-    { label: 'Alvázszám (VIN)', value: inspection.vin || '—', fullWidth: true },
     {
       label: 'Km óra állás',
       value: typeof inspection.odometer === 'number' ? formatKm(inspection.odometer) : '—',
     },
+    { label: 'Motor típusa', value: inspection.engine_type || '—' },
+    {
+      label: 'Teljesítmény',
+      value: typeof inspection.power_kw === 'number' ? formatKw(inspection.power_kw) : '—',
+    },
+    {
+      label: 'Megengedett össztömeg',
+      value: typeof inspection.gross_weight_kg === 'number' ? formatKg(inspection.gross_weight_kg) : '—',
+    },
+    { label: 'Alvázszám (VIN)', value: inspection.vin || '—', fullWidth: true },
   ];
 }
 

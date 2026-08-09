@@ -625,6 +625,12 @@ export function InspectionWizard({
           license_plate: carInfo.licensePlate || null,
           license_plate_country: carInfo.licensePlateCountry || DEFAULT_LICENSE_PLATE_COUNTRY,
           odometer: carInfo.odometer ? Number(carInfo.odometer) : null,
+          // Motor típusa/Teljesítmény/Össztömeg (2026-08-09, "Motor/Teljesítmény/Össztömeg
+          // mezők" lépés) -- ugyanaz a "üres string -> null" / "számjegy-string -> Number"
+          // minta, mint a fenti `year`/`odometer` mezőknél.
+          engine_type: carInfo.engineType || null,
+          power_kw: carInfo.powerKw ? Number(carInfo.powerKw) : null,
+          gross_weight_kg: carInfo.grossWeight ? Number(carInfo.grossWeight) : null,
           general_photos: generalPhotoUrls,
           service_history: serviceHistoryPayload,
           diagnostics: diagnosticsPayload,

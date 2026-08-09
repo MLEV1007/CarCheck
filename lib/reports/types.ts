@@ -27,6 +27,13 @@ export interface PublicReportInspection {
    * `lib/inspections/constants.ts` `LICENSE_PLATE_COUNTRIES`. */
   license_plate_country: string | null;
   odometer: number | null;
+  /** Motor típusa/üzemanyag, Teljesítmény (kW) és Megengedett össztömeg (kg) -- 2026-08-09,
+   * "Motor/Teljesítmény/Össztömeg mezők" lépés, a forgalmi engedélyről (AI-fotószkennerrel
+   * vagy kézzel) rögzítve. A lóerő (LE) érték SOHA nem külön mező -- a `power_kw`-ból
+   * élőben számolódik (`lib/format.ts` `formatKw()`/`kwToHp()`), lásd `ReportHero.tsx`. */
+  engine_type: string | null;
+  power_kw: number | null;
+  gross_weight_kg: number | null;
   status: 'draft' | 'completed' | string;
   /** Általános autó fotók (elölről/hátulról/oldalról/beltér/műszerfal stb.) -- a
    * `get_public_report` RPC 2026-07-31-es kiegészítése óta tartalmazza. */

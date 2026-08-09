@@ -18,8 +18,10 @@ import { hasInspectionClaimedAiCredit, claimInspectionAiCredit } from '@/lib/ins
  * `buildSystemInstruction()` "NEMZETKÖZI FORGALMI ENGEDÉLY FELISMERÉS" pontját --, ezt a
  * fotót Base64 kódolással küldi be ez a route, ami a Gemini Flash Vision modellel egyetlen
  * hívásban kinyeri az alvázszámot -- ÉS, ha a kép egy forgalmi engedély, a hozzá tartozó
- * alap autó-adatokat (rendszám, gyártmány, típus, első forgalombahelyezés éve) is, az
- * okmány nyelvétől függetlenül.
+ * alap autó-adatokat (rendszám, gyártmány, típus, első forgalombahelyezés éve, valamint
+ * 2026-08-09 óta a motor típusa/üzemanyag, a teljesítmény kW-ban és a megengedett
+ * legnagyobb össztömeg kg-ban -- lásd `buildSystemInstruction()` "P.1"/"P.2"/"P.3"/"F.1"/
+ * "F.2" pontjait) is, az okmány nyelvétől függetlenül.
  *
  * **Modellválasztás + fallback-lánc:** ugyanaz a minta, mint a `parse-equipment` route-nál
  * (lásd ott a részletes JSDoc-ot) -- elsődleges modell `gemini-2.0-flash`, statikus fallback
@@ -97,6 +99,16 @@ interface ScanVinExtractedDetails {
   make?: unknown;
   model?: unknown;
   registrationYear?: unknown;
+  /** Motor típusa/üzemanyag (pl. "1.6 TDI, dízel, 1968 cm³") -- lásd `buildSystemInstruction()`
+   * "P.1"/"P.3" pontjait (2026-08-09, "Motor/Teljesítmény/Össztömeg mezők" lépés). */
+  engineType?: unknown;
+  /** Motor teljesítménye kW-ban, NYERS szöveg (a modell számjegyeken kívül mértékegységet
+   * is visszaadhat, pl. "110 kW" -- a szerver `sanitizeExtractedDetails()`-ben csak a
+   * számjegyeket tartjuk meg). Lásd "P.2". */
+  powerKw?: unknown;
+  /** Megengedett legnagyobb össztömeg kg-ban, NYERS szöveg -- ugyanaz az elv, mint a
+   * `powerKw`-nál. Lásd "F.1"/"F.2". */
+  grossWeight?: unknown;
 }
 
 interface ScanVinModelResponse {
@@ -111,6 +123,11 @@ interface ScanVinExtractedDetailsClean {
   make?: string;
   model?: string;
   registrationYear?: string;
+  engineType?: string;
+  /** Nyers számjegy-string (mértékegység nélkül) -- lásd `sanitizeExtractedDetails()`. */
+  powerKw?: string;
+  /** Nyers számjegy-string (mértékegység nélkül) -- lásd `sanitizeExtractedDetails()`. */
+  grossWeight?: string;
 }
 
 interface ScanVinData {
@@ -170,6 +187,15 @@ function sanitizeVin(rawVin: string, modelConfidence: ScanVinConfidence): { vin:
   return { vin: cleaned, confidence: isValidFormat ? modelConfidence : 'low' };
 }
 
+/** Nyers, mértékegységet is tartalmazható szövegből (pl. "110 kW", "2 150 kg") KIZÁRÓLAG a
+ * számjegyeket tartja meg -- ugyanaz az elv, mint a kliens-oldali `sanitizePowerKw`/
+ * `sanitizeGrossWeight` (`lib/inspections/validation.ts`), csak itt szerver-oldalon, hogy a
+ * `CarInfoState.powerKw`/`grossWeight` mindig a várt "nyers számjegy-string" alakot kapja,
+ * függetlenül attól, mennyire szó szerint követte a modell a rendszerutasítást. */
+function extractDigits(raw: string): string {
+  return raw.replace(/\D/g, '');
+}
+
 /** `extractedDetails` mezőnkénti tisztítás -- csak a nem üres string mezőket tartjuk meg,
  * minden mást (hiányzó, nem string, vagy csak whitespace) csendben kihagyunk a válaszból. */
 function sanitizeExtractedDetails(raw: unknown): ScanVinExtractedDetailsClean | undefined {
@@ -188,6 +214,17 @@ function sanitizeExtractedDetails(raw: unknown): ScanVinExtractedDetailsClean | 
   }
   if (typeof details.registrationYear === 'string' && details.registrationYear.trim()) {
     clean.registrationYear = details.registrationYear.trim();
+  }
+  if (typeof details.engineType === 'string' && details.engineType.trim()) {
+    clean.engineType = details.engineType.trim().slice(0, 80);
+  }
+  if (typeof details.powerKw === 'string' && details.powerKw.trim()) {
+    const digits = extractDigits(details.powerKw);
+    if (digits) clean.powerKw = digits;
+  }
+  if (typeof details.grossWeight === 'string' && details.grossWeight.trim()) {
+    const digits = extractDigits(details.grossWeight);
+    if (digits) clean.grossWeight = digits;
   }
 
   return Object.keys(clean).length > 0 ? clean : undefined;
@@ -231,6 +268,11 @@ NEMZETKÖZI FORGALMI ENGEDÉLY FELISMERÉS -- KRITIKUS, MINDEN OKMÁNYRA VONATKO
   * "D.1" mező = Gyártmány (pl. "Make", "Marke", "Marque").
   * "D.3" mező = Kereskedelmi megnevezés / Típus (pl. "Type", "Commercial description", "Typ").
   * "E" mező = Alvázszám / VIN (pl. "VIN", "Chassis number", "Fahrgestellnummer").
+  * "P.1" mező = Hengerűrtartalom, cm³ (pl. "Cylinder capacity", "Hubraum", "Cylindrée").
+  * "P.2" mező = Motor teljesítménye, kW (pl. "Maximum net power", "Nennleistung", "Puissance nette maximale").
+  * "P.3" mező = Üzemanyag / hajtóanyag (pl. "Fuel type", "Kraftstoffart", "Type de carburant" -- pl. "benzin"/"petrol", "dízel"/"diesel", "elektromos"/"electric", "hibrid"/"hybrid", "LPG", "CNG").
+  * "F.1" mező = Műszakilag megengedett legnagyobb terhelt tömeg, kg (pl. "Technically permissible maximum laden mass", "Technisch zulässige Gesamtmasse").
+  * "F.2" mező = A forgalomban lévő jármű megengedett legnagyobb össztömege, kg (pl. "Maximum permissible laden mass of the vehicle in service", "Zulässige Gesamtmasse des Fahrzeugs im Betrieb") -- ha ez a mező szerepel az okmányon, EZT preferáld az "F.1" helyett, mert ez a ténylegesen forgalomban lévő járműre vonatkozó, gyakorlatban releváns érték.
 - Ha NEM EU-s/nem egységesített formátumú okmányt látsz (pl. brit "V5C Registration Certificate"/"Logbook", amerikai "Title"/"Registration", vagy bármely más ország saját formátumú okmánya), a mezőket a nyomtatott feliratok SZEMANTIKAI jelentése alapján azonosítsd, a nyelvtől függetlenül (pl. "VIN"/"Chassis No"/"Serial Number" -> alvázszám; "Reg. No"/"Plate Number"/"License Plate"/"Vehicle Registration Mark" -> rendszám; "Make"/"Manufacturer" -> gyártmány; "Model"/"Type" -> típus; "First Registered"/"Registration Date"/"Year of Manufacture" -> évjárat).
 - Az okmány kiállító országától/nyelvétől FÜGGETLENÜL mindig a lent megadott, angol JSON mezőnevekbe ("plateNumber", "make", "model", "registrationYear") told a kinyert értékeket -- de MAGÁT A KINYERT ÉRTÉKET (pl. a gyártmány/típus nevét, a rendszámot) SOHA ne fordítsd le vagy alakítsd át, hagyd pontosan az okmányon szereplő eredeti formában.
 - Ha bizonytalan vagy, hogy egy adott mező pontosan minek felel meg egy szokatlan/ismeretlen formátumú okmányon, inkább hagyd ki az adott mezőt az "extractedDetails"-ből, mintsem hogy rossz mezőbe írj be egy adatot.
@@ -245,6 +287,9 @@ HA A KÉP EGY FORGALMI ENGEDÉLY/GÉPJÁRMŰ-NYILVÁNTARTÁSI OKMÁNY (BÁRMELY 
 - "make": Gyártmány ("D.1" mező vagy ennek megfelelő).
 - "model": Típus / kereskedelmi megnevezés ("D.3" mező vagy ennek megfelelő).
 - "registrationYear": Első nyilvántartásba vétel éve ("B" mező vagy ennek megfelelő, CSAK az évszám -- ha az okmányon teljes dátum szerepel, pl. "15.03.2019" vagy "03/2019", akkor is csak a "2019" évszámot add vissza).
+- "engineType": Motor típusa/üzemanyag rövid, tömör leírása. Ha az okmányon van külön "Motor típusa"/"Motorkód"/"Engine type"/"Engine code" nemzeti kiegészítő mező, ANNAK szó szerinti tartalmát add vissza. Ha ilyen nincs, magad állíts össze egy rövid leírást a "P.3" (üzemanyag) és a "P.1" (hengerűrtartalom) mezőkből, pl. "Dízel, 1968 cm³" vagy "Benzin, 1598 cm³" -- MINDIG magyarul add vissza az üzemanyag-típust (benzin/dízel/elektromos/hibrid/LPG/CNG), függetlenül az okmány nyelvén szereplő eredeti szótól.
+- "powerKw": Motor teljesítménye ("P.2" mező vagy ennek megfelelő) -- KIZÁRÓLAG a számjegyeket add vissza, mértékegység NÉLKÜL (pl. "110", NEM "110 kW"). Ha az okmányon több érték is szerepel (pl. "80/110" kW/LE párban), a kW értéket (a kisebbik szám, VAGY a "kW" felirattal jelölt szám) add vissza, SOHA a lóerő/LE/PS/HP értéket.
+- "grossWeight": Megengedett legnagyobb össztömeg ("F.2" mező, vagy ha az nincs az okmányon, "F.1" mező) -- KIZÁRÓLAG a számjegyeket add vissza, mértékegység NÉLKÜL (pl. "2150", NEM "2150 kg").
 - "vin" mezőként ilyenkor az alvázszám mezőben ("E" mező vagy ennek megfelelő) szereplő értéket add vissza, a fenti ISO 3779 szabályok szerint tisztítva.
 
 A "confidence" mező a SAJÁT bizonyosságod a kinyert "vin" értékre vonatkozóan:
@@ -372,8 +417,19 @@ export async function POST(request: NextRequest): Promise<NextResponse<ScanVinSu
             make: { type: Type.STRING },
             model: { type: Type.STRING },
             registrationYear: { type: Type.STRING },
+            engineType: { type: Type.STRING },
+            powerKw: { type: Type.STRING },
+            grossWeight: { type: Type.STRING },
           },
-          propertyOrdering: ['plateNumber', 'make', 'model', 'registrationYear'],
+          propertyOrdering: [
+            'plateNumber',
+            'make',
+            'model',
+            'registrationYear',
+            'engineType',
+            'powerKw',
+            'grossWeight',
+          ],
         },
       },
       propertyOrdering: ['vin', 'confidence', 'detectedDocumentType', 'extractedDetails'],

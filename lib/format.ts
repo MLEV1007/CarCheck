@@ -94,6 +94,45 @@ export function formatDateTimeHu(iso: string | null | undefined, withTime = fals
   });
 }
 
+/** 1 kW = 1.35962 metrikus lóerő (LE/PS) -- a nemzetközi szabvány (DIN 70020) átváltási
+ * szorzó. A projektben a lóerő SOHA nem külön tárolt/beírt mező (lásd `CarInfoState.powerKw`
+ * JSDoc-ját) -- mindenhol élőben, ebből a szorzóból számolódik, hogy egyetlen forrás (a
+ * forgalmi engedélyen ténylegesen szereplő kW érték) maradjon, és a kettő sose kerülhessen
+ * egymással inkonzisztenciába. */
+const KW_TO_HP_FACTOR = 1.35962;
+
+/** kW -> LE (lóerő) kerekített átváltás -- lásd `KW_TO_HP_FACTOR` JSDoc-ját. */
+export function kwToHp(kw: number): number {
+  return Math.round(kw * KW_TO_HP_FACTOR);
+}
+
+/**
+ * Motor teljesítményének megjelenítése kW-ban ÉS a mögötte zárójelben feltüntetett,
+ * élőben számolt lóerő (LE) értékkel (pl. `150 kW (204 LE)`) -- a felhasználói kérés
+ * ("KW teljesítmény, mögötte lóerőre átváltva") szerint MINDIG ez a megjelenítési forma,
+ * a beviteli mezőnél (`StepCarInfo.tsx` hint), a wizard Összegzés kártyáján
+ * (`StepSummary.tsx`) és a publikus riporton (`ReportHero.tsx`) egyaránt.
+ * `null`/`undefined`/üres string esetén üres stringet ad vissza.
+ */
+export function formatKw(kw: number | string | null | undefined): string {
+  if (!kw && kw !== 0) return '';
+  const num = typeof kw === 'string' ? parseInt(kw.replace(/\D/g, ''), 10) : kw;
+  if (isNaN(num)) return '';
+  return `${new Intl.NumberFormat('hu-HU').format(num)} kW (${kwToHp(num)} LE)`;
+}
+
+/**
+ * Megengedett legnagyobb össztömeg megjelenítése ezres elválasztóval + "kg" felirattal
+ * (pl. `2 150 kg`) -- ugyanaz az elv, mint a `formatKm`-nél. `null`/`undefined`/üres
+ * string esetén üres stringet ad vissza.
+ */
+export function formatKg(kg: number | string | null | undefined): string {
+  if (!kg && kg !== 0) return '';
+  const num = typeof kg === 'string' ? parseInt(kg.replace(/\D/g, ''), 10) : kg;
+  if (isNaN(num)) return '';
+  return new Intl.NumberFormat('hu-HU').format(num) + ' kg';
+}
+
 export function formatServiceDate(raw: string | null | undefined): string {
   if (!raw) return '';
   if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {

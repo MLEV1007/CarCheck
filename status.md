@@ -2564,3 +2564,73 @@ VAGY egy hibaüzenet utáni reflex-F5, ahogy a bejelentésben) a teljes adatot e
 elindítva, de a sandbox parancs-időkorlátja miatt nem futott le a végéig (a `tsc` már
 lefedi a típus-helyességet) -- éles Vercel-deploy előtt érdemes egy teljes `npm run build`-et
 is lefuttatni.
+
+---
+
+## 2026-08-09 -- Új "Autó adatok" mezők: Motor típusa, Teljesítmény (kW->LE), Megengedett össztömeg
+
+**Kérés:** az 1. wizard-lépésre ("Autó adatok") 3 új, a forgalmi engedélyről (AI-fotószkennerrel
+VAGY kézzel) kitölthető mező: Motor típusa/üzemanyag, Teljesítmény kW-ban (a lóerő/LE értékkel
+együtt megjelenítve), Megengedett legnagyobb össztömeg. Fontos elvárás: jelenjen meg a publikus
+riporton is, "legyen dizájnos és szép".
+
+**Adatbázis** (`supabase/migrations/20260809180000_car_info_engine_power_weight.sql`, alkalmazva
+a Supabase MCP `apply_migration`-nel, ELLENŐRIZVE `execute_sql`-lel az éles projekten):
+* `inspections.engine_type text`, `inspections.power_kw integer`, `inspections.gross_weight_kg
+  integer` -- mindhárom opcionális, nincs új RLS policy szükséges (a meglévő `user_id`/
+  `organization_id` alapú policy-k öröklődnek).
+* `get_public_report(p_token uuid)` RPC frissítve -- a 3 új oszlop bekerült a visszaadott
+  `inspection` jsonb objektumba (`odometer` UTÁN) -- enélkül a publikus riport SOSE látná ezeket,
+  függetlenül attól, hogy a wizard menti-e őket.
+
+**A lóerő (LE) SOHA nem külön tárolt mező** -- a felhasználói kérés ("KW teljesítmény, mögötte
+lóerőre átváltva") szerint MINDIG a `power_kw`-ból számolt élőben, egyetlen forrásból (DIN 70020
+szorzó, 1 kW = 1.35962 LE) -- `lib/format.ts` ÚJ `kwToHp()`/`formatKw()` (pl. "110 kW (150 LE)"),
+`formatKg()` az össztömeghez. Ez a beviteli mező `hint`-jénél (élő élőben frissülő LE-becslés),
+a wizard Összegzés kártyáján, a `/inspections/[id]` read-only adatlapon ÉS a publikus riport
+hero-sávjában egyaránt ugyanezt a formázó függvényt használja -- egy jövőbeli átváltási-képlet-
+módosítás egyetlen helyen (`kwToHp`) javítandó.
+
+**Érintett rétegek (a felhasználó "módosíts minden szükséges fájlt" kérésére -- teljes lánc):**
+* `lib/inspections/types.ts` -- `CarInfoState`/`EMPTY_CAR_INFO`: `engineType`/`powerKw`/
+  `grossWeight` (mindhárom string a wizard state-ben, ugyanaz a "nyers számjegy-string" minta,
+  mint `odometer`-nél).
+* `lib/inspections/validation.ts` -- `sanitizePowerKw`/`sanitizeGrossWeight`/`sanitizeEngineType`
+  + `validatePowerKw`/`validateGrossWeight` (mindkettő OPCIONÁLIS, csak tartomány-ellenőrzés:
+  1-2000 kW, 1-60 000 kg), bekötve a `getCarInfoErrors`-ba.
+* `app/api/ai/scan-vin/route.ts` -- a Gemini `responseSchema`/`extractedDetails` kiegészítve
+  `engineType`/`powerKw`/`grossWeight`-tel; a rendszerutasítás (`buildSystemInstruction()`)
+  kiegészítve az EU 1999/37/EK harmonizált mezőkódokkal: **P.1** (hengerűrtartalom), **P.2**
+  (teljesítmény kW), **P.3** (üzemanyag), **F.1**/**F.2** (megengedett legnagyobb össztömeg --
+  F.2-t preferálva, ha mindkettő szerepel); a `powerKw`/`grossWeight` mezőknél a modellt
+  explicit KIZÁRÓLAG számjegyek visszaadására utasítjuk (mértékegység nélkül), a szerver
+  `sanitizeExtractedDetails()`-ben egy ÚJ `extractDigits()` helper MÉG EGYSZER (nem csak a
+  promptra bízva) kiszűri a nem-számjegy karaktereket, ha a modell mégis mértékegységet adna
+  vissza.
+* `components/inspections/wizard/StepCarInfo.tsx` -- 3 új `TextField` (Motor típusa/
+  Teljesítmény [kW, élő LE-hint]/Megengedett össztömeg) a Km óra állás és az Alvázszám (VIN)
+  között; az AI-szkenner `handleAiScanPhotoSelected`-je a 3 új mezőt is előtölti, ugyanazzal a
+  "csak a ténylegesen felismert mezőt írja felül" mintával, mint a meglévő mezőknél.
+* `components/inspections/wizard/InspectionWizard.tsx` -- `handleSubmit` UPSERT payload
+  kiegészítve `engine_type`/`power_kw`/`gross_weight_kg`-vel.
+* `app/inspections/[id]/page.tsx` -- a piszkozat-select lista + `initialCarInfo` kiegészítve
+  (piszkozat szerkesztésekor is visszatöltődnek a mezők).
+* `components/inspections/detail/InspectionDetailView.tsx` -- `DetailInspection` interfész +
+  a read-only adatlap `<dl>` blokkja kiegészítve (befejezett vizsgálatoknál is látszik).
+* `lib/reports/types.ts` (`PublicReportInspection`) + `components/report/ReportHero.tsx`
+  (`buildSpecs()`) -- a publikus riport BMW dizájnrendszerű hero-sávjában, a meglévő
+  Évjárat/Rendszám/Km-óraállás/VIN spec-kártyák KÖZÖTT jelenik meg (Km óra állás UTÁN, VIN elé
+  rendezve, hogy az azonosító adatok -- Rendszám/VIN -- egy blokkban maradjanak), UGYANAZZAL a
+  `tabular-nums`/nagybetűs-label tipográfiával, mint a többi spec -- nem külön, "idegen" stílusú
+  kártya, hanem szervesen illeszkedő, dizájn-konzisztens kiegészítés.
+* `components/inspections/wizard/StepSummary.tsx` -- a wizard saját "Összegzés & Publikálás"
+  kártyája is megkapta mindhárom mezőt (konzisztencia a publikus riporttal).
+* `components/inspections/wizard/StepFinalAssessment.tsx` (`buildInspectionSnapshot`, a Gemini
+  szakvélemény-generátor kontextusa) + `app/api/report-chat/route.ts` (`buildReportContext`, a
+  riport "Kérdezz az AI-tól" chat kontextusa) -- mindkét meglévő AI-funkció is megkapja az új
+  adatokat, hogy a szakvélemény-generálás/chat válaszok is figyelembe tudják venni a motor/
+  teljesítmény/össztömeg adatokat, ha releváns egy kérdésnél.
+
+**Ellenőrzés:** a migráció alkalmazva + `execute_sql`-lel visszaellenőrizve az éles Supabase
+projekten (`nsejmkcwvksbwxscvrvb`) -- a 3 oszlop és a frissített `get_public_report` létezik.
+`tsc --noEmit` szinkron, egyetlen bash-hívásban -- 0 hiba.

@@ -16,6 +16,15 @@ const CURRENT_YEAR = new Date().getFullYear();
 const MIN_YEAR = 1900;
 const MAX_ODOMETER = 2_000_000;
 const VIN_MAX_LENGTH = 17;
+/** Motor teljesítménye (kW) -- 2000 kW bőven a valaha gyártott leggyorsabb közúti
+ * jármű/teherautó fölött is, hogy a mező sose blokkoljon egy valós, szélsőséges értéket. */
+const MAX_POWER_KW = 2_000;
+/** Megengedett legnagyobb össztömeg (kg) -- 60 000 kg egy nehéz tehergépjármű/pótkocsis
+ * szerelvény tartományát is lefedi, nemcsak a személyautókét. */
+const MAX_GROSS_WEIGHT = 60_000;
+/** Motor típusa (szabad szöveges mező) -- max hossz, ugyanaz az elv, mint a VIN-nél, hogy
+ * egy hibásan beillesztett, túl hosszú szöveg ne torzítsa el a riport elrendezését. */
+const ENGINE_TYPE_MAX_LENGTH = 80;
 
 /** Alvázszám (VIN): nagybetűsítés + csak alfanumerikus karakterek, max 17 karakter. */
 export function sanitizeVin(raw: string): string {
@@ -43,6 +52,25 @@ export function sanitizeOdometer(raw: string): string {
   return raw.replace(/\D/g, '');
 }
 
+/** Motor teljesítménye (kW): csak számjegyek, max 4 karakter (9999 kW bőven a valaha
+ * gyártott leggyorsabb jármű fölött is) -- ugyanaz az elv, mint `sanitizeOdometer`-nél. */
+export function sanitizePowerKw(raw: string): string {
+  return raw.replace(/\D/g, '').slice(0, 4);
+}
+
+/** Megengedett legnagyobb össztömeg (kg): csak számjegyek, max 6 karakter (999 999 kg
+ * bőven a legnehezebb nyerges szerelvény fölött is) -- ugyanaz az elv, mint
+ * `sanitizeOdometer`-nél. */
+export function sanitizeGrossWeight(raw: string): string {
+  return raw.replace(/\D/g, '').slice(0, 6);
+}
+
+/** Motor típusa: szabad szöveges mező (ugyanaz az elv, mint a Típus/`carModel` mezőnél --
+ * nincs karakter-korlátozás beírás közben), csak a max hosszra vágjuk. */
+export function sanitizeEngineType(raw: string): string {
+  return raw.slice(0, ENGINE_TYPE_MAX_LENGTH);
+}
+
 export function validateYear(raw: string): string | null {
   if (raw.trim() === '') return null; // opcionális mező
   if (!/^\d{4}$/.test(raw)) return 'Az évjárat 4 számjegyű szám legyen (pl. 2019).';
@@ -59,6 +87,26 @@ export function validateOdometer(raw: string): string | null {
   const odometer = Number(raw);
   if (odometer < 0 || odometer > MAX_ODOMETER) {
     return `A km óra állás 0 és ${MAX_ODOMETER.toLocaleString('hu-HU')} km között lehet.`;
+  }
+  return null;
+}
+
+export function validatePowerKw(raw: string): string | null {
+  if (raw.trim() === '') return null; // opcionális mező
+  if (!/^\d+$/.test(raw)) return 'A teljesítmény csak pozitív egész szám lehet (kW).';
+  const powerKw = Number(raw);
+  if (powerKw <= 0 || powerKw > MAX_POWER_KW) {
+    return `A teljesítmény 1 és ${MAX_POWER_KW.toLocaleString('hu-HU')} kW között lehet.`;
+  }
+  return null;
+}
+
+export function validateGrossWeight(raw: string): string | null {
+  if (raw.trim() === '') return null; // opcionális mező
+  if (!/^\d+$/.test(raw)) return 'Az össztömeg csak pozitív egész szám lehet (kg).';
+  const grossWeight = Number(raw);
+  if (grossWeight <= 0 || grossWeight > MAX_GROSS_WEIGHT) {
+    return `Az össztömeg 1 és ${MAX_GROSS_WEIGHT.toLocaleString('hu-HU')} kg között lehet.`;
   }
   return null;
 }
@@ -98,6 +146,12 @@ export function getCarInfoErrors(value: CarInfoState): CarInfoErrors {
 
   const vinError = validateVin(value.vin);
   if (vinError) errors.vin = vinError;
+
+  const powerKwError = validatePowerKw(value.powerKw);
+  if (powerKwError) errors.powerKw = powerKwError;
+
+  const grossWeightError = validateGrossWeight(value.grossWeight);
+  if (grossWeightError) errors.grossWeight = grossWeightError;
 
   return errors;
 }

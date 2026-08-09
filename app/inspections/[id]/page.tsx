@@ -285,7 +285,7 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
   const { data: inspection } = await supabase
     .from('inspections')
     .select(
-      'id, car_brand, car_model, year, vin, license_plate, license_plate_country, odometer, status, public_token, general_photos, service_history, diagnostics, equipment, tires, damages, final_assessment, created_at, inspector_name, client_name, client_phone, client_email, show_inspector_on_pdf, show_client_on_pdf'
+      'id, car_brand, car_model, year, vin, license_plate, license_plate_country, odometer, engine_type, power_kw, gross_weight_kg, status, public_token, general_photos, service_history, diagnostics, equipment, tires, damages, final_assessment, created_at, inspector_name, client_name, client_phone, client_email, show_inspector_on_pdf, show_client_on_pdf'
     )
     .eq('id', id)
     .eq('user_id', user.id)
@@ -341,6 +341,9 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
       licensePlate: inspection.license_plate ?? '',
       licensePlateCountry: inspection.license_plate_country || DEFAULT_LICENSE_PLATE_COUNTRY,
       odometer: inspection.odometer ? String(inspection.odometer) : '',
+      engineType: inspection.engine_type ?? '',
+      powerKw: inspection.power_kw ? String(inspection.power_kw) : '',
+      grossWeight: inspection.gross_weight_kg ? String(inspection.gross_weight_kg) : '',
     };
 
     // Szabadkézi (free-form) mérési pontok visszatöltése -- egyszerű 1:1 leképezés, nincs

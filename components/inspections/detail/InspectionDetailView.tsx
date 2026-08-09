@@ -31,7 +31,7 @@ import {
   getPaintStatus,
 } from '@/lib/inspections/constants';
 import { decodeDot, isTreadWorn } from '@/lib/inspections/tireDot';
-import { formatHuf, formatKm, formatServiceDate } from '@/lib/format';
+import { formatHuf, formatKg, formatKm, formatKw, formatServiceDate } from '@/lib/format';
 import { LicensePlateBadge } from '@/components/ui/LicensePlateBadge';
 import { DamageCanvas } from '@/components/inspections/DamageCanvas';
 import type {
@@ -55,6 +55,9 @@ interface DetailInspection {
   license_plate: string | null;
   license_plate_country: string | null;
   odometer: number | null;
+  engine_type: string | null;
+  power_kw: number | null;
+  gross_weight_kg: number | null;
   public_token: string;
   created_at: string;
 }
@@ -283,6 +286,15 @@ export function InspectionDetailView({
             <DetailField
               label="Km óra állás"
               value={typeof inspection.odometer === 'number' ? formatKm(inspection.odometer) : '—'}
+            />
+            <DetailField label="Motor típusa" value={inspection.engine_type || '—'} />
+            <DetailField
+              label="Teljesítmény"
+              value={typeof inspection.power_kw === 'number' ? formatKw(inspection.power_kw) : '—'}
+            />
+            <DetailField
+              label="Össztömeg"
+              value={typeof inspection.gross_weight_kg === 'number' ? formatKg(inspection.gross_weight_kg) : '—'}
             />
             <DetailField label="Alvázszám (VIN)" value={inspection.vin || '—'} mono fullWidth />
           </dl>

@@ -16,7 +16,7 @@ import {
   getPaintStatus,
 } from '@/lib/inspections/constants';
 import { decodeDot, isTreadWorn } from '@/lib/inspections/tireDot';
-import { formatHuf, formatKm } from '@/lib/format';
+import { formatHuf, formatKg, formatKm, formatKw } from '@/lib/format';
 import { LicensePlateBadge } from '@/components/ui/LicensePlateBadge';
 import { PaintStatusBadge } from '@/components/inspections/wizard/PaintStatusBadge';
 import { isVideoUrl } from '@/lib/reports/media';
@@ -124,6 +124,9 @@ export function StepSummary({
             }
           />
           <SummaryField label="Km óra állás" value={carInfo.odometer ? formatKm(carInfo.odometer) : '—'} />
+          <SummaryField label="Motor típusa" value={carInfo.engineType || '—'} />
+          <SummaryField label="Teljesítmény" value={carInfo.powerKw ? formatKw(carInfo.powerKw) : '—'} />
+          <SummaryField label="Össztömeg" value={carInfo.grossWeight ? formatKg(carInfo.grossWeight) : '—'} />
           <SummaryField label="Alvázszám (VIN)" value={carInfo.vin || '—'} mono fullWidth />
           <SummaryField label="Általános fotók" value={generalPhotoCount > 0 ? `${generalPhotoCount} db` : '—'} />
         </dl>
