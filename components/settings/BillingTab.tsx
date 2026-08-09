@@ -457,10 +457,10 @@ export function BillingTab({
                       type="button"
                       onClick={() => handlePurchase(activePriceId, `${plan.key}_${billingPeriod}`)}
                       disabled={checkoutLoadingKey === `${plan.key}_${billingPeriod}` || !activePriceId}
-                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-stripe-primary px-4 font-sohne text-[13px] font-normal text-white transition-colors hover:bg-stripe-primary-deep disabled:cursor-not-allowed disabled:opacity-60"
+                      className="inline-flex min-h-[2.25rem] items-center justify-center gap-1.5 rounded-full bg-stripe-primary px-4 py-2 text-center font-sohne text-[13px] font-normal leading-snug text-white transition-colors hover:bg-stripe-primary-deep disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {checkoutLoadingKey === `${plan.key}_${billingPeriod}` && (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
                       )}
                       Váltás erre a csomagra
                     </button>

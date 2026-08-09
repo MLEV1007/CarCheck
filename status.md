@@ -2293,3 +2293,20 @@ A `LogoUploader.tsx`-ben eleve nem volt `capture` attribútum, ott ez már korá
 * Ugyanez a "Hibák & Média" lépésben a hiba fotó/videó feltöltésénél (`DefectMediaUpload.tsx`).
 * Ugyanez az "Autó adatok" lépés "Adatok beolvasása" kártyáján (forgalmi engedély/alvázszám
   AI-beolvasás) -- galériából választott kép is elinduljon vele az AI auto-fill.
+
+---
+
+## 2026-08-09 -- "Csomagváltó gomb tördelés javítás" (BillingTab)
+
+**Igény:** a felhasználó screenshotot küldött a `/settings` Előfizetés füléről -- a "Váltás erre
+a csomagra" gomb szövege két sorra tört, de a gomb `h-9` (fix 36px magasság) volt beállítva, így
+a szöveg második sora kilógott a pirula alakú gombból.
+
+**Javítás:** `components/settings/BillingTab.tsx` -- a plan-kártyák vásárlás gombján a fix `h-9`
+helyett `min-h-[2.25rem]` + `py-2` + `leading-snug` + `text-center`, hogy a gomb magassága
+alkalmazkodjon a két soros szöveghez ahelyett, hogy levágná. A `Loader2` ikonhoz `shrink-0`
+hozzáadva, hogy két soros állapotban se torzuljon. A többi gomb (Vásárlás, Kapcsolatfelvétel)
+rövid szövegű, nem érintett.
+
+**Ellenőrzés:** `tsc --noEmit` szinkron, egyetlen bash-hívásban -- 0 hiba. Vizuális kézi teszt
+(böngészőben a `/settings` Előfizetés fülön) még nem történt.
