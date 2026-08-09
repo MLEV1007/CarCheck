@@ -365,15 +365,17 @@ function EquipmentAiAssistant({
       const data = (await response.json()) as ParseEquipmentApiResponse;
 
       if (!response.ok || !data.success) {
-        // A `details` mezőt (ha érkezett -- lásd `route.ts` `toErrorDetails()`) a
-        // konzolba is kilogoljuk hibakereséshez, ÉS a toast-üzenethez is hozzáfűzzük,
-        // hogy Vercel-en a szerver-logok megnyitása nélkül is látszódjon a tényleges ok.
+        // A `details` mezőt (ha érkezett -- lásd `route.ts` `toErrorDetails()`) KIZÁRÓLAG a
+        // konzolba logoljuk hibakereséshez -- ez a nyers Gemini API hibaüzenet (pl. kvóta-
+        // túllépés, modell-hiba stb.) fejlesztői/hibakeresési célú, a szakinak (felhasználónak)
+        // szánt toast-üzenetben SOSE jelenhet meg. Korábban ez a nyers szöveg a `baseMessage`
+        // után zárójelben a toast-ba is bekerült -- egy 2026-08-09-i éles hibajegy szerint ez
+        // egy hosszú, technikai Gemini-hibaüzenetet jelenített meg a felhasználónak, ezért
+        // mostantól a toast MINDIG a rövid, általános `baseMessage`-et mutatja, a `details`
+        // csak a böngésző konzolján (és a Vercel szerver-logokban) érhető el.
         if (data.details) console.error('[EquipmentAiAssistant] Gemini API hiba részletek:', data.details);
         const baseMessage = data.error ?? 'Hiba történt az AI feldolgozás közben. Próbáld újra.';
-        onToast({
-          variant: 'warning',
-          message: data.details ? `${baseMessage} (${data.details})` : baseMessage,
-        });
+        onToast({ variant: 'warning', message: baseMessage });
         return;
       }
 

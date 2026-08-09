@@ -1,9 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { StepIndicator } from '@/components/inspections/wizard/StepIndicator';
+import { VinScanToast } from '@/components/inspections/wizard/VinScanToast';
+import {
+  buildDraftSnapshot,
+  clearWizardDraft,
+  loadWizardDraft,
+  saveWizardDraft,
+} from '@/lib/inspections/draftPersistence';
 import { StepCarInfo } from '@/components/inspections/wizard/StepCarInfo';
 import { StepGeneralPhotos } from '@/components/inspections/wizard/StepGeneralPhotos';
 import { StepServiceHistory } from '@/components/inspections/wizard/StepServiceHistory';
@@ -132,32 +139,147 @@ export function InspectionWizard({
   reportThresholds = DEFAULT_REPORT_THRESHOLDS,
 }: InspectionWizardProps = {}) {
   const router = useRouter();
-  const [step, setStep] = useState<WizardStep>(1);
+
+  // KLIENS-OLDALI PISZKOZAT-VISSZAÁLLÍTÁS (2026-08-09-i éles hibajegy -- lásd
+  // `lib/inspections/draftPersistence.ts` modul-JSDoc-ját a teljes indoklásért): EGYSZER,
+  // a komponens legelső renderelése ELŐTT (lazy `useState` inicializátor) megpróbáljuk
+  // visszaolvasni a `localStorage`-ban esetlegesen élő, korábbi (el nem mentett, pl. egy
+  // váratlan oldal-frissítés által megszakított) munkamenet piszkozatát. Ha van ilyen, ez
+  // MINDEN egyes alábbi state-nél MEGELŐZI a szerverről kapott `initial*` propokat/üres
+  // alapértékeket -- indoklás: ha létezik helyi piszkozat, az DEFINÍCIÓ SZERINT legalább
+  // annyira friss, mint a szerver állapota (minden változásnál automatikusan mentődik,
+  // lásd a `useEffect`-eket lent), tehát biztonságos elsőbbséget adni neki.
+  const [restoredDraft] = useState(() => loadWizardDraft(initialInspectionId));
+  const [showDraftRestoredToast, setShowDraftRestoredToast] = useState(() => restoredDraft !== null);
+
+  const [step, setStep] = useState<WizardStep>(restoredDraft?.step ?? 1);
   const [carInfo, setCarInfo] = useState<CarInfoState>(
-    initialCarInfo ??
+    restoredDraft?.carInfo ??
+      initialCarInfo ??
       (defaultLicensePlateCountry ? { ...EMPTY_CAR_INFO, licensePlateCountry: defaultLicensePlateCountry } : EMPTY_CAR_INFO)
   );
-  const [generalPhotos, setGeneralPhotos] = useState<GeneralPhotoState[]>(initialGeneralPhotos ?? []);
-  const [serviceHistory, setServiceHistory] = useState<ServiceHistoryState>(initialServiceHistory ?? EMPTY_SERVICE_HISTORY);
-  const [diagnostics, setDiagnostics] = useState<DiagnosticsState>(initialDiagnostics ?? EMPTY_DIAGNOSTICS);
-  const [equipment, setEquipment] = useState<FeatureFormState[]>(initialEquipment ?? defaultEquipment());
-  const [tires, setTires] = useState<TiresState>(initialTires ?? EMPTY_TIRES);
+  const [generalPhotos, setGeneralPhotos] = useState<GeneralPhotoState[]>(
+    restoredDraft?.generalPhotos ?? initialGeneralPhotos ?? []
+  );
+  const [serviceHistory, setServiceHistory] = useState<ServiceHistoryState>(
+    restoredDraft?.serviceHistory ?? initialServiceHistory ?? EMPTY_SERVICE_HISTORY
+  );
+  const [diagnostics, setDiagnostics] = useState<DiagnosticsState>(
+    restoredDraft?.diagnostics ?? initialDiagnostics ?? EMPTY_DIAGNOSTICS
+  );
+  const [equipment, setEquipment] = useState<FeatureFormState[]>(
+    restoredDraft?.equipment ?? initialEquipment ?? defaultEquipment()
+  );
+  const [tires, setTires] = useState<TiresState>(restoredDraft?.tires ?? initialTires ?? EMPTY_TIRES);
   const [tireGeneralInfo, setTireGeneralInfo] = useState<TireGeneralInfoState>(
-    initialTireGeneralInfo ?? EMPTY_TIRE_GENERAL_INFO
+    restoredDraft?.tireGeneralInfo ?? initialTireGeneralInfo ?? EMPTY_TIRE_GENERAL_INFO
   );
-  const [paintMeasurements, setPaintMeasurements] = useState<PaintPointState[]>(initialPaintMeasurements ?? []);
-  const [damages, setDamages] = useState<DamagePointState[]>(initialDamages ?? []);
-  const [defects, setDefects] = useState<DefectState[]>(initialDefects ?? [EMPTY_DEFECT()]);
+  const [paintMeasurements, setPaintMeasurements] = useState<PaintPointState[]>(
+    restoredDraft?.paintMeasurements ?? initialPaintMeasurements ?? []
+  );
+  const [damages, setDamages] = useState<DamagePointState[]>(restoredDraft?.damages ?? initialDamages ?? []);
+  const [defects, setDefects] = useState<DefectState[]>(restoredDraft?.defects ?? initialDefects ?? [EMPTY_DEFECT()]);
   const [finalAssessment, setFinalAssessment] = useState<FinalAssessmentState>(
-    initialFinalAssessment ?? EMPTY_FINAL_ASSESSMENT
+    restoredDraft?.finalAssessment ?? initialFinalAssessment ?? EMPTY_FINAL_ASSESSMENT
   );
-  const [clientInfo, setClientInfo] = useState<ClientInfoState>(initialClientInfo ?? EMPTY_CLIENT_INFO);
+  const [clientInfo, setClientInfo] = useState<ClientInfoState>(
+    restoredDraft?.clientInfo ?? initialClientInfo ?? EMPTY_CLIENT_INFO
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [inspectionId] = useState<string>(() => initialInspectionId ?? crypto.randomUUID());
+  // `restoredDraft?.inspectionId` -- ÚJ vizsgálatnál (nincs `initialInspectionId`) a
+  // piszkozat-visszaolvasás a KORÁBBAN (az előző, megszakított munkamenetben) generált
+  // azonosítót adja vissza, hogy a Storage feltöltési útvonalak (`{userId}/{inspectionId}/...`)
+  // egy oldal-frissítés UTÁN is konzisztensek maradjanak -- lásd `draftPersistence.ts`
+  // `NEW_INSPECTION_SLOT` JSDoc-ját.
+  const [inspectionId] = useState<string>(() => initialInspectionId ?? restoredDraft?.inspectionId ?? crypto.randomUUID());
   // Ha `initialInspectionId`-t kaptunk propként, ez egy MEGLÉVŐ piszkozat szerkesztése
   // (`/inspections/[id]`) -- ez a különbségtétel a hibakezelésnél kritikus, lásd lent.
   const isEditMode = Boolean(initialInspectionId);
+
+  // AUTOMATIKUS PISZKOZAT-MENTÉS -- lásd `draftPersistence.ts` modul-JSDoc-ját. A
+  // `latestSnapshotArgsRef`-et MINDEN renderelésnél frissítjük (ez egy jól bevált, olcsó
+  // "legfrissebb érték" minta, NEM okoz extra renderelést) -- így a lent regisztrált
+  // `beforeunload`/`pagehide` event listener MINDIG a ténylegesen legutolsó state-et látja,
+  // még akkor is, ha az adott pillanatban éppen fut egy debounce-olt mentés időzítője.
+  const latestSnapshotArgsRef = useRef({
+    inspectionId,
+    step,
+    carInfo,
+    generalPhotos,
+    serviceHistory,
+    diagnostics,
+    equipment,
+    tires,
+    tireGeneralInfo,
+    paintMeasurements,
+    damages,
+    defects,
+    finalAssessment,
+    clientInfo,
+  });
+  latestSnapshotArgsRef.current = {
+    inspectionId,
+    step,
+    carInfo,
+    generalPhotos,
+    serviceHistory,
+    diagnostics,
+    equipment,
+    tires,
+    tireGeneralInfo,
+    paintMeasurements,
+    damages,
+    defects,
+    finalAssessment,
+    clientInfo,
+  };
+
+  // A) Debounce-olt mentés MINDEN érdemi state-változásnál -- 600ms-es késleltetéssel, hogy
+  // pl. gyors gépelés közben ne írjunk `localStorage`-t minden egyes billentyűleütésnél.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      saveWizardDraft(initialInspectionId, buildDraftSnapshot(latestSnapshotArgsRef.current));
+    }, 600);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- a `latestSnapshotArgsRef`-et
+    // szándékosan NEM vesszük fel függőségnek (mindig friss, lásd fent) -- az alábbi lista
+    // a TÉNYLEGES state-mezőket sorolja fel, hogy minden érdemi változás újraindítsa az
+    // időzítőt.
+  }, [
+    initialInspectionId,
+    step,
+    carInfo,
+    generalPhotos,
+    serviceHistory,
+    diagnostics,
+    equipment,
+    tires,
+    tireGeneralInfo,
+    paintMeasurements,
+    damages,
+    defects,
+    finalAssessment,
+    clientInfo,
+  ]);
+
+  // B) AZONNALI (nem debounce-olt) mentés lapbezáráskor/frissítéskor -- a fenti debounce-olt
+  // mentés a "normál" esetet fedi le, de egy oldal-frissítés a 600ms-es időzítő lejárta ELŐTT
+  // is bekövetkezhet (pl. az AI Felszereltség-diktálás hibaüzenete UTÁNI azonnali F5, ami
+  // pontosan az eredeti hibajegy forgatókönyve) -- a `pagehide`/`beforeunload` esemény
+  // MINDIG szinkron lefut a tényleges kilépés/frissítés ELŐTT, így ez egy megbízható
+  // "utolsó esély" a legfrissebb állapot mentésére.
+  useEffect(() => {
+    function flushDraft() {
+      saveWizardDraft(initialInspectionId, buildDraftSnapshot(latestSnapshotArgsRef.current));
+    }
+    window.addEventListener('pagehide', flushDraft);
+    window.addEventListener('beforeunload', flushDraft);
+    return () => {
+      window.removeEventListener('pagehide', flushDraft);
+      window.removeEventListener('beforeunload', flushDraft);
+    };
+  }, [initialInspectionId]);
 
   async function handleSubmit(status: 'draft' | 'completed') {
     setIsSubmitting(true);
@@ -627,6 +749,14 @@ export function InspectionWizard({
         });
       }
 
+      // A vizsgálat MOST már biztonságban van a szerveren (`inspections` UPSERT + a fenti
+      // gyerek-táblák) -- a helyi `localStorage` piszkozat innentől felesleges (sőt, egy
+      // jövőbeli, VADONATÚJ vizsgálatnál félrevezető lenne, ha véletlenül visszaköszönne),
+      // ezért töröljük, MIELŐTT a userst elnavigáljuk. Ha ez a törlés hibázna (lásd
+      // `clearWizardDraft` csendes hibakezelését), a MÁR sikeresen elmentett vizsgálatot ez
+      // nem befolyásolja.
+      clearWizardDraft(initialInspectionId);
+
       if (status === 'draft') {
         router.push('/dashboard');
       } else {
@@ -661,6 +791,18 @@ export function InspectionWizard({
   return (
     <InspectionIdProvider inspectionId={inspectionId}>
     <div className="mx-auto flex max-w-3xl flex-col gap-5 px-4 py-8 pb-28 sm:px-6 sm:py-10 sm:pb-32">
+      {/* Piszkozat-visszaállítás visszajelzés -- lásd a `restoredDraft`/`draftPersistence.ts`
+          JSDoc-ját fent. Csak akkor jelenik meg, ha ténylegesen volt visszaolvasható,
+          korábbi (el nem mentett) helyi piszkozat -- normál esetben (első megnyitás,
+          vagy egy már a szerverre mentett piszkozat szerkesztése) nem látszik. */}
+      {showDraftRestoredToast && (
+        <VinScanToast
+          variant="success"
+          message="Egy korábbi, még el nem mentett munkamenetedet visszaállítottuk -- a begépelt adatok megmaradtak."
+          onDismiss={() => setShowDraftRestoredToast(false)}
+        />
+      )}
+
       <StepIndicator current={step} />
 
       <div className="rounded-lg border border-linear-hairline bg-linear-surface-1 p-5 sm:p-7">

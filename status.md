@@ -2495,3 +2495,72 @@ megbízható fizetési visszaigazoló e-mailje (nem ugyanaz, mint a `sendInvoice
 nélkül, minden sikeres Checkout-fizetés után automatikusan kimegy.
 
 **Ellenőrzés:** `tsc --noEmit` szinkron, egyetlen bash-hívásban -- 0 hiba.
+
+---
+
+## 2026-08-09 -- Éles hibajegy: nyers Gemini API hibaüzenet a Felszereltség AI diktálásnál + oldal-frissítéskor elvesző Wizard-adat
+
+**Bejelentés:** a `test@buildmysite.hu` fiókban a Felszereltségi elemek lépésen (AI
+hangalapú/szöveges gyorskitöltés, `StepEquipment.tsx` `EquipmentAiAssistant`) hibára futott
+egy AI-hívás, és a felhasználó egy hosszú, technikai Gemini API hibaüzenetet kapott a
+toast-üzenetben. Az oldal ezután frissítve lett, és a teljes addig begépelt vizsgálati
+adat elveszett.
+
+**1. hiba -- nyers AI hibaüzenet a felhasználónak.** Gyökérok: `StepEquipment.tsx`
+`EquipmentAiAssistant.handleProcess()` a `/api/ai/parse-equipment` (`route.ts`) `502`-es
+válaszának `details` mezőjét (a `toErrorDetails(primaryError)` NYERS Gemini kivétel-
+üzenetét, KIZÁRÓLAG hibakeresési célra szánva, lásd a route JSDoc-ját) a `baseMessage` UTÁN
+zárójelben a toast-üzenetbe is befűzte -- ez az EGYETLEN hely a projektben, ahol ez történt
+(a többi AI-lépés, `StepCarInfo`/`StepServiceHistory`/`StepFinalAssessment`, KIZÁRÓLAG a
+konzolba logolja a `details`-t, a toast-ban mindig az `error` mező rövid, általános szövege
+jelenik meg -- ellenőrizve). **Javítás:** a `details` mostantól KIZÁRÓLAG
+`console.error`-ral kerül logolásra, a toast MINDIG a rövid `baseMessage`-et mutatja.
+
+**2. hiba -- oldal-frissítés törli a teljes Wizard-állapotot.** Gyökérok: az
+`InspectionWizard.tsx` a teljes 11 lépéses vizsgálati állapotot (autó adatok, fotók,
+szervizmúlt, diagnosztika, felszereltség, gumiabroncsok, festékvastagság-pontok, sérülések,
+hibák, szakvélemény, ügyfél adatok) KIZÁRÓLAG kliens-oldali `useState`-ben tartotta --
+semmi nem élte túl egy React-újramountolást, tehát BÁRMILYEN oldal-frissítés (szándékos
+VAGY egy hibaüzenet utáni reflex-F5, ahogy a bejelentésben) a teljes adatot elvesztette.
+
+**Javítás -- kliens-oldali (localStorage) automatikus piszkozat-mentés:**
+* ÚJ `lib/inspections/draftPersistence.ts` -- `buildDraftSnapshot()`/`saveWizardDraft()`/
+  `loadWizardDraft()`/`clearWizardDraft()`. Minden mentés `try/catch`-csel védett (a
+  `localStorage` elérhetetlen lehet, pl. Safari privát böngészés) -- egy ilyen hiba SOSE
+  törhet meg egy egyébként sikeres gépelést, csak a kényelmi automentés marad ki. 7 napos
+  lejárat (`MAX_DRAFT_AGE_MS`) + formátum-verzió mező (`DRAFT_FORMAT_VERSION`), hogy egy
+  régi/inkompatibilis piszkozat sose okozzon hibát visszaolvasáskor.
+* **`File`/fotó-korlát (dokumentált, tudatos kompromisszum):** egy MÉG FEL NEM TÖLTÖTT fotó
+  (`file !== null`, `blob:` `previewUrl`) technikailag NEM szerializálható -- a `blob:` URL
+  úgyis érvénytelenné válik egy frissítéskor. Mentéskor ezeknél a `file`/`previewUrl` párt
+  eldobjuk (a `GeneralPhotoState`/`ServiceHistoryState.photos`-nál a teljes elemet kihagyjuk
+  a tömbből, mert ott a fotó az elem EGYETLEN adata) -- DE minden MÁS mezőt (szöveg,
+  kategória, státusz, megjegyzés, mérési érték stb.) VÁLTOZATLANUL megtartunk. A bejelentett
+  eset (begépelt/bediktált SZÖVEGES adat elvesztése) ezzel kizárva; már feltöltött Storage
+  URL-ek (piszkozat szerkesztésekor) természetesen túlélik a frissítést.
+* **`/inspections/new` stabil azonosító oldal-frissítés után:** mivel ez a route NEM
+  dinamikus (nincs `[id]` az URL-ben), egy frissítés korábban minden alkalommal ÚJ,
+  véletlenszerű `inspectionId`-t generált volna -- ehelyett egy FIX `"new"` `localStorage`
+  "slot" tárolja az ÚJ vizsgálat piszkozatát, és visszaolvasáskor a piszkozat SAJÁT, korábban
+  generált `inspectionId` mezőjét használjuk a `useState` kezdőértékeként, hogy a Storage
+  feltöltési útvonalak (`{userId}/{inspectionId}/...`) frissítés után is konzisztensek
+  maradjanak.
+* `InspectionWizard.tsx` -- minden `useState` kezdőértéke mostantól
+  `restoredDraft?.mező ?? initial* prop ?? üres alapérték` sorrendben dől el (a helyi
+  piszkozat MINDIG elsőbbséget élvez, ha létezik, mert definíció szerint legalább annyira
+  friss, mint a szerver állapota). KÉT `useEffect`: (A) 600ms debounce-olt mentés minden
+  érdemi state-változásnál, (B) AZONNALI (nem debounce-olt) mentés `pagehide`/`beforeunload`
+  eseményen -- ez utóbbi a "utolsó esély" egy olyan frissítésnél, ami a 600ms-es időzítő
+  lejárta ELŐTT következik be (pontosan a bejelentett forgatókönyv: hibaüzenet -> azonnali
+  F5). Egy `latestSnapshotArgsRef`-et minden renderelésnél frissítünk ("legfrissebb érték"
+  minta), hogy az event listener-ek mindig a tényleges legutolsó state-et lássák. Sikeres
+  mentéskor (`handleSubmit`, Piszkozat MEGŐRZÉSE/Publikálás) a helyi piszkozatot töröljük
+  (`clearWizardDraft`), mielőtt a userst a dashboardra navigáljuk -- a szerver-oldali adat
+  innentől az egyetlen forrás. Visszaállításkor egy rövid, eltüntethető
+  (`VinScanToast`-alapú) visszajelzés tájékoztatja a felhasználót ("Egy korábbi, még el nem
+  mentett munkamenetedet visszaállítottuk").
+
+**Ellenőrzés:** `tsc --noEmit` szinkron, egyetlen bash-hívásban -- 0 hiba. `next build`
+elindítva, de a sandbox parancs-időkorlátja miatt nem futott le a végéig (a `tsc` már
+lefedi a típus-helyességet) -- éles Vercel-deploy előtt érdemes egy teljes `npm run build`-et
+is lefuttatni.
