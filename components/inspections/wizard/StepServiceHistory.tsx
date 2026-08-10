@@ -10,6 +10,7 @@ import { SERVICE_ENTRY_TYPE_SUGGESTIONS, SERVICE_HISTORY_STATUS_DESCRIPTION, SER
 import { sanitizeServiceMileage } from '@/lib/inspections/validation';
 import { formatKmInput } from '@/lib/format';
 import { useInspectionId } from '@/components/inspections/wizard/InspectionIdContext';
+import { HintCallout } from '@/components/onboarding/HintCallout';
 import {
   CREATE_GENERAL_PHOTO,
   EMPTY_SERVICE_DOCUMENT,
@@ -323,6 +324,11 @@ export function StepServiceHistory({ value, onChange, onBack, onNext, nextLabel 
         </p>
       </div>
 
+      <HintCallout id="service-history" title="Tipp: fotózd le a szervizkönyvet">
+        Töltsd fel a szervizkönyv vagy a számlák fotóit, majd egy gombnyomással felismertetheted velük az
+        AI-t -- ezzel kihagyhatod az idővonal kézi begépelését.
+      </HintCallout>
+
       {/* A) Általános státusz */}
       <div className="flex flex-col gap-3">
         <p className="text-[13px] font-semibold uppercase tracking-[0.4px] text-linear-ink-subtle">Általános státusz</p>
@@ -420,6 +426,10 @@ export function StepServiceHistory({ value, onChange, onBack, onNext, nextLabel 
             A fenti fotókból kiolvassa a szerviz-bejegyzéseket (dátum, km óra állás, típus) az idővonalba.
           </span>
         </div>
+        <HintCallout id="service-history-ai-scan" variant="inline">
+          Csak a MÉG fel nem dolgozott fotókat elemzi -- ha később újabb képet töltesz fel, ugyanezzel a
+          gombbal indíthatod el rá is a felismerést.
+        </HintCallout>
       </div>
 
       {/* CarVertical (vagy hasonló autó-előéleti szolgáltatás) PDF riport -- a Dokumentumok

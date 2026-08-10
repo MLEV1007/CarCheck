@@ -2702,3 +2702,64 @@ projekten (`fuel_type` oszlop létezik, `text` típus). `tsc --noEmit` szinkron,
 bash-hívásban -- 0 hiba. `next build` elindítva, de a sandbox parancs-időkorlátja (~180 mp)
 miatt nem futott le a végéig -- a `tsc` már lefedi a típus-helyességet, éles Vercel-deploy
 előtt érdemes egy teljes `npm run build`-et is lefuttatni.
+
+## 2026-08-10 (folyt.) -- Onboarding "Tipp" (hint/tutorial) rendszer a wizard mind a 11 lépésén
+
+**Kérés:** bejelentkezés utáni tutorial/hint lehetőségének megvizsgálása, majd (a felhasználó
+döntése szerint) KIZÁRÓLAG ennek megvalósítása -- "dizájnos és könnyen érthető" tippek MINDEN
+wizard-lépésen, KIEMELTEN az AI-funkcióknál (mikrofon, VIN/forgalmi AI-szkenner, AI diktálás,
+AI szakvélemény-írás, AI szervizdokumentum-felismerés). A korábban felvetett második fejlesztés
+("vizsga előtti" vizsgálat-típus, lépés-kihagyás) EBBEN a körben SZÁNDÉKOSAN NEM készült el --
+a felhasználó kifejezetten csak a hint/tutorial funkciót kérte ("Csak a hint, tutorial-ra van
+akkor szükségem. Másra nem.").
+
+**Architektúra -- `localStorage`-alapú, DB-migráció NÉLKÜL (tudatos döntés, lásd
+`hintStorage.ts` JSDoc-ja):** minden tipp böngészőnként/eszközönként EGYSZER jelenik meg,
+bezárás után `id`-nkénti kulccsal örökre elrejtve marad. Nincs fiókhoz kötött/szerver-oldali
+állapot -- ez a jelenlegi kérésre elegendő, gyorsabban szállítható, és RLS/migráció-kockázatot
+sem visz be.
+
+* **`lib/onboarding/hintStorage.ts`** (ÚJ) -- `loadDismissedHints()`/`persistDismissedHint()`,
+  ugyanaz az SSR-biztos, csendes hibakezelésű minta, mint `draftPersistence.ts`-nél.
+* **`components/onboarding/OnboardingHintProvider.tsx`** (ÚJ) -- Context, ami a bezárt tipp-
+  `id`-ket EGY KÖZÖS `Set`-ben tartja (nem minden `HintCallout` a saját, izolált
+  `localStorage`-olvasásával) -- így egyetlen bezárás AZONNAL elrejti az ugyanazt az `id`-t
+  használó, esetleg egyszerre látható testvér-példányokat is (pl. több hiba-kártya
+  mikrofon-tippje egyszerre). `InspectionWizard.tsx` a teljes render-fáját körbeveszi vele
+  (az `InspectionIdProvider`-en belül), hogy a state lépésváltás közben (a komponens nem
+  mountolódik újra) megmaradjon.
+* **`components/onboarding/HintCallout.tsx`** (ÚJ) -- a tényleges "Tipp" kártya, `Lightbulb`
+  ikonnal (SZÁNDÉKOSAN NEM `Sparkles`, mert a projekt korábban -- `StepCarInfo.tsx`/
+  `StepEquipment.tsx` kommentjei -- tudatosan eltávolította az "AI tech-demó" hatású
+  ikonográfiát a tényleges AI-gombokról; a `Lightbulb` itt más szemantikájú, UI-útmutatás, nem
+  AI-márkajelzés). Két variáns: `"banner"` (teljes szélességű, halvány lila tónusú kártya a
+  lépés tetején, a lépés célját magyarázza) és `"inline"` (kompakt, egy konkrét AI-vezérlő
+  mellé/alá szánt tipp). `×` gombbal örökre bezárható.
+* **`lib/utils.ts`** -- `isSpeechInputSupported()` ÚJ helper (`window.SpeechRecognition`/
+  `webkitSpeechRecognition` ellenőrzés hook nélkül, szinkron) -- a mikrofon-tipp csak ott
+  jelenik meg, ahol maga a mikrofon gomb is támogatott.
+* **`components/inspections/wizard/FormControls.tsx`** (`TextareaField`) -- globális mikrofon-
+  tipp (`id="voice-mic"`) MINDEN `TextareaField` alatt, `isSpeechInputSupported()`-fel védve --
+  mivel ez a komponens a wizard szinte összes hosszabb szöveges mezőjét adja (Diagnosztika,
+  Hibák, Szervizmúlt, Szakvélemény stb.), egyetlen integrációs pont fedi le a mikrofon-funkciót
+  MINDENHOL, a `HintCallout` megosztott bezárás-állapota miatt gyakorlatilag csak az ELSŐ
+  ténylegesen látott példánynál jelenik meg érdemben.
+* **Mind a 11 `Step*.tsx`** (`StepCarInfo`, `StepGeneralPhotos`, `StepServiceHistory`,
+  `StepDiagnostics`, `StepEquipment`, `StepTires`, `StepPaintMeasurements`, `StepDamageMap`,
+  `StepDefects`, `StepFinalAssessment`, `StepSummary`) -- egy `"banner"` variánsú `HintCallout`
+  a lépés fejléce ALATT, ami röviden elmagyarázza a lépés célját/legjobb gyakorlatát.
+* **Kiemelt, AI-funkcióhoz kötött `"inline"` tippek** (a globális mikrofon-tippen felül):
+  `StepCarInfo` -- a fotós AI-beolvasás maga a banner tartalma (nincs külön inline, a kártya
+  közvetlenül alatta van); `StepServiceHistory` -- a "Felismerés indítása (AI)" gomb alatt;
+  `StepEquipment` -- az "AI diktálás" kártya alján; `StepFinalAssessment` -- az "Automatikus
+  összefoglaló írása (AI)" gomb feletti mezőnél.
+* A `StepPaintMeasurements` bannerje EXPLICIT megemlíti, hogy ha egy adott vizsgálathoz (pl.
+  vizsga előtti átvizsgálás) nincs szükség rétegvastagság-mérésre, a lépés kitöltés nélkül is
+  átugorható -- a publikus riport `PaintMap` kártyája ÚGYIS `return null`-t ad üres mérés-
+  listánál (lásd a korábbi, kód-vizsgálati választ ebben a beszélgetésben), tehát ehhez NEM
+  kellett kódot módosítani, csak a tippben tudatosítani a meglévő viselkedést.
+
+**Ellenőrzés:** `tsc --noEmit` szinkron, egyetlen bash-hívásban a teljes projektre -- 0 hiba.
+A projektben nincs beállított ESLint-konfiguráció (`next lint` interaktív setup promptot
+adna), ezért lint-ellenőrzés kimaradt -- ez a jelenlegi projekt-állapot, nem ennek a
+fejlesztésnek a hiányossága.

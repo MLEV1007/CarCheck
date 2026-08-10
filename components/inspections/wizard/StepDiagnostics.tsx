@@ -6,6 +6,7 @@ import { WizardStepFooter } from '@/components/inspections/wizard/WizardBottomBa
 import { VoiceInputButton } from '@/components/ui/VoiceInputButton';
 import { sanitizeDiagnosticCode } from '@/lib/inspections/validation';
 import { EMPTY_DIAGNOSTIC_CODE, type DiagnosticsState } from '@/lib/inspections/types';
+import { HintCallout } from '@/components/onboarding/HintCallout';
 
 interface StepDiagnosticsProps {
   value: DiagnosticsState;
@@ -52,6 +53,11 @@ export function StepDiagnostics({ value, onChange, onBack, onNext, nextLabel }: 
           Rögzítsd az OBD diagnosztikai kiolvasás eredményét.
         </p>
       </div>
+
+      <HintCallout id="diagnostics" title="Tipp: nincs kéznél OBD-olvasó?">
+        Ha nincs hibakód, hagyd bepipálva az "OBD Tiszta" jelölőt. A leíráshoz a mikrofon ikonnal is
+        diktálhatsz -- a szöveget az AI automatikusan kisimítja.
+      </HintCallout>
 
       <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-linear-hairline bg-linear-surface-1 p-4 transition-colors hover:bg-linear-surface-2">
         <input

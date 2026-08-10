@@ -22,6 +22,7 @@ import { formatKmInput, kwToHp } from '@/lib/format';
 import { FUEL_TYPE_LABEL, FUEL_TYPES, LICENSE_PLATE_COUNTRIES } from '@/lib/inspections/constants';
 import { useInsufficientCredits } from '@/components/credits/InsufficientCreditsProvider';
 import { useInspectionId } from '@/components/inspections/wizard/InspectionIdContext';
+import { HintCallout } from '@/components/onboarding/HintCallout';
 import type { CarInfoState, FuelType } from '@/lib/inspections/types';
 
 const AI_SCAN_FAILURE_MESSAGE = 'Nem sikerült az AI-alapú beolvasás. Próbáld újra, vagy gépeld be manuálisan!';
@@ -379,6 +380,11 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
           Add meg a vizsgált jármű azonosító adatait.
         </p>
       </div>
+
+      <HintCallout id="car-info" title="Tipp: kezdd a fotós beolvasással">
+        Fényképezd le a forgalmi engedélyt vagy az alvázszám-matricát -- az AI automatikusan kitölti a
+        rendszámot, márkát, típust és a legtöbb egyéb mezőt helyetted.
+      </HintCallout>
 
       {/* Adatok beolvasása -- kiemelt kártya a lépés tetején, a mezők kitöltése ELŐTT,
           hogy a szaki egyetlen fotóval elindíthassa az auto-fill-t. A korábbi lila

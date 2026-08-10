@@ -22,3 +22,18 @@ export function joinDictatedText(base: string, addition: string): string {
   const needsSeparator = base.length > 0 && !/[\s\n]$/.test(base);
   return base + (needsSeparator ? ' ' : '') + addition;
 }
+
+/**
+ * Ugyanaz a támogatottság-ellenőrzés, mint a `useSpeechToText.ts` belső `isSupported`
+ * state-je (`window.SpeechRecognition` / `webkitSpeechRecognition`), de hook NÉLKÜL,
+ * szinkron függvényként -- a `FormControls.tsx` `TextareaField`-je ezzel dönti el
+ * (kliens-oldalon, render közben), hogy megjelenítse-e a mikrofon-funkcióra mutató
+ * onboarding tippet (`HintCallout`, lásd `components/onboarding/`). SSR-en mindig
+ * `false`-t ad vissza (`typeof window === 'undefined'`) -- ugyanaz az elfogadott
+ * "kliens-oldalon frissül" minta, mint a wizard piszkozat-visszaállításánál
+ * (`InspectionWizard.tsx` `restoredDraft`), a hint egyébként is csak első látogatáskor,
+ * nem kritikus UI-elem.
+ */
+export function isSpeechInputSupported(): boolean {
+  return typeof window !== 'undefined' && !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+}

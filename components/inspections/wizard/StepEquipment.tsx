@@ -17,6 +17,7 @@ import { VinScanToast, type VinScanToastVariant } from '@/components/inspections
 import { WizardStepFooter } from '@/components/inspections/wizard/WizardBottomBar';
 import { useInsufficientCredits } from '@/components/credits/InsufficientCreditsProvider';
 import { useInspectionId } from '@/components/inspections/wizard/InspectionIdContext';
+import { HintCallout } from '@/components/onboarding/HintCallout';
 import { joinDictatedText } from '@/lib/utils';
 import {
   EQUIPMENT_CATEGORY_LABEL,
@@ -227,6 +228,11 @@ export function StepEquipment({ value, onChange, onBack, onNext, nextLabel }: St
         )}
       </div>
 
+      <HintCallout id="equipment" title="Tipp: gyors tömeges kitöltés">
+        A legtöbb elem alapból "nincs az autóban" -- csak azt kell átállítanod, ami ténylegesen működik
+        vagy hibás. Hibás elemhez fűzhetsz megjegyzést és fotót is.
+      </HintCallout>
+
       {/* E) Csomag-alapú gyorsgombok -- lásd a `StepEquipment` JSDoc-ját fent. */}
       <div className="flex flex-wrap gap-2">
         {PRESET_BUTTONS.map(({ key, label }) => (
@@ -436,6 +442,10 @@ function EquipmentAiAssistant({
           <span className="text-[12px] text-linear-ink-subtle">Ez néhány másodpercig tarthat…</span>
         </div>
       )}
+      <HintCallout id="equipment-ai-dictation" variant="inline" className="mt-3">
+        Egyetlen mondatban is diktálhatod, mi hibás vagy mi működik -- a mikrofon kikapcsolásakor az AI
+        automatikusan beállítja a megfelelő kapcsolókat, kézi "Feldolgozás" gomb nélkül.
+      </HintCallout>
     </div>
   );
 }

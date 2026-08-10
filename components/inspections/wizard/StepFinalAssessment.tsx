@@ -13,6 +13,7 @@ import { sanitizeCostAmount } from '@/lib/inspections/validation';
 import { formatHufInput } from '@/lib/format';
 import { useInsufficientCredits } from '@/components/credits/InsufficientCreditsProvider';
 import { useInspectionId } from '@/components/inspections/wizard/InspectionIdContext';
+import { HintCallout } from '@/components/onboarding/HintCallout';
 import type {
   CarInfoState,
   DamagePointState,
@@ -208,6 +209,11 @@ export function StepFinalAssessment({
         </p>
       </div>
 
+      <HintCallout id="final-assessment" title="Tipp: ez a lépés teljesen opcionális">
+        Ha egy mezőt üresen hagysz, az adott szakasz egyszerűen nem jelenik meg az ügyfélriporton --
+        nem kell mindent kitöltened.
+      </HintCallout>
+
       <p className="flex items-start gap-2 rounded-md border border-linear-hairline bg-linear-surface-2 px-3 py-2.5 text-[12px] text-linear-ink-subtle">
         <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
         A megadott költségbecslés tájékoztató jellegű, nem minősül kötelező érvényű árajánlatnak.
@@ -304,6 +310,10 @@ export function StepFinalAssessment({
             {summaryError}
           </p>
         )}
+        <HintCallout id="final-assessment-ai-summary" variant="inline">
+          Az AI a vizsgálat eddigi adatai alapján ír egy rövid szakértői összefoglalót -- a beillesztett
+          szöveget utána szabadon szerkesztheted.
+        </HintCallout>
         <TextareaField
           label="Szöveges összefoglaló"
           name="final-summary-text"

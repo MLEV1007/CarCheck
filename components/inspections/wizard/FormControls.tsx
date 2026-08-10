@@ -1,6 +1,7 @@
 import { ChangeEvent, InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react';
-import { cn } from '@/lib/utils';
+import { cn, isSpeechInputSupported } from '@/lib/utils';
 import { VoiceInputButton } from '@/components/ui/VoiceInputButton';
+import { HintCallout } from '@/components/onboarding/HintCallout';
 
 /**
  * Linear design system (linear.md) `text-input` tokenje -- surface-1 háttér,
@@ -215,6 +216,17 @@ export function TextareaField({ label, hint, id, className, value, onChange, onD
           className="absolute right-2 top-2"
         />
       </div>
+      {/* Onboarding tipp a mikrofon-funkcióhoz (2026-08-10, "Hint/tutorial" lépés) --
+          MINDEN `TextareaField`-en megjelenhet (megosztott `id`, lásd `HintCallout`/
+          `OnboardingHintProvider` JSDoc-ját: egy bezárás egyszerre mindenhol elrejti),
+          ezért csak EGYSZER, az ELSŐ mikrofonos mező mellett tűnik fel ténylegesen a
+          gyakorlatban. `isSpeechInputSupported()`-fel védjük, hogy ne jelenjen meg olyan
+          böngészőben (pl. Firefox), ahol a mikrofon gomb maga is rejtve marad. */}
+      {isSpeechInputSupported() && (
+        <HintCallout id="voice-mic" variant="inline" className="mt-1.5">
+          A mikrofon ikonra kattintva bediktálhatod a szöveget -- kikapcsoláskor az AI automatikusan nyelvtanilag is kisimítja.
+        </HintCallout>
+      )}
     </div>
   );
 }

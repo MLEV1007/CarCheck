@@ -4,6 +4,7 @@ import { useRef } from 'react';
 import { ImagePlus, X } from 'lucide-react';
 import { WizardStepFooter } from '@/components/inspections/wizard/WizardBottomBar';
 import { CREATE_GENERAL_PHOTO, type GeneralPhotoState } from '@/lib/inspections/types';
+import { HintCallout } from '@/components/onboarding/HintCallout';
 
 interface StepGeneralPhotosProps {
   value: GeneralPhotoState[];
@@ -50,6 +51,11 @@ export function StepGeneralPhotos({ value, onChange, onBack, onNext, nextLabel }
           galériájába. (Opcionális)
         </p>
       </div>
+
+      <HintCallout id="general-photos" title="Tipp: mutasd meg az egészet">
+        Készíts képet elölről, hátulról, mindkét oldalról és a beltérről is -- ezek kerülnek az ügyfélnek
+        küldött riport fotógalériájába.
+      </HintCallout>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
         {value.map((photo) => (

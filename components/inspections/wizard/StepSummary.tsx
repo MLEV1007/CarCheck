@@ -22,6 +22,7 @@ import { LicensePlateBadge } from '@/components/ui/LicensePlateBadge';
 import { PaintStatusBadge } from '@/components/inspections/wizard/PaintStatusBadge';
 import { isVideoUrl } from '@/lib/reports/media';
 import { DAMAGE_TYPE_LABEL } from '@/lib/inspections/constants';
+import { HintCallout } from '@/components/onboarding/HintCallout';
 import type {
   CarInfoState,
   ClientInfoState,
@@ -110,6 +111,11 @@ export function StepSummary({
           Ellenőrizd az adatokat, majd mentsd piszkozatként, vagy fejezd be és publikáld az ügyfélriportot.
         </p>
       </div>
+
+      <HintCallout id="summary" title="Tipp: ellenőrizd, mielőtt publikálod">
+        A „Piszkozat mentése” bármikor visszatérve folytatható, a „Publikálás” pedig azonnal létrehozza az
+        ügyfélnek küldhető, egyedi riport-linket.
+      </HintCallout>
 
       <div className="rounded-lg border border-linear-hairline bg-linear-surface-1 p-5">
         <p className="text-[15px] font-semibold text-linear-ink">{carLabel}</p>

@@ -6,6 +6,7 @@ import { DefectMediaUpload } from '@/components/inspections/wizard/DefectMediaUp
 import { WizardStepFooter } from '@/components/inspections/wizard/WizardBottomBar';
 import { DEFECT_CATEGORIES } from '@/lib/inspections/constants';
 import { EMPTY_DEFECT, type DefectState } from '@/lib/inspections/types';
+import { HintCallout } from '@/components/onboarding/HintCallout';
 
 interface StepDefectsProps {
   value: DefectState[];
@@ -54,6 +55,11 @@ export function StepDefects({ value, onChange, onBack, onNext, nextLabel }: Step
           sérüléseket az előző, Hibatérkép lépésben jelöld). Ha nincs hiba, lépj tovább.
         </p>
       </div>
+
+      <HintCallout id="defects" title="Tipp: diktálhatod is a hibaleírást">
+        A leírás mezőnél a mikrofon ikonnal bediktálhatod a hibát -- az AI automatikusan nyelvtanilag is
+        kisimítja a szöveget.
+      </HintCallout>
 
       <div className="flex flex-col gap-4">
         {value.map((defect, index) => (

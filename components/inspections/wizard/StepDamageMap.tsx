@@ -3,6 +3,7 @@
 import { DAMAGE_TYPE_LABEL } from '@/lib/inspections/constants';
 import { DamageCanvas } from '@/components/inspections/DamageCanvas';
 import { WizardStepFooter } from '@/components/inspections/wizard/WizardBottomBar';
+import { HintCallout } from '@/components/onboarding/HintCallout';
 import type { DamagePointState } from '@/lib/inspections/types';
 
 interface StepDamageMapProps {
@@ -34,6 +35,11 @@ export function StepDamageMap({ value, onChange, onBack, onNext, nextLabel }: St
           kategóriát, és csatolj fotót.
         </p>
       </div>
+
+      <HintCallout id="damage-map" title="Tipp: jelöld be a látható sérüléseket">
+        Kattints a képen pontosan arra a helyre, ahol a karcolást/horpadást találtad -- a meglévő
+        jelölőre kattintva bármikor módosíthatod vagy törölheted.
+      </HintCallout>
 
       <div className="flex items-center justify-between rounded-lg border border-linear-hairline-strong bg-linear-surface-2 px-5 py-3.5">
         <p className="text-[13px] font-medium text-linear-ink-subtle">

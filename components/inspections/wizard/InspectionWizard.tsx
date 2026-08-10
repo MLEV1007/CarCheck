@@ -23,6 +23,7 @@ import { StepDefects } from '@/components/inspections/wizard/StepDefects';
 import { StepFinalAssessment } from '@/components/inspections/wizard/StepFinalAssessment';
 import { StepSummary } from '@/components/inspections/wizard/StepSummary';
 import { InspectionIdProvider } from '@/components/inspections/wizard/InspectionIdContext';
+import { OnboardingHintProvider } from '@/components/onboarding/OnboardingHintProvider';
 import {
   DEFAULT_LICENSE_PLATE_COUNTRY,
   DEFAULT_REPORT_THRESHOLDS,
@@ -798,6 +799,11 @@ export function InspectionWizard({
 
   return (
     <InspectionIdProvider inspectionId={inspectionId}>
+    {/* Onboarding "Tipp" kártyák megosztott bezárás-állapota (2026-08-10, "Hint/tutorial"
+        lépés) -- lásd `OnboardingHintProvider.tsx` JSDoc-ját. A teljes wizard-fát körbeveszi,
+        hogy a state lépésváltás közben (a komponens NEM mountolódik újra, csak a `step === N`
+        feltétel vált) és a wizard teljes élettartama alatt megmaradjon. */}
+    <OnboardingHintProvider>
     <div className="mx-auto flex max-w-3xl flex-col gap-5 px-4 py-8 pb-28 sm:px-6 sm:py-10 sm:pb-32">
       {/* Piszkozat-visszaállítás visszajelzés -- lásd a `restoredDraft`/`draftPersistence.ts`
           JSDoc-ját fent. Csak akkor jelenik meg, ha ténylegesen volt visszaolvasható,
@@ -956,6 +962,7 @@ export function InspectionWizard({
         style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
       />
     </div>
+    </OnboardingHintProvider>
     </InspectionIdProvider>
   );
 }

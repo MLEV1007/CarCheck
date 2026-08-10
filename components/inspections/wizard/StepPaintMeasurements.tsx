@@ -3,6 +3,7 @@
 import { DEFAULT_REPORT_THRESHOLDS } from '@/lib/inspections/constants';
 import { PaintCanvas } from '@/components/inspections/PaintCanvas';
 import { WizardStepFooter } from '@/components/inspections/wizard/WizardBottomBar';
+import { HintCallout } from '@/components/onboarding/HintCallout';
 import type { PaintPointState, ReportThresholds } from '@/lib/inspections/types';
 
 interface StepPaintMeasurementsProps {
@@ -52,6 +53,11 @@ export function StepPaintMeasurements({
           {thresholds.paintUjrafujtMaxMicron} µm, Gittelt: {thresholds.paintUjrafujtMaxMicron}+ µm).
         </p>
       </div>
+
+      <HintCallout id="paint" title="Tipp: nem minden vizsgálathoz kell">
+        Ha az adott vizsgálathoz (pl. vizsga előtti átvizsgálás) nincs szükség rétegvastagság-mérésre,
+        egyszerűen lépj tovább -- kitöltés nélkül ez a szakasz nem jelenik meg az ügyfélriporton.
+      </HintCallout>
 
       <PaintCanvas points={value} mode="edit" onChange={onChange} theme="dark" thresholds={thresholds} />
 

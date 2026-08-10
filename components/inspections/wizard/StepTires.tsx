@@ -13,6 +13,7 @@ import {
 } from '@/lib/inspections/constants';
 import { decodeDot, getMaxDotYearSuffix, isTreadWorn } from '@/lib/inspections/tireDot';
 import { sanitizeDotCode, sanitizeMm } from '@/lib/inspections/validation';
+import { HintCallout } from '@/components/onboarding/HintCallout';
 import type {
   ReportThresholds,
   RimType,
@@ -94,6 +95,11 @@ export function StepTires({
           értékeit a „📋 Adatok másolása” gombbal egy kattintással átveheted.
         </p>
       </div>
+
+      <HintCallout id="tires" title="Tipp: gyorsítsd a rögzítést">
+        A „📋 Adatok másolása” gombbal az előző kerék mm/DOT értékét egy kattintással átveheted a
+        következőhöz -- csak az eltéréseket kell módosítanod.
+      </HintCallout>
 
       <div className="grid grid-cols-1 gap-4 rounded-lg border border-linear-hairline bg-linear-surface-1 p-4 sm:grid-cols-2">
         <div>
