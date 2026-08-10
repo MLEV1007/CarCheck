@@ -310,7 +310,7 @@ export function StepFinalAssessment({
             {summaryError}
           </p>
         )}
-        <HintCallout id="final-assessment-ai-summary" variant="inline">
+        <HintCallout id="final-assessment-ai-summary" pointerAlign="right">
           Az AI a vizsgálat eddigi adatai alapján ír egy rövid szakértői összefoglalót -- a beillesztett
           szöveget utána szabadon szerkesztheted.
         </HintCallout>

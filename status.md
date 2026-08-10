@@ -2763,3 +2763,44 @@ sem visz be.
 A projektben nincs beállított ESLint-konfiguráció (`next lint` interaktív setup promptot
 adna), ezért lint-ellenőrzés kimaradt -- ez a jelenlegi projekt-állapot, nem ennek a
 fejlesztésnek a hiányossága.
+
+## 2026-08-10 (folyt.) -- Onboarding "Tipp" vizuális átalakítása: coachmark-buborék nyílheggyel
+
+**Kérés:** a fenti (74. szakasz utáni) "Tipp" kártyák (halvány lila, teli szélességű kártya
+a lépés tetején / szegélyes szürke sáv egy gomb alatt) NEM feleltek meg -- a felhasználó
+egy olyan mintát kért, ami "kiemeli az adott funkciót": a funkció mellé/alá egy téglalap
+kerüljön a szöveggel, egy nyíllal jelezve, hogy MELYIK elemre vonatkozik ("mintha egy modern
+app lenne"), mobilon TÖKÉLETESEN kell kinéznie, és automatikusan (kattintás nélkül) jelenjen
+meg. Referenciaként egy `@ark-ui/react` `Popover`+`Portal`-alapú, KATTINTÁSRA nyíló komponens-
+mintát küldött -- ez NEM került beépítésre (sem az `@ark-ui/react` csomag nincs telepítve),
+mert (1) a `Popover.Trigger` inherensen kattintás-vezérelt, ami ELLENTMOND az "automatikusan,
+rányomás nélkül" kérésnek, (2) egy `Portal`/abszolút-pozicionált tooltip helyes elhelyezése a
+célelemhez képest mobilon, 15 különböző, görgethető form-helyen jelentős extra törékenységet
+(viewport-túlcsordulás, z-index, scroll-követés) hozott volna be egy sokkal egyszerűbb,
+kockázatmentesebb CSS-megoldáshoz képest.
+
+**`components/onboarding/HintCallout.tsx` -- teljes vizuális újratervezés (a `dismiss`/
+`OnboardingHintProvider`/`hintStorage` architektúra VÁLTOZATLAN, csak a megjelenés):**
+* A korábbi 2 variáns (`"banner"` teli szélességű halvány kártya / `"inline"` szürke sáv)
+  megszűnt, EGYETLEN, egységes "coachmark" stílus váltotta fel: tömör `linear-primary`
+  (lila) hátterű, lekerekített (`rounded-xl`) buborék fehér szöveggel + egy 45°-kal
+  elforgatott kis négyzet-sarok ("nyílhegy") a buborék TETEJÉN, ugyanolyan háttérszínnel
+  (klasszikus CSS "speech bubble" trükk, NEM SVG/ikon).
+* ÚJ `pointerAlign?: 'left' | 'center' | 'right'` prop -- a nyílhegy vízszintes igazítása,
+  hogy a hívó fél pontosan a HIVATKOZOTT elem (pl. a `TextareaField` jobb felső sarkában ülő
+  mikrofon gomb, vagy egy jobbra igazított "AI" gomb) alá/fölé tudja igazítani.
+  `"left"` az alapértelmezett.
+* **SZÁNDÉKOSAN a dokumentum-folyamban (NEM `position: absolute`/portál)** -- a hívó fél a
+  `HintCallout`-ot KÖZVETLENÜL a hivatkozott elem UTÁN helyezi el a JSX-ben, a nyílhegy pedig
+  felfelé mutat rá. Ez garantáltan jól működik bármilyen képernyőméreten (a doboz a szülő
+  szélességéhez igazodik, `w-full` mobilon, `sm:w-fit sm:max-w-sm` nagyobb kijelzőn), nincs
+  overlay-/z-index-/scroll-kezelési szélső eset.
+* Az összes 15 hívási hely (11 `Step*.tsx` banner + 4 kiemelt AI-funkció tipp: VIN-szkenner
+  bannerbe olvasztva, `equipment-ai-dictation`, `service-history-ai-scan`,
+  `final-assessment-ai-summary`, `voice-mic` a `FormControls.tsx` `TextareaField`-jében)
+  frissítve -- a `variant` prop eltávolítva minden hívásból, a mikrofon- (jobb felső sarok)
+  és az AI-összefoglaló-gomb (jobbra igazított) tippjei `pointerAlign="right"`-ra állítva, a
+  többi az alapértelmezett `"left"`-en maradt. Az `id`-k (tehát a MÁR bezárt tippek állapota)
+  VÁLTOZATLANOK -- ez tisztán vizuális módosítás, nincs adat-/state-migráció.
+
+**Ellenőrzés:** `tsc --noEmit` szinkron, egyetlen bash-hívásban a teljes projektre -- 0 hiba.

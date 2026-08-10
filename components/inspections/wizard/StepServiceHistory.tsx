@@ -426,7 +426,7 @@ export function StepServiceHistory({ value, onChange, onBack, onNext, nextLabel 
             A fenti fotókból kiolvassa a szerviz-bejegyzéseket (dátum, km óra állás, típus) az idővonalba.
           </span>
         </div>
-        <HintCallout id="service-history-ai-scan" variant="inline">
+        <HintCallout id="service-history-ai-scan">
           Csak a MÉG fel nem dolgozott fotókat elemzi -- ha később újabb képet töltesz fel, ugyanezzel a
           gombbal indíthatod el rá is a felismerést.
         </HintCallout>

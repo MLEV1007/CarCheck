@@ -442,7 +442,7 @@ function EquipmentAiAssistant({
           <span className="text-[12px] text-linear-ink-subtle">Ez néhány másodpercig tarthat…</span>
         </div>
       )}
-      <HintCallout id="equipment-ai-dictation" variant="inline" className="mt-3">
+      <HintCallout id="equipment-ai-dictation" className="mt-3">
         Egyetlen mondatban is diktálhatod, mi hibás vagy mi működik -- a mikrofon kikapcsolásakor az AI
         automatikusan beállítja a megfelelő kapcsolókat, kézi "Feldolgozás" gomb nélkül.
       </HintCallout>

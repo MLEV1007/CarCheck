@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Lightbulb, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useOnboardingHint } from '@/components/onboarding/OnboardingHintProvider';
 
@@ -14,80 +14,76 @@ interface HintCalloutProps {
   title?: string;
   children: ReactNode;
   /**
-   * `"banner"` (alapértelmezett) -- teljes szélességű, kiemelt kártya a lépés tetején,
-   * a lépés CÉLJÁT magyarázza el. `"inline"` -- kompakt, egy adott vezérlő (pl. AI-gomb,
-   * mikrofon) MELLÉ/ALÁ szánt, kisebb súlyú tipp.
+   * A nyílhegy vízszintes igazítása a buborék TETEJÉN -- azt jelöli, melyik (a hívó fél
+   * által KÖZVETLENÜL FÖLÉ renderelt) elemre vonatkozik a tipp: `"left"` (alapértelmezett)
+   * a bal szélhez igazítja (pl. egy balra igazított cím/gomb fölött), `"right"` a jobb
+   * szélhez (pl. a `TextareaField` jobb felső sarkában ülő mikrofon gomb fölött),
+   * `"center"` középre. A hívó fél felelőssége, hogy a `HintCallout`-ot KÖZVETLENÜL a
+   * hivatkozott elem UTÁN, a dokumentum-folyamban (nem absztrakt overlay-ként)
+   * helyezze el -- lásd a komponens JSDoc-ját lent, miért ez a megbízható mobil-megoldás.
    */
-  variant?: 'banner' | 'inline';
+  pointerAlign?: 'left' | 'center' | 'right';
   className?: string;
 }
 
 /**
- * Onboarding "Tipp" kártya -- dizájn-elve MEGEGYEZIK a wizard meglévő kártyanyelvével
- * (`rounded-lg`/`rounded-md`, `border-linear-hairline`, `bg-linear-surface-*`), csak egy
- * halvány lila (`linear-primary`) tónussal és egy `Lightbulb` ikonnal különül el a
- * ténylegesen adatot rögzítő kártyáktól -- SZÁNDÉKOSAN NEM `Sparkles`/villámikon, mert a
- * projekt korábban (`StepCarInfo.tsx`/`StepEquipment.tsx` kommentjei) TUDATOSAN eltávolította
- * az "AI tech-demó" hatású ikonográfiát a tényleges AI-funkciók gombjairól -- ez a
- * `Lightbulb` itt egy más szemantikájú elem (UI-útmutatás, nem az AI-funkció márkajelzése),
- * ezért nem ütközik ezzel az elvvel.
+ * Onboarding "Tipp" buborék -- coachmark-stílus: egy kitöltött, lekerekített dobozka +
+ * egy kis háromszög-nyílhegy a tetején, ami arra az elemre mutat, ami KÖZVETLENÜL fölötte
+ * áll a JSX-ben (2026-08-10, felhasználói kérés: "kiemeli azt az adott funkciót... egy
+ * nyíl mutatja, hogy arra vonatkozik a tipp", "mintha egy modern app lenne").
  *
- * Első látogatáskor jelenik meg, a `×` gombbal ÖRÖKRE bezárható (lásd
- * `OnboardingHintProvider.tsx`/`hintStorage.ts`) -- ha a felhasználó már bezárta, a
- * komponens `null`-t rendel, UGYANAZ a "return null, ha nincs releváns tartalom" minta,
- * mint a publikus riport kártyáinál (`components/report/*.tsx`).
+ * **Miért a dokumentum-folyamban (NEM `position: absolute`/portál-alapú lebegő tooltip):**
+ * egy klasszikus, abszolút pozicionált popover (pl. a felhasználó által hivatkozott
+ * `@ark-ui/react` `Popover` + `Portal`) helyes elhelyezése a célelemhez képest (fent/lent/
+ * balra/jobbra, ütközés-észleléssel a képernyő szélén) mobilon, sok különböző, görgethető
+ * form-mezőn/gombon -- ahogy ez a wizard mind a 11 lépésén, változó elrendezésekben él --
+ * jelentős extra komplexitást és törékenységet (viewport-túlcsordulás, `z-index`-harc,
+ * scroll-követés) hozna be. Mivel a tippnek ITT NEM kell a célelem FÖLÉ/ELÉ úsznia --
+ * elég, ha közvetlenül ALATTA jelenik meg, nyílheggyel felfelé --, egyszerű, normál
+ * `flow`-beli blokk-elemként FIX, MEGBÍZHATÓ pozíciót ad, portál/overlay-kezelés,
+ * abszolút-pozicionálási szélső esetek nélkül, és garantáltan jól néz ki bármilyen
+ * képernyőméreten (a doboz egyszerűen a szülő szélességéhez igazodik).
+ *
+ * **Miért NEM `Lightbulb`/kör-ikon, mint korábban:** a tömör (nem halványított) `linear-
+ * primary` háttér + fehér szöveg önmagában elég kontrasztos/"kiemelt" ahhoz, hogy modern
+ * app-os coachmark-hatást keltsen, egy plusz ikon-jelvény itt már túlzsúfolt lenne egy
+ * ilyen kompakt buborékban.
+ *
+ * Első látogatáskor jelenik meg -- automatikusan, KATTINTÁS NÉLKÜL (nem `Popover.Trigger`-
+ * hez kötött, mindig renderelődik, amíg `id` nincs bezárva) -- a `×` gombbal ÖRÖKRE
+ * bezárható (lásd `OnboardingHintProvider.tsx`/`hintStorage.ts`).
  */
-export function HintCallout({ id, title, children, variant = 'banner', className }: HintCalloutProps) {
+export function HintCallout({ id, title, children, pointerAlign = 'left', className }: HintCalloutProps) {
   const { visible, dismiss } = useOnboardingHint(id);
   if (!visible) return null;
 
-  if (variant === 'inline') {
-    return (
-      <div
+  return (
+    <div className={cn('relative w-full pt-2 sm:w-fit sm:max-w-sm', className)}>
+      {/* Nyílhegy -- egy 45°-kal elforgatott négyzet sarka, ugyanolyan háttérszínnel, mint
+          a buborék, hogy folytonosnak tűnjön (klasszikus CSS "speech bubble" trükk). */}
+      <span
+        aria-hidden="true"
         className={cn(
-          'flex items-start gap-2 rounded-md border border-linear-hairline bg-linear-surface-2 px-3 py-2',
-          className
+          'absolute top-0.5 h-2.5 w-2.5 rotate-45 rounded-[2px] bg-linear-primary',
+          pointerAlign === 'left' && 'left-4',
+          pointerAlign === 'center' && 'left-1/2 -translate-x-1/2',
+          pointerAlign === 'right' && 'right-4'
         )}
-      >
-        <Lightbulb className="mt-0.5 h-3.5 w-3.5 shrink-0 text-linear-primary" />
-        <p className="flex-1 text-[12px] leading-relaxed text-linear-ink-subtle">
-          {title && <span className="font-medium text-linear-ink">{title}: </span>}
-          {children}
-        </p>
+      />
+      <div className="relative flex items-start gap-2 rounded-xl bg-linear-primary px-3.5 py-2.5 shadow-lg shadow-black/25">
+        <div className="min-w-0 flex-1">
+          {title && <p className="text-[12.5px] font-semibold leading-snug text-white">{title}</p>}
+          <p className={cn('text-[12.5px] leading-snug text-white/90', title && 'mt-0.5')}>{children}</p>
+        </div>
         <button
           type="button"
           onClick={dismiss}
           aria-label="Tipp bezárása"
-          className="shrink-0 rounded p-0.5 text-linear-ink-subtle transition-colors hover:bg-linear-surface-3 hover:text-linear-ink"
+          className="-mr-1 -mt-0.5 shrink-0 rounded p-1 text-white/70 transition-colors hover:bg-white/10 hover:text-white"
         >
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
-    );
-  }
-
-  return (
-    <div
-      className={cn(
-        'relative flex items-start gap-3 rounded-lg border border-linear-primary/25 bg-linear-primary/[0.06] p-4',
-        className
-      )}
-    >
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-linear-primary/15 text-linear-primary">
-        <Lightbulb className="h-4 w-4" />
-      </div>
-      <div className="min-w-0 flex-1 pr-6">
-        {title && <p className="text-[13px] font-semibold text-linear-ink">{title}</p>}
-        <p className={cn('text-[12.5px] leading-relaxed text-linear-ink-subtle', title && 'mt-0.5')}>{children}</p>
-      </div>
-      <button
-        type="button"
-        onClick={dismiss}
-        aria-label="Tipp bezárása"
-        className="absolute right-3 top-3 shrink-0 rounded-md p-1 text-linear-ink-subtle transition-colors hover:bg-linear-surface-2 hover:text-linear-ink"
-      >
-        <X className="h-3.5 w-3.5" />
-      </button>
     </div>
   );
 }

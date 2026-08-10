@@ -223,7 +223,7 @@ export function TextareaField({ label, hint, id, className, value, onChange, onD
           gyakorlatban. `isSpeechInputSupported()`-fel védjük, hogy ne jelenjen meg olyan
           böngészőben (pl. Firefox), ahol a mikrofon gomb maga is rejtve marad. */}
       {isSpeechInputSupported() && (
-        <HintCallout id="voice-mic" variant="inline" className="mt-1.5">
+        <HintCallout id="voice-mic" pointerAlign="right" className="mt-1">
           A mikrofon ikonra kattintva bediktálhatod a szöveget -- kikapcsoláskor az AI automatikusan nyelvtanilag is kisimítja.
         </HintCallout>
       )}
