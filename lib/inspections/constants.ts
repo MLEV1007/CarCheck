@@ -3,6 +3,7 @@ import type {
   EquipmentCategory,
   FeatureStatus,
   FinalAssessmentRecommendation,
+  FuelType,
   PaintPointState,
   PaintStatus,
   ReportThresholds,
@@ -492,6 +493,19 @@ export const DEFAULT_REPORT_THRESHOLDS: ReportThresholds = {
   tireAgeWarningYears: TIRE_AGE_WARNING_YEARS,
   tireTreadWarningMm: DEFAULT_TIRE_TREAD_WARNING_MM,
 };
+
+/** Üzemanyag típusa (2026-08-10, "Autó alapadatok kiegészítése -- Üzemanyag típusa" lépés)
+ * -- Segmented Control a "Autó adatok" lépésen (`StepCarInfo.tsx`), ugyanaz a minta, mint
+ * a `RIM_TYPES`/`RIM_TYPE_LABEL`-nél a Gumiabroncsok lépésen. Zárt, 3-elemű választás
+ * (lásd `CarInfoState.fuelType` JSDoc-ját), NEM szabad szöveges, hogy a riport/AI-prompt
+ * mindig pontosan ebből a 3 értékből dolgozhasson. */
+export const FUEL_TYPE_LABEL: Record<FuelType, string> = {
+  benzin: 'Benzin',
+  dizel: 'Dízel',
+  elektromos: 'Elektromos',
+};
+
+export const FUEL_TYPES: FuelType[] = ['benzin', 'dizel', 'elektromos'];
 
 /** Felni típusa (PROJEKT_INSTRUKCIOK.md, "Gumiabroncs & Felni modul bővítése" lépés, A
  * pont) -- Segmented Control / Toggle a Gumiabroncsok lépés tetején. */

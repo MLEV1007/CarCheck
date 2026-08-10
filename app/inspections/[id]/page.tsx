@@ -24,6 +24,7 @@ import type {
   FeatureStatus,
   FinalAssessmentRecommendation,
   FinalAssessmentState,
+  FuelType,
   GeneralPhotoState,
   PaintPointState,
   ReportThresholds,
@@ -34,6 +35,16 @@ import type {
   TiresState,
 } from '@/lib/inspections/types';
 import { EMPTY_CLIENT_INFO, EMPTY_TIRE_GENERAL_INFO, EMPTY_TIRES } from '@/lib/inspections/types';
+import { FUEL_TYPES } from '@/lib/inspections/constants';
+
+/** Üzemanyag típusa (2026-08-10) -- DB -> wizard state konverzió típus-őre, ugyanaz az
+ * elv, mint a `toInitialDamages()` `DAMAGE_TYPES.includes(...)` ellenőrzésénél: egy
+ * ismeretlen/érvénytelen tárolt érték (elméletileg nem fordulhat elő a DB CHECK
+ * constraint miatt, de defenzíven) üres string ('') -re esik vissza, SOSE kerül TS-en
+ * kívüli érték a wizard state-be. */
+function isFuelType(value: string | null): value is FuelType {
+  return value !== null && (FUEL_TYPES as string[]).includes(value);
+}
 
 /** DB (JSONB) -> wizard state konverzió a 3 új szakértői modulhoz (PROJEKT_INSTRUKCIOK.md,
  * "3 új szakértői modul" lépés). Külön, oldal-szintű helperek, mert csak itt (piszkozat
@@ -285,7 +296,7 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
   const { data: inspection } = await supabase
     .from('inspections')
     .select(
-      'id, car_brand, car_model, year, vin, license_plate, license_plate_country, odometer, engine_type, power_kw, gross_weight_kg, status, public_token, general_photos, service_history, diagnostics, equipment, tires, damages, final_assessment, created_at, inspector_name, client_name, client_phone, client_email, show_inspector_on_pdf, show_client_on_pdf'
+      'id, car_brand, car_model, year, vin, license_plate, license_plate_country, odometer, engine_type, power_kw, gross_weight_kg, fuel_type, status, public_token, general_photos, service_history, diagnostics, equipment, tires, damages, final_assessment, created_at, inspector_name, client_name, client_phone, client_email, show_inspector_on_pdf, show_client_on_pdf'
     )
     .eq('id', id)
     .eq('user_id', user.id)
@@ -344,6 +355,7 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
       engineType: inspection.engine_type ?? '',
       powerKw: inspection.power_kw ? String(inspection.power_kw) : '',
       grossWeight: inspection.gross_weight_kg ? String(inspection.gross_weight_kg) : '',
+      fuelType: isFuelType(inspection.fuel_type) ? inspection.fuel_type : '',
     };
 
     // Szabadkézi (free-form) mérési pontok visszatöltése -- egyszerű 1:1 leképezés, nincs

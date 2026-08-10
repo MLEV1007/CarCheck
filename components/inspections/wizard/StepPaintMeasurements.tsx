@@ -1,8 +1,7 @@
 'use client';
 
-import { DEFAULT_REPORT_THRESHOLDS, getOverallPaintAverage, getPaintStatus } from '@/lib/inspections/constants';
+import { DEFAULT_REPORT_THRESHOLDS } from '@/lib/inspections/constants';
 import { PaintCanvas } from '@/components/inspections/PaintCanvas';
-import { PaintStatusBadge } from '@/components/inspections/wizard/PaintStatusBadge';
 import { WizardStepFooter } from '@/components/inspections/wizard/WizardBottomBar';
 import type { PaintPointState, ReportThresholds } from '@/lib/inspections/types';
 
@@ -24,8 +23,14 @@ interface StepPaintMeasurementsProps {
  * átalakítása" lépés). NINCS előre definiált karosszéria-elem -- a felhasználó a kép
  * TETSZŐLEGES pontjára kattinthat, hogy ott felvegyen egy mérési pontot (`PaintCanvas`,
  * `mode="edit"`). Egy meglévő, színes buborékra kattintva a pont módosítható vagy
- * törölhető. A lépés tetején egy kiemelt kártya mutatja a TELJES AUTÓ ÁTLAGÁT (az
- * összes felvett pont egyszerű matematikai átlaga) és a felvett pontok számát.
+ * törölhető.
+ *
+ * **Nincs "Teljes autó átlaga" kártya ezen a lépésen** (2026-08-10, felhasználói kérés
+ * -- "7. lépésben az átlagot vedd ki. Erre nincs szükség") -- a korábban itt megjelenő
+ * kiemelt összefoglaló kártyát eltávolítottuk. Az átlag SZÁMÍTÁSA (`getOverallPaintAverage`)
+ * és a hozzá tartozó `getPaintStatus()` továbbra is megmarad/használt más helyeken
+ * (`StepSummary.tsx`, `InspectionDetailView.tsx`, publikus riport), csak EZEN a
+ * wizard-lépésen nem jelenítjük meg.
  */
 export function StepPaintMeasurements({
   value,
@@ -35,9 +40,6 @@ export function StepPaintMeasurements({
   nextLabel,
   thresholds = DEFAULT_REPORT_THRESHOLDS,
 }: StepPaintMeasurementsProps) {
-  const overallAverage = getOverallPaintAverage(value);
-  const overallStatus = overallAverage !== null ? getPaintStatus(overallAverage, thresholds) : null;
-
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -49,21 +51,6 @@ export function StepPaintMeasurements({
           (Gyári: 0–{thresholds.paintGyariMaxMicron} µm, Újrafújt: {thresholds.paintGyariMaxMicron + 1}–
           {thresholds.paintUjrafujtMaxMicron} µm, Gittelt: {thresholds.paintUjrafujtMaxMicron}+ µm).
         </p>
-      </div>
-
-      {/* Kiemelt összefoglaló kártya -- TELJES AUTÓ ÁTLAGA. */}
-      <div className="flex flex-col gap-3 rounded-lg border border-linear-hairline-strong bg-linear-surface-2 p-5 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-[12px] font-semibold uppercase tracking-[0.5px] text-linear-ink-subtle">
-            Teljes autó átlaga
-          </p>
-          <p className="mt-1 text-[28px] font-semibold tabular-nums text-linear-ink">
-            {overallAverage !== null ? overallAverage : '—'}
-            {overallAverage !== null && <span className="ml-1 text-[16px] font-normal text-linear-ink-subtle">µm</span>}
-          </p>
-          <p className="mt-0.5 text-[12px] text-linear-ink-subtle">{value.length} pont mérve</p>
-        </div>
-        {overallStatus && <PaintStatusBadge status={overallStatus} />}
       </div>
 
       <PaintCanvas points={value} mode="edit" onChange={onChange} theme="dark" thresholds={thresholds} />

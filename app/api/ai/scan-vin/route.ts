@@ -19,9 +19,10 @@ import { hasInspectionClaimedAiCredit, claimInspectionAiCredit } from '@/lib/ins
  * fotót Base64 kódolással küldi be ez a route, ami a Gemini Flash Vision modellel egyetlen
  * hívásban kinyeri az alvázszámot -- ÉS, ha a kép egy forgalmi engedély, a hozzá tartozó
  * alap autó-adatokat (rendszám, gyártmány, típus, első forgalombahelyezés éve, valamint
- * 2026-08-09 óta a motor típusa/üzemanyag, a teljesítmény kW-ban és a megengedett
- * legnagyobb össztömeg kg-ban -- lásd `buildSystemInstruction()` "P.1"/"P.2"/"P.3"/"F.1"/
- * "F.2" pontjait) is, az okmány nyelvétől függetlenül.
+ * 2026-08-09 óta a motor típusa/üzemanyag SZABAD szöveges leírása, a teljesítmény kW-ban
+ * és a megengedett legnagyobb össztömeg kg-ban, 2026-08-10 óta pedig az üzemanyag típusa
+ * ZÁRT enumként ("benzin"/"dizel"/"elektromos") -- lásd `buildSystemInstruction()`
+ * "P.1"/"P.2"/"P.3"/"F.1"/"F.2" pontjait) is, az okmány nyelvétől függetlenül.
  *
  * **Modellválasztás + fallback-lánc:** ugyanaz a minta, mint a `parse-equipment` route-nál
  * (lásd ott a részletes JSDoc-ot) -- elsődleges modell `gemini-2.0-flash`, statikus fallback
@@ -73,6 +74,11 @@ type ScanVinConfidence = (typeof CONFIDENCE_VALUES)[number];
 const DOCUMENT_TYPE_VALUES = ['vin_plate', 'registration_certificate', 'other'] as const;
 type ScanVinDocumentType = (typeof DOCUMENT_TYPE_VALUES)[number];
 
+/** Üzemanyag típusa (2026-08-10) -- ZÁRT, 3-elemű halmaz, 1:1 megegyezik a kliens-oldali
+ * `FuelType`/`FUEL_TYPES`-szal (`lib/inspections/types.ts`/`constants.ts`) és a
+ * `public.inspections.fuel_type` DB oszlop CHECK constraint-jével. */
+const FUEL_TYPE_VALUES = ['benzin', 'dizel', 'elektromos'] as const;
+
 function isConfidence(value: unknown): value is ScanVinConfidence {
   return typeof value === 'string' && (CONFIDENCE_VALUES as readonly string[]).includes(value);
 }
@@ -109,6 +115,11 @@ interface ScanVinExtractedDetails {
   /** Megengedett legnagyobb össztömeg kg-ban, NYERS szöveg -- ugyanaz az elv, mint a
    * `powerKw`-nál. Lásd "F.1"/"F.2". */
   grossWeight?: unknown;
+  /** Üzemanyag típusa (2026-08-10) -- a modellt a "benzin"/"dizel"/"elektromos" kulcsok
+   * EGYIKÉNEK visszaadására szorítjuk (lásd `buildSystemInstruction()` "P.3" pontját),
+   * a szerver `sanitizeExtractedDetails()`-ben MÉG EGYSZER (nem csak a promptra bízva)
+   * ellenőrizzük, hogy tényleg ez a 3 érték egyike-e. */
+  fuelType?: unknown;
 }
 
 interface ScanVinModelResponse {
@@ -128,6 +139,8 @@ interface ScanVinExtractedDetailsClean {
   powerKw?: string;
   /** Nyers számjegy-string (mértékegység nélkül) -- lásd `sanitizeExtractedDetails()`. */
   grossWeight?: string;
+  /** "benzin" | "dizel" | "elektromos" -- lásd `sanitizeExtractedDetails()`. */
+  fuelType?: string;
 }
 
 interface ScanVinData {
@@ -226,6 +239,17 @@ function sanitizeExtractedDetails(raw: unknown): ScanVinExtractedDetailsClean | 
     const digits = extractDigits(details.grossWeight);
     if (digits) clean.grossWeight = digits;
   }
+  // Üzemanyag típusa (2026-08-10) -- SZIGORÚ, szerver-oldali "MÉG EGYSZER" ellenőrzés,
+  // ugyanaz az elv, mint a `sanitizeVin()`-nél: a modell a rendszerutasítás ellenére is
+  // adhatna vissza mást (pl. "hibrid"-et vagy nagybetűs/eltérő alakot) -- ha az érték
+  // NEM pontosan a 3 megengedett kulcs egyike (kisbetűs, ékezet nélküli), a mezőt inkább
+  // kihagyjuk, mintsem hogy egy érvénytelen érték jusson el a kliensig/DB-ig.
+  if (typeof details.fuelType === 'string') {
+    const normalized = details.fuelType.trim().toLowerCase();
+    if ((FUEL_TYPE_VALUES as readonly string[]).includes(normalized)) {
+      clean.fuelType = normalized;
+    }
+  }
 
   return Object.keys(clean).length > 0 ? clean : undefined;
 }
@@ -290,6 +314,7 @@ HA A KÉP EGY FORGALMI ENGEDÉLY/GÉPJÁRMŰ-NYILVÁNTARTÁSI OKMÁNY (BÁRMELY 
 - "engineType": Motor típusa/üzemanyag rövid, tömör leírása. Ha az okmányon van külön "Motor típusa"/"Motorkód"/"Engine type"/"Engine code" nemzeti kiegészítő mező, ANNAK szó szerinti tartalmát add vissza. Ha ilyen nincs, magad állíts össze egy rövid leírást a "P.3" (üzemanyag) és a "P.1" (hengerűrtartalom) mezőkből, pl. "Dízel, 1968 cm³" vagy "Benzin, 1598 cm³" -- MINDIG magyarul add vissza az üzemanyag-típust (benzin/dízel/elektromos/hibrid/LPG/CNG), függetlenül az okmány nyelvén szereplő eredeti szótól.
 - "powerKw": Motor teljesítménye ("P.2" mező vagy ennek megfelelő) -- KIZÁRÓLAG a számjegyeket add vissza, mértékegység NÉLKÜL (pl. "110", NEM "110 kW"). Ha az okmányon több érték is szerepel (pl. "80/110" kW/LE párban), a kW értéket (a kisebbik szám, VAGY a "kW" felirattal jelölt szám) add vissza, SOHA a lóerő/LE/PS/HP értéket.
 - "grossWeight": Megengedett legnagyobb össztömeg ("F.2" mező, vagy ha az nincs az okmányon, "F.1" mező) -- KIZÁRÓLAG a számjegyeket add vissza, mértékegység NÉLKÜL (pl. "2150", NEM "2150 kg").
+- "fuelType": Üzemanyag típusa ("P.3" mező vagy ennek megfelelő) -- KIZÁRÓLAG az alábbi HÁROM kulcs egyikét add vissza, PONTOSAN ebben az írásmódban (kisbetűs, ékezet nélkül): "benzin", "dizel", "elektromos". Ha az okmányon szereplő üzemanyag NEM egyértelműen sorolható be ebbe a 3 kategóriába (pl. hibrid, LPG, CNG, vagy nem olvasható biztonsággal), HAGYD KI TELJESEN ezt a mezőt az "extractedDetails"-ből -- SOHA ne találj ki/erőltess rá egy közelítő értéket egy nem egyértelmű esetben.
 - "vin" mezőként ilyenkor az alvázszám mezőben ("E" mező vagy ennek megfelelő) szereplő értéket add vissza, a fenti ISO 3779 szabályok szerint tisztítva.
 
 A "confidence" mező a SAJÁT bizonyosságod a kinyert "vin" értékre vonatkozóan:
@@ -420,6 +445,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ScanVinSu
             engineType: { type: Type.STRING },
             powerKw: { type: Type.STRING },
             grossWeight: { type: Type.STRING },
+            fuelType: { type: Type.STRING, enum: [...FUEL_TYPE_VALUES] },
           },
           propertyOrdering: [
             'plateNumber',
@@ -429,6 +455,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ScanVinSu
             'engineType',
             'powerKw',
             'grossWeight',
+            'fuelType',
           ],
         },
       },

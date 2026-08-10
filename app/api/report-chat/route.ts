@@ -120,6 +120,7 @@ function buildReportContext(report: PublicReportData) {
       engine_type: inspection.engine_type,
       power_kw: inspection.power_kw,
       gross_weight_kg: inspection.gross_weight_kg,
+      fuel_type: inspection.fuel_type,
     },
     diagnostics: inspection.diagnostics,
     equipment: inspection.equipment,

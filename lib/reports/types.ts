@@ -2,6 +2,7 @@ import type {
   DamageType,
   FeatureStatus,
   FinalAssessmentRecommendation,
+  FuelType,
   RimType,
   ServiceHistoryStatus,
   TirePosition,
@@ -34,6 +35,11 @@ export interface PublicReportInspection {
   engine_type: string | null;
   power_kw: number | null;
   gross_weight_kg: number | null;
+  /** Üzemanyag típusa (2026-08-10, "Autó alapadatok kiegészítése -- Üzemanyag típusa" lépés)
+   * -- ZÁRT enum ("benzin"/"dizel"/"elektromos"/`null`), lásd `lib/inspections/types.ts`
+   * `CarInfoState.fuelType` JSDoc-ját. A megjelenítendő magyar felirat a
+   * `FUEL_TYPE_LABEL`-ből jön (`ReportHero.tsx`). */
+  fuel_type: FuelType | null;
   status: 'draft' | 'completed' | string;
   /** Általános autó fotók (elölről/hátulról/oldalról/beltér/műszerfal stb.) -- a
    * `get_public_report` RPC 2026-07-31-es kiegészítése óta tartalmazza. */

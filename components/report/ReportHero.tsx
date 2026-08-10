@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { formatKg, formatKm, formatKw } from '@/lib/format';
+import { FUEL_TYPE_LABEL } from '@/lib/inspections/constants';
 import { LicensePlateBadge } from '@/components/ui/LicensePlateBadge';
 import type { PublicReportInspection } from '@/lib/reports/types';
 
@@ -41,6 +42,7 @@ function buildSpecs(inspection: PublicReportInspection): SpecItem[] {
       value: typeof inspection.odometer === 'number' ? formatKm(inspection.odometer) : '—',
     },
     { label: 'Motor típusa', value: inspection.engine_type || '—' },
+    { label: 'Üzemanyag', value: inspection.fuel_type ? FUEL_TYPE_LABEL[inspection.fuel_type] : '—' },
     {
       label: 'Teljesítmény',
       value: typeof inspection.power_kw === 'number' ? formatKw(inspection.power_kw) : '—',

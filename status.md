@@ -2634,3 +2634,71 @@ módosítás egyetlen helyen (`kwToHp`) javítandó.
 **Ellenőrzés:** a migráció alkalmazva + `execute_sql`-lel visszaellenőrizve az éles Supabase
 projekten (`nsejmkcwvksbwxscvrvb`) -- a 3 oszlop és a frissített `get_public_report` létezik.
 `tsc --noEmit` szinkron, egyetlen bash-hívásban -- 0 hiba.
+
+---
+
+## 2026-08-10 -- Diagnosztika checkbox-felirat egyszerűsítés, Festékvastagság-mérés átlag-kártya eltávolítása, Üzemanyag típusa mező
+
+**Kérés (3 rész):**
+1. A wizard 4. lépésén ("Diagnosztikai hibakódok") az "OBD Tiszta" checkbox mellett CSAK ez a
+   szöveg jelenjen meg: "Nincs diagnosztikai hibakód".
+2. A wizard 7. lépéséről ("Festékvastagság-mérés") vegyük ki a "Teljes autó átlaga" kiemelt
+   összefoglaló kártyát -- nincs rá szükség ezen a lépésen.
+3. A forgalmiból az üzemanyag típusát is rögzíteni kell (Elektromos / Benzin / Dízel) --
+   adatbázis, AI-felismerés prompt ÉS riport is frissítve.
+
+**1) `components/inspections/wizard/StepDiagnostics.tsx`** -- a checkbox melletti felirat
+"Nincs diagnosztikai hibakód (OBD Tiszta)" -> "Nincs diagnosztikai hibakód". Nincs adatmodell-
+változás, a `noDtc` boolean mező és a mentési logika (InspectionWizard.tsx) változatlan.
+
+**2) `components/inspections/wizard/StepPaintMeasurements.tsx`** -- a lépés tetején lévő
+"Teljes autó átlaga" kártya (érték + pontszám + `PaintStatusBadge`) teljesen eltávolítva a
+JSX-ből, a hozzá tartozó `getOverallPaintAverage`/`getPaintStatus`/`PaintStatusBadge`
+importok/hívások törölve EBBŐL a fájlból. Az átlag-számítás maga (`getOverallPaintAverage()`
+a `lib/inspections/constants.ts`-ben) VÁLTOZATLAN és továbbra is használt máshol
+(`StepSummary.tsx`, `InspectionDetailView.tsx`, publikus riport) -- csak ezen a wizard-
+lépésen nem jelenik meg többé.
+
+**3) Üzemanyag típusa -- ZÁRT, 3-elemű választás (nem szabad szöveges, ellentétben a meglévő
+`engineType`-tal):**
+* `lib/inspections/types.ts` -- új `FuelType = 'benzin' | 'dizel' | 'elektromos'` típus,
+  `CarInfoState.fuelType: FuelType | ''` + `EMPTY_CAR_INFO.fuelType = ''`.
+* `lib/inspections/constants.ts` -- `FUEL_TYPE_LABEL` (magyar felirat) + `FUEL_TYPES` (sorrend),
+  ugyanaz a minta, mint a `RIM_TYPE_LABEL`/`RIM_TYPES`-nél.
+* **Adatbázis** (`supabase/migrations/20260810120000_car_info_fuel_type.sql`, alkalmazva a
+  Supabase MCP `apply_migration`-nel, ELLENŐRIZVE `execute_sql`-lel az éles projekten
+  `nsejmkcwvksbwxscvrvb`): `inspections.fuel_type text` OSZLOP + CHECK constraint
+  (`fuel_type is null or fuel_type in ('benzin','dizel','elektromos')`) -- opcionális, nincs
+  új RLS policy szükséges. `get_public_report` RPC frissítve -- `fuel_type` bekerült a
+  visszaadott `inspection` jsonb-be (`gross_weight_kg` UTÁN).
+* `components/inspections/wizard/StepCarInfo.tsx` -- ÚJ "Üzemanyag" Segmented Control (3 gomb,
+  ugyanaz a UI-minta, mint a `StepTires.tsx` "Felni típusa" választójánál) a "Motor típusa" és
+  "Teljesítmény (kW)" mezők között. AI-szkenner: `matchFuelType()` helper (a `matchCatalogBrand`
+  mintájára) a modell válaszát MÉG EGYSZER, kliens-oldalon is ellenőrzi a zárt `FUEL_TYPES`
+  halmaz ellen, mielőtt beírná a mezőbe.
+* `app/api/ai/scan-vin/route.ts` -- `extractedDetails.fuelType` ÚJ mező, `responseSchema`
+  `enum: ['benzin','dizel','elektromos']`-szal szorítva; `buildSystemInstruction()` kiegészítve
+  a "P.3" mező feldolgozásával -- a modellt KIZÁRÓLAG a 3 megengedett kulcs egyikének (vagy a
+  mező teljes kihagyásának, ha nem egyértelmű -- pl. hibrid/LPG/CNG) visszaadására szorítjuk;
+  `sanitizeExtractedDetails()`-ben szerver-oldali "MÉG EGYSZER" validáció (kisbetűsítés +
+  `FUEL_TYPE_VALUES.includes()`) -- ha a modell mégis eltérő/érvénytelen értéket adna vissza,
+  a mező inkább kimarad, mintsem érvénytelen adat jusson a kliensig/DB-ig.
+* `components/inspections/wizard/InspectionWizard.tsx` -- `handleSubmit` UPSERT payload
+  kiegészítve `fuel_type: carInfo.fuelType || null`-lal.
+* `app/inspections/[id]/page.tsx` -- a piszkozat-select lista + `initialCarInfo` kiegészítve
+  (`isFuelType()` type guard a defenzív visszatöltéshez).
+* `components/inspections/detail/InspectionDetailView.tsx` -- `DetailInspection` interfész +
+  a read-only adatlap `<dl>` blokkja kiegészítve ("Üzemanyag" mező, `FUEL_TYPE_LABEL`-ből).
+* `lib/reports/types.ts` (`PublicReportInspection.fuel_type`) + `components/report/ReportHero.tsx`
+  (`buildSpecs()`) -- a publikus riport BMW hero-sávjában a "Motor típusa" spec UTÁN jelenik meg.
+* `components/inspections/wizard/StepSummary.tsx` -- a wizard "Összegzés & Publikálás" kártyája
+  is megkapta az Üzemanyag mezőt (konzisztencia a publikus riporttal).
+* `components/inspections/wizard/StepFinalAssessment.tsx` (`buildInspectionSnapshot`) +
+  `app/api/report-chat/route.ts` (`buildReportContext`) -- mindkét meglévő AI-funkció kontextusa
+  kiegészítve az üzemanyag-adattal.
+
+**Ellenőrzés:** a migráció alkalmazva + `execute_sql`-lel visszaellenőrizve az éles Supabase
+projekten (`fuel_type` oszlop létezik, `text` típus). `tsc --noEmit` szinkron, egyetlen
+bash-hívásban -- 0 hiba. `next build` elindítva, de a sandbox parancs-időkorlátja (~180 mp)
+miatt nem futott le a végéig -- a `tsc` már lefedi a típus-helyességet, éles Vercel-deploy
+előtt érdemes egy teljes `npm run build`-et is lefuttatni.

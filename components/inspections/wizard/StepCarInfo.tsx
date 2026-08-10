@@ -19,10 +19,10 @@ import {
   sanitizeYear,
 } from '@/lib/inspections/validation';
 import { formatKmInput, kwToHp } from '@/lib/format';
-import { LICENSE_PLATE_COUNTRIES } from '@/lib/inspections/constants';
+import { FUEL_TYPE_LABEL, FUEL_TYPES, LICENSE_PLATE_COUNTRIES } from '@/lib/inspections/constants';
 import { useInsufficientCredits } from '@/components/credits/InsufficientCreditsProvider';
 import { useInspectionId } from '@/components/inspections/wizard/InspectionIdContext';
-import type { CarInfoState } from '@/lib/inspections/types';
+import type { CarInfoState, FuelType } from '@/lib/inspections/types';
 
 const AI_SCAN_FAILURE_MESSAGE = 'Nem sikerült az AI-alapú beolvasás. Próbáld újra, vagy gépeld be manuálisan!';
 
@@ -52,6 +52,10 @@ interface ScanVinApiResponse {
       /** Nyers számjegy-string (kg, mértékegység nélkül) -- lásd `route.ts`
        * `sanitizeExtractedDetails()`. */
       grossWeight?: string;
+      /** Üzemanyag típusa (2026-08-10) -- a modell a "benzin"/"dizel"/"elektromos"
+       * kulcsok egyikét adja vissza (lásd `route.ts` `buildSystemInstruction()` "P.3"
+       * pontját), a kliens `matchFuelType()`-tel MÉG EGYSZER validálja. */
+      fuelType?: string;
     };
   };
   error?: string;
@@ -76,6 +80,17 @@ function matchCatalogBrand(rawMake: string | undefined): string | null {
   const trimmed = rawMake?.trim();
   if (!trimmed) return null;
   return Object.keys(CAR_CATALOG).find((brand) => brand.localeCompare(trimmed, 'hu', { sensitivity: 'base' }) === 0) ?? null;
+}
+
+/** Az AI által visszaadott üzemanyag-szöveget a zárt `FUEL_TYPES` egyikére próbálja
+ * illeszteni -- MÉG EGYSZER, kliens-oldalon is (nem bízzuk kizárólag a szerver/prompt
+ * pontos betartására), ugyanaz az elv, mint a `matchCatalogBrand`-nél. `null`, ha nincs
+ * egyértelmű találat (pl. hibrid/LPG/CNG, vagy a modell mégis szabad szöveget adott
+ * vissza) -- ekkor a mező üresen marad, a vizsgáló kézzel választ. */
+function matchFuelType(raw: string | undefined): FuelType | null {
+  const trimmed = raw?.trim().toLowerCase();
+  if (!trimmed) return null;
+  return FUEL_TYPES.find((fuelType) => fuelType === trimmed) ?? null;
 }
 
 interface StepCarInfoProps {
@@ -305,6 +320,15 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
         }
       }
 
+      if (details?.fuelType) {
+        const matchedFuelType = matchFuelType(details.fuelType);
+        if (matchedFuelType) {
+          next.fuelType = matchedFuelType;
+          newlyTouched.fuelType = true;
+          filledCount += 1;
+        }
+      }
+
       onChange(next);
       setTouched((prev) => ({ ...prev, ...newlyTouched }));
 
@@ -471,6 +495,27 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
           onChange={(e) => set('engineType', sanitizeEngineType(e.target.value))}
           onBlur={() => markTouched('engineType')}
         />
+
+        <div className="flex flex-col gap-1.5">
+          <span className="text-[13px] font-medium text-linear-ink-muted">Üzemanyag</span>
+          <div className="flex gap-2">
+            {FUEL_TYPES.map((fuelType) => (
+              <button
+                key={fuelType}
+                type="button"
+                onClick={() => set('fuelType', fuelType)}
+                className={
+                  'h-11 flex-1 rounded-md border px-2 text-[13px] font-medium transition-colors ' +
+                  (value.fuelType === fuelType
+                    ? 'border-linear-primary bg-linear-primary/10 text-linear-primary'
+                    : 'border-linear-hairline bg-linear-surface-1 text-linear-ink-muted hover:bg-linear-surface-2')
+                }
+              >
+                {FUEL_TYPE_LABEL[fuelType]}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <TextField
           label="Teljesítmény (kW)"

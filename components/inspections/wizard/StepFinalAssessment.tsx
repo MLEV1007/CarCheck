@@ -7,6 +7,7 @@ import { WizardStepFooter } from '@/components/inspections/wizard/WizardBottomBa
 import {
   FINAL_ASSESSMENT_RECOMMENDATION_DESCRIPTION,
   FINAL_ASSESSMENT_RECOMMENDATION_LABEL,
+  FUEL_TYPE_LABEL,
 } from '@/lib/inspections/constants';
 import { sanitizeCostAmount } from '@/lib/inspections/validation';
 import { formatHufInput } from '@/lib/format';
@@ -75,6 +76,7 @@ function buildInspectionSnapshot(context: AiSummaryContext) {
       evjarat: carInfo.year || null,
       kmOraAllas: carInfo.odometer || null,
       motorTipus: carInfo.engineType || null,
+      uzemanyag: carInfo.fuelType ? FUEL_TYPE_LABEL[carInfo.fuelType] : null,
       teljesitmenyKw: carInfo.powerKw || null,
       osszTomegKg: carInfo.grossWeight || null,
     },

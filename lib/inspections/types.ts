@@ -35,6 +35,14 @@ export interface CarInfoState {
   /** Megengedett legnagyobb össztömeg kg-ban a forgalmi F.2 (vagy F.1) mezőjéről --
    * ugyanaz a "nyers számjegy-string" minta, mint az `odometer`/`powerKw`-nál. */
   grossWeight: string;
+  /** Üzemanyag típusa (2026-08-10, felhasználói kérés -- "A forgalmiból kell az is, hogy
+   * milyen üzemanyagú az autó. Elektromos, benzin vagy dízel") a forgalmi engedély P.3
+   * mezőjéről -- ZÁRT, 3-elemű választás (`FuelType`/`FUEL_TYPES` a `constants.ts`-ben),
+   * NEM szabad szöveges mező (ellentétben az `engineType`-tal, ami a motor/üzemanyag
+   * SZABAD szöveges, tájékoztató jellegű leírása). Üres string, amíg a vizsgáló nem
+   * választ -- ugyanaz az elv, mint a `tireGeneralInfo.rimType`-nál. Az AI fotószkenner
+   * (`/api/ai/scan-vin`) is ide tölti be, ha a forgalmiról egyértelműen felismerhető. */
+  fuelType: FuelType | '';
 }
 
 export const EMPTY_CAR_INFO: CarInfoState = {
@@ -48,7 +56,13 @@ export const EMPTY_CAR_INFO: CarInfoState = {
   engineType: '',
   powerKw: '',
   grossWeight: '',
+  fuelType: '',
 };
+
+/** Üzemanyag típusa (2026-08-10) -- lásd `CarInfoState.fuelType` JSDoc-ját. Zárt,
+ * 3-elemű enum (nem szabad szöveges), a `FUEL_TYPE_LABEL`/`FUEL_TYPES`
+ * (`lib/inspections/constants.ts`) rendeli hozzá a magyar feliratot/sorrendet. */
+export type FuelType = 'benzin' | 'dizel' | 'elektromos';
 
 export type PaintStatus = 'gyari' | 'ujrafujt' | 'gittelt';
 

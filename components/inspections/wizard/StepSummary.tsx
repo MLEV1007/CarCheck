@@ -8,6 +8,7 @@ import {
   DEFAULT_REPORT_THRESHOLDS,
   FEATURE_STATUS_LABEL,
   FINAL_ASSESSMENT_RECOMMENDATION_LABEL,
+  FUEL_TYPE_LABEL,
   RIM_TYPE_LABEL,
   SERVICE_HISTORY_STATUS_LABEL,
   TIRE_BRAND_OTHER,
@@ -125,6 +126,7 @@ export function StepSummary({
           />
           <SummaryField label="Km óra állás" value={carInfo.odometer ? formatKm(carInfo.odometer) : '—'} />
           <SummaryField label="Motor típusa" value={carInfo.engineType || '—'} />
+          <SummaryField label="Üzemanyag" value={carInfo.fuelType ? FUEL_TYPE_LABEL[carInfo.fuelType] : '—'} />
           <SummaryField label="Teljesítmény" value={carInfo.powerKw ? formatKw(carInfo.powerKw) : '—'} />
           <SummaryField label="Össztömeg" value={carInfo.grossWeight ? formatKg(carInfo.grossWeight) : '—'} />
           <SummaryField label="Alvázszám (VIN)" value={carInfo.vin || '—'} mono fullWidth />

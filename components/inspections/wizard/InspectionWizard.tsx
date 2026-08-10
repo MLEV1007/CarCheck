@@ -631,6 +631,8 @@ export function InspectionWizard({
           engine_type: carInfo.engineType || null,
           power_kw: carInfo.powerKw ? Number(carInfo.powerKw) : null,
           gross_weight_kg: carInfo.grossWeight ? Number(carInfo.grossWeight) : null,
+          // Üzemanyag típusa (2026-08-10) -- lásd `CarInfoState.fuelType` JSDoc-ját.
+          fuel_type: carInfo.fuelType || null,
           general_photos: generalPhotoUrls,
           service_history: serviceHistoryPayload,
           diagnostics: diagnosticsPayload,

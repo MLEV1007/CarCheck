@@ -23,6 +23,7 @@ import {
   DEFAULT_REPORT_THRESHOLDS,
   FEATURE_STATUS_LABEL,
   FINAL_ASSESSMENT_RECOMMENDATION_LABEL,
+  FUEL_TYPE_LABEL,
   RIM_TYPE_LABEL,
   SERVICE_HISTORY_STATUS_LABEL,
   TIRE_BRAND_OTHER,
@@ -58,6 +59,7 @@ interface DetailInspection {
   engine_type: string | null;
   power_kw: number | null;
   gross_weight_kg: number | null;
+  fuel_type: string | null;
   public_token: string;
   created_at: string;
 }
@@ -288,6 +290,14 @@ export function InspectionDetailView({
               value={typeof inspection.odometer === 'number' ? formatKm(inspection.odometer) : '—'}
             />
             <DetailField label="Motor típusa" value={inspection.engine_type || '—'} />
+            <DetailField
+              label="Üzemanyag"
+              value={
+                inspection.fuel_type && inspection.fuel_type in FUEL_TYPE_LABEL
+                  ? FUEL_TYPE_LABEL[inspection.fuel_type as keyof typeof FUEL_TYPE_LABEL]
+                  : '—'
+              }
+            />
             <DetailField
               label="Teljesítmény"
               value={typeof inspection.power_kw === 'number' ? formatKw(inspection.power_kw) : '—'}

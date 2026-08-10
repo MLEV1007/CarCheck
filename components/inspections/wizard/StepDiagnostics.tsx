@@ -60,7 +60,7 @@ export function StepDiagnostics({ value, onChange, onBack, onNext, nextLabel }: 
           onChange={(e) => toggleNoDtc(e.target.checked)}
           className="mt-0.5 h-4 w-4 shrink-0 rounded border-linear-hairline-strong accent-linear-primary"
         />
-        <span className="text-[14px] font-medium text-linear-ink">Nincs diagnosztikai hibakód (OBD Tiszta)</span>
+        <span className="text-[14px] font-medium text-linear-ink">Nincs diagnosztikai hibakód</span>
       </label>
 
       {!value.noDtc && (
