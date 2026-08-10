@@ -98,7 +98,7 @@ export function StepTires({
 
       <HintCallout id="tires" title="Tipp: gyorsítsd a rögzítést">
         A „📋 Adatok másolása” gombbal az előző kerék mm/DOT értékét egy kattintással átveheted a
-        következőhöz -- csak az eltéréseket kell módosítanod.
+        következőhöz, csak az eltéréseket kell módosítanod.
       </HintCallout>
 
       <div className="grid grid-cols-1 gap-4 rounded-lg border border-linear-hairline bg-linear-surface-1 p-4 sm:grid-cols-2">

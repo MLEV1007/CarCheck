@@ -382,7 +382,7 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
       </div>
 
       <HintCallout id="car-info" title="Tipp: kezdd a fotós beolvasással">
-        Fényképezd le a forgalmi engedélyt vagy az alvázszám-matricát -- az AI automatikusan kitölti a
+        Fényképezd le a forgalmi engedélyt vagy az alvázszám-matricát, az AI automatikusan kitölti a
         rendszámot, márkát, típust és a legtöbb egyéb mezőt helyetted.
       </HintCallout>
 

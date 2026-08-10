@@ -2804,3 +2804,20 @@ kockázatmentesebb CSS-megoldáshoz képest.
   VÁLTOZATLANOK -- ez tisztán vizuális módosítás, nincs adat-/state-migráció.
 
 **Ellenőrzés:** `tsc --noEmit` szinkron, egyetlen bash-hívásban a teljes projektre -- 0 hiba.
+
+## 2026-08-10 (folyt.) -- Tipp-szövegekből a " -- " (dupla kötőjel) eltávolítva
+
+**Kérés:** a "Tipp" buborékok (lásd fent) LÁTHATÓ szövegezéséből ki kellett venni a
+projektben egyébként (kód-kommentekben) elterjedt " -- " gondolatjel-pótló írásjelet --
+KIZÁRÓLAG a felhasználónak megjelenő tipp-szövegekből, a kódkommentek (JSDoc-ok) NEM
+érintettek, mert a kérés a tipp SZÖVEGEZÉSÉRE vonatkozott.
+
+Mind a 15 hívási hely (11 `Step*.tsx` banner + 4 kiemelt AI-tipp) átfogalmazva -- a
+" -- " helyett vessző, kettőspont vagy új mondat (pont) a mondat szerkezetétől függően,
+tartalmilag VÁLTOZATLAN üzenettel. Érintett fájlok: `StepEquipment.tsx` (2 hely),
+`StepPaintMeasurements.tsx`, `StepServiceHistory.tsx` (2 hely), `FormControls.tsx`
+(mikrofon-tipp), `StepFinalAssessment.tsx` (2 hely), `StepDefects.tsx`,
+`StepGeneralPhotos.tsx`, `StepDamageMap.tsx`, `StepDiagnostics.tsx`, `StepTires.tsx`,
+`StepCarInfo.tsx`. (A `StepSummary.tsx` bannerje eleve nem tartalmazott " -- "-t.)
+
+**Ellenőrzés:** `tsc --noEmit` szinkron, egyetlen bash-hívásban a teljes projektre -- 0 hiba.

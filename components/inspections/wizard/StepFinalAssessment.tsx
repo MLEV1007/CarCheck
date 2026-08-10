@@ -210,7 +210,7 @@ export function StepFinalAssessment({
       </div>
 
       <HintCallout id="final-assessment" title="Tipp: ez a lépés teljesen opcionális">
-        Ha egy mezőt üresen hagysz, az adott szakasz egyszerűen nem jelenik meg az ügyfélriporton --
+        Ha egy mezőt üresen hagysz, az adott szakasz egyszerűen nem jelenik meg az ügyfélriporton,
         nem kell mindent kitöltened.
       </HintCallout>
 
@@ -311,7 +311,7 @@ export function StepFinalAssessment({
           </p>
         )}
         <HintCallout id="final-assessment-ai-summary" pointerAlign="right">
-          Az AI a vizsgálat eddigi adatai alapján ír egy rövid szakértői összefoglalót -- a beillesztett
+          Az AI a vizsgálat eddigi adatai alapján ír egy rövid szakértői összefoglalót. A beillesztett
           szöveget utána szabadon szerkesztheted.
         </HintCallout>
         <TextareaField

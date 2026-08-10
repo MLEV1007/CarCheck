@@ -326,7 +326,7 @@ export function StepServiceHistory({ value, onChange, onBack, onNext, nextLabel 
 
       <HintCallout id="service-history" title="Tipp: fotózd le a szervizkönyvet">
         Töltsd fel a szervizkönyv vagy a számlák fotóit, majd egy gombnyomással felismertetheted velük az
-        AI-t -- ezzel kihagyhatod az idővonal kézi begépelését.
+        AI-t, ezzel kihagyhatod az idővonal kézi begépelését.
       </HintCallout>
 
       {/* A) Általános státusz */}
@@ -427,7 +427,7 @@ export function StepServiceHistory({ value, onChange, onBack, onNext, nextLabel 
           </span>
         </div>
         <HintCallout id="service-history-ai-scan">
-          Csak a MÉG fel nem dolgozott fotókat elemzi -- ha később újabb képet töltesz fel, ugyanezzel a
+          Csak a MÉG fel nem dolgozott fotókat elemzi. Ha később újabb képet töltesz fel, ugyanezzel a
           gombbal indíthatod el rá is a felismerést.
         </HintCallout>
       </div>

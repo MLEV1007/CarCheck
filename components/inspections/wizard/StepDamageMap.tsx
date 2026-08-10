@@ -37,7 +37,7 @@ export function StepDamageMap({ value, onChange, onBack, onNext, nextLabel }: St
       </div>
 
       <HintCallout id="damage-map" title="Tipp: jelöld be a látható sérüléseket">
-        Kattints a képen pontosan arra a helyre, ahol a karcolást/horpadást találtad -- a meglévő
+        Kattints a képen pontosan arra a helyre, ahol a karcolást/horpadást találtad. A meglévő
         jelölőre kattintva bármikor módosíthatod vagy törölheted.
       </HintCallout>
 

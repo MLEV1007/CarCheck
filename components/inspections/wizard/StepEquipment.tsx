@@ -229,7 +229,7 @@ export function StepEquipment({ value, onChange, onBack, onNext, nextLabel }: St
       </div>
 
       <HintCallout id="equipment" title="Tipp: gyors tömeges kitöltés">
-        A legtöbb elem alapból "nincs az autóban" -- csak azt kell átállítanod, ami ténylegesen működik
+        A legtöbb elem alapból "nincs az autóban": csak azt kell átállítanod, ami ténylegesen működik
         vagy hibás. Hibás elemhez fűzhetsz megjegyzést és fotót is.
       </HintCallout>
 
@@ -443,7 +443,7 @@ function EquipmentAiAssistant({
         </div>
       )}
       <HintCallout id="equipment-ai-dictation" className="mt-3">
-        Egyetlen mondatban is diktálhatod, mi hibás vagy mi működik -- a mikrofon kikapcsolásakor az AI
+        Egyetlen mondatban is diktálhatod, mi hibás vagy mi működik: a mikrofon kikapcsolásakor az AI
         automatikusan beállítja a megfelelő kapcsolókat, kézi "Feldolgozás" gomb nélkül.
       </HintCallout>
     </div>

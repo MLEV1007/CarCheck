@@ -57,7 +57,7 @@ export function StepDefects({ value, onChange, onBack, onNext, nextLabel }: Step
       </div>
 
       <HintCallout id="defects" title="Tipp: diktálhatod is a hibaleírást">
-        A leírás mezőnél a mikrofon ikonnal bediktálhatod a hibát -- az AI automatikusan nyelvtanilag is
+        A leírás mezőnél a mikrofon ikonnal bediktálhatod a hibát, az AI automatikusan nyelvtanilag is
         kisimítja a szöveget.
       </HintCallout>
 

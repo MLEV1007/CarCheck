@@ -53,7 +53,7 @@ export function StepGeneralPhotos({ value, onChange, onBack, onNext, nextLabel }
       </div>
 
       <HintCallout id="general-photos" title="Tipp: mutasd meg az egészet">
-        Készíts képet elölről, hátulról, mindkét oldalról és a beltérről is -- ezek kerülnek az ügyfélnek
+        Készíts képet elölről, hátulról, mindkét oldalról és a beltérről is. Ezek kerülnek az ügyfélnek
         küldött riport fotógalériájába.
       </HintCallout>
 

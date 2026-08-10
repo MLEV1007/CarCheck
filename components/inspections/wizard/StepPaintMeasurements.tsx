@@ -56,7 +56,7 @@ export function StepPaintMeasurements({
 
       <HintCallout id="paint" title="Tipp: nem minden vizsgálathoz kell">
         Ha az adott vizsgálathoz (pl. vizsga előtti átvizsgálás) nincs szükség rétegvastagság-mérésre,
-        egyszerűen lépj tovább -- kitöltés nélkül ez a szakasz nem jelenik meg az ügyfélriporton.
+        egyszerűen lépj tovább: kitöltés nélkül ez a szakasz nem jelenik meg az ügyfélriporton.
       </HintCallout>
 
       <PaintCanvas points={value} mode="edit" onChange={onChange} theme="dark" thresholds={thresholds} />
