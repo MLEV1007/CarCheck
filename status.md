@@ -3021,3 +3021,39 @@ FÜGGETLEN az itt bevezetett app-szintű Resend API-hívástól (`lib/resend.ts`
 funkcióhoz a Resend Dashboardon). A `lib/resend.ts` `DEFAULT_FROM_EMAIL`-je ennek megfelelően
 `noreply@carpass.hu`-ra állítva (a `RESEND_ALERT_FROM_EMAIL` env változó továbbra is felülírja,
 ha valaha máshonnan kellene küldeni).
+
+---
+
+## 2026-08-11 -- Hibajavítás: az admin-riasztás email SOSEM ment ki
+
+**Tünet (Levi jelezte):** `manyilevente@gmail.com` fiókból sokszor megpróbálta betölteni a
+`/admin`-t, de nem érkezett riasztó email a `test@buildmysite.hu` címre.
+
+**Diagnózis (Supabase MCP `execute_sql`-lel, élő adaton):** az `admin_access_attempts`
+tábla megerősítette, hogy a naplózás/`after()`-lánc HELYESEN fut (9+ sor, mind a helyes
+`user_id`/email-lel) -- tehát a kódot a Vercel már a helyes verzióval szolgálja ki, a
+probléma NEM a deploy-ban van. VISZONT minden sor `alert_email_sent=false` volt.
+
+**A valódi ok -- egy logikai hiba a throttle-ban (`lib/adminAlerts.ts`):** az eredeti
+verzió a throttle-ellenőrzésnél MINDEN korábbi kísérletet figyelembe vett (sikertelent is),
+nem csak a ténylegesen sikeres küldéseket. Az ELSŐ kísérlet (19:25:38 UTC) email-küldése
+szinte biztosan a hiányzó/be nem állított `RESEND_API_KEY` miatt hasalt el
+(`MissingResendApiKeyError`, elnyelve/logolva, lásd `lib/resend.ts`) -- de mivel a
+throttle-logika ezt a SIKERTELEN kísérletet is "friss próbálkozásnak" számította, a
+KÖVETKEZŐ 60 percben MINDEN további kísérlet (a többi 8+ sor) csendben ki lett hagyva,
+akkor is, ha időközben megoldódott volna a kulcs-probléma.
+
+**Javítás:** a throttle-lekérdezés mostantól KIZÁRÓLAG a `alert_email_sent = true` sorokat
+nézi -- egy sikertelen kísérlet többé nem zárja el a következő 60 percet a
+újrapróbálkozás elől, csak egy TÉNYLEGESEN sikeres email-küldés utáni ismétlődő
+kísérleteket throttle-öli (ami az eredeti szándék volt).
+
+**Levinek továbbra is ellenőriznie/elvégeznie kell:** a `RESEND_API_KEY` tényleges
+beállítását a Vercel Environment Variables között (Production környezetre bepipálva) +
+redeploy -- ez a legvalószínűbb ok, amiért az első (és eddig egyetlen ténylegesen
+megkísérelt) email-küldés elhasalt. Vercel Dashboard -> Deployments -> (legutóbbi) ->
+Runtime Logs -> "[adminAlerts]" szűrővel megnézhető a pontos hibaüzenet, ami
+egyértelműen megmondja, hogy a kulcs hiányzik-e, vagy más okból hasalt el a Resend-hívás.
+
+**Ellenőrzés:** `tsc --noEmit` szinkron, egyetlen bash-hívásban a teljes projektre -- 0
+hiba.

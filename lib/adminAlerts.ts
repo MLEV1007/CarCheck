@@ -69,10 +69,20 @@ export async function notifyUnauthorizedAdminAccess(user: UnauthorizedAccessUser
     const now = new Date();
     const throttleSince = new Date(now.getTime() - ALERT_THROTTLE_MINUTES * 60 * 1000).toISOString();
 
+    // FONTOS (2026-08-11, hibajavítás -- lásd status.md): a throttle-lekérdezés
+    // KIZÁRÓLAG a TÉNYLEGESEN SIKERES küldéseket (`alert_email_sent = true`) veszi
+    // figyelembe -- NEM minden korábbi kísérletet. Az eredeti verzió bármelyik korábbi
+    // kísérletet (sikertelent is) throttle-nek számított, ami azt jelentette, hogy ha az
+    // ELSŐ email-küldés elhasalt (pl. hiányzó `RESEND_API_KEY`), a hiba kijavítása UTÁN is
+    // csendben 60 percig KIMARADT volna minden újrapróbálkozás -- élesben pontosan ez
+    // történt: manyilevente@gmail.com sokszor próbálkozott, mindegyik sor `alert_email_
+    // sent=false` lett, mert az ELSŐ (sikertelen) kísérlet lezárta a throttle-ablakot a
+    // többi elől is.
     const { data: recentAttempt, error: recentAttemptError } = await supabaseAdmin
       .from('admin_access_attempts')
       .select('id')
       .eq('user_id', user.id)
+      .eq('alert_email_sent', true)
       .gte('attempted_at', throttleSince)
       .limit(1)
       .maybeSingle();
