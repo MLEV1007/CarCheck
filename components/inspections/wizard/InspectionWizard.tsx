@@ -104,6 +104,12 @@ interface InspectionWizardProps {
    * mérés/Gumiabroncsok/Összegzés lépéseknek adja tovább. Ha nincs megadva,
    * `DEFAULT_REPORT_THRESHOLDS` a fallback (1:1 a korábbi hardkódolt viselkedéssel). */
   reportThresholds?: ReportThresholds;
+  /** Tutorial "Tipp" buborékok be/kikapcsolása (2026-08-10, Settings "Tutorial tippek
+   * megjelenítése" kapcsoló) -- lásd `OnboardingHintProvider.tsx` `enabled` propját.
+   * Alapértéke `true` (a kapcsoló bevezetése előtti, mindenkinek látszó viselkedés). Az
+   * `app/inspections/new/page.tsx`/`app/inspections/[id]/page.tsx` a bejelentkezett user
+   * `user_metadata.tutorial_hints_enabled` értékéből tölti elő. */
+  tutorialHintsEnabled?: boolean;
 }
 
 /**
@@ -138,6 +144,7 @@ export function InspectionWizard({
   initialFinalAssessment,
   initialClientInfo,
   reportThresholds = DEFAULT_REPORT_THRESHOLDS,
+  tutorialHintsEnabled = true,
 }: InspectionWizardProps = {}) {
   const router = useRouter();
 
@@ -803,7 +810,7 @@ export function InspectionWizard({
         lépés) -- lásd `OnboardingHintProvider.tsx` JSDoc-ját. A teljes wizard-fát körbeveszi,
         hogy a state lépésváltás közben (a komponens NEM mountolódik újra, csak a `step === N`
         feltétel vált) és a wizard teljes élettartama alatt megmaradjon. */}
-    <OnboardingHintProvider>
+    <OnboardingHintProvider enabled={tutorialHintsEnabled}>
     <div className="mx-auto flex max-w-3xl flex-col gap-5 px-4 py-8 pb-28 sm:px-6 sm:py-10 sm:pb-32">
       {/* Piszkozat-visszaállítás visszajelzés -- lásd a `restoredDraft`/`draftPersistence.ts`
           JSDoc-ját fent. Csak akkor jelenik meg, ha ténylegesen volt visszaolvasható,

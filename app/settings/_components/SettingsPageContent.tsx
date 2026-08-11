@@ -88,6 +88,12 @@ export async function SettingsPageContent({ initialTab, billingBanner, sessionId
   const initialDefaultLicenseCountry =
     (user.user_metadata?.default_license_country as string | undefined) || DEFAULT_LICENSE_PLATE_COUNTRY;
 
+  // Tutorial "Tipp" buborékok be/kikapcsolása (2026-08-10) -- lásd `DefaultPreferencesCard.tsx`
+  // JSDoc-ját. `!== false`, NEM `=== true`: egy régebbi, a funkció bevezetése ELŐTT regisztrált
+  // usernél a `user_metadata`-ban ez a kulcs egyáltalán nem létezik (`undefined`) -- ilyenkor a
+  // BEKAPCSOLT állapot a helyes alapértelmezés (a tippek eddig is mindig látszottak), nem a kikapcsolt.
+  const initialTutorialHintsEnabled = user.user_metadata?.tutorial_hints_enabled !== false;
+
   // Stripe Price ID-k -- SZERVER-oldalon olvasva (nincs NEXT_PUBLIC_ előtag, lásd
   // .env.local.example), a `BillingTab.tsx` ('use client') kliens-komponensnek prop-ként
   // adjuk tovább. `?? null` -- ha egy ár még nincs beállítva Vercelen, a hozzá tartozó
@@ -151,7 +157,10 @@ export async function SettingsPageContent({ initialTab, billingBanner, sessionId
               initialLogoUrl={profile?.logo_url ?? null}
               initialPrimaryColor={profile?.primary_color ?? '#1c69d4'}
             />
-            <DefaultPreferencesCard initialDefaultLicenseCountry={initialDefaultLicenseCountry} />
+            <DefaultPreferencesCard
+              initialDefaultLicenseCountry={initialDefaultLicenseCountry}
+              initialTutorialHintsEnabled={initialTutorialHintsEnabled}
+            />
             <ReportThresholdsCard userId={user.id} initialThresholds={initialThresholds} />
             <PasskeyCard />
             <DeleteAccountCard

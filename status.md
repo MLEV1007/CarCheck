@@ -2821,3 +2821,43 @@ tartalmilag VÁLTOZATLAN üzenettel. Érintett fájlok: `StepEquipment.tsx` (2 h
 `StepCarInfo.tsx`. (A `StepSummary.tsx` bannerje eleve nem tartalmazott " -- "-t.)
 
 **Ellenőrzés:** `tsc --noEmit` szinkron, egyetlen bash-hívásban a teljes projektre -- 0 hiba.
+
+## 2026-08-10 (folyt.) -- Tutorial "Tipp" buborékok be/kikapcsolása a Settings oldalon
+
+**Kérés:** a wizard "Tipp" buborékjai (lásd fent) legyenek be- és kikapcsolhatók egy
+kapcsolóval a Beállítások oldalon.
+
+**Tárolás -- Supabase AUTH `user_metadata` (NEM `profiles` tábla/DB-migráció):** ugyanaz a
+minta, mint a MÁR meglévő "Alapértelmezett rendszám felségjelzés" beállításnál
+(`DefaultPreferencesCard.tsx`) -- ez egy kis hatókörű, azonnal mentődő, felhasználónkénti
+preferencia, nem igényel RLS-t/séma-migrációt, konzisztens az eddigi mintával.
+
+* **`components/settings/DefaultPreferencesCard.tsx`** -- ÚJ `initialTutorialHintsEnabled`
+  prop + ÚJ, a rendszám-mezőtől FÜGGETLEN state/mentési ciklus (`tutorialHintsEnabled`,
+  `handleToggleTutorialHints`). Egy MÁSODIK blokk a kártyán belül (elválasztó vonallal), a
+  meglévő `TeamManagement.tsx`/`ToggleField` (`FormControls.tsx`) `role="switch"`
+  kapcsoló-mintáját követve, Stripe design tokenekkel. Kattintáskor AZONNAL ment
+  (`supabase.auth.updateUser({ data: { tutorial_hints_enabled } })`), optimista UI-
+  frissítéssel, hiba esetén visszaállítással.
+* **`app/settings/_components/SettingsPageContent.tsx`** -- `initialTutorialHintsEnabled =
+  user.user_metadata?.tutorial_hints_enabled !== false` (NEM `=== true`, hogy a kapcsoló
+  bevezetése ELŐTT regisztrált usereknél -- ahol ez a kulcs `undefined` -- a tippek
+  TOVÁBBRA IS bekapcsolt állapotban induljanak, az eddigi viselkedésnek megfelelően).
+* **`components/onboarding/OnboardingHintProvider.tsx`** -- ÚJ `enabled?: boolean` prop
+  (alapértéke `true`). `false` esetén az `isDismissed()` MINDIG `true`-t ad (minden tipp
+  rejtve), FÜGGETLENÜL az egyedi, `localStorage`-beli bezárás-állapottól -- a
+  `dismissedIds`-t NEM írja felül, tehát ha a user később újra bekapcsolja, a már
+  egyenként bezárt tippek nem térnek vissza, csak a még soha be nem zártak.
+* **`components/inspections/wizard/InspectionWizard.tsx`** -- ÚJ `tutorialHintsEnabled`
+  prop (alapértéke `true`), továbbadva az `OnboardingHintProvider`-nek.
+* **`app/inspections/new/page.tsx`** és **`app/inspections/[id]/page.tsx`** (piszkozat-
+  szerkesztő ág) -- a bejelentkezett user `user_metadata.tutorial_hints_enabled` értékéből
+  számolva (ugyanaz a `!== false` minta), átadva az `InspectionWizard`-nak. A befejezett
+  vizsgálat read-only nézete (`InspectionDetailView`) NEM érintett, mert az nem a wizardot
+  jeleníti meg.
+* **Élő szinkron NINCS beépítve:** ha a user egy MÁR NYITVA lévő wizard-fülben kapcsolja ki
+  a Beállításokban a tippeket egy MÁSIK fülön, a nyitva lévő wizard-fülben a tippek csak
+  frissítés/újranyitás után tűnnek el -- ez a szerver-oldali (Server Component) betöltési
+  minta velejárója, a jelenlegi kérésre elegendő, nem igényelt élő, fülek közötti szinkront.
+
+**Ellenőrzés:** `tsc --noEmit` szinkron, egyetlen bash-hívásban a teljes projektre -- 0 hiba.

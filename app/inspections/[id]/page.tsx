@@ -321,6 +321,11 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
     .eq('id', user.id)
     .maybeSingle();
   const role = profile?.role === 'inspector' ? 'inspector' : 'manager';
+
+  // Tutorial "Tipp" buborékok be/kikapcsolása (2026-08-10) -- lásd `app/inspections/new/page.tsx`
+  // ugyanerről a blokkról szóló JSDoc-ját.
+  const tutorialHintsEnabled = user.user_metadata?.tutorial_hints_enabled !== false;
+
   const reportThresholds: ReportThresholds = {
     paintGyariMaxMicron: profile?.paint_threshold_gyari_max_micron ?? DEFAULT_REPORT_THRESHOLDS.paintGyariMaxMicron,
     paintUjrafujtMaxMicron:
@@ -411,6 +416,7 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
           initialFinalAssessment={toInitialFinalAssessment(inspection.final_assessment)}
           initialClientInfo={toInitialClientInfo(inspection)}
           reportThresholds={reportThresholds}
+          tutorialHintsEnabled={tutorialHintsEnabled}
         />
       </div>
     );

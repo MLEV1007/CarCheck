@@ -31,6 +31,13 @@ export default async function NewInspectionPage() {
   const defaultLicensePlateCountry =
     (user?.user_metadata?.default_license_country as string | undefined) || DEFAULT_LICENSE_PLATE_COUNTRY;
 
+  // Tutorial "Tipp" buborékok be/kikapcsolása (2026-08-10, Settings "Tutorial tippek
+  // megjelenítése" kapcsoló) -- lásd `DefaultPreferencesCard.tsx`/`OnboardingHintProvider.tsx`
+  // JSDoc-ját. `!== false`: a kapcsoló bevezetése ELŐTT regisztrált usereknél a
+  // `user_metadata`-ban ez a kulcs nem létezik (`undefined`) -- ilyenkor a tippek
+  // TOVÁBBRA IS látszanak (ez volt az eddigi, alapértelmezett viselkedés).
+  const tutorialHintsEnabled = user?.user_metadata?.tutorial_hints_enabled !== false;
+
   // Szervezeti RBAC (PROJEKT_INSTRUKCIOK.md "Átvizsgálói UI" lépés): az Átvizsgáló NEM
   // láthatja a céges AI kredit-egyenleget -- a `HeaderCreditBadge` szerver-oldalon,
   // renderelés ELŐTT marad ki `role === 'inspector'` esetén (nincs kliens-oldali villanás).
@@ -116,7 +123,11 @@ export default async function NewInspectionPage() {
           )}
         </div>
       ) : (
-        <InspectionWizard defaultLicensePlateCountry={defaultLicensePlateCountry} reportThresholds={reportThresholds} />
+        <InspectionWizard
+          defaultLicensePlateCountry={defaultLicensePlateCountry}
+          reportThresholds={reportThresholds}
+          tutorialHintsEnabled={tutorialHintsEnabled}
+        />
       )}
     </div>
   );

@@ -27,10 +27,23 @@ const OnboardingHintContext = createContext<OnboardingHintContextValue | null>(n
  * egyetlen bezárás AZONNAL elrejti az összes, ugyanazt az `id`-t használó, éppen
  * látható példányt is.
  */
-export function OnboardingHintProvider({ children }: { children: ReactNode }) {
+interface OnboardingHintProviderProps {
+  children: ReactNode;
+  /**
+   * Globális be/kikapcsoló (2026-08-10, Settings "Tutorial tippek megjelenítése"
+   * kapcsoló, lásd `DefaultPreferencesCard.tsx`) -- `false` esetén MINDEN tipp rejtve
+   * marad, FÜGGETLENÜL az egyedi (`localStorage`-beli) bezárás-állapottól. Alapértéke
+   * `true` (a korábbi, kapcsoló bevezetése előtti viselkedés). Szándékosan NEM írja felül
+   * a `dismissedIds`-t -- ha a user később újra bekapcsolja, a MÁR egyenként bezárt
+   * tippek nem térnek vissza, csak a még soha be nem zártak.
+   */
+  enabled?: boolean;
+}
+
+export function OnboardingHintProvider({ children, enabled = true }: OnboardingHintProviderProps) {
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(() => loadDismissedHints());
 
-  const isDismissed = useCallback((id: string) => dismissedIds.has(id), [dismissedIds]);
+  const isDismissed = useCallback((id: string) => !enabled || dismissedIds.has(id), [enabled, dismissedIds]);
 
   const dismiss = useCallback((id: string) => {
     setDismissedIds((prev) => {
