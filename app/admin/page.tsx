@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { ArrowLeft, ShieldCheck } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { isPlatformAdmin } from '@/lib/auth/roles';
+import type { QuotaPlanTier } from '@/types/quotas';
 import { AdminOrganizationsTable, type AdminOrganizationRow } from '@/components/admin/AdminOrganizationsTable';
 
 export const metadata: Metadata = {
@@ -75,13 +76,36 @@ export default async function AdminPage() {
   // (`organizations_select_platform_admin`/`profiles_select_platform_admin`) az ÖSSZES
   // szervezetet/profilt megmutatja -- ebből állítjuk össze soronként a Menedzser
   // email(ek)et és a tagszámot.
-  const [{ data: organizations }, { data: profiles }] = await Promise.all([
-    supabase
-      .from('organizations')
-      .select('id, name, created_at, team_management_enabled')
-      .order('created_at', { ascending: false }),
-    supabase.from('profiles').select('organization_id, email, role'),
-  ]);
+  //
+  // 2026-08-11, "Platform Admin kredit/előfizetés-kezelés" lépés -- KÉT ÚJ lekérdezés:
+  //   * `user_credits` -- az `user_credits_select_platform_admin` RLS policy nyitja meg
+  //     (lásd `20260811120000_admin_credits_management.sql`) MINDEN szervezet kredit/kvóta/
+  //     Stripe-előfizetés sorát, nem csak a hívóét.
+  //   * `inspections` (csak `organization_id` oszlop) -- az `inspections_select_platform_admin`
+  //     RLS policy nyitja meg, KIZÁRÓLAG a "hány vizsgálatot csinált eddig ez az ügyfél"
+  //     statisztikához (kliens-oldalon számolva soronként, lásd lent) -- ennyi szervezetnél
+  //     (jelenleg maroknyi ügyfél) ez egyszerűbb és átláthatóbb, mint egy külön count-RPC-t
+  //     bevezetni, ha a szervezetszám jelentősen megnő, érdemes lesz lecserélni egy `group by`
+  //     SQL nézetre/RPC-re.
+  const [{ data: organizations }, { data: profiles }, { data: credits }, { data: inspectionRows }] =
+    await Promise.all([
+      supabase
+        .from('organizations')
+        .select('id, name, created_at, team_management_enabled')
+        .order('created_at', { ascending: false }),
+      supabase.from('profiles').select('organization_id, email, role'),
+      supabase
+        .from('user_credits')
+        .select(
+          'organization_id, plan_tier, monthly_inspections_limit, monthly_inspections_remaining, purchased_inspections_remaining, monthly_ai_limit, monthly_ai_remaining, purchased_ai_remaining, subscription_status, subscription_current_period_end'
+        ),
+      supabase.from('inspections').select('organization_id'),
+    ]);
+
+  const inspectionCountsByOrg = new Map<string, number>();
+  for (const row of inspectionRows ?? []) {
+    inspectionCountsByOrg.set(row.organization_id, (inspectionCountsByOrg.get(row.organization_id) ?? 0) + 1);
+  }
 
   const rows: AdminOrganizationRow[] = (organizations ?? []).map((org) => {
     const members = (profiles ?? []).filter((profile) => profile.organization_id === org.id);
@@ -90,6 +114,15 @@ export default async function AdminPage() {
       .map((profile) => profile.email)
       .filter((email): email is string => Boolean(email));
 
+    // A szervezetnek MÉG NEM feltétlenül létezik `user_credits` sora (lazy-create --
+    // lásd `lib/quotas.ts` `getOrganizationQuotaBalance`, csak az ELSŐ tényleges
+    // AI-hívás/vizsgálat-indítás hozza létre) -- ha nincs, a tábla-alapértékekkel
+    // (jelenleg: free/5/3, lásd `20260807_free_tier_default_quota.sql`) töltjük fel a
+    // sort, hogy a Platform Admin felület akkor is szerkeszthető űrlapot mutasson, ha a
+    // szervezet még egyszer sem használta a rendszert -- a mentéskor (lásd
+    // `AdminOrganizationsTable.tsx`) `upsert` hozza majd létre ténylegesen a sort.
+    const credit = (credits ?? []).find((row) => row.organization_id === org.id);
+
     return {
       id: org.id,
       name: org.name,
@@ -97,6 +130,16 @@ export default async function AdminPage() {
       teamManagementEnabled: org.team_management_enabled,
       managerEmails,
       memberCount: members.length,
+      totalInspectionsCreated: inspectionCountsByOrg.get(org.id) ?? 0,
+      planTier: (credit?.plan_tier as QuotaPlanTier | undefined) ?? 'free',
+      monthlyInspectionsLimit: credit?.monthly_inspections_limit ?? 5,
+      monthlyInspectionsRemaining: credit?.monthly_inspections_remaining ?? 5,
+      purchasedInspectionsRemaining: credit?.purchased_inspections_remaining ?? 0,
+      monthlyAiLimit: credit?.monthly_ai_limit ?? 3,
+      monthlyAiRemaining: credit?.monthly_ai_remaining ?? 3,
+      purchasedAiRemaining: credit?.purchased_ai_remaining ?? 0,
+      subscriptionStatus: credit?.subscription_status ?? null,
+      subscriptionCurrentPeriodEnd: credit?.subscription_current_period_end ?? null,
     };
   });
 

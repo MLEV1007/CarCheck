@@ -61,8 +61,13 @@ interface BillingTabProps {
  * mutatott név cserélődött -- lásd PROJEKT_INSTRUKCIOK.md-hez tartozó kérést.
  * 2026-08-07, "Ingyenes alap-kvóta bevezetése" lépés: `free` hozzáadva -- ez a fizetés
  * nélküli kezdőállapot címkéje, SZÁNDÉKOSAN nem szerepel a `plans` tömbben (lent), tehát
- * egy ilyen usernek egyik fizetős kártyán sem jelenik meg "Aktív csomag". */
-const PLAN_TIER_LABELS: Record<QuotaPlanTier, string> = {
+ * egy ilyen usernek egyik fizetős kártyán sem jelenik meg "Aktív csomag".
+ *
+ * `export` -- 2026-08-11, "Platform Admin kredit/előfizetés-kezelés" lépés: az
+ * `AdminOrganizationsTable.tsx` is ugyanezt a címke-szóhasználatot használja a csomag-
+ * választó dropdownnál, hogy a Platform Admin ÉS az ügyfél-arcú Billing felület
+ * konzisztens legyen -- egyetlen forrás, nem duplikált leképezés. */
+export const PLAN_TIER_LABELS: Record<QuotaPlanTier, string> = {
   free: 'Ingyenes csomag',
   starter: 'Egyéni csomag',
   growth: 'Műhely / Kereskedői csomag',

@@ -131,6 +131,18 @@ export async function POST(
         organizationId: roleContext.organizationId,
         priceId,
       },
+      // `subscription_data.metadata` -- 2026-08-11, "Platform Admin kredit/előfizetés-kezelés"
+      // lépés: a session-szintű `metadata` (fent) NEM másolódik át automatikusan a mögötte
+      // létrejövő Subscription objektumra -- a `customer.subscription.*` webhook-eseményeknek
+      // (amik a Stripe-előfizetés lejárati dátumát szinkronizálják a `user_credits` táblába,
+      // lásd `app/api/stripe/webhook/route.ts` `handleSubscriptionEvent`) SAJÁT, a Subscription
+      // objektumon élő `organizationId`-ra van szükségük, hogy tudják, MELYIK szervezethez
+      // tartoznak -- Stripe customer<->szervezet leképezés erre a lépésre előtt SEHOL nem
+      // létezett. Csak `mode === 'subscription'`-nél értelmes (az egyszeri Top-up/AI-kredit
+      // vásárlásoknál nincs Subscription objektum).
+      ...(mode === 'subscription'
+        ? { subscription_data: { metadata: { organizationId: roleContext.organizationId, userId: user.id } } }
+        : {}),
       // `session_id={CHECKOUT_SESSION_ID}` -- 2026-08-09, "Nincs számla-email" lépés: a
       // Stripe ezt a sablon-változót a valódi Session ID-ra cseréli az átirányításkor. A
       // `BillingTab.tsx` ezzel kéri le a `/api/stripe/checkout-session` route-tól a számla

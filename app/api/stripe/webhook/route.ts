@@ -124,6 +124,87 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session):
   }
 }
 
+/**
+ * `customer.subscription.created`/`updated`/`deleted` esemény-kezelő (2026-08-11,
+ * "Platform Admin kredit/előfizetés-kezelés" lépés) -- KIZÁRÓLAG a `user_credits` Stripe-
+ * mezőit (stripe_customer_id/stripe_subscription_id/subscription_status/
+ * subscription_current_period_end) frissíti, a `plan_tier`/kvóta-oszlopokhoz NEM nyúl --
+ * azokat továbbra is KIZÁRÓLAG a `checkout.session.completed` -> `apply_plan_purchase` RPC
+ * (fent) vagy a Platform Admin felület kézi felülbírálása állítja. Ez a szándékos
+ * szétválasztás (Levi tisztázó kérdésre adott döntése): a `/admin` felület kredit/csomag-
+ * módosítása CSAK belső override, NEM hív Stripe API írási műveletet -- ez a handler csak
+ * a FORDÍTOTT irányt (Stripe -> mi) szinkronizálja, kizárólag megjelenítési célra
+ * (lejárati dátum/státusz az admin felületen).
+ *
+ * `subscription.metadata.organizationId` -- a `checkout/route.ts` `subscription_data.
+ * metadata`-ja tölti ki ÚJ előfizetésnél; megújuláskor/státuszváltáskor a Stripe
+ * megőrzi ugyanezt a metadata-t a Subscription objektumon, tehát később érkező
+ * `updated`/`deleted` eseményeknél is jelen van. Ha valamiért hiányzik (pl. egy a
+ * checkout route bővítése ELŐTT indult, réges-régi előfizetés), az eseményt kihagyjuk --
+ * ugyanaz az elv, mint `handleCheckoutSessionCompleted`-nél a hiányzó
+ * `metadata.organizationId`-nál.
+ *
+ * `subscription.items.data[0]?.current_period_end` -- az újabb Stripe API-verziókban
+ * (ez a projekt a `stripe` npm csomag v22-jét használja) a számlázási ciklus vége MÁR NEM
+ * a Subscription objektum tetején él (`subscription.current_period_end` nem is létezik a
+ * jelenlegi TypeScript típusokban), hanem soronként (SubscriptionItem) -- mivel ennek a
+ * projektnek minden előfizetése egyetlen price-ot tartalmaz, az első (és egyetlen) tétel
+ * ciklus-vége megegyezik a "teljes előfizetés" lejáratával.
+ */
+async function handleSubscriptionEvent(subscription: Stripe.Subscription): Promise<void> {
+  const organizationId = subscription.metadata?.organizationId;
+
+  if (!organizationId) {
+    console.error(
+      '[stripe/webhook] customer.subscription.* esemény metadata.organizationId nélkül -- kihagyva.',
+      { subscriptionId: subscription.id }
+    );
+    return;
+  }
+
+  const customerId = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id;
+  const currentPeriodEndUnix = subscription.items.data[0]?.current_period_end;
+
+  const supabaseAdmin = createAdminClient();
+
+  // `.upsert(..., { onConflict: 'organization_id' })` -- ha a szervezetnek MÉG NINCS
+  // `user_credits` sora (pl. egy vadonatúj szervezet, ami a checkout.session.completed
+  // ELŐTT/UTÁN, de ezzel majdnem egyidőben kapja meg ezt az eseményt -- a két esemény
+  // sorrendje Stripe-nál NEM garantált), létrehozza az alapértelmezett (free) sort ezekkel
+  // a mezőkkel kiegészítve. Csak a LENTI mezők érintettek -- a plan_tier/kvóta-oszlopok a
+  // meglévő soron VÁLTOZATLANOK maradnak (lásd a fenti JSDoc-ot), újonnan létrejövő sornál
+  // pedig a tábla-alapértékeket (free/5/3 stb.) kapják, amíg a checkout.session.completed
+  // esemény be nem állítja a tényleges csomagot.
+  const { error } = await supabaseAdmin.from('user_credits').upsert(
+    {
+      organization_id: organizationId,
+      stripe_customer_id: customerId,
+      stripe_subscription_id: subscription.id,
+      subscription_status: subscription.status,
+      subscription_current_period_end: currentPeriodEndUnix
+        ? new Date(currentPeriodEndUnix * 1000).toISOString()
+        : null,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'organization_id' }
+  );
+
+  if (error) {
+    console.error('[stripe/webhook] user_credits Stripe-mezők frissítése sikertelen:', {
+      organizationId,
+      subscriptionId: subscription.id,
+      error,
+    });
+    throw new Error(`user_credits Stripe-mező frissítés sikertelen: ${error.message}`);
+  }
+
+  console.log('[stripe/webhook] Előfizetés-állapot szinkronizálva:', {
+    organizationId,
+    subscriptionId: subscription.id,
+    status: subscription.status,
+  });
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
   if (!webhookSecret) {
@@ -153,10 +234,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session;
       await handleCheckoutSessionCompleted(session);
+    } else if (
+      event.type === 'customer.subscription.created' ||
+      event.type === 'customer.subscription.updated' ||
+      event.type === 'customer.subscription.deleted'
+    ) {
+      // 2026-08-11, "Platform Admin kredit/előfizetés-kezelés" lépés -- lásd a fenti
+      // `handleSubscriptionEvent` JSDoc-ját. `invoice.payment_failed`-et ez a lépés
+      // TOVÁBBRA sem kezel (nem volt része a mostani kérésnek).
+      const subscription = event.data.object as Stripe.Subscription;
+      await handleSubscriptionEvent(subscription);
     }
-    // Más eseménytípusokat (pl. invoice.payment_failed, customer.subscription.deleted)
-    // ez a lépés szándékosan nem kezel -- az MVP kizárólag a sikeres Checkout Session
-    // utáni kvóta-jóváírást igényelte (lásd PROJEKT_INSTRUKCIOK.md 3. pontját).
 
     return NextResponse.json({ received: true });
   } catch (error) {

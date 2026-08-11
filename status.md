@@ -2861,3 +2861,98 @@ preferencia, nem igényel RLS-t/séma-migrációt, konzisztens az eddigi mintáv
   minta velejárója, a jelenlegi kérésre elegendő, nem igényelt élő, fülek közötti szinkront.
 
 **Ellenőrzés:** `tsc --noEmit` szinkron, egyetlen bash-hívásban a teljes projektre -- 0 hiba.
+
+---
+
+## 2026-08-11 -- Platform admin csere: test@buildmysite.hu
+
+**Kérés:** a `platform_admins` allow-listen (lásd `20260803_platform_admin_entitlements.sql`)
+`test@buildmysite.hu` legyen az üzemeltetői fiók, `manyilevente@gmail.com` NE legyen az.
+
+**Talált állapot (Supabase MCP `execute_sql`-lel ellenőrizve, VÉGREHAJTÁS ELŐTT):** a
+`platform_admins` tábla élesben ÜRES volt -- a `20260803_platform_admin_entitlements.sql`
+migráció seed-sora (`manyilevente@gmail.com` felvétele) ténylegesen nem érvényesült ezen a
+projekten. Tehát a mostani lépés facto módon az ELSŐ tényleges platform admin beállítás,
+nem egy meglévő jogosultság elvétele.
+
+**Végrehajtva** Supabase MCP `apply_migration`-nel közvetlenül az éles projekten
+(`nsejmkcwvksbwxscvrvb`) -- `DELETE ... where email = 'manyilevente@gmail.com'` +
+`INSERT ... select ... where email = 'test@buildmysite.hu' on conflict do nothing`.
+Dokumentációs migráció: `supabase/migrations/20260811_platform_admin_swap_to_buildmysite.sql`.
+
+**Ellenőrizve** utólagos `execute_sql`-lel: a `platform_admins` tábla most kizárólag
+`test@buildmysite.hu`-t tartalmazza. A `test@buildmysite.hu` fiók MÁR LÉTEZETT (regisztrált,
+megerősített) az `auth.users`-ben, nem kellett új usert létrehozni.
+
+---
+
+## 2026-08-11 -- Platform Admin: kredit/kvóta/csomag/Stripe-előfizetés kezelés
+
+**Kérés:** a `/admin` felületen lássa és MÓDOSÍTHASSA ügyfelenként (szervezetenként) az AI
+kreditet és a vizsgálati kvótát/csomagot, és lássa, van-e Stripe-előfizetése és meddig
+érvényes.
+
+**Tisztázó kérdésekre adott döntések (Levi):**
+1. Az admin-felületi módosítás CSAK belső (adatbázis-szintű) felülbírálás -- NEM hív
+   Stripe API írási műveletet, nem módosít/mond le valódi előfizetést.
+2. A lejárati dátumot ÉRDEMES hozzáadni, automatikus Stripe-szinkronnal.
+
+**Talált állapot (kutatás közben):** a rendszer korábban SEHOL nem tárolta, hogy egy
+Stripe-előfizetés meddig érvényes -- a webhook (`app/api/stripe/webhook/route.ts`) csak a
+`checkout.session.completed` eseményt dolgozta fel, a `profiles.stripe_customer_id`/
+`stripe_subscription_id` (egyéni, legacy mezők) sosem lettek kitöltve a checkout route-ból.
+
+**Séma (`supabase/migrations/20260811120000_admin_credits_management.sql`, Supabase MCP
+`apply_migration`-nel élesben alkalmazva):**
+* `user_credits` bővítve: `stripe_customer_id`, `stripe_subscription_id`,
+  `subscription_status`, `subscription_current_period_end`.
+* Platform Admin RLS: `user_credits_select_platform_admin`/`update_platform_admin`,
+  `inspections_select_platform_admin` (csak SELECT, a "hány vizsgálatot csinált eddig"
+  statisztikához) -- ugyanaz a minta, mint a `20260803_platform_admin_entitlements.sql`
+  organizations/profiles policy-inál.
+
+**Stripe-szinkron:**
+* `app/api/stripe/checkout/route.ts` -- `subscription_data.metadata.organizationId`
+  hozzáadva (`mode === 'subscription'`-nél), hogy a KÉSŐBBI `customer.subscription.*`
+  események is tudják, melyik szervezethez tartoznak (a session-szintű metadata NEM
+  másolódik át automatikusan a Subscription objektumra).
+* `app/api/stripe/webhook/route.ts` -- ÚJ `handleSubscriptionEvent`, a
+  `customer.subscription.created`/`updated`/`deleted` eseményekre: `user_credits` Stripe-
+  mezőinek UPSERT-tel történő frissítése (`stripe_customer_id`/`stripe_subscription_id`/
+  `subscription_status`/`subscription_current_period_end`), a `plan_tier`/kvóta-oszlopokhoz
+  SZÁNDÉKOSAN nem nyúl (azokat továbbra is `checkout.session.completed` ->
+  `apply_plan_purchase` VAGY a Platform Admin kézi felülbírálása állítja). A `stripe`
+  npm csomag v22-jénél a számlázási ciklus vége MÁR NEM `subscription.current_period_end`
+  (nem is létezik a típusokban), hanem `subscription.items.data[0].current_period_end` --
+  a projekt minden előfizetése egyetlen price-ot tartalmaz, tehát az első tétel = a teljes
+  előfizetés ciklus-vége.
+* **NINCS ELVÉGEZVE (kézi/engedélyeztetési lépés maradt):** a Stripe MCP-vel ellenőrizve
+  (`GetWebhookEndpoints`), az élő webhook endpoint (`we_1U2RlkR6L4Z0c1HT8JRRrqHh`,
+  `https://carpass.hu/api/stripe/webhook`) JELENLEG KIZÁRÓLAG `checkout.session.completed`-
+  re van feliratkozva -- a `customer.subscription.*` eseménybővítés a mostani kóddal ADDIG
+  NEM fog ténylegesen futni, amíg ez a 3 esemény (`customer.subscription.created`/
+  `updated`/`deleted`) fel nincs véve a webhook endpoint "Listen to" listájára a Stripe
+  Dashboardon (Developers -> Webhooks -> a fenti endpoint -> "+ Add events"). Az AI-ügynök
+  írási kísérletét (`PostWebhookEndpointsWebhookEndpoint`) az auto-mode classifier
+  BLOKKOLTA élő (livemode) Stripe-fiókon -- ez emberi jóváhagyást igényel, Levinek kell
+  elvégeznie (vagy explicit jóváhagyást adnia egy következő menetben).
+
+**Admin UI (`app/admin/page.tsx` + `components/admin/AdminOrganizationsTable.tsx`):**
+* A szervezet-lista lekérdezés `user_credits` + `inspections` (csak `organization_id`,
+  kliens-oldali összeszámolással) lekérdezéssel bővült.
+* Minden sorhoz egy kibontható panel (csomag-címke gomb + chevron) -- szerkeszthető:
+  csomag (`plan_tier` dropdown), havi/vásárolt vizsgálati keret (3 szám-mező), havi/
+  vásárolt AI keret (3 szám-mező). Read-only: összes eddigi vizsgálat, Stripe-előfizetés
+  státusza + érvényesség dátuma (ha van).
+* Mentés: `user_credits` UPSERT (`onConflict: 'organization_id'`) a böngésző-kliensen
+  keresztül, az új platform_admin RLS policy-k teszik biztonságossá -- UGYANAZ a minta,
+  mint a meglévő `team_management_enabled` kapcsolónál.
+* `components/settings/BillingTab.tsx` `PLAN_TIER_LABELS` exportálva (korábban csak
+  modulon belüli `const` volt), hogy az admin felület UGYANAZT a csomag-szóhasználatot
+  használja, egyetlen forrásból, nem duplikálva.
+
+**Ellenőrzés:** `tsc --noEmit` szinkron, egyetlen bash-hívásban a teljes projektre -- 0
+hiba.
+
+**Platform admin fiók-csere is ezen a napon történt** -- lásd a fenti (korábbi) 2026-08-11
+"Platform admin csere: test@buildmysite.hu" bejegyzést.
