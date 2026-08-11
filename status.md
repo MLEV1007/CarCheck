@@ -2956,3 +2956,68 @@ hiba.
 
 **Platform admin fiók-csere is ezen a napon történt** -- lásd a fenti (korábbi) 2026-08-11
 "Platform admin csere: test@buildmysite.hu" bejegyzést.
+
+---
+
+## 2026-08-11 -- Illetéktelen /admin hozzáférés naplózása + email-riasztás
+
+**Kérés:** a security audit "Nincs naplózás/riasztás" pontjára (lásd
+`docs/security-audit-admin-2026-08-11.md`) Levi kérte: ha egy bejelentkezett, DE NEM
+platform admin fiók megpróbálja betölteni a `/admin` felületet, ez naplózódjon, ÉS a
+rendszer küldjön emailt a `test@buildmysite.hu` címre, hogy melyik fiók próbálkozott. A
+security audit többi pontja (rate limit, biztonsági HTTP-fejlécek, robots.txt) egyelőre
+KIMARADT -- csak ez az egy elem lett kérve.
+
+**Email-szolgáltató választás:** a projektben eddig NEM volt semmilyen általános
+(tetszőleges tartalmú) email-küldő integráció -- a Supabase Auth csak a saját, fix
+sablonjait (Magic Link) küldi, arra nincs API tetszőleges riasztó email küldésére.
+Tisztázó kérdésre Levi a **Resend**-et választotta.
+
+**Séma (`supabase/migrations/20260811130000_admin_access_attempts_audit_log.sql`,
+Supabase MCP `apply_migration`-nel élesben alkalmazva):**
+* ÚJ `admin_access_attempts` tábla (`user_id`, `email`, `attempted_at`, `alert_email_sent`)
+  -- csak platform_admin SELECT RLS policy, ÍRÁS kizárólag service-role-lal (a hívó,
+  éppen elutasított user semmilyen API-hívással nem tudna saját maga helyett hamis sort
+  beszúrni/törölni).
+
+**Kód:**
+* **`lib/resend.ts`** -- ÚJ, `sendAlertEmail()` -- `fetch`-csel hívja a Resend REST API-t
+  (SZÁNDÉKOSAN a `resend` npm csomag hozzáadása NÉLKÜL, egyetlen ritka email-küldéshez nem
+  indokolt egy új dependency). `MissingResendApiKeyError`, ugyanaz a minta, mint
+  `lib/stripe.ts`/`lib/supabase/admin.ts` hiányzó-kulcs hibáinál.
+* **`lib/adminAlerts.ts`** -- ÚJ, `notifyUnauthorizedAdminAccess()`:
+  * **Throttle: 60 perc/user** -- ha ugyanaz a fiók ismételten próbálkozik rövid időn
+    belül, csak az ELSŐ kísérletnél megy ki email (a NAPLÓZÁS viszont minden kísérletnél
+    megtörténik, `alert_email_sent=false`-szal a throttle-elt soroknál) -- enélkül egy
+    frissítgető/kíváncsi user email-áradatot generálna.
+  * A riasztás címzettje egyelőre hardcode-olt (`test@buildmysite.hu`, Levi kérése
+    szerint) -- ha a jövőben több platform admin lesz, ezt egy `platform_admins` + `auth.
+    users.email` join-ra érdemes cserélni.
+  * SOHA nem dob hibát a hívó (`app/admin/page.tsx`) felé -- minden DB-/email-hiba
+    elnyelve, csak logolva (`console.error`), hogy egy átmeneti Resend-hiba ne törje el a
+    "Hozzáférés megtagadva" oldal renderelését.
+* **`app/admin/page.tsx`** -- a "Hozzáférés megtagadva" ágban `after()` (Next.js 15,
+  stabil API) hívja meg a `notifyUnauthorizedAdminAccess`-t: a naplózás/email-küldés a
+  VÁLASZ elküldése UTÁN fut, az elutasított user nem várakozik rá.
+* **`.env.local.example`** -- `RESEND_API_KEY` (kötelező) + `RESEND_ALERT_FROM_EMAIL`
+  (opcionális, alapértelmezetten a Resend saját, hitelesítés nélkül is működő
+  `onboarding@resend.dev` domainje -- éles/megbízható kézbesítéshez ERŐSEN AJÁNLOTT egy
+  saját domain hitelesítése a Resend Dashboardon).
+
+**NINCS ELVÉGEZVE (kézi lépés Levinek):** a `RESEND_API_KEY`-t (és opcionálisan a saját
+domain hitelesítését) a Resend Dashboardon kell létrehozni/beállítani, majd a Vercel
+Environment Variables közé felvenni -- enélkül a `notifyUnauthorizedAdminAccess` a
+naplózást elvégzi, de az email-küldés a `MissingResendApiKeyError`-ral elhasal (logolva,
+az oldal renderelését nem befolyásolja).
+
+**Ellenőrzés:** `tsc --noEmit` szinkron, egyetlen bash-hívásban a teljes projektre -- 0
+hiba.
+
+**Kiegészítés (ugyanazon a napon):** Levi megerősítette, hogy a `carpass.hu` domain MÁR
+hitelesítve van a Resend fiókban, és a `noreply@carpass.hu` cím már éles regisztrációs/
+belépési (Magic Link) emaileket küld a Supabase Auth SMTP-integrációján keresztül -- ez
+FÜGGETLEN az itt bevezetett app-szintű Resend API-hívástól (`lib/resend.ts`), külön
+`RESEND_API_KEY` env változó szükséges hozzá (Levi új, önálló API kulcsot hoz létre ehhez a
+funkcióhoz a Resend Dashboardon). A `lib/resend.ts` `DEFAULT_FROM_EMAIL`-je ennek megfelelően
+`noreply@carpass.hu`-ra állítva (a `RESEND_ALERT_FROM_EMAIL` env változó továbbra is felülírja,
+ha valaha máshonnan kellene küldeni).

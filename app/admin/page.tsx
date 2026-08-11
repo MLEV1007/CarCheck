@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { after } from 'next/server';
 import { ArrowLeft, ShieldCheck } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { isPlatformAdmin } from '@/lib/auth/roles';
+import { notifyUnauthorizedAdminAccess } from '@/lib/adminAlerts';
 import type { QuotaPlanTier } from '@/types/quotas';
 import { AdminOrganizationsTable, type AdminOrganizationRow } from '@/components/admin/AdminOrganizationsTable';
 
@@ -53,6 +55,13 @@ export default async function AdminPage() {
   const isAdmin = await isPlatformAdmin(user.id);
 
   if (!isAdmin) {
+    // 2026-08-11, "Illetéktelen /admin hozzáférés riasztás" lépés (security audit
+    // felvetésére) -- `after()` (Next.js 15, stabil API): a naplózás + email-riasztás a
+    // VÁLASZ elküldése UTÁN fut le, tehát az elutasított user nem várakozik rá (a "Hozzáférés
+    // megtagadva" oldal ugyanolyan gyorsan jelenik meg, mint eddig). Lásd
+    // `lib/adminAlerts.ts` -- soha nem dob hibát ide vissza, minden hibát elnyel/logol.
+    after(() => notifyUnauthorizedAdminAccess({ id: user.id, email: user.email }));
+
     return (
       <div className="flex min-h-screen items-center justify-center bg-linear-canvas px-4">
         <div className="flex max-w-sm flex-col items-center gap-3 text-center">
