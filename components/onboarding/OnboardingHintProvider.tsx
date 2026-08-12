@@ -6,6 +6,20 @@ import { loadDismissedHints, persistDismissedHint } from '@/lib/onboarding/hintS
 interface OnboardingHintContextValue {
   isDismissed: (id: string) => boolean;
   dismiss: (id: string) => void;
+  /** Aktuális (futásidejű) globális be/kikapcsolt állapot -- lásd `disableAll` JSDoc-ját
+   * lent. A `QuickDisableTipsHint.tsx` ezzel dönti el, hogy egyáltalán érdemes-e
+   * megjelennie (ha a tippek már amúgy is ki vannak kapcsolva, a gyors-kikapcsoló gombnak
+   * sincs értelme). */
+  enabled: boolean;
+  /** Azonnali, TELJES kikapcsolás (2026-08-12, felhasználói kérés: "a bal felső sarokban
+   * legyen pár másodpercig egy gomb amivel ki lehet kapcsolni a tippeket") -- lásd
+   * `QuickDisableTipsHint.tsx`. Két dolgot csinál: (1) AZONNAL elrejt minden tippet ebben a
+   * már nyitva lévő wizard-fülben (`enabled` -> `false`, ugyanúgy, mint a `Settings`
+   * kapcsoló `enabled` propja), (2) meghívja a hívó fél által átadott callback-et, ami a
+   * `InspectionWizard.tsx`-ben a Settings oldallal MEGEGYEZŐ `user_metadata.
+   * tutorial_hints_enabled` mezőt írja `false`-ra -- tehát ez ugyanaz a beállítás, csak egy
+   * MÁSODIK belépési ponttal, nem egy külön, párhuzamos kapcsoló. */
+  disableAll: () => void;
 }
 
 const OnboardingHintContext = createContext<OnboardingHintContextValue | null>(null);
@@ -30,18 +44,31 @@ const OnboardingHintContext = createContext<OnboardingHintContextValue | null>(n
 interface OnboardingHintProviderProps {
   children: ReactNode;
   /**
-   * Globális be/kikapcsoló (2026-08-10, Settings "Tutorial tippek megjelenítése"
-   * kapcsoló, lásd `DefaultPreferencesCard.tsx`) -- `false` esetén MINDEN tipp rejtve
-   * marad, FÜGGETLENÜL az egyedi (`localStorage`-beli) bezárás-állapottól. Alapértéke
-   * `true` (a korábbi, kapcsoló bevezetése előtti viselkedés). Szándékosan NEM írja felül
-   * a `dismissedIds`-t -- ha a user később újra bekapcsolja, a MÁR egyenként bezárt
-   * tippek nem térnek vissza, csak a még soha be nem zártak.
+   * Globális be/kikapcsoló KEZDETI értéke (2026-08-10, Settings "Tutorial tippek
+   * megjelenítése" kapcsoló, lásd `DefaultPreferencesCard.tsx`) -- `false` esetén MINDEN
+   * tipp rejtve marad, FÜGGETLENÜL az egyedi (`localStorage`-beli) bezárás-állapottól.
+   * Alapértéke `true` (a korábbi, kapcsoló bevezetése előtti viselkedés). Szándékosan NEM
+   * írja felül a `dismissedIds`-t -- ha a user később újra bekapcsolja, a MÁR egyenként
+   * bezárt tippek nem térnek vissza, csak a még soha be nem zártak.
+   *
+   * **Csak KEZDETI érték, nem élő prop** (2026-08-12, "gyors tipp-kikapcsoló gomb" lépés):
+   * a Provider ezt egy SAJÁT `useState`-be másolja (lásd lent), hogy a `disableAll()`
+   * futásidőben is tudja `false`-ra állítani -- a wizard EGYETLEN élettartama alatt ez a
+   * prop utólag úgysem változna (a szülő Server Component csak első betöltéskor adja át).
    */
   enabled?: boolean;
+  /** A `disableAll()` hívásakor futtatott, hívó fél által megadott mellékhatás (2026-08-12)
+   * -- a `InspectionWizard.tsx`-ben ez perzisztálja a `user_metadata.
+   * tutorial_hints_enabled = false` értéket, UGYANÚGY, mint a Settings oldal
+   * `DefaultPreferencesCard.tsx` kapcsolója, hogy a KÖVETKEZŐ vizsgálat-megnyitáskor (és a
+   * Settings oldalon) is már kikapcsolt állapot látszódjon. Opcionális -- ha nincs megadva,
+   * `disableAll()` csak a jelenlegi wizard-fülben rejt el mindent. */
+  onDisableAll?: () => void;
 }
 
-export function OnboardingHintProvider({ children, enabled = true }: OnboardingHintProviderProps) {
+export function OnboardingHintProvider({ children, enabled: initialEnabled = true, onDisableAll }: OnboardingHintProviderProps) {
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(() => loadDismissedHints());
+  const [enabled, setEnabled] = useState(initialEnabled);
 
   const isDismissed = useCallback((id: string) => !enabled || dismissedIds.has(id), [enabled, dismissedIds]);
 
@@ -55,7 +82,15 @@ export function OnboardingHintProvider({ children, enabled = true }: OnboardingH
     persistDismissedHint(id);
   }, []);
 
-  const value = useMemo(() => ({ isDismissed, dismiss }), [isDismissed, dismiss]);
+  const disableAll = useCallback(() => {
+    setEnabled(false);
+    onDisableAll?.();
+  }, [onDisableAll]);
+
+  const value = useMemo(
+    () => ({ isDismissed, dismiss, enabled, disableAll }),
+    [isDismissed, dismiss, enabled, disableAll]
+  );
 
   return <OnboardingHintContext.Provider value={value}>{children}</OnboardingHintContext.Provider>;
 }
@@ -73,4 +108,20 @@ export function useOnboardingHint(id: string): { visible: boolean; dismiss: () =
     return { visible: true, dismiss: () => {} };
   }
   return { visible: !ctx.isDismissed(id), dismiss: () => ctx.dismiss(id) };
+}
+
+/**
+ * A globális "tippek" be/kikapcsolt állapotát és a `disableAll()` mellékhatását adja
+ * vissza -- `QuickDisableTipsHint.tsx` használja (2026-08-12, "bal felső sarokban egy
+ * gomb amivel ki lehet kapcsolni a tippeket" kérés). Ugyanazt a defenzív, Provider-mentes
+ * fallback-elvet követi, mint `useOnboardingHint` fent (lásd annak JSDoc-ját) -- Provider
+ * nélkül `enabled: true`/`disableAll: no-op`, hogy egy hiányzó Provider itt se törjön el
+ * semmit, csak a gomb kattintása maradna hatástalan.
+ */
+export function useOnboardingHintControls(): { enabled: boolean; disableAll: () => void } {
+  const ctx = useContext(OnboardingHintContext);
+  if (!ctx) {
+    return { enabled: true, disableAll: () => {} };
+  }
+  return { enabled: ctx.enabled, disableAll: ctx.disableAll };
 }

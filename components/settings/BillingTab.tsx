@@ -75,6 +75,17 @@ export const PLAN_TIER_LABELS: Record<QuotaPlanTier, string> = {
   business: 'Autóház csomag',
 };
 
+/** IDEIGLENES teszt-üzemmódi zár (2026-08-12, felhasználói kérés: "szeretném ha a
+ * vásárlás gomb inaktív lenne a tesztelés alatt... Ki fogom adni tesztelésre cégeknek a
+ * rendszert, még nem szeretném ha vásárolnának") -- `true` esetén a 3 TÉNYLEGES Stripe
+ * Checkout-ot indító gomb (csomagváltás, +10 vizsgálat Top-up, AI-kredit vásárlása)
+ * LÁTHATÓ marad, de nem kattintható (lásd a `disabled={PURCHASES_DISABLED_FOR_TESTING ||
+ * ...}` mintát lent). A "Kapcsolatfelvétel" (Autóház, mailto) gomb és a Havi/Éves
+ * kapcsoló NEM érintett, mert azok nem indítanak valódi fizetést. Kikapcsoláshoz (élesítés
+ * előtt) egyszerűen `false`-ra állítandó -- NINCS hozzá env-változó vagy DB-mező, mert ez
+ * egy szándékosan ideiglenes, kód-szintű kapcsoló a tesztelési időszakra. */
+const PURCHASES_DISABLED_FOR_TESTING = true;
+
 type LoadState = 'loading' | 'ready' | 'error';
 type BillingPeriod = 'monthly' | 'yearly';
 
@@ -510,7 +521,8 @@ export function BillingTab({
                     <button
                       type="button"
                       onClick={() => handlePurchase(activePriceId, `${plan.key}_${billingPeriod}`)}
-                      disabled={checkoutLoadingKey === `${plan.key}_${billingPeriod}` || !activePriceId}
+                      disabled={PURCHASES_DISABLED_FOR_TESTING || checkoutLoadingKey === `${plan.key}_${billingPeriod}` || !activePriceId}
+                      title={PURCHASES_DISABLED_FOR_TESTING ? 'Tesztelés alatt a vásárlás átmenetileg nem elérhető.' : undefined}
                       className="inline-flex min-h-[2.25rem] items-center justify-center gap-1.5 rounded-full bg-stripe-primary px-4 py-2 text-center font-sohne text-[13px] font-normal leading-snug text-white transition-colors hover:bg-stripe-primary-deep disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {checkoutLoadingKey === `${plan.key}_${billingPeriod}` && (
@@ -549,7 +561,8 @@ export function BillingTab({
             <button
               type="button"
               onClick={() => handlePurchase(topupPriceId, 'topup10')}
-              disabled={checkoutLoadingKey === 'topup10' || !topupPriceId}
+              disabled={PURCHASES_DISABLED_FOR_TESTING || checkoutLoadingKey === 'topup10' || !topupPriceId}
+              title={PURCHASES_DISABLED_FOR_TESTING ? 'Tesztelés alatt a vásárlás átmenetileg nem elérhető.' : undefined}
               className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full bg-stripe-primary px-5 font-sohne text-[13px] font-normal text-white transition-colors hover:bg-stripe-primary-deep disabled:cursor-not-allowed disabled:opacity-60"
             >
               {checkoutLoadingKey === 'topup10' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
@@ -591,7 +604,8 @@ export function BillingTab({
                 <button
                   type="button"
                   onClick={() => handlePurchase(pack.priceId, pack.key)}
-                  disabled={checkoutLoadingKey === pack.key || !pack.priceId}
+                  disabled={PURCHASES_DISABLED_FOR_TESTING || checkoutLoadingKey === pack.key || !pack.priceId}
+                  title={PURCHASES_DISABLED_FOR_TESTING ? 'Tesztelés alatt a vásárlás átmenetileg nem elérhető.' : undefined}
                   className="mt-1 inline-flex h-9 items-center justify-center gap-1.5 rounded-full border border-stripe-primary px-4 font-sohne text-[13px] font-normal text-stripe-primary transition-colors hover:bg-stripe-primary/5 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {checkoutLoadingKey === pack.key && <Loader2 className="h-3.5 w-3.5 animate-spin" />}

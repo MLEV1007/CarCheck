@@ -24,6 +24,7 @@ import { StepFinalAssessment } from '@/components/inspections/wizard/StepFinalAs
 import { StepSummary } from '@/components/inspections/wizard/StepSummary';
 import { InspectionIdProvider } from '@/components/inspections/wizard/InspectionIdContext';
 import { OnboardingHintProvider } from '@/components/onboarding/OnboardingHintProvider';
+import { QuickDisableTipsHint } from '@/components/onboarding/QuickDisableTipsHint';
 import {
   DEFAULT_LICENSE_PLATE_COUNTRY,
   DEFAULT_REPORT_THRESHOLDS,
@@ -804,13 +805,39 @@ export function InspectionWizard({
     }
   }
 
+  /** A bal felső sarokban megjelenő gyors "Tippek kikapcsolása" gomb
+   * (`QuickDisableTipsHint.tsx`) mellékhatása -- UGYANAZT a `user_metadata.
+   * tutorial_hints_enabled` mezőt írja `false`-ra, mint a Settings oldal kapcsolója
+   * (`DefaultPreferencesCard.tsx` `handleToggleTutorialHints`), hogy a két belépési pont
+   * (Settings VS ez a gyors gomb) ne két külön, egymásnak ellentmondó állapotot tartson
+   * nyilván -- a KÖVETKEZŐ vizsgálat-megnyitáskor (és a Settings oldalon is) már
+   * kikapcsolt állapot látszik. Szándékosan best-effort (nincs hibaüzenet-UI/visszaállítás
+   * hiba esetén, ugyanaz az elv, mint a vizsgálati kvóta levonásánál fent) -- a
+   * `OnboardingHintProvider` a helyi state-et MÁR szinkron elrejtette a kattintás
+   * pillanatában (`disableAll()`), ez a hívás csak a KÖVETKEZŐ munkamenethez szükséges
+   * szerver-oldali perzisztálás; egy elvesztett hálózati hiba itt legfeljebb azt
+   * jelenti, hogy a tippek egy jövőbeli munkamenetben véletlenül újra megjelennek.
+   */
+  function handleDisableTutorialHints() {
+    const supabase = createClient();
+    void supabase.auth.updateUser({ data: { tutorial_hints_enabled: false } }).then(({ error }) => {
+      if (error) {
+        console.error('[InspectionWizard] Tutorial tippek kikapcsolásának mentése sikertelen:', error);
+      }
+    });
+  }
+
   return (
     <InspectionIdProvider inspectionId={inspectionId}>
     {/* Onboarding "Tipp" kártyák megosztott bezárás-állapota (2026-08-10, "Hint/tutorial"
         lépés) -- lásd `OnboardingHintProvider.tsx` JSDoc-ját. A teljes wizard-fát körbeveszi,
         hogy a state lépésváltás közben (a komponens NEM mountolódik újra, csak a `step === N`
         feltétel vált) és a wizard teljes élettartama alatt megmaradjon. */}
-    <OnboardingHintProvider enabled={tutorialHintsEnabled}>
+    <OnboardingHintProvider enabled={tutorialHintsEnabled} onDisableAll={handleDisableTutorialHints}>
+    {/* Gyors "Tippek kikapcsolása" gomb (2026-08-12) -- lásd `QuickDisableTipsHint.tsx`
+        JSDoc-ját: csak az ELSŐ tipp (`car-info`) láthatósága idején jelenik meg, pár
+        másodperc után magától eltűnik. */}
+    <QuickDisableTipsHint />
     <div className="mx-auto flex max-w-3xl flex-col gap-5 px-4 py-8 pb-28 sm:px-6 sm:py-10 sm:pb-32">
       {/* Piszkozat-visszaállítás visszajelzés -- lásd a `restoredDraft`/`draftPersistence.ts`
           JSDoc-ját fent. Csak akkor jelenik meg, ha ténylegesen volt visszaolvasható,

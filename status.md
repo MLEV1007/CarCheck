@@ -3057,3 +3057,67 @@ egyértelműen megmondja, hogy a kulcs hiányzik-e, vagy más okból hasalt el a
 
 **Ellenőrzés:** `tsc --noEmit` szinkron, egyetlen bash-hívásban a teljes projektre -- 0
 hiba.
+
+---
+
+## 2026-08-12 -- Gyors "Tippek kikapcsolása" gomb a wizard bal felső sarkában
+
+**Kérés:** a tippek be/kikapcsolása ne csak a Beállításokban legyen elérhető -- amikor a
+vizsgálat kitöltése elindul és megjelenik az első tipp, a bal felső sarokban jelenjen meg
+pár másodpercig egy gomb, amivel a tippek kikapcsolhatók. Ha a felhasználó ott kikapcsolja,
+a rendszer jegyezze meg, és a következő alkalommal se a tippet, se ezt a gyors-gombot ne
+kelljen újra megmutatni.
+
+**Megoldás -- UGYANAZ a `user_metadata.tutorial_hints_enabled` mező, mint a Settings
+kapcsoló (2026-08-10-i szakasz), csak egy MÁSODIK belépési ponttal, nem egy külön,
+párhuzamos állapot:**
+
+* **`components/onboarding/OnboardingHintProvider.tsx`** -- az `enabled` prop mostantól
+  CSAK kezdeti érték (a Provider saját `useState`-jébe másolva), hogy futásidőben is
+  módosítható legyen. ÚJ `disableAll()` a context értékben: (1) azonnal `enabled -> false`
+  (minden tipp eltűnik a jelenlegi fülben), (2) meghívja az opcionális `onDisableAll` propot
+  (a hívó fél mellékhatása, pl. szerver-oldali mentés). ÚJ `useOnboardingHintControls()` hook
+  adja vissza `{ enabled, disableAll }`-t.
+* **`components/onboarding/QuickDisableTipsHint.tsx`** (ÚJ fájl) -- a bal felső sarokban
+  (`fixed left-3 top-*`, safe-area-tudatos) megjelenő gomb, KIZÁRÓLAG akkor, amikor a wizard
+  ELSŐ tippje (`car-info`, `StepCarInfo.tsx` 1. lépés) ténylegesen látható -- ez pontosan
+  lefedi "amikor megjelenik az első tipp" feltételt, külön state nélkül. 7 másodperc után
+  magától eltűnik (`VinScanToast.tsx` mintájára), vagy azonnal a kattintáskor. Linear Dark
+  design tokenek.
+* **`components/inspections/wizard/InspectionWizard.tsx`** -- a `QuickDisableTipsHint`
+  renderelve az `OnboardingHintProvider`-en belül; ÚJ `handleDisableTutorialHints()`
+  függvény `onDisableAll`-ként átadva, ami `supabase.auth.updateUser({ data: {
+  tutorial_hints_enabled: false } })`-t hív -- best-effort, hiba esetén csak logol (a helyi
+  UI-t a `disableAll()` már szinkron elrejtette).
+* **Miért nem kell külön logika a "gomb se jelenjen meg legközelebb" részhez:** a gomb
+  láthatósága a `car-info` tipp láthatóságából származik -- ha a tippek már ki vannak
+  kapcsolva (akár a Settingsből, akár ezen a gyors-gombon keresztül korábban), a `car-info`
+  tipp sem látszik, tehát a gomb sem renderelődik. Nincs szükség egy harmadik,
+  külön-perzisztált "gombot már láttam" flag-re.
+
+**Ellenőrzés:** `tsc --noEmit` szinkron, egyetlen bash-hívásban a teljes projektre.
+
+---
+
+## 2026-08-12 (folyt.) -- Vásárlás gombok inaktívvá tétele a tesztelési időszakra
+
+**Kérés:** a rendszert tesztelésre ki fogja adni cégeknek, addig ne tudjanak ténylegesen
+vásárolni -- a vásárlás gomb maradjon látható, de ne legyen kattintható.
+
+* **`components/settings/BillingTab.tsx`** -- ÚJ `PURCHASES_DISABLED_FOR_TESTING = true`
+  kód-szintű kapcsoló a fájl tetején (NEM env-változó/DB-mező -- szándékosan ideiglenes,
+  egy helyen, könnyen visszaállítható élesítéskor). A 3 TÉNYLEGES Stripe Checkout-ot indító
+  gomb (`disabled` feltételébe felvéve, `title` tooltippel "Tesztelés alatt a vásárlás
+  átmenetileg nem elérhető."):
+  1. Előfizetési csomag-kártyák "Váltás erre a csomagra" gombja,
+  2. "+10 vizsgálat" Top-up "Vásárlás" gombja,
+  3. AI-kredit csomagok "Vásárlás" gombjai.
+* **NEM érintett:** az Autóház (`business`) tier "Kapcsolatfelvétel" (mailto) gombja és a
+  Havi/Éves kapcsoló -- ezek nem indítanak valódi fizetést. A `HeaderCreditBadge.tsx`/
+  `CreditDashboardModal.tsx`/`InsufficientCreditsModal.tsx` gombjai is változatlanok, mert
+  azok csak a `/settings/billing` oldalra navigálnak, nem indítanak Stripe Checkout-ot
+  közvetlenül.
+* **Élesítéskor a teendő:** `PURCHASES_DISABLED_FOR_TESTING` visszaállítása `false`-ra a
+  `BillingTab.tsx` tetején.
+
+**Ellenőrzés:** `tsc --noEmit` szinkron, egyetlen bash-hívásban a teljes projektre.
