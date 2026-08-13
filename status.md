@@ -3121,3 +3121,32 @@ vásárolni -- a vásárlás gomb maradjon látható, de ne legyen kattintható.
   `BillingTab.tsx` tetején.
 
 **Ellenőrzés:** `tsc --noEmit` szinkron, egyetlen bash-hívásban a teljes projektre.
+
+---
+
+## 2026-08-12 (folyt.) -- Vásárlás gombok tiltása: natív `disabled` helyett `cursor-not-allowed` + `handlePurchase()` korai return
+
+**Kérés:** a vásárlás/AI-kredit gombok NE tűnjenek el/haloványodjanak el -- ráhúzáskor a
+kurzor mutassa a "tiltott" (piros kör áthúzva) ikont, a gomb kinézete maradjon normál.
+
+**Gyökérok:** az előző verzió a natív HTML `disabled` attribútumot használta
+(`disabled={PURCHASES_DISABLED_FOR_TESTING || ...}`). Éles teszteléskor kiderült, hogy
+`disabled` form-vezérlőkön a `cursor` CSS tulajdonság böngészőnként megbízhatatlanul
+érvényesül (Safari/macOS gyakorlatilag figyelmen kívül hagyja), a `title` tooltip pedig
+Chrome-ban/Safariban natívan letiltott elemen EGYÁLTALÁN nem jelenik meg ráhúzáskor --
+emiatt a gomb ráhúzáskor "élőnek" tűnt, semmilyen vizuális jelzés nem utalt a tiltásra.
+
+* **`components/settings/BillingTab.tsx`** -- a 3 érintett gomb (csomagváltás, Top-up,
+  AI-kredit) natív `disabled` propjából KIKERÜLT a `PURCHASES_DISABLED_FOR_TESTING` --
+  onnantól a natív `disabled` KIZÁRÓLAG a valódi, átmeneti okoknál aktív (checkout épp
+  folyamatban / hiányzó price ID). A TÉNYLEGES tesztelési blokkolást a `handlePurchase()`
+  függvény ELEJÉN lévő korai `return PURCHASES_DISABLED_FOR_TESTING` esetén végzi (ez
+  billentyűzettel/Enterrel aktivált kattintást is elnyel). A gombokra ÚJ, FELTÉTEL NÉLKÜLI
+  (nem `disabled:` variánsként írt) `cursor-not-allowed` osztály került, ami emiatt minden
+  böngészőben megbízhatóan mutatja a kör-áthúzva kurzort ráhúzáskor -- a gomb színe/
+  árnyalata (`bg-stripe-primary` stb.) VÁLTOZATLAN marad, tehát nem halványul/tűnik el. A
+  `title` tooltip is megbízhatóan megjelenik, mert a gomb HTML-szinten nincs letiltva. Új
+  `aria-disabled` prop (a valódi tiltási állapot -- teszt-zár VAGY átmeneti ok -- teljes
+  logikájával) a képernyőolvasóknak jelzi a tiltott állapotot.
+
+**Ellenőrzés:** `tsc --noEmit` szinkron, egyetlen bash-hívásban a teljes projektre -- 0 hiba.

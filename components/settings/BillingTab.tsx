@@ -79,11 +79,27 @@ export const PLAN_TIER_LABELS: Record<QuotaPlanTier, string> = {
  * vásárlás gomb inaktív lenne a tesztelés alatt... Ki fogom adni tesztelésre cégeknek a
  * rendszert, még nem szeretném ha vásárolnának") -- `true` esetén a 3 TÉNYLEGES Stripe
  * Checkout-ot indító gomb (csomagváltás, +10 vizsgálat Top-up, AI-kredit vásárlása)
- * LÁTHATÓ marad, de nem kattintható (lásd a `disabled={PURCHASES_DISABLED_FOR_TESTING ||
- * ...}` mintát lent). A "Kapcsolatfelvétel" (Autóház, mailto) gomb és a Havi/Éves
- * kapcsoló NEM érintett, mert azok nem indítanak valódi fizetést. Kikapcsoláshoz (élesítés
- * előtt) egyszerűen `false`-ra állítandó -- NINCS hozzá env-változó vagy DB-mező, mert ez
- * egy szándékosan ideiglenes, kód-szintű kapcsoló a tesztelési időszakra. */
+ * TELJESEN NORMÁL kinézettel LÁTHATÓ marad (nem tűnik el, nem halványul el), de nem
+ * kattintható -- a "Kapcsolatfelvétel" (Autóház, mailto) gomb és a Havi/Éves kapcsoló NEM
+ * érintett, mert azok nem indítanak valódi fizetést. Kikapcsoláshoz (élesítés előtt)
+ * egyszerűen `false`-ra állítandó -- NINCS hozzá env-változó vagy DB-mező, mert ez egy
+ * szándékosan ideiglenes, kód-szintű kapcsoló a tesztelési időszakra.
+ *
+ * **FONTOS -- SZÁNDÉKOSAN NEM a natív HTML `disabled` attribútummal van megvalósítva
+ * (2026-08-12, 2. finomítás, felhasználói kérés: "ha ráviszem a kurzort piros kör
+ * áthúzva jelenjen meg rajta"):** az ELSŐ verzió `disabled={PURCHASES_DISABLED_FOR_TESTING
+ * || ...}`-t használt, ami éles tesztelésben (macOS Safari/Chrome) NEM mutatta a
+ * "tiltott" (`cursor: not-allowed`, a kör-áthúzva ikon) kurzort ráhúzáskor -- ez egy jól
+ * dokumentált böngésző-kvirk: a `cursor` CSS tulajdonság `disabled` form-vezérlőkön
+ * megbízhatatlanul/egyáltalán nem érvényesül (Safari pl. figyelmen kívül hagyja), a
+ * natívan letiltott gomb `title` tooltipje pedig Chrome-ban/Safariban EGYÁLTALÁN NEM
+ * jelenik meg ráhúzáskor. Ehelyett a gomb HTML-szinten "engedélyezett" marad (a natív
+ * `disabled` KIZÁRÓLAG a valódi, átmeneti okoknál -- checkout épp folyamatban/hiányzó
+ * price ID -- aktív), a tényleges blokkolást a `handlePurchase()` elején lévő korai
+ * `return` (lásd lent) végzi, a `cursor-not-allowed` osztály pedig FELTÉTEL NÉLKÜL (nem
+ * `disabled:` variánsként) kerül a gombra -- ez a kombináció MINDEN böngészőben
+ * megbízhatóan mutatja a kör-áthúzva kurzort ÉS a `title` tooltipet is, miközben a gomb
+ * kinézete (szín/árnyalat) nem változik, tehát nem "tűnik el"/halványul. */
 const PURCHASES_DISABLED_FOR_TESTING = true;
 
 type LoadState = 'loading' | 'ready' | 'error';
@@ -217,6 +233,13 @@ export function BillingTab({
   }, [banner, sessionId]);
 
   async function handlePurchase(priceId: string | null, key: string) {
+    // Teszt-üzemmódi zár (lásd `PURCHASES_DISABLED_FOR_TESTING` JSDoc-ját fent) -- ez a
+    // TÉNYLEGES blokkolási pont (a gombok HTML-szinten szándékosan NEM `disabled`-ek,
+    // hogy a `cursor-not-allowed` és a `title` tooltip ráhúzáskor megbízhatóan
+    // megjelenjen minden böngészőben) -- billentyűzettel (Enter/Space) aktivált
+    // kattintást is ugyanígy elnyel.
+    if (PURCHASES_DISABLED_FOR_TESTING) return;
+
     if (!priceId) {
       setCheckoutError('Ez a csomag jelenleg nem elérhető -- keress meg minket az aktiváláshoz.');
       return;
@@ -521,9 +544,12 @@ export function BillingTab({
                     <button
                       type="button"
                       onClick={() => handlePurchase(activePriceId, `${plan.key}_${billingPeriod}`)}
-                      disabled={PURCHASES_DISABLED_FOR_TESTING || checkoutLoadingKey === `${plan.key}_${billingPeriod}` || !activePriceId}
+                      disabled={checkoutLoadingKey === `${plan.key}_${billingPeriod}` || !activePriceId}
+                      aria-disabled={PURCHASES_DISABLED_FOR_TESTING || checkoutLoadingKey === `${plan.key}_${billingPeriod}` || !activePriceId}
                       title={PURCHASES_DISABLED_FOR_TESTING ? 'Tesztelés alatt a vásárlás átmenetileg nem elérhető.' : undefined}
-                      className="inline-flex min-h-[2.25rem] items-center justify-center gap-1.5 rounded-full bg-stripe-primary px-4 py-2 text-center font-sohne text-[13px] font-normal leading-snug text-white transition-colors hover:bg-stripe-primary-deep disabled:cursor-not-allowed disabled:opacity-60"
+                      className={`inline-flex min-h-[2.25rem] items-center justify-center gap-1.5 rounded-full bg-stripe-primary px-4 py-2 text-center font-sohne text-[13px] font-normal leading-snug text-white transition-colors hover:bg-stripe-primary-deep disabled:cursor-not-allowed disabled:opacity-60 ${
+                        PURCHASES_DISABLED_FOR_TESTING ? 'cursor-not-allowed' : ''
+                      }`}
                     >
                       {checkoutLoadingKey === `${plan.key}_${billingPeriod}` && (
                         <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
@@ -561,9 +587,12 @@ export function BillingTab({
             <button
               type="button"
               onClick={() => handlePurchase(topupPriceId, 'topup10')}
-              disabled={PURCHASES_DISABLED_FOR_TESTING || checkoutLoadingKey === 'topup10' || !topupPriceId}
+              disabled={checkoutLoadingKey === 'topup10' || !topupPriceId}
+              aria-disabled={PURCHASES_DISABLED_FOR_TESTING || checkoutLoadingKey === 'topup10' || !topupPriceId}
               title={PURCHASES_DISABLED_FOR_TESTING ? 'Tesztelés alatt a vásárlás átmenetileg nem elérhető.' : undefined}
-              className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full bg-stripe-primary px-5 font-sohne text-[13px] font-normal text-white transition-colors hover:bg-stripe-primary-deep disabled:cursor-not-allowed disabled:opacity-60"
+              className={`inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full bg-stripe-primary px-5 font-sohne text-[13px] font-normal text-white transition-colors hover:bg-stripe-primary-deep disabled:cursor-not-allowed disabled:opacity-60 ${
+                PURCHASES_DISABLED_FOR_TESTING ? 'cursor-not-allowed' : ''
+              }`}
             >
               {checkoutLoadingKey === 'topup10' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               Vásárlás
@@ -604,9 +633,12 @@ export function BillingTab({
                 <button
                   type="button"
                   onClick={() => handlePurchase(pack.priceId, pack.key)}
-                  disabled={PURCHASES_DISABLED_FOR_TESTING || checkoutLoadingKey === pack.key || !pack.priceId}
+                  disabled={checkoutLoadingKey === pack.key || !pack.priceId}
+                  aria-disabled={PURCHASES_DISABLED_FOR_TESTING || checkoutLoadingKey === pack.key || !pack.priceId}
                   title={PURCHASES_DISABLED_FOR_TESTING ? 'Tesztelés alatt a vásárlás átmenetileg nem elérhető.' : undefined}
-                  className="mt-1 inline-flex h-9 items-center justify-center gap-1.5 rounded-full border border-stripe-primary px-4 font-sohne text-[13px] font-normal text-stripe-primary transition-colors hover:bg-stripe-primary/5 disabled:cursor-not-allowed disabled:opacity-60"
+                  className={`mt-1 inline-flex h-9 items-center justify-center gap-1.5 rounded-full border border-stripe-primary px-4 font-sohne text-[13px] font-normal text-stripe-primary transition-colors hover:bg-stripe-primary/5 disabled:cursor-not-allowed disabled:opacity-60 ${
+                    PURCHASES_DISABLED_FOR_TESTING ? 'cursor-not-allowed' : ''
+                  }`}
                 >
                   {checkoutLoadingKey === pack.key && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                   Vásárlás
