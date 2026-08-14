@@ -4,6 +4,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { SelectField, TextareaField } from '@/components/inspections/wizard/FormControls';
 import { DefectMediaUpload } from '@/components/inspections/wizard/DefectMediaUpload';
 import { WizardStepFooter } from '@/components/inspections/wizard/WizardBottomBar';
+import { IconButton } from '@/components/ui/IconButton';
 import { DEFECT_CATEGORIES } from '@/lib/inspections/constants';
 import { EMPTY_DEFECT, type DefectState } from '@/lib/inspections/types';
 import { HintCallout } from '@/components/onboarding/HintCallout';
@@ -68,14 +69,9 @@ export function StepDefects({ value, onChange, onBack, onNext, nextLabel }: Step
               <span className="text-[13px] font-semibold uppercase tracking-[0.4px] text-linear-ink-subtle">
                 #{index + 1}. hiba
               </span>
-              <button
-                type="button"
-                onClick={() => removeDefect(defect.clientId)}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-linear-ink-subtle transition-colors hover:bg-linear-surface-2 hover:text-linear-danger"
-                aria-label="Hiba törlése"
-              >
+              <IconButton type="button" onClick={() => removeDefect(defect.clientId)} aria-label="Hiba törlése" variant="ghost-danger">
                 <Trash2 className="h-4 w-4" />
-              </button>
+              </IconButton>
             </div>
 
             <div className="flex flex-col gap-4 sm:flex-row">

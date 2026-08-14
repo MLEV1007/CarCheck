@@ -134,8 +134,13 @@ export function PaintCanvas({
     return [anchorLeft ? '-translate-x-full -ml-3' : 'ml-3', anchorTop ? '-translate-y-full -mt-3' : 'mt-3'].join(' ');
   }
 
+  // Érintési célterület: a legszűkebb eset a projektben (200px széles popover, p-3 padding,
+  // a cím szövegtől csak gap-2 = 8px távolságra) -- ezért ASZIMMETRIKUS hit-slop: jobbra/
+  // fel/le 10px, balra (a cím szöveg felé) csak 4px, hogy a láthatatlan érintési zóna ne
+  // csússzon rá a szövegre. Lásd docs/ux-touch-targets-plan-2026-08-14.md E) pont.
   const closeButtonClass =
-    'inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors ' +
+    'relative inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors ' +
+    'before:absolute before:content-[\'\'] before:[inset:-10px_-10px_-10px_-4px] ' +
     (theme === 'dark'
       ? 'text-linear-ink-subtle hover:bg-linear-surface-3 hover:text-linear-ink'
       : 'text-bmw-muted hover:bg-bmw-surface-soft hover:text-bmw-ink');

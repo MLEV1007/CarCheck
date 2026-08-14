@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { MessageCircleQuestion, Send, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { iconHitSlopClass } from '@/components/ui/IconButton';
 
 interface ReportAiChatProps {
   /** A riport `public_token`-je -- ez az egyetlen azonosító, amit a
@@ -137,7 +139,10 @@ export function ReportAiChat({ token }: ReportAiChatProps) {
                 type="button"
                 onClick={() => setIsOpen(false)}
                 aria-label="Bezárás"
-                className="flex h-8 w-8 items-center justify-center rounded-none text-bmw-on-dark-soft transition-colors hover:text-bmw-on-dark"
+                className={cn(
+                  'flex h-8 w-8 items-center justify-center rounded-none text-bmw-on-dark-soft transition-colors hover:text-bmw-on-dark',
+                  iconHitSlopClass(32)
+                )}
               >
                 <X className="h-5 w-5" />
               </button>

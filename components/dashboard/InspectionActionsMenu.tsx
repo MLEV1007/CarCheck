@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Check, Copy, Eye, MoreHorizontal, Trash2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { iconHitSlopClass } from '@/components/ui/IconButton';
 
 interface InspectionActionsMenuProps {
   inspectionId: string;
@@ -89,7 +91,10 @@ export function InspectionActionsMenu({ inspectionId, isCopied, onCopyLink, onDe
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="További műveletek"
-        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-linear-hairline-strong bg-linear-surface-2 text-linear-ink-subtle transition-colors hover:bg-linear-surface-3 hover:text-linear-ink"
+        className={cn(
+          'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-linear-hairline-strong bg-linear-surface-2 text-linear-ink-subtle transition-colors hover:bg-linear-surface-3 hover:text-linear-ink',
+          iconHitSlopClass(32)
+        )}
       >
         <MoreHorizontal className="h-4 w-4" />
       </button>

@@ -3,6 +3,8 @@
 import { useRef } from 'react';
 import { ImagePlus, X } from 'lucide-react';
 import { isVideoUrl } from '@/lib/reports/media';
+import { cn } from '@/lib/utils';
+import { iconHitSlopClass } from '@/components/ui/IconButton';
 
 interface DefectMediaUploadProps {
   file: File | null;
@@ -29,18 +31,28 @@ export function DefectMediaUpload({ file, previewUrl, onSelect, onRemove }: Defe
 
   if (previewUrl) {
     return (
-      <div className="relative w-full max-w-[220px] overflow-hidden rounded-md border border-linear-hairline bg-linear-surface-2">
-        {isVideo ? (
-          <video src={previewUrl} controls className="aspect-video w-full object-cover" />
-        ) : (
-          // eslint-disable-next-line @next/next/no-img-element -- kliens-oldali object URL előnézet, nem optimalizálható a next/image-vel
-          <img src={previewUrl} alt={file?.name ?? 'Feltöltött média'} className="aspect-video w-full object-cover" />
-        )}
+      // A KÜLSŐ konténeren SZÁNDÉKOSAN nincs `overflow-hidden` -- csak a BELSŐ rétegen,
+      // ami kizárólag a videó/kép vágásáért felel. Ha a vágás itt, a törlés-gomb szülőjén
+      // lenne, a gomb `iconHitSlopClass` hit-slop pszeudo-eleme levágódna, és a bővített
+      // érintési terület a gyakorlatban nem működne -- lásd
+      // docs/ux-touch-targets-plan-2026-08-14.md C) pontjának technikai buktatóját.
+      <div className="relative w-full max-w-[220px] rounded-md border border-linear-hairline bg-linear-surface-2">
+        <div className="overflow-hidden rounded-md">
+          {isVideo ? (
+            <video src={previewUrl} controls className="aspect-video w-full object-cover" />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element -- kliens-oldali object URL előnézet, nem optimalizálható a next/image-vel
+            <img src={previewUrl} alt={file?.name ?? 'Feltöltött média'} className="aspect-video w-full object-cover" />
+          )}
+        </div>
         <button
           type="button"
           onClick={onRemove}
           aria-label="Média eltávolítása"
-          className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-white transition-colors hover:bg-black/90"
+          className={cn(
+            'absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-white transition-colors hover:bg-black/90',
+            iconHitSlopClass(24)
+          )}
         >
           <X className="h-3.5 w-3.5" />
         </button>

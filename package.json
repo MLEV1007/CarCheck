@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint && npm run lint:touch-targets",
+    "lint:touch-targets": "node scripts/check-touch-targets.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.15.0",

@@ -79,11 +79,13 @@ export function PublishSuccessBanner({ publicToken, logoUrl, companyName }: Publ
           {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
           {copied ? 'Másolva' : 'Link másolása'}
         </button>
+        {/* 36px vizuális méret + before:-inset-1 (4px/oldal) hit-slop = 44px érintési terület
+            -- lásd docs/ux-touch-targets-plan-2026-08-14.md 3. fejezet (bónusz találatok). */}
         <button
           type="button"
           onClick={handleDismiss}
           aria-label="Banner bezárása"
-          className="inline-flex h-9 w-9 items-center justify-center rounded-md text-linear-ink-subtle transition-colors hover:bg-linear-surface-2 hover:text-linear-ink"
+          className="relative inline-flex h-9 w-9 items-center justify-center rounded-md text-linear-ink-subtle transition-colors before:absolute before:-inset-1 before:content-[''] hover:bg-linear-surface-2 hover:text-linear-ink"
         >
           <X className="h-4 w-4" />
         </button>

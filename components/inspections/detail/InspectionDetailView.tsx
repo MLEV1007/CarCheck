@@ -1,10 +1,8 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  ArrowLeft,
   Check,
   CheckCircle2,
   Copy,
@@ -18,6 +16,7 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { PaintStatusBadge } from '@/components/inspections/wizard/PaintStatusBadge';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
+import { BackLink } from '@/components/ui/BackLink';
 import { isVideoUrl } from '@/lib/reports/media';
 import {
   DEFAULT_REPORT_THRESHOLDS,
@@ -209,13 +208,7 @@ export function InspectionDetailView({
       )}
 
       <header className="flex h-16 items-center gap-3 border-b border-linear-hairline px-4 sm:px-6">
-        <Link
-          href="/dashboard"
-          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-linear-ink-subtle transition-colors hover:bg-linear-surface-1 hover:text-linear-ink"
-          aria-label="Vissza a dashboardra"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
+        <BackLink href="/dashboard" />
         <span className="min-w-0 truncate text-[14px] font-medium text-linear-ink">{carLabel}</span>
         <StatusBadge isDraft={false} />
       </header>

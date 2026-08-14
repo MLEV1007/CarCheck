@@ -1,10 +1,12 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Camera, ExternalLink, FileText, ImagePlus, Loader2, Plus, Trash2, UploadCloud, X } from 'lucide-react';
+import { Camera, ExternalLink, FileText, ImagePlus, Loader2, Plus, Trash2, UploadCloud } from 'lucide-react';
 import { TextField, TextareaField } from '@/components/inspections/wizard/FormControls';
 import { VinScanToast, type VinScanToastVariant } from '@/components/inspections/wizard/VinScanToast';
 import { WizardStepFooter } from '@/components/inspections/wizard/WizardBottomBar';
+import { RemovablePhotoThumbnail } from '@/components/inspections/wizard/RemovablePhotoThumbnail';
+import { IconButton, iconHitSlopClass } from '@/components/ui/IconButton';
 import { compressImageForAiScan } from '@/lib/inspections/aiImageCompression';
 import { SERVICE_ENTRY_TYPE_SUGGESTIONS, SERVICE_HISTORY_STATUS_DESCRIPTION, SERVICE_HISTORY_STATUS_LABEL } from '@/lib/inspections/constants';
 import { sanitizeServiceMileage } from '@/lib/inspections/validation';
@@ -367,21 +369,11 @@ export function StepServiceHistory({ value, onChange, onBack, onNext, nextLabel 
         </p>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
           {value.photos.map((photo) => (
-            <div
+            <RemovablePhotoThumbnail
               key={photo.clientId}
-              className="relative aspect-square overflow-hidden rounded-md border border-linear-hairline bg-linear-surface-2"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element -- kliens-oldali object URL / meglévő Storage URL előnézet */}
-              <img src={photo.previewUrl} alt="" className="h-full w-full object-cover" />
-              <button
-                type="button"
-                onClick={() => handleRemovePhoto(photo.clientId)}
-                aria-label="Fotó eltávolítása"
-                className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-white transition-colors hover:bg-black/90"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
+              previewUrl={photo.previewUrl}
+              onRemove={() => handleRemovePhoto(photo.clientId)}
+            />
           ))}
 
           <button
@@ -444,24 +436,21 @@ export function StepServiceHistory({ value, onChange, onBack, onNext, nextLabel 
             <FileText className="h-5 w-5 shrink-0 text-linear-primary" />
             <span className="min-w-0 flex-1 truncate text-[13px] text-linear-ink">{value.carVerticalPdf.fileName}</span>
             {value.carVerticalPdf.url && (
+              // Ez `<a>`, nem `<button>`, ezért nem az IconButton primitívát használja --
+              // az iconHitSlopClass ugyanazt a hit-slop matekot adja hozzá közvetlenül.
               <a
                 href={value.carVerticalPdf.url}
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="PDF megnyitása"
-                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-linear-ink-subtle transition-colors hover:bg-linear-surface-2 hover:text-linear-ink"
+                className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-linear-ink-subtle transition-colors hover:bg-linear-surface-2 hover:text-linear-ink ${iconHitSlopClass(32)}`}
               >
                 <ExternalLink className="h-4 w-4" />
               </a>
             )}
-            <button
-              type="button"
-              onClick={handleRemovePdf}
-              aria-label="PDF eltávolítása"
-              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-linear-ink-subtle transition-colors hover:bg-linear-surface-2 hover:text-linear-danger"
-            >
+            <IconButton type="button" onClick={handleRemovePdf} aria-label="PDF eltávolítása" variant="ghost-danger">
               <Trash2 className="h-4 w-4" />
-            </button>
+            </IconButton>
           </div>
         ) : (
           <button
@@ -499,14 +488,9 @@ export function StepServiceHistory({ value, onChange, onBack, onNext, nextLabel 
               <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-[0.4px] text-linear-ink-subtle">
                 <FileText className="h-3.5 w-3.5" />#{index + 1}. bejegyzés
               </span>
-              <button
-                type="button"
-                onClick={() => removeEntry(entry.id)}
-                aria-label="Bejegyzés törlése"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-linear-ink-subtle transition-colors hover:bg-linear-surface-2 hover:text-linear-danger"
-              >
+              <IconButton type="button" onClick={() => removeEntry(entry.id)} aria-label="Bejegyzés törlése" variant="ghost-danger">
                 <Trash2 className="h-4 w-4" />
-              </button>
+              </IconButton>
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

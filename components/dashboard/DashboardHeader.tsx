@@ -67,10 +67,15 @@ export function DashboardHeader({ companyName, logoUrl, role = 'manager' }: Dash
 
       <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
         {role !== 'inspector' && <HeaderCreditBadge />}
+        {/* < 1024px (telefon ÉS tablet, a projekt fő céleszközei) csak az ikon látszik --
+            ilyenkor a `min-w-11`/`h-11` a tényleges dobozt is 44x44px-re növeli, mert a
+            szöveges label hiányában a korábbi `px-2` padding-only szélesség kb. csak 32px
+            volt. `lg:`-nél (asztali nézet, szöveges label) visszaáll a kompakt 32px-es
+            magasságra -- lásd docs/ux-touch-targets-plan-2026-08-14.md G) pont. */}
         <Link
           href="/settings"
           aria-label="Beállítások"
-          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2 text-[13px] font-medium text-linear-ink-subtle transition-colors hover:bg-linear-surface-1 hover:text-linear-ink lg:px-3"
+          className="inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-md px-2 text-[13px] font-medium text-linear-ink-subtle transition-colors hover:bg-linear-surface-1 hover:text-linear-ink lg:h-8 lg:min-w-0 lg:justify-start lg:px-3"
         >
           <Settings className="h-4 w-4" />
           <span className="hidden lg:inline">Beállítások</span>

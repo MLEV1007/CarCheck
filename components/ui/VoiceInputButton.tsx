@@ -6,6 +6,7 @@ import { useSpeechToText } from '@/lib/hooks/useSpeechToText';
 import { cn, joinDictatedText } from '@/lib/utils';
 import { useInsufficientCredits } from '@/components/credits/InsufficientCreditsProvider';
 import { useInspectionId } from '@/components/inspections/wizard/InspectionIdContext';
+import { iconHitSlopClass } from '@/components/ui/IconButton';
 
 interface VoiceInputButtonProps {
   /** A cél mező (textarea/input) JELENLEGI tartalma -- a felismert szöveg ehhez fűződik. */
@@ -134,7 +135,10 @@ export function VoiceInputButton({
         aria-label="Hangalapú jegyzetelés (Magyar)"
         aria-pressed={isListening}
         className={cn(
+          // Érintési célterület: a vizuális kör 28px marad, egy láthatatlan hit-slop
+          // pszeudo-elem bővíti 44x44px-re -- lásd docs/ux-touch-targets-plan-2026-08-14.md A) pont.
           'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60',
+          iconHitSlopClass(28),
           isListening ? 'animate-pulse bg-red-500 text-white' : 'bg-slate-100 text-slate-400 hover:text-slate-600'
         )}
       >

@@ -4,6 +4,7 @@ import { AlertTriangle, Plus, Trash2 } from 'lucide-react';
 import { TextField } from '@/components/inspections/wizard/FormControls';
 import { WizardStepFooter } from '@/components/inspections/wizard/WizardBottomBar';
 import { VoiceInputButton } from '@/components/ui/VoiceInputButton';
+import { IconButton } from '@/components/ui/IconButton';
 import { sanitizeDiagnosticCode } from '@/lib/inspections/validation';
 import { EMPTY_DIAGNOSTIC_CODE, type DiagnosticsState } from '@/lib/inspections/types';
 import { HintCallout } from '@/components/onboarding/HintCallout';
@@ -77,14 +78,9 @@ export function StepDiagnostics({ value, onChange, onBack, onNext, nextLabel }: 
                 <span className="text-[13px] font-semibold uppercase tracking-[0.4px] text-linear-ink-subtle">
                   #{index + 1}. hibakód
                 </span>
-                <button
-                  type="button"
-                  onClick={() => removeCode(entry.clientId)}
-                  aria-label="Hibakód törlése"
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-linear-ink-subtle transition-colors hover:bg-linear-surface-2 hover:text-linear-danger"
-                >
+                <IconButton type="button" onClick={() => removeCode(entry.clientId)} aria-label="Hibakód törlése" variant="ghost-danger">
                   <Trash2 className="h-4 w-4" />
-                </button>
+                </IconButton>
               </div>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-[160px_1fr]">

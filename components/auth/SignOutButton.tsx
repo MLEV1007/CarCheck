@@ -15,10 +15,12 @@ export function SignOutButton() {
   }
 
   return (
+    // Ugyanaz a mintázat, mint a DashboardHeader.tsx "Beállítások" linkjén -- lásd az ottani
+    // kommentet és docs/ux-touch-targets-plan-2026-08-14.md H) pontját.
     <button
       onClick={handleSignOut}
       aria-label="Kijelentkezés"
-      className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-linear-hairline bg-linear-surface-1 px-2.5 text-[13px] font-medium text-linear-ink transition-colors hover:bg-linear-surface-2 lg:px-3"
+      className="inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-md border border-linear-hairline bg-linear-surface-1 px-2.5 text-[13px] font-medium text-linear-ink transition-colors hover:bg-linear-surface-2 lg:h-8 lg:min-w-0 lg:justify-start lg:px-3"
     >
       <LogOut className="h-3.5 w-3.5" />
       <span className="hidden lg:inline">Kijelentkezés</span>

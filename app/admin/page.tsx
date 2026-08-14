@@ -7,6 +7,7 @@ import { isPlatformAdmin } from '@/lib/auth/roles';
 import { notifyUnauthorizedAdminAccess } from '@/lib/adminAlerts';
 import type { QuotaPlanTier } from '@/types/quotas';
 import { AdminOrganizationsTable, type AdminOrganizationRow } from '@/components/admin/AdminOrganizationsTable';
+import { BackLink } from '@/components/ui/BackLink';
 
 export const metadata: Metadata = {
   title: 'Platform Admin | CarPass',
@@ -184,13 +185,7 @@ export default async function AdminPage() {
   return (
     <div className="min-h-screen bg-linear-canvas">
       <header className="flex h-16 items-center gap-3 border-b border-linear-hairline px-4 sm:px-6">
-        <Link
-          href="/dashboard"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-linear-ink-subtle transition-colors hover:bg-linear-surface-1 hover:text-linear-ink"
-          aria-label="Vissza a dashboardra"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
+        <BackLink href="/dashboard" />
         <ShieldCheck className="h-4 w-4 text-linear-primary" />
         <span className="flex-1 text-[14px] font-medium text-linear-ink">Platform Admin -- Szervezetek</span>
       </header>

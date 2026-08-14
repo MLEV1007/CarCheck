@@ -8,6 +8,7 @@ import { DAMAGE_TYPE_COLOR, DAMAGE_TYPE_LABEL, DAMAGE_TYPES } from '@/lib/inspec
 import { DefectMediaUpload } from '@/components/inspections/wizard/DefectMediaUpload';
 import { VoiceInputButton } from '@/components/ui/VoiceInputButton';
 import { CarPointPin } from '@/components/inspections/CarPointPin';
+import { iconHitSlopClass } from '@/components/ui/IconButton';
 import type { DamagePointState, DamageType } from '@/lib/inspections/types';
 
 interface DamageCanvasProps {
@@ -181,8 +182,12 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
   const panelClass =
     theme === 'dark' ? 'border-linear-hairline-strong bg-linear-surface-2' : 'border-bmw-hairline-strong bg-white';
   const headingClass = theme === 'dark' ? 'text-[14px] font-semibold text-linear-ink' : 'text-[14px] font-bold text-bmw-ink';
+  // Érintési célterület: a vizuális gomb 28px marad, a hit-slop pszeudo-elem 44x44px-re
+  // bővíti a kattintható/koppintható zónát -- lásd docs/ux-touch-targets-plan-2026-08-14.md D) pont.
   const closeButtonClass =
     'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors ' +
+    iconHitSlopClass(28) +
+    ' ' +
     (theme === 'dark'
       ? 'text-linear-ink-subtle hover:bg-linear-surface-3 hover:text-linear-ink'
       : 'text-bmw-muted hover:bg-bmw-surface-soft hover:text-bmw-ink');

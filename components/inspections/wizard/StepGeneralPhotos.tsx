@@ -1,10 +1,11 @@
 'use client';
 
 import { useRef } from 'react';
-import { ImagePlus, X } from 'lucide-react';
+import { ImagePlus } from 'lucide-react';
 import { WizardStepFooter } from '@/components/inspections/wizard/WizardBottomBar';
 import { CREATE_GENERAL_PHOTO, type GeneralPhotoState } from '@/lib/inspections/types';
 import { HintCallout } from '@/components/onboarding/HintCallout';
+import { RemovablePhotoThumbnail } from '@/components/inspections/wizard/RemovablePhotoThumbnail';
 
 interface StepGeneralPhotosProps {
   value: GeneralPhotoState[];
@@ -59,21 +60,11 @@ export function StepGeneralPhotos({ value, onChange, onBack, onNext, nextLabel }
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
         {value.map((photo) => (
-          <div
+          <RemovablePhotoThumbnail
             key={photo.clientId}
-            className="relative aspect-square overflow-hidden rounded-md border border-linear-hairline bg-linear-surface-2"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element -- kliens-oldali object URL / meglévő Storage URL előnézet */}
-            <img src={photo.previewUrl} alt="" className="h-full w-full object-cover" />
-            <button
-              type="button"
-              onClick={() => handleRemove(photo.clientId)}
-              aria-label="Fotó eltávolítása"
-              className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-white transition-colors hover:bg-black/90"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
+            previewUrl={photo.previewUrl}
+            onRemove={() => handleRemove(photo.clientId)}
+          />
         ))}
 
         <button
