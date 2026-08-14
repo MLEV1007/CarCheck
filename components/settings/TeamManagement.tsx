@@ -150,7 +150,11 @@ export function TeamManagement({ organizationId, currentUserId }: TeamManagement
       )}
 
       {isInviteOpen && (
-        <InviteMemberModal organizationId={organizationId} onClose={() => setIsInviteOpen(false)} />
+        <InviteMemberModal
+          organizationId={organizationId}
+          currentUserId={currentUserId}
+          onClose={() => setIsInviteOpen(false)}
+        />
       )}
     </div>
   );
@@ -225,12 +229,27 @@ function TeamMemberRow({
   );
 }
 
-function InviteMemberModal({ organizationId, onClose }: { organizationId: string; onClose: () => void }) {
+function InviteMemberModal({
+  organizationId,
+  currentUserId,
+  onClose,
+}: {
+  organizationId: string;
+  currentUserId: string;
+  onClose: () => void;
+}) {
   const [email, setEmail] = useState('');
   const [copied, setCopied] = useState(false);
 
+  // `invited_by` (2026-08-14, "Meghívás-attribúció" lépés) -- a hívó (jelen komponenst
+  // megnyitó) Menedzser saját user id-ja a linkbe ágyazva, hogy a `handle_new_user()`
+  // DB trigger rögzíthesse a `profiles.invited_by` mezőbe, KI hívta meg ezt az
+  // Átvizsgálót -- ez teszi lehetővé, hogy a Platform Admin (`/admin`) felületen
+  // egyértelműen látszódjon, melyik Menedzser hívott meg kit.
   const inviteLink =
-    typeof window !== 'undefined' ? `${window.location.origin}/register?invite=${organizationId}` : '';
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/register?invite=${organizationId}&invited_by=${currentUserId}`
+      : '';
 
   async function handleCopy() {
     try {

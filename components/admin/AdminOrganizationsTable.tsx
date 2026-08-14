@@ -6,6 +6,20 @@ import { createClient } from '@/lib/supabase/client';
 import { PLAN_TIER_LABELS } from '@/components/settings/BillingTab';
 import type { QuotaPlanTier } from '@/types/quotas';
 
+/** Egy szervezeti tag sora a "Csapattagok és meghívások" panelhez (2026-08-14,
+ * "Meghívás-attribúció" lépés, a felhasználó explicit kérésére: "a /admin oldalon is
+ * egyértelműen szeretném látni, hogy melyik menedzseri fiók kit hívott meg"). Lásd
+ * `app/admin/page.tsx` `memberRows`-ját. */
+export interface AdminOrganizationMemberRow {
+  id: string;
+  email: string | null;
+  role: 'manager' | 'inspector';
+  /** A meghívó Menedzser email címe -- `null`, ha ez a tag Menedzser (saját
+   * regisztráció, nem meghívás), VAGY ha Átvizsgáló, de a meghívás e funkció
+   * BEVEZETÉSE ELŐTT történt (akkor még nem lett rögzítve a `profiles.invited_by`). */
+  invitedByEmail: string | null;
+}
+
 export interface AdminOrganizationRow {
   id: string;
   name: string;
@@ -13,6 +27,8 @@ export interface AdminOrganizationRow {
   teamManagementEnabled: boolean;
   managerEmails: string[];
   memberCount: number;
+  /** Soronkénti tagsor -- lásd `AdminOrganizationMemberRow` JSDoc-ját. */
+  members: AdminOrganizationMemberRow[];
   /** Az `inspections` táblából, kliens-oldalon összeszámolt, ÖSSZES (nem csak a havi
    * keretbe eső) vizsgálat, amit ez a szervezet valaha indított -- lásd
    * `app/admin/page.tsx` `inspectionCountsByOrg`. Csak megjelenítési statisztika, NEM
@@ -113,6 +129,53 @@ function NumberField({
         className="h-9 w-full rounded-md border border-linear-hairline bg-linear-canvas px-2.5 text-[13px] tabular-nums text-linear-ink outline-none transition-colors focus:border-linear-primary disabled:cursor-not-allowed disabled:opacity-60"
       />
     </label>
+  );
+}
+
+/**
+ * "Csapattagok és meghívások" panel (2026-08-14, "Meghívás-attribúció" lépés) -- a
+ * kibontható kredit-panel ALATT, ugyanabban a `bg-linear-canvas` szekcióban jelenik
+ * meg: soronként egy tag (email + szerepkör-jelvény), Menedzsernél "Saját
+ * regisztráció", Átvizsgálónál "Meghívta: <email>" (vagy "Meghívó nincs rögzítve", ha
+ * a meghívás e funkció bevezetése ELŐTT történt). Csak MEGJELENÍTÉS, nem
+ * szerkeszthető innen.
+ */
+function MembersPanel({ members }: { members: AdminOrganizationMemberRow[] }) {
+  if (members.length === 0) return null;
+
+  return (
+    <div className="mt-6 flex flex-col gap-3 border-t border-linear-hairline pt-5">
+      <p className="text-[12px] font-medium uppercase tracking-[0.3px] text-linear-ink-subtle">
+        Csapattagok és meghívások
+      </p>
+      <div className="overflow-hidden rounded-md border border-linear-hairline">
+        <ul className="divide-y divide-linear-hairline">
+          {members.map((member) => (
+            <li key={member.id} className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="truncate text-[13px] text-linear-ink">{member.email ?? 'Ismeretlen email'}</span>
+                <span
+                  className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                    member.role === 'manager'
+                      ? 'bg-linear-primary/10 text-linear-primary'
+                      : 'bg-linear-surface-2 text-linear-ink-subtle'
+                  }`}
+                >
+                  {member.role === 'manager' ? 'Menedzser' : 'Átvizsgáló'}
+                </span>
+              </div>
+              <span className="shrink-0 text-[12px] text-linear-ink-subtle">
+                {member.role === 'manager'
+                  ? 'Saját regisztráció'
+                  : member.invitedByEmail
+                    ? `Meghívta: ${member.invitedByEmail}`
+                    : 'Meghívó nincs rögzítve'}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
   );
 }
 
@@ -442,6 +505,8 @@ export function AdminOrganizationsTable({ organizations: initial }: AdminOrganiz
                             )}
                           </div>
                         </div>
+
+                        <MembersPanel members={org.members} />
                       </div>
                     )}
                   </li>

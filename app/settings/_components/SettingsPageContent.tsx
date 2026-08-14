@@ -33,6 +33,10 @@ interface SettingsPageContentProps {
  *
  * A fájl az `app/settings/_components/` mappában él -- a vezető `_` miatt a Next.js App
  * Router NEM kezeli route-ként, tisztán belső, megosztott komponens.
+ *
+ * **2026-08-14, "Öröklött cégadatok" lépés:** Átvizsgálónak a "Cégadatok" kártya
+ * (`SettingsForm`) a szervezet Menedzserétől örökölt (nem szerkeszthető) adatokat
+ * mutatja -- lásd a `brandingCompanyName`/stb. változók JSDoc-ját lent.
  */
 export async function SettingsPageContent({ initialTab, billingBanner, sessionId }: SettingsPageContentProps) {
   const supabase = await createClient();
@@ -54,6 +58,43 @@ export async function SettingsPageContent({ initialTab, billingBanner, sessionId
     .maybeSingle();
 
   const role = profile?.role === 'inspector' ? 'inspector' : 'manager';
+
+  // Öröklött céges adatok Átvizsgálóknak (2026-08-14, "Öröklött cégadatok" lépés, a
+  // felhasználó explicit kérésére): a cégadatokat (név/telefon/email/logó/márkaszín)
+  // eddig MINDENKI a saját `profiles` sorából szerkesztette -- egy frissen meghívott
+  // Átvizsgálónál ez üresen indult, és semmi nem kötötte a szervezet tényleges
+  // brandingjéhez. Innentől Átvizsgálónál ezeket a mezőket a `get_organization_
+  // branding()` SECURITY DEFINER RPC-vel a szervezet Menedzserének profiljából
+  // olvassuk (a `profiles_select_org_manager` RLS policy csak Menedzsernek engedi más
+  // profil olvasását, egy Átvizsgáló SAJÁT RLS-jogosultságával ezt nem tudná lekérdezni
+  // -- ezért kell a bypass RPC), és `readOnly` módban adjuk tovább a `SettingsForm`-nak
+  // -- lásd annak JSDoc-ját a zárolt mezők UI-járól.
+  let brandingCompanyName = profile?.company_name ?? '';
+  let brandingPhone = profile?.phone ?? '';
+  let brandingEmail = profile?.email ?? user.email ?? '';
+  let brandingLogoUrl = profile?.logo_url ?? null;
+  let brandingPrimaryColor = profile?.primary_color ?? '#1c69d4';
+
+  if (role === 'inspector') {
+    // A Supabase kliens itt generált `Database` típus NÉLKÜL, generikusan van
+    // példányosítva (lásd `lib/supabase/server.ts`), ezért az `.rpc()` visszatérési
+    // típusa `{}`-re esik vissza -- a mezők explicit típusút adjuk meg a
+    // destrukturált értéknek, hogy a lenti property-elérések típushelyesek legyenek.
+    const { data: orgBrandingRaw } = await supabase.rpc('get_organization_branding').maybeSingle();
+    const orgBranding = orgBrandingRaw as {
+      company_name: string | null;
+      phone: string | null;
+      email: string | null;
+      logo_url: string | null;
+      primary_color: string | null;
+    } | null;
+
+    brandingCompanyName = orgBranding?.company_name ?? '';
+    brandingPhone = orgBranding?.phone ?? '';
+    brandingEmail = orgBranding?.email ?? '';
+    brandingLogoUrl = orgBranding?.logo_url ?? null;
+    brandingPrimaryColor = orgBranding?.primary_color ?? '#1c69d4';
+  }
 
   // Riport küszöbértékek (2026-08-07) -- lásd `ReportThresholdsCard.tsx` JSDoc-ját. A
   // `??` fallback a `DEFAULT_REPORT_THRESHOLDS`-re csak defenzív biztonsági háló (a DB
@@ -151,11 +192,12 @@ export async function SettingsPageContent({ initialTab, billingBanner, sessionId
           <div className="flex flex-col gap-6">
             <SettingsForm
               userId={user.id}
-              initialCompanyName={profile?.company_name ?? ''}
-              initialPhone={profile?.phone ?? ''}
-              initialEmail={profile?.email ?? user.email ?? ''}
-              initialLogoUrl={profile?.logo_url ?? null}
-              initialPrimaryColor={profile?.primary_color ?? '#1c69d4'}
+              initialCompanyName={brandingCompanyName}
+              initialPhone={brandingPhone}
+              initialEmail={brandingEmail}
+              initialLogoUrl={brandingLogoUrl}
+              initialPrimaryColor={brandingPrimaryColor}
+              readOnly={role === 'inspector'}
             />
             <DefaultPreferencesCard
               initialDefaultLicenseCountry={initialDefaultLicenseCountry}

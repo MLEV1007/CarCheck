@@ -26,6 +26,10 @@ import { AuthDivider } from '@/components/auth/AuthDivider';
  * `MagicLinkForm`-nak adjuk tovább `signUpData`-ként -- a `handle_new_user()` DB trigger
  * ez alapján a MEGLÉVŐ szervezethez, 'inspector' szerepkörrel csatlakoztatja, a "sima"
  * (nem meghívott) regisztráció helyett, ami mindig új, önálló szervezetet hoz létre.
+ * **2026-08-14, "Meghívás-attribúció" lépés:** ugyanígy a `?invited_by=<manager_id>`
+ * paramétert is továbbadjuk (ha jelen van) -- ez kerül a `profiles.invited_by` mezőbe,
+ * hogy a Platform Admin (`/admin`) felületen látszódjon, MELYIK Menedzser hívta meg ezt
+ * az Átvizsgálót (lásd `TeamManagement.tsx` meghívó-link generálását).
  *
  * **Meghívás-ellenőrzés hibaüzenete (2026-08-04, hibajavítás -- lásd status.md):** az
  * `/auth/callback` `?error=invite_not_applied` paraméterrel irányít ide vissza, ha a
@@ -49,6 +53,10 @@ export function RegisterForm() {
   );
   const [magicLinkSentTo, setMagicLinkSentTo] = useState<string | null>(null);
   const inviteOrgId = searchParams.get('invite');
+  // `invited_by` (2026-08-14, "Meghívás-attribúció" lépés) -- a meghívó Menedzser user
+  // id-ja, amit a `TeamManagement.tsx` "Csapattag meghívása" modalja éget bele a linkbe
+  // -- lásd a `signUpData` JSDoc-ját lent.
+  const invitedBy = searchParams.get('invited_by');
 
   if (magicLinkSentTo) {
     return (
@@ -94,7 +102,11 @@ export function RegisterForm() {
         onSent={setMagicLinkSentTo}
         onError={setError}
         variant="primary"
-        signUpData={inviteOrgId ? { invite_org_id: inviteOrgId } : undefined}
+        signUpData={
+          inviteOrgId
+            ? { invite_org_id: inviteOrgId, ...(invitedBy ? { invited_by: invitedBy } : {}) }
+            : undefined
+        }
       />
 
       <AuthDivider label="már van fiókod és passkey-d?" />

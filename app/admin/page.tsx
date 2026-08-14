@@ -102,7 +102,11 @@ export default async function AdminPage() {
         .from('organizations')
         .select('id, name, created_at, team_management_enabled')
         .order('created_at', { ascending: false }),
-      supabase.from('profiles').select('organization_id, email, role'),
+      // `id`/`invited_by` (2026-08-14, "Meghívás-attribúció" lépés) -- ebből építjük
+      // fel lent a `profileEmailById` lookup-ot + soronként azt, hogy a meghívott
+      // Átvizsgálót MELYIK Menedzser hívta meg (lásd `AdminOrganizationsTable.tsx`
+      // "Csapattagok és meghívások" panelje).
+      supabase.from('profiles').select('id, organization_id, email, role, invited_by'),
       supabase
         .from('user_credits')
         .select(
@@ -114,6 +118,16 @@ export default async function AdminPage() {
   const inspectionCountsByOrg = new Map<string, number>();
   for (const row of inspectionRows ?? []) {
     inspectionCountsByOrg.set(row.organization_id, (inspectionCountsByOrg.get(row.organization_id) ?? 0) + 1);
+  }
+
+  // `invited_by` -> meghívó email feloldásához (2026-08-14, "Meghívás-attribúció"
+  // lépés) -- a `profiles.invited_by` egy `auth.users.id`-t tárol, ezt kell egy
+  // olvasható emailre feloldani a "Csapattagok és meghívások" panelhez.
+  const profileEmailById = new Map<string, string>();
+  for (const profile of profiles ?? []) {
+    if (profile.id && profile.email) {
+      profileEmailById.set(profile.id, profile.email);
+    }
   }
 
   const rows: AdminOrganizationRow[] = (organizations ?? []).map((org) => {
@@ -132,6 +146,20 @@ export default async function AdminPage() {
     // `AdminOrganizationsTable.tsx`) `upsert` hozza majd létre ténylegesen a sort.
     const credit = (credits ?? []).find((row) => row.organization_id === org.id);
 
+    // Soronkénti tagsor a "Csapattagok és meghívások" panelhez -- Menedzsernél mindig
+    // "Saját regisztráció" (lásd `AdminOrganizationsTable.tsx`), Átvizsgálónál pedig a
+    // `profileEmailById`-ból feloldott meghívó email (ha rögzítve lett -- egy régebbi,
+    // e funkció ELŐTT meghívott Átvizsgálónál `invited_by` NULL marad, lásd a migráció
+    // JSDoc-ját).
+    const memberRows = members
+      .map((profile) => ({
+        id: profile.id as string,
+        email: profile.email,
+        role: (profile.role === 'inspector' ? 'inspector' : 'manager') as 'manager' | 'inspector',
+        invitedByEmail: profile.invited_by ? profileEmailById.get(profile.invited_by) ?? null : null,
+      }))
+      .sort((a, b) => (a.role === b.role ? 0 : a.role === 'manager' ? -1 : 1));
+
     return {
       id: org.id,
       name: org.name,
@@ -139,6 +167,7 @@ export default async function AdminPage() {
       teamManagementEnabled: org.team_management_enabled,
       managerEmails,
       memberCount: members.length,
+      members: memberRows,
       totalInspectionsCreated: inspectionCountsByOrg.get(org.id) ?? 0,
       planTier: (credit?.plan_tier as QuotaPlanTier | undefined) ?? 'free',
       monthlyInspectionsLimit: credit?.monthly_inspections_limit ?? 5,

@@ -1,6 +1,7 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, ReactNode, useState } from 'react';
+import { Ban } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -15,6 +16,26 @@ interface SettingsFormProps {
   initialEmail: string;
   initialLogoUrl: string | null;
   initialPrimaryColor: string;
+  /** Igaz Átvizsgálóknál (2026-08-14, "Öröklött cégadatok" lépés, a felhasználó explicit
+   * kérésére): a fenti `initial*` értékek ilyenkor NEM a saját, hanem a szervezet
+   * Menedzserének `profiles` sorából származnak (lásd `get_organization_branding()` RPC
+   * / `SettingsPageContent.tsx`) -- az Átvizsgáló ezeket LÁTJA, de nem szerkesztheti:
+   * minden mező `disabled`, a "Módosítások mentése" gomb nem jelenik meg, és minden
+   * mező címkéje mellett egy piros, áthúzott körös "tiltás" ikon (`Ban`, lucide-react)
+   * jelzi, hogy ez a mező innen nem módosítható. */
+  readOnly?: boolean;
+}
+
+/** Zárolt mező címkéje -- a szöveg mellé piros "tiltás" ikont (lucide `Ban`, áthúzott
+ * kör) fűz, hogy egyértelmű legyen: a mező innen nem szerkeszthető (2026-08-14,
+ * "Öröklött cégadatok" lépés). Csak `readOnly` módban használt, lásd a lenti mezőket. */
+function LockedFieldLabel({ children }: { children: ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {children}
+      <Ban className="h-3.5 w-3.5 shrink-0 text-stripe-ruby" aria-label="Nem módosítható" />
+    </span>
+  );
 }
 
 /**
@@ -34,6 +55,7 @@ export function SettingsForm({
   initialEmail,
   initialLogoUrl,
   initialPrimaryColor,
+  readOnly = false,
 }: SettingsFormProps) {
   const [companyName, setCompanyName] = useState(initialCompanyName);
   const [phone, setPhone] = useState(initialPhone);
@@ -47,6 +69,12 @@ export function SettingsForm({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    // Védekező -- `readOnly` módban a "Módosítások mentése" gomb amúgy sem jelenik
+    // meg, ez csak biztosíték arra az esetre, ha a form mégis submit-olódna (pl.
+    // Enter billentyűvel egy input mezőben).
+    if (readOnly) return;
+
     setError(null);
     setShowToast(false);
     setIsSaving(true);
@@ -108,58 +136,75 @@ export function SettingsForm({
           </p>
         )}
 
+        {readOnly && (
+          <p className="flex items-start gap-2.5 rounded-stripe-sm border border-stripe-hairline bg-stripe-canvas-soft px-3 py-2.5 font-sohne text-[13px] text-stripe-ink-secondary">
+            <Ban className="mt-0.5 h-4 w-4 shrink-0 text-stripe-ruby" aria-hidden />
+            Ezeket a cégadatokat a szervezeted Menedzsere állította be -- Átvizsgálóként
+            itt megtekintheted, de nem módosíthatod őket.
+          </p>
+        )}
+
         <div className="flex flex-col gap-5">
           <h2 className="font-sohne text-[15px] font-medium text-stripe-ink">Cégadatok</h2>
 
           <Input
-            label="Cég neve"
+            label={readOnly ? <LockedFieldLabel>Cég neve</LockedFieldLabel> : 'Cég neve'}
             name="company_name"
             placeholder="Pl. Prémium Autóvizsgáló Kft."
             value={companyName}
             onChange={(event) => setCompanyName(event.target.value)}
+            disabled={readOnly}
           />
           <Input
-            label="Céges telefonszám"
+            label={readOnly ? <LockedFieldLabel>Céges telefonszám</LockedFieldLabel> : 'Céges telefonszám'}
             name="phone"
             type="tel"
             autoComplete="tel"
             placeholder="+36 20 123 4567"
             value={phone}
             onChange={(event) => setPhone(event.target.value)}
+            disabled={readOnly}
           />
           <Input
-            label="Céges email cím"
+            label={readOnly ? <LockedFieldLabel>Céges email cím</LockedFieldLabel> : 'Céges email cím'}
             name="email"
             type="email"
             autoComplete="email"
             placeholder="info@ceged.hu"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
+            disabled={readOnly}
           />
         </div>
 
         <div className="flex flex-col gap-3 border-t border-stripe-hairline pt-6">
-          <h2 className="font-sohne text-[15px] font-medium text-stripe-ink">Céglogó</h2>
+          <h2 className="font-sohne text-[15px] font-medium text-stripe-ink">
+            {readOnly ? <LockedFieldLabel>Céglogó</LockedFieldLabel> : 'Céglogó'}
+          </h2>
           <p className="font-sohne text-[13px] font-light text-stripe-ink-mute">
             Ez a logó jelenik meg a Dashboardon és az ügyfeleidnek küldött publikus riport fejlécében.
           </p>
-          <LogoUploader userId={userId} logoUrl={logoUrl} onUploaded={setLogoUrl} />
+          <LogoUploader userId={userId} logoUrl={logoUrl} onUploaded={setLogoUrl} disabled={readOnly} />
         </div>
 
         <div className="flex flex-col gap-3 border-t border-stripe-hairline pt-6">
-          <h2 className="font-sohne text-[15px] font-medium text-stripe-ink">Elsődleges márkaszín</h2>
+          <h2 className="font-sohne text-[15px] font-medium text-stripe-ink">
+            {readOnly ? <LockedFieldLabel>Elsődleges márkaszín</LockedFieldLabel> : 'Elsődleges márkaszín'}
+          </h2>
           <p className="font-sohne text-[13px] font-light text-stripe-ink-mute">
             Ez a szín jelenik meg az ügyfeleidnek küldött publikus riport gombjain és kiemelt elemein.
             Ha üresen hagyod, a BMW kék (#1c69d4) lesz az alapértelmezett.
           </p>
-          <BrandColorPicker value={primaryColor} onChange={setPrimaryColor} />
+          <BrandColorPicker value={primaryColor} onChange={setPrimaryColor} disabled={readOnly} />
         </div>
 
-        <div className="border-t border-stripe-hairline pt-6">
-          <Button type="submit" isLoading={isSaving}>
-            Módosítások mentése
-          </Button>
-        </div>
+        {!readOnly && (
+          <div className="border-t border-stripe-hairline pt-6">
+            <Button type="submit" isLoading={isSaving}>
+              Módosítások mentése
+            </Button>
+          </div>
+        )}
       </form>
     </>
   );

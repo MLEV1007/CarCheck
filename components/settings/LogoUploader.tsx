@@ -8,6 +8,9 @@ interface LogoUploaderProps {
   userId: string;
   logoUrl: string | null;
   onUploaded: (url: string) => void;
+  /** Igaz Átvizsgálóknál (2026-08-14, "Öröklött cégadatok" lépés) -- a logó ilyenkor a
+   * szervezet Menedzserétől öröklődik, csak ELŐNÉZET, a feltöltő gomb nem jelenik meg. */
+  disabled?: boolean;
 }
 
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
@@ -22,7 +25,7 @@ const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
  * A feltöltés azonnal, fájlválasztáskor megtörténik (nem várja meg a "Mentés" gombot) --
  * a publikus URL-t a szülő `SettingsForm` a `profiles.logo_url` mezőbe menti majd.
  */
-export function LogoUploader({ userId, logoUrl, onUploaded }: LogoUploaderProps) {
+export function LogoUploader({ userId, logoUrl, onUploaded, disabled = false }: LogoUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,27 +83,29 @@ export function LogoUploader({ userId, logoUrl, onUploaded }: LogoUploaderProps)
         )}
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          disabled={isUploading}
-          className="inline-flex h-9 items-center gap-1.5 rounded-full border border-stripe-hairline-input px-4 font-sohne text-[13px] font-normal text-stripe-ink transition-colors hover:bg-stripe-canvas-soft disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {isUploading ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <Upload className="h-3.5 w-3.5" />
+      {!disabled && (
+        <div className="flex flex-col gap-1.5">
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={isUploading}
+            className="inline-flex h-9 items-center gap-1.5 rounded-full border border-stripe-hairline-input px-4 font-sohne text-[13px] font-normal text-stripe-ink transition-colors hover:bg-stripe-canvas-soft disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isUploading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Upload className="h-3.5 w-3.5" />
+            )}
+            {isUploading ? 'Feltöltés...' : logoUrl ? 'Logó cseréje' : 'Logó feltöltése'}
+          </button>
+          {error && (
+            <p role="alert" className="font-sohne text-[12px] text-stripe-ruby">
+              {error}
+            </p>
           )}
-          {isUploading ? 'Feltöltés...' : logoUrl ? 'Logó cseréje' : 'Logó feltöltése'}
-        </button>
-        {error && (
-          <p role="alert" className="font-sohne text-[12px] text-stripe-ruby">
-            {error}
-          </p>
-        )}
-        <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-      </div>
+          <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+        </div>
+      )}
     </div>
   );
 }
