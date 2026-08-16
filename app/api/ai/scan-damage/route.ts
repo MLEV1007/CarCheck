@@ -24,9 +24,16 @@ import type { DamageType } from '@/lib/inspections/types';
  *  2. ÚJ mező: `locationZone` -- a `lib/inspections/damageLocationZones.ts` zárt
  *     zóna-katalógusának egyik értéke, VAGY `'unclear'`. Lásd annak fájl-JSDoc-ját a teljes
  *     indoklásért, hogy MIÉRT egy zárt katalógus, NEM nyers x/y koordináta a modell kimenete.
- *  3. A rendszerutasítás (`buildSystemInstruction()`) explicit tiltja, hogy a modell a jármű
- *     bal/jobb oldalát próbálja megkülönböztetni (`side_front`/`side_middle`/`side_rear`) --
- *     ez egy közeli fotóból nem állapítható meg megbízhatóan, lásd a zóna-fájl JSDoc-ját.
+ *  3. **2026-08-16 (folyt.) -- JAVÍTÁS:** az eredeti verzió itt explicit TILTOTTA, hogy a modell
+ *     a jármű bal/jobb oldalát megkülönböztesse (`side_front`/`side_middle`/`side_rear`, kép-
+ *     relatív zónák) -- ez okozta a felhasználó által jelzett hibát (a modell rendszeresen
+ *     összekeverte a bal/jobb oldalt). A gyökérok NEM az volt, hogy egy közeli fotóból ez
+ *     megállapíthatatlan, hanem hogy a régi zóna-katalógus KÉP-relatív "bal"/"jobb" fogalmat
+ *     használt, miközben a modell (helyesen) JÁRMŰ-relatívan gondolkodott. A rendszerutasítás
+ *     mostantól EXPLICIT, nézet-specifikus (elöl-tükrözött/hátul-nem-tükrözött/oldal-orr-irány)
+ *     szabályokat ad a modellnek a JÁRMŰ-relatív bal/jobb helyes levezetéséhez -- lásd a
+ *     `damageLocationZones.ts` fájl-JSDoc geometriai levezetését és `buildSystemInstruction()`
+ *     8-9. pontját.
  *
  * A hallucináció elleni védelem többi rétege (zárt katalógus MÉG EGYSZER ellenőrizve, kötelező
  * "nem látok egyértelmű sérülést" kimenet, "csak amit látsz" szigorú prompt, NINCS
@@ -203,6 +210,15 @@ function sanitizeScanDamageResponse(raw: ScanDamageModelResponse): ScanDamageDat
  * `scan-defect/route.ts` `buildSystemInstruction()` azonos elvű JSDoc-ját. A `DAMAGE_TYPES`
  * ÉS a `DAMAGE_LOCATION_ZONES` katalógust is explicit felsoroljuk, hogy a modell ne találjon
  * ki új típus-/zóna-nevet.
+ *
+ * **2026-08-16 (folyt.) -- JAVÍTÁS:** a felhasználó két konkrét hibát jelzett: (1) a "description"
+ * megfogalmazása legyen pontosabb/szakszerűbb, (2) a modell összekeveri a jármű bal/jobb oldalát
+ * a hely-becslésnél. Mindkettőt ez a függvény orvosolja: a leírásra vonatkozó szabály (6. pont)
+ * konkrét karosszéria-elem-neveket és méret-becslést kér a homályos megfogalmazás helyett, a
+ * hely-becslésre vonatkozó szabályok (8-9. pont) pedig EXPLICIT, nézetenkénti (elöl/hátul/oldal)
+ * gyakorlati útmutatást adnak a JÁRMŰ-relatív (nem kép-relatív!) bal/jobb helyes
+ * levezetéséhez -- lásd a `damageLocationZones.ts` fájl-JSDoc geometriai levezetését, amiből ez
+ * az útmutató származik.
  */
 function buildSystemInstruction(): string {
   const typesJson = JSON.stringify(DAMAGE_TYPES);
@@ -216,17 +232,27 @@ SZIGORÚ SZABÁLYOK A SÉRÜLÉS LEÍRÁSÁRA:
 3. Ha nem vagy egyértelműen biztos abban, hogy mit látsz, VAGY a kép nem alkalmas sérülés azonosítására (homályos, rossz szög, nem releváns tárgy, vagy egyszerűen nem látszik rajta semmi problémás), a "damageDetected" mezőt ÁLLÍTSD "false"-ra, és NE adj vissza "type"/"title"/"description"/"locationZone" mezőt. Bizonytalan esetben MINDIG a visszafogottabb válasz a helyes, SOHA ne "találgass csak azért, hogy legyen mit visszaadni".
 4. Ha "damageDetected: true", a "type" mező KIZÁRÓLAG az alábbi 6 érték egyike lehet, PONTOSAN ebben az írásmódban: ${typesJson} ("scratch"=karcolás, "dent"=horpadás, "rust"=rozsda, "chip"=kavicsfelverődés, "crack"=repedés, "other"=egyéb). Ha egyik konkrét típus sem illik egyértelműen, használd az "other"-t.
 5. Ha "type" értéke "other", a "title" mezőbe írj egy rövid (max kb. 8 szó), magyar, tényszerű megnevezést arról, mit látsz (pl. "Törött hátsó lámpabúra"). MINDEN MÁS "type" értéknél a "title" mezőt HAGYD ÜRESEN -- azt a rendszer automatikusan tölti ki a kategória nevével.
-6. A "description" tömör, magyar, tényszerű mondat legyen (max kb. 2 mondat), amit egy autóvizsgáló szakember a saját jegyzeteként írna le, pl. "Kb. 8 cm-es karcolás, a festékig hatol." vagy "Kisebb horpadás, a lakkréteg nem sérült."
+6. A "description" tömör, magyar, SZAKMAI és KONKRÉT mondat legyen (max kb. 2 mondat), amit egy autóvizsgáló szakember a saját jegyzeteként írna le. KERÜLD az általános, homályos megfogalmazásokat (pl. "valamilyen sérülés látható", "kisebb probléma van rajta", "úgy tűnik, hogy..."). Helyette:
+   - Nevezd meg a KONKRÉT karosszéria-elemet, amin a sérülés van, amennyire a fotóból megállapítható (pl. "lökhárító", "sárvédő", "ajtópanel", "küszöb", "lámpabúra", "motorháztető"), NE csak azt írd, hogy "a karosszérián".
+   - Ha vizuálisan megbecsülhető, adj konkrét MÉRETET vagy kiterjedést (pl. "kb. 8 cm hosszú", "kb. 3 cm átmérőjű", "a panel felét érinti") -- ha a méret nem becsülhető meg megbízhatóan a fotóból, hagyd ki, NE találj ki számot.
+   - Írd le, ha releváns és látható, hogy a sérülés meddig hatol (pl. "a festékig hatol", "csak a lakkréteget érinti", "a fémig látszik").
+   - Példák a kívánt stílusra: "Kb. 8 cm-es karcolás a hátsó lökhárítón, a festékig hatol." / "Enyhe horpadás a bal első ajtópanelen, a lakkréteg nem sérült." / "Rozsdásodás a jobb hátsó sárvédő alsó élén, kb. 5 cm-es sávban."
+   - Ha bizonytalan vagy valamiben, azt a "confidence" mezőben fejezd ki -- NE bujtass bizonytalanságot töltelékszavakkal ("esetleg", "talán", "úgy néz ki") a leírás szövegébe.
 7. A "confidence" mező a SAJÁT bizonyosságod: "high" (egyértelmű, tisztán látható sérülés), "medium" (valószínű sérülés, de a kép minősége/szöge miatt van bizonytalanság), "low" (a kép rossz minőségű, vagy csak részben látszik a sérülés).
 
 SZIGORÚ SZABÁLYOK A HELY BECSLÉSÉRE ("locationZone" mező) -- EZ EGY MÁSODIK, FÜGGETLEN REFERENCIAKÉPEN (az autó 5 sematikus nézete: elölnézet, hátulnézet, felülnézet, 2 oldalnézet) kerül majd bejelölésre, amit TE NEM LÁTSZ -- KIZÁRÓLAG a beküldött közeli fotón látható tájékozódási pontok (lámpa, lökhárító, ajtó, kerék, tetőív stb.) alapján válassz az alábbi ZÁRT listából:
 8. A "locationZone" mező KIZÁRÓLAG az alábbi értékek egyike lehet, PONTOSAN ebben az írásmódban: ${zonesJson}.
-   - "front_left" / "front_center" / "front_right": a jármű ELEJÉN (lökhárító, fényszóró, motorháztető, hűtőrács) látható sérülés, a fotó szerint balra / középen / jobbra.
-   - "rear_left" / "rear_center" / "rear_right": a jármű HÁTULJÁN (lökhárító, hátsó lámpa, csomagtérajtó) látható sérülés, a fotó szerint balra / középen / jobbra.
-   - "side_front" / "side_middle" / "side_rear": a jármű OLDALÁN (ajtók, sárvédők, küszöb) látható sérülés -- "side_front" az első kerék/ajtó környéke, "side_rear" a hátsó kerék/ajtó környéke, "side_middle" a kettő közötti terület.
+   - "front_left" / "front_center" / "front_right": a jármű ELEJÉN (lökhárító, fényszóró, motorháztető, hűtőrács) látható sérülés, a JÁRMŰ SAJÁT bal / közép / jobb oldalán (lásd 9. pont, hogyan állapítsd meg).
+   - "rear_left" / "rear_center" / "rear_right": a jármű HÁTULJÁN (lökhárító, hátsó lámpa, csomagtérajtó) látható sérülés, a JÁRMŰ SAJÁT bal / közép / jobb oldalán.
+   - "side_left_front" / "side_left_middle" / "side_left_rear": a jármű BAL (vezető-) oldalán -- elöl (első ajtó/kerék környéke) / középen / hátul (hátsó ajtó/kerék környéke).
+   - "side_right_front" / "side_right_middle" / "side_right_rear": a jármű JOBB (utas-) oldalán -- elöl / középen / hátul.
    - "roof": a tetőn látható sérülés.
    - "unclear": ha a fotóból NEM állapítható meg egyértelműen, hogy a karosszéria melyik részén van a sérülés (pl. túl közeli/kontextus nélküli kép, beltéri sérülés, vagy nincs rajta felismerhető tájékozódási pont).
-9. FONTOS: a "side_front"/"side_middle"/"side_rear" értékek SOHA nem jelentik azt, hogy eldöntötted, a jármű bal vagy jobb oldaláról van szó -- ezt SOSE próbáld kitalálni, egy közeli fotóból ez nem állapítható meg megbízhatóan.
+9. KRITIKUSAN FONTOS -- a "bal"/"jobb" fenti zónáknál MINDIG a JÁRMŰ SAJÁT bal/jobb oldalát jelenti (ahogy egy vezető ülne benne, előre nézve) -- ez NEM ugyanaz, mint hogy a fotón melyik oldalon LÁTSZIK a sérülés! A fotó nézőpontjától függően a jármű bal oldala akár a kép JOBB felén is megjelenhet -- ez NEM találgatás, hanem egyszerű vetület-geometria. Kövesd ezt a 3 szabályt:
+   - **Elölnézeti fotó** (a jármű elejét látod szemből: fényszóró, hűtőrács, motorháztető elölről): a kép TÜKRÖZÖTT a járműhöz képest -- a jármű BAL oldala a KÉPEN JOBBRA esik, a jármű JOBB oldala a KÉPEN BALRA esik.
+   - **Hátulnézeti fotó** (a jármű hátulját látod szemből: hátsó lökhárító, hátsó lámpa, csomagtérajtó hátulról): NINCS tükröződés -- a jármű BAL oldala a KÉPEN IS BALRA esik, a JOBB oldala a KÉPEN IS JOBBRA esik.
+   - **Oldalnézeti fotó** (ajtók, sárvédők, küszöb, kerekek egy hosszanti sorban látszanak): nézd meg, merre néz a jármű ORRA (motorháztető/fényszóró iránya) a képen. Ha az orr a KÉPEN BALRA néz -> a jármű BAL (vezető-) oldalát látod. Ha az orr a KÉPEN JOBBRA néz -> a jármű JOBB (utas-) oldalát látod.
+   - Ha a fotó túl közeli vagy kontextus nélküli ahhoz, hogy egyértelműen eldöntsd, melyik nézetet/oldalt látod, NE alkalmazd találgatva a fenti szabályokat -- válaszd az "unclear"-t.
 10. Bizonytalan esetben MINDIG az "unclear" a helyes válasz a "locationZone" mezőnél -- SOHA ne találgass csak azért, hogy legyen mit visszaadni. Az "unclear" NEM hiba, ez egy teljesen elfogadható, gyakori válasz.
 
 Kizárólag a megadott JSON séma szerinti választ add -- semmi mást, se magyarázatot, se markdown jelölést, se kódblokkot.`;

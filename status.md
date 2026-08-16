@@ -3303,3 +3303,61 @@ teljes projektre -- 0 hiba. Böngészős manuális teszt (tényleges fotó felt�
 API valós hívása, a jelölő tényleges megjelenése a helyes zónában, `'unclear'` hely ág
 kattintással történő kitöltése, 402/kvóta-elfogyás ág, videó-fájl elutasítása) NEM futott
 le ebben a munkamenetben -- ezt a usernek érdemes helyben leellenőriznie.
+
+---
+
+## 2026-08-16 (folyt.) -- AI sérülés-felismerés pontosítása: jármű-relatív bal/jobb + szakszerűbb leírás-megfogalmazás
+
+**Kérés:** "Egész jó, kicsit legyen pontosabb az ai modell a megfogalmazásban, és figyeljen
+az autó jobb és bal oldalára is, mert jelenleg ezeket összetéveszti." -- a fentebb leírt
+`scan-damage` AI sérülés-felismerés (lásd az előző szakaszt) két pontosítást igényelt.
+
+**Gyökérok (bal/jobb összekeverés):** az eredeti `damageLocationZones.ts` zóna-katalógusa
+a "bal"/"jobb" fogalmat KÉP-relatívan definiálta (`side_front`/`side_middle`/`side_rear`,
+"a fotó szerint balra/jobbra"), miközben a Gemini modell (helyesen, ahogy egy autós ember
+is) JÁRMŰ-relatívan gondolkodott "bal oldal" = vezetőoldal kapcsán -- ez a fogalmi eltérés
+okozta a rendszeres félrejelölést, KÜLÖNÖSEN elölnézeti fotóknál (ahol a kép a járműhöz
+képest TÜKRÖZÖTT -- a jármű bal oldala a képen jobbra esik), míg hátulnézeti fotóknál
+(nincs tükröződés) a régi logika véletlenül helyesnek tűnt.
+
+* **`lib/inspections/damageLocationZones.ts`** -- a zóna-katalógus 10-ről 13 zónára bővült:
+  a korábbi undifferenciált `side_front`/`side_middle`/`side_rear` helyett ÚJ
+  `side_left_front`/`side_left_middle`/`side_left_rear` és `side_right_front`/
+  `side_right_middle`/`side_right_rear` -- mindegyik EXPLICIT jármű-relatív (vezetőoldal/
+  utasoldal). A koordináta-tábla (`DAMAGE_LOCATION_ZONE_POINT`) újraszámolva: a
+  `front_left`/`front_right` koordinátái FELCSERÉLVE a kép-relatív elhelyezkedésükhöz
+  képest (a vetület-geometria miatt, lásd lent), a 2 oldalnézet-sor (`cars.webp`)
+  Python/Pillow pixel-elemzéssel megerősítve, hogy egymás vízszintesen tükrözött párjai
+  (diff tükrözve: 11.8 vs tükrözés nélkül: 49.4), és hogy a FELSŐ sor orra a képen balra
+  néz (= jármű bal/vezetőoldala), az ALSÓ sor orra jobbra néz (= jármű jobb/utasoldala).
+  A fájl JSDoc-ja teljes, iránytű-analógiával levezetett geometriai indoklást tartalmaz
+  nézetenként (elölnézet: tükrözött, hátulnézet: nem tükrözött, oldalnézet: orr-irány
+  dönt), plusz egy explicit "escape hatch" jegyzetet arra az esetre, ha a levezetés a
+  gyakorlatban mégis fordítva bizonyulna (csak ennek a fájlnak a koordináta-táblája
+  cserélendő, a rendszerutasítás NEM, mert az a jármű-relatív fogalmat kéri).
+* **`app/api/ai/scan-damage/route.ts`** -- `buildSystemInstruction()` frissítve:
+  1. Az ÚJ 13-zónás katalógust sorolja fel, és a korábbi "SOSE próbáld a bal/jobb oldalt
+     kitalálni" tiltás helyett EXPLICIT, 3 nézet-típusra bontott gyakorlati szabályt ad a
+     jármű-relatív bal/jobb helyes levezetéséhez (elölnézet -> tükrözött, hátulnézet ->
+     nem tükrözött, oldalnézet -> orr-irány alapján), bizonytalan esetben továbbra is
+     `'unclear'`-t kérve.
+  2. A `description` mező szabálya kiegészült: konkrét karosszéria-elem-nevek (pl.
+     "lökhárító", "sárvédő", "ajtópanel", "küszöb") és -- ha vizuálisan megbecsülhető --
+     konkrét méret (cm) használatát kéri a homályos megfogalmazás ("valamilyen sérülés
+     látható") helyett, kifejezetten tiltva a bizonytalanságot elrejtő töltelékszavakat
+     ("esetleg", "talán").
+  3. A fájl-fejléc JSDoc-ja (1-3. pont) frissítve, hogy tükrözze: a modell MOSTANTÓL
+     igenis megkülönbözteti a jármű bal/jobb oldalát, EXPLICIT nézet-specifikus szabályok
+     alapján, nem tiltva van tőle.
+  A `sanitizeScanDamageResponse()` és a `responseSchema` enum-listája VÁLTOZATLAN kódú,
+  automatikusan felveszi az új zóna-listát a `DAMAGE_LOCATION_ZONES` importon keresztül.
+* **`components/inspections/DamageCanvas.tsx`** / **`StepDamageMap.tsx`** -- NEM
+  módosultak ebben a körben, a `Record<DamageLocationZone, ...>` generikus lookupok miatt
+  automatikusan felveszik az új zóna-listát (TypeScript exhaustiveness-check biztosítja).
+
+**Ellenőrzés:** `npx tsc --noEmit -p tsconfig.json` szinkron, egyetlen bash-hívásban a
+teljes projektre -- 0 hiba. Böngészős manuális teszt (tényleges elölnézeti/hátulnézeti/
+oldalnézeti fotók feltöltése, a jelölő tényleges bal/jobb oldali elhelyezkedésének
+vizuális ellenőrzése) NEM futott le ebben a munkamenetben -- ezt a usernek érdemes helyben
+leellenőriznie, és ha a levezetés mégis fordítva bizonyulna, jelezze -- a javítás
+ekkor is csak a `damageLocationZones.ts` koordináta-tábláját érintené.
