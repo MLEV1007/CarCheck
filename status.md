@@ -3150,3 +3150,156 @@ emiatt a gomb ráhúzáskor "élőnek" tűnt, semmilyen vizuális jelzés nem ut
   logikájával) a képernyőolvasóknak jelzi a tiltott állapotot.
 
 **Ellenőrzés:** `tsc --noEmit` szinkron, egyetlen bash-hívásban a teljes projektre -- 0 hiba.
+
+---
+
+## 2026-08-16 -- AI-alapú hiba-felismerés a "Hibák és Média" wizard-lépéshez (`scan-defect`)
+
+**Kérés:** a felhasználó a projekt kihasználatlan automatizációs/AI lehetőségeinek
+átvizsgálását kérte, elsősorban a vizsgálat-kitöltés gyorsítására. A legnagyobb, még
+kihasználatlan terület a `StepDefects.tsx` ("Hibák és Média") lépés volt -- ez volt az
+egyetlen fotó-alapú wizard-lépés AI-szkennelés NÉLKÜL, csak kézi kategória-választással
+és leírás gépeléssel/diktálással. KRITIKUS elvárás: "az AI nem adhat téves válaszokat" --
+a terv és az implementáció ennek megfelelően, hallucináció-védelemre optimalizálva
+készült (lásd `PLAN_ai_scan_defect.md`).
+
+* **ÚJ `app/api/ai/scan-defect/route.ts`** -- Gemini Vision route, ami a hiba-fotóból
+  **javaslatot** ad a kategóriára (`DEFECT_CATEGORIES` zárt katalógus, `lib/inspections/constants.ts`)
+  és megír egy rövid, tényszerű vázlat-leírást. Védelmi rétegek (részletesen a route
+  JSDoc-jában és a tervben):
+  1. a válasz-séma explicit megengedi/megköveteli a "nem látok egyértelmű hibát"
+     kimenetet (`defectDetected: false`) -- a modell NINCS kényszerítve találatra;
+  2. a `category` KIZÁRÓLAG a zárt katalógus egyik értéke lehet, szerver-oldalon MÉG
+     EGYSZER ellenőrizve (`sanitizeScanDefectResponse()`) -- érvénytelen érték esetén a
+     TELJES javaslat elvetésre kerül (`defectDetected: false`), nincs "legközelebbi
+     találatra kerekítés";
+  3. a rendszerutasítás explicit tiltja a spekulációt -- nincs ok/diagnózis, nincs
+     javítási javaslat, nincs költségbecslés, nincs szavakkal kifejezett
+     súlyosság-minősítés, KIZÁRÓLAG a képen ténylegesen látható tartalom írható le;
+  4. NINCS numerikus/strukturált súlyosság-mező v1-ben (szándékos hatókör-korlátozás);
+  5. a javaslatot a kliens SOHA nem írja automatikusan a hiba-kártya mezőibe -- mindig
+     egy elkülönült "AI javaslat" panelként jelenik meg, kötelező emberi "Elfogadom"/
+     "Elvetem" döntéssel;
+  6. az elemzés KIZÁRÓLAG explicit gombnyomásra indul (nincs automatikus/háttér-hívás).
+  Ugyanaz a modell-fallback lánc, autentikáció + "1 AI kredit = 1 vizsgálat" kredit-védelem
+  minta, mint a többi `/api/ai/*` route-nál (`FEATURE_NAME: 'defect_scan'`).
+* **`components/inspections/wizard/StepDefects.tsx`** -- átírva: ÚJ `DefectAiState` típus
+  (`idle`/`loading`/`suggested`/`not_detected`/`error`) hiba-kártyánként, KIZÁRÓLAG kliens-
+  oldali állapotként (SOHA nem kerül be a mentett `DefectState`-be). `handleAnalyze()` a
+  `compressImageForAiScan()`-nel (lásd `lib/inspections/aiImageCompression.ts`) tömörített
+  fotót küldi a `scan-defect` route-nak. `handleAcceptSuggestion()` az EGYETLEN hely, ahol
+  az AI kimenete ténylegesen beíródik a `category`/`description` mezőbe.
+  `handleRejectSuggestion()` eldobja a javaslatot. ÚJ "✨ AI elemzés" gomb (csak fotónál,
+  videónál nem jelenik meg) és egy elkülönült "AI javaslat" kártya diszklémerrel,
+  alacsony-bizonyosság figyelmeztetéssel, Elfogadom/Elvetem gombokkal.
+
+**Ellenőrzés:** `tsc --noEmit` szinkron, egyetlen bash-hívásban a teljes projektre -- 0 hiba.
+
+---
+
+## 2026-08-16 (folyt.) -- Éles hibajegy: egyetlen AI funkció sem működött -- elavult `gemini-2.0-flash` modell + fiókszintű kvóta-plafon
+
+**Kérés:** a felhasználó jelezte, hogy a programban SEMMILYEN AI funkció nem működik --
+van, ahol csak tölt és nem történik semmi, van, ahol hibát ír. Kérte a hiba
+kivizsgálását és javítását.
+
+**Gyökérok (a felhasználó Google AI Studio irányítópult-screenshotjai alapján
+megerősítve -- valós API-forgalom, 404/429/503 hiba-bontás, "Rate limits by model"
+táblázat):**
+1. mind a 7 AI route (`parse-equipment`, `scan-vin`, `scan-service-doc`, `fix-grammar`,
+   `generate-summary`, `scan-defect`, `report-chat`) ugyanazt az elsődleges
+   `gemini-2.0-flash` modellt használta, amit a Google **2026-06-01-jén kivezetett**
+   (https://ai.google.dev/gemini-api/docs/deprecations) -- minden hívás azonnal 404-et
+   kapott ezen a modellen, és vagy a lassú, kiszámíthatatlan dinamikus
+   `ai.models.list()` biztonsági hálóra esett vissza (ez okozta a "csak tölt, nem
+   történik semmi" tünetet), vagy hibát dobott;
+2. a fiók (számlázás nélküli/nem-verifikált Google Cloud projekt állapotban) egy
+   fiókszintű, MINDEN modellre egyformán vonatkozó, napi 20 kérés (RPD) plafonnal van
+   korlátozva -- ez modellnévtől függetlenül 429/503 hibákat okoz nagyobb terhelésnél.
+   Korábbi (téves) elméletem az volt, hogy a `GEMINI_API_KEY` formátuma hibás -- ezt a
+   felhasználó dashboard-screenshotjai (valós, hitelesített API-forgalom a kulcs ellen)
+   cáfolták, ez az elmélet visszavonva.
+
+**Javítás:** mind a 7 route-ban a `MODEL_CANDIDATES` konstans lecserélve a korábbi
+`['gemini-2.0-flash', 'gemini-flash-latest']` párról egy explicit, verzióhoz kötött
+(NEM `-latest` alias) párra:
+* elsődleges: `gemini-3.1-flash-lite` (a `gemini-2.0-flash-lite` hivatalos utódja, olcsó/
+  gyors Lite-modell),
+* fallback: `gemini-3.6-flash` (a `gemini-2.0-flash` hivatalos utódja).
+
+Ez megszünteti a 404-eket és a csendes, kiszámíthatatlan dinamikus fallback-re esést. A
+JSDoc-kommentek is frissítve mind a 7 route-ban, dokumentálva az indoklást és a dátumot.
+
+**Nyitott, felhasználói döntést igénylő pont:** a fiókszintű napi 20 kérés/nap plafon
+valószínűleg NEM oldódik meg önmagában a modellnév-cserétől -- ha ez a Google Cloud
+projekt számlázás nélküli állapotából ered, a számlázás bekapcsolása (Tier 1 szint)
+szükséges az éles, több felhasználós használathoz. Javasolt a modellváltás utáni
+állapotot az AI Studio irányítópulton ellenőrizni -- ha a 404-ek eltűnnek, de a 429-ek
+maradnak, az megerősíti, hogy a fiók/számlázás a szűk keresztmetszet.
+
+**Ellenőrzés:** `tsc --noEmit` szinkron, egyetlen bash-hívásban a teljes projektre -- 0 hiba.
+
+---
+
+## 2026-08-16 (folyt.) -- AI-alapú sérülés-felismerés + hely-becslés a "Sérülés- és Hibatérkép" wizard-lépéshez (`scan-damage`)
+
+**Kérés:** a felhasználó a "Hibák és Média" (`StepDefects.tsx`) fentebb dokumentált
+AI-alapú hiba-felismerését szerette volna a "Sérülés- és Hibatérkép" (`StepDamageMap.tsx`
+/ `DamageCanvas.tsx`, a `cars.webp` referenciaképre épülő, szabadkézi pontfelvevő modul)
+lépésbe is, KIEGÉSZÍTVE azzal, hogy az AI a fotó alapján azt is jelölje be, nagyjából hol
+lehet a sérülés a karosszérián.
+
+* **ÚJ `lib/inspections/damageLocationZones.ts`** -- zárt "hely-zóna" katalógus
+  (`front_left/front_center/front_right`, `rear_left/rear_center/rear_right`,
+  `side_front/side_middle/side_rear`, `roof`, ill. `'unclear'`). A modell SOSE kap nyers
+  x/y koordinátát -- a `cars.webp` referenciaképet, amin a pontot végül elhelyezzük, a
+  modell BE SEM kapja bemenetként, egy "add vissza a pontos pixel-koordinátát" kérés
+  ezért értelmezhetetlen/hallucináció-veszélyes feladat lenne. Ehelyett a modell egy
+  NEVESÍTETT zónát választ egy zárt katalógusból, KIZÁRÓLAG a fotón látható tájékozódási
+  pontok (lámpa, lökhárító, ajtó, kerék stb.) alapján -- a kliens ebből, a fájlban tárolt
+  `DAMAGE_LOCATION_ZONE_POINT` táblával, DETERMINISZTIKUSAN (nem AI-val) számol konkrét
+  x/y koordinátát. A koordináták a `cars.webp` (850x563px) 5 al-nézetének (elölnézet/
+  hátulnézet/2 oldalnézet/felülnézet) képkocka-határait egyszeri Python/Pillow méréssel
+  (nem-fehér pixelek sor-/oszlop-vetülete) meghatározva, majd a befoglaló téglalap
+  harmadolásával (bal/közép/jobb, ill. oldalnézetnél elöl/közép/hátul) számolva. Az
+  oldalnézet két sora (mindkettő ugyanaz a sziluett tükörképe) SZÁNDÉKOSAN NEM
+  különbözteti meg a jármű bal/jobb oldalát -- ezt egy közeli fotóból amúgy sem lehetne
+  megbízhatóan megállapítani, a rendszerutasítás ezt explicit tiltja "kitalálni".
+* **ÚJ `app/api/ai/scan-damage/route.ts`** -- 1:1 a `scan-defect/route.ts` szerkezetét/
+  védelmi rétegeit követi (auth, "1 AI kredit = 1 vizsgálat" kredit-védelem, modell-
+  fallback lánc `gemini-3.1-flash-lite` -> `gemini-3.6-flash`, dinamikus "flash" modell-
+  listázás végső biztonsági hálóként), a `category` helyett `type`/`title` (`DamageType`
+  zárt katalógus -- `title` KIZÁRÓLAG `type: 'other'`-nél jön ténylegesen a modelltől, az
+  5 fix típusnál a szerver a modell esetleges javaslatát EL SEM OLVASSA, determinisztikusan
+  a `DAMAGE_TYPE_LABEL`-t írja be), plusz az ÚJ `locationZone` mezővel. Szerver-oldali
+  "MÉG EGYSZER" validáció (`sanitizeScanDamageResponse()`): érvénytelen `type`/üres
+  `description`/hiányzó `'other'`-title esetén a TELJES javaslat `damageDetected: false`-ra
+  esik vissza (nincs "legközelebbi találatra kerekítés") -- a `locationZone` viszont
+  KIEGÉSZÍTŐ, "best effort" mező, érvénytelen/hiányzó érték esetén csak `'unclear'`-re esik
+  vissza, nem dobja el a kategória+leírás javaslatot.
+* **`components/inspections/DamageCanvas.tsx`** -- ÚJ "AI sérülés-felismerés fotóból"
+  panel a referenciakép FÖLÖTT, KIZÁRÓLAG `mode="edit"`-ben (a `StepDamageMap.tsx` egyetlen
+  hívóhelyén, mindig Linear/dark témával). A javaslat SOSE ír közvetlenül a `points`
+  tömbbe: "Elfogadom" a MÁR MEGLÉVŐ szerkesztő-popovert (`pending`) nyitja meg előre
+  kitöltve, a zóna-táblából számolt koordinátán (`aiOrigin: true`, a popover egy rövid
+  "AI javaslata alapján" emlékeztetőt mutat) -- a pont csak a popover "Mentés" gombjára
+  jön ténylegesen létre (KÉT FÜGGETLEN emberi jóváhagyás: "Elfogadom" az AI-tartalomra,
+  "Mentés" a konkrét pontra). Ha a `locationZone` `'unclear'`, nincs koordináta -- a
+  javaslat egy `pendingAiDraft`-ba kerül, a felhasználót egy felirat kéri, hogy kattintson
+  a képre; a KÖVETKEZŐ kattintás tölti ki ebből az új pontot a hardkódolt "karcolás"
+  alapérték helyett. "Elvetem" mindent eldob, semmilyen mező/jelölő nem jön létre. ÚJ
+  `inspectionId?: string` prop (a "1 AI kredit = 1 vizsgálat" hívásokhoz) -- SZÁNDÉKOSAN
+  prop-ként, NEM `useInspectionId()`-vel közvetlenül olvasva, mert ez a komponens `view`
+  módban a Wizardon KÍVÜL is renderelődik (`InspectionDetailView.tsx`/`DamageMapCard.tsx`
+  publikus riport), ahol NINCS `InspectionIdProvider` -- egy feltétel nélküli
+  `useInspectionId()` hívás ott hibát dobna.
+* **`components/inspections/wizard/StepDamageMap.tsx`** -- `useInspectionId()`-vel olvassa
+  ki a wizard-munkamenet azonosítóját (biztonságos, mert a Wizard mindenhol
+  `InspectionIdProvider`-en belül van), és propként adja át a `DamageCanvas`-nak. A
+  `HintCallout` szövege kiegészítve az új AI-lehetőség említésével.
+
+**Ellenőrzés:** `npx tsc --noEmit -p tsconfig.json` szinkron, egyetlen bash-hívásban a
+teljes projektre -- 0 hiba. Böngészős manuális teszt (tényleges fotó feltöltése, Gemini
+API valós hívása, a jelölő tényleges megjelenése a helyes zónában, `'unclear'` hely ág
+kattintással történő kitöltése, 402/kvóta-elfogyás ág, videó-fájl elutasítása) NEM futott
+le ebben a munkamenetben -- ezt a usernek érdemes helyben leellenőriznie.

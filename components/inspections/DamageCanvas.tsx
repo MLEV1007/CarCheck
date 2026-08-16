@@ -2,13 +2,20 @@
 
 import { useRef, useState } from 'react';
 import Image from 'next/image';
-import { Trash2, X, ZoomIn } from 'lucide-react';
+import { AlertTriangle, Loader2, Sparkles, Trash2, X, ZoomIn } from 'lucide-react';
 import { CAR_IMAGE_HEIGHT, CAR_IMAGE_SRC, CAR_IMAGE_WIDTH } from '@/lib/inspections/carImageMap';
 import { DAMAGE_TYPE_COLOR, DAMAGE_TYPE_LABEL, DAMAGE_TYPES } from '@/lib/inspections/constants';
+import {
+  DAMAGE_LOCATION_ZONE_LABEL,
+  DAMAGE_LOCATION_ZONE_POINT,
+  type DamageLocationZoneOrUnclear,
+} from '@/lib/inspections/damageLocationZones';
 import { DefectMediaUpload } from '@/components/inspections/wizard/DefectMediaUpload';
 import { VoiceInputButton } from '@/components/ui/VoiceInputButton';
 import { CarPointPin } from '@/components/inspections/CarPointPin';
 import { iconHitSlopClass } from '@/components/ui/IconButton';
+import { compressImageForAiScan } from '@/lib/inspections/aiImageCompression';
+import { useInsufficientCredits } from '@/components/credits/InsufficientCreditsProvider';
 import type { DamagePointState, DamageType } from '@/lib/inspections/types';
 
 interface DamageCanvasProps {
@@ -30,6 +37,13 @@ interface DamageCanvasProps {
    * megnyitni a `MediaLightbox`-ot (ugyanaz a minta, mint a `DefectsGallery.tsx`-nél).
    * `edit` módban nincs szükség rá, mert ott a `DefectMediaUpload` maga kezeli az előnézetet. */
   onOpenPhoto?: (url: string) => void;
+  /** KIZÁRÓLAG `edit` módban releváns -- az "AI sérülés-felismerés fotóból" panel
+   * (`/api/ai/scan-damage`) "1 AI kredit = 1 vizsgálat" hívásaihoz kell, lásd
+   * `lib/inspectionAiCredit.ts`. Prop-ként kapja (NEM `useInspectionId()`-vel olvassa ki
+   * közvetlenül), mert ez a komponens `view` módban a Wizardon KÍVÜL is renderelődik
+   * (`InspectionDetailView.tsx`/`DamageMapCard.tsx` publikus riport) -- ott NINCS
+   * `InspectionIdProvider`, egy feltétel nélküli `useInspectionId()` hívás ott hibát dobna. */
+  inspectionId?: string;
 }
 
 /** A popoverben/modalban szerkesztés alatt álló pont -- `id: null` egy MÉG NEM mentett,
@@ -45,9 +59,70 @@ interface PendingDamage {
   description: string;
   file: File | null;
   previewUrl: string | null;
+  /** Igaz, ha ez a MÉG NEM mentett (`id: null`) pont egy elfogadott AI-javaslatból nyílt meg
+   * -- kizárólag arra szolgál, hogy a szerkesztő-popover egy rövid "AI javaslata alapján"
+   * emlékeztetőt mutasson MENTÉS ELŐTT (lásd lent a JSX-ben), a `DamagePointState`-be SOSE
+   * kerül át (a `handleSave()` explicit felsorolja a mentendő mezőket, ez nincs köztük). */
+  aiOrigin: boolean;
 }
 
 const ACCENT = { dark: '#5e6ad2', light: '#1c69d4' };
+
+const AI_SCAN_FAILURE_MESSAGE = 'Az AI elemzés nem sikerült. Próbáld újra, vagy jelöld be kézzel.';
+
+/** A `/api/ai/scan-damage` route válasz-alakja -- lásd `app/api/ai/scan-damage/route.ts`
+ * (és `StepDefects.tsx` `ScanDefectApiResponse`-ját, ugyanaz a minta), csak a kliensnek
+ * releváns mezők. */
+interface ScanDamageApiResponse {
+  success: boolean;
+  data?: {
+    damageDetected: boolean;
+    confidence: 'high' | 'medium' | 'low';
+    type?: DamageType;
+    title?: string;
+    description?: string;
+    locationZone?: DamageLocationZoneOrUnclear;
+  };
+  error?: string;
+  details?: string;
+}
+
+/**
+ * Az "AI sérülés-felismerés fotóból" panel állapota -- KIZÁRÓLAG kliens-oldali, EFEMER
+ * UI-állapot, SOSE kerül a `DamagePointState`-be/a mentett vizsgálati adatba, ugyanaz az elv,
+ * mint a `StepDefects.tsx` `DefectAiState`-jénél: az AI javaslat sosem írhat közvetlenül
+ * pontot, csak explicit "Elfogadom" kattintásra nyitja meg a MÁR MEGLÉVŐ szerkesztő-popovert
+ * (`pending`), amit a felhasználónak MÉG "Mentés"-sel is jóvá kell hagynia -- lásd a
+ * `handleAcceptAiSuggestion()` JSDoc-ját.
+ */
+type DamageAiState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | {
+      status: 'suggested';
+      confidence: 'high' | 'medium' | 'low';
+      type: DamageType;
+      title: string;
+      description: string;
+      locationZone: DamageLocationZoneOrUnclear;
+    }
+  | { status: 'not_detected' }
+  | { status: 'error'; message: string };
+
+const IDLE_AI_STATE: DamageAiState = { status: 'idle' };
+
+/** Egy elfogadott AI-javaslat adatai, amikor a `locationZone` `'unclear'` volt -- ilyenkor
+ * NINCS koordináta, amit a szerkesztő-popover megnyitásához fel lehetne használni, ezért a
+ * felhasználónak MÉG rá kell kattintania a képre; a KÖVETKEZŐ kattintás ebből a piszkozatból
+ * tölti ki az új pontot (lásd `handleContainerClick()`), a hardkódolt "karcolás" alapérték
+ * helyett. */
+interface PendingAiDraft {
+  type: DamageType;
+  title: string;
+  description: string;
+  file: File | null;
+  previewUrl: string | null;
+}
 
 /**
  * Sérülés- és Hibatérkép "Szabadkézi" (Free-form Canvas) komponens -- PONTOSAN a
@@ -72,11 +147,44 @@ const ACCENT = { dark: '#5e6ad2', light: '#1c69d4' };
  * a robusztusabb megoldás -- egy kis, a kattintás helyéhez horgonyzott popover a kép
  * SZÉLÉN/ALJÁN, KIFEJEZETTEN mobilon (a projekt mobil-first célközönsége, garázsban,
  * telefonon dolgozó szakemberek) könnyen kilógna/levágódna ennyi tartalommal.
+ *
+ * **"AI sérülés-felismerés fotóból" panel (2026-08-16, `mode="edit"`-ben, a felhasználó
+ * explicit kérésére -- "ugyanaz a rendszer, mint a Hibák és Média AI-elemzése, DE jelölje is
+ * be, hogy nagyjából hol lehet a sérülés"):** a kép FÖLÖTT megjelenő, önálló panel, ami
+ * FÜGGETLEN a kattintásos pont-felvételtől -- a felhasználó fotót tölt fel (`aiPhoto`), az
+ * "AI elemzés" gomb meghívja a `/api/ai/scan-damage` route-ot (`handleAiAnalyze()`), ami a
+ * `scan-defect`-hez hasonlóan kategóriát (`type`)+leírást ad, PLUSZ egy zárt zóna-katalógusból
+ * (`lib/inspections/damageLocationZones.ts`) egy hely-becslést (`locationZone`). Az eredmény
+ * SOSE ír közvetlenül a `points` tömbbe -- egy elkülönült "AI javaslat" kártyaként jelenik
+ * meg (`aiState.status === 'suggested'`), KÜLÖN "Elfogadom"/"Elvetem" gombbal, UGYANAZ az elv,
+ * mint a `StepDefects.tsx`-nél (lásd `PLAN_ai_scan_defect.md` 3.5 pontját).
+ *
+ * "Elfogadom" (`handleAcceptAiSuggestion()`) NEM hoz létre azonnal pontot -- a MÁR MEGLÉVŐ
+ * `pending` szerkesztő-popovert nyitja meg, előre kitöltve (`aiOrigin: true`), a
+ * `DAMAGE_LOCATION_ZONE_POINT` táblából determinisztikusan számolt koordinátán -- a
+ * felhasználónak MÉG "Mentés"-t kell kattintania, hogy a pont ténylegesen létrejöjjön (KÉT
+ * FÜGGETLEN emberi jóváhagyás egy AI-eredetű pontnál: "Elfogadom" az AI-tartalomra, "Mentés" a
+ * konkrét pontra -- ugyanaz a popover/Mentés-kényszer, mint egy kézzel felvett pontnál, csak
+ * előre kitöltve). Ha a `locationZone` `'unclear'` (a modell nem tudta megállapítani a helyet
+ * a fotóból), NINCS koordináta, amit fel lehetne használni -- ilyenkor a javaslat egy
+ * `pendingAiDraft`-ba kerül, és a felhasználót egy felirat kéri, hogy kattintson a képre; a
+ * KÖVETKEZŐ `handleContainerClick()` ebből tölti ki az új pontot a hardkódolt "karcolás"
+ * alapérték helyett.
  */
-export function DamageCanvas({ points, mode, onChange, theme, className, onOpenPhoto }: DamageCanvasProps) {
+export function DamageCanvas({ points, mode, onChange, theme, className, onOpenPhoto, inspectionId }: DamageCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [pending, setPending] = useState<PendingDamage | null>(null);
   const accent = ACCENT[theme];
+
+  // AI sérülés-felismerés fotóból (`/api/ai/scan-damage`) -- lásd a fenti komponens-JSDoc
+  // "AI sérülés-felismerés fotóból panel" szakaszát. KIZÁRÓLAG `mode === 'edit'`-ben
+  // rendereljük/használjuk, de a hook-ok feltétel nélküli hívása biztonságos: az
+  // `useInsufficientCredits()` Providere a gyökér layoutban MINDEN oldalt körbevesz.
+  const [aiPhoto, setAiPhoto] = useState<{ file: File; previewUrl: string } | null>(null);
+  const [aiState, setAiState] = useState<DamageAiState>(IDLE_AI_STATE);
+  const [pendingAiDraft, setPendingAiDraft] = useState<PendingAiDraft | null>(null);
+  const { notifyInsufficientCredits } = useInsufficientCredits();
+  const isAiPhotoVideo = aiPhoto ? aiPhoto.file.type.startsWith('video/') : false;
 
   function closePending() {
     setPending(null);
@@ -90,6 +198,15 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
     const rawY = ((e.clientY - rect.top) / rect.height) * 100;
     const x = Math.min(100, Math.max(0, rawX));
     const y = Math.min(100, Math.max(0, rawY));
+
+    // Ha van egy "helyre váró" AI-piszkozat (lásd `handleAcceptAiSuggestion()` `'unclear'`
+    // ága), EZ a kattintás tölti ki az új pontot -- a hardkódolt "karcolás" alapérték helyett.
+    if (pendingAiDraft) {
+      setPending({ id: null, x, y, ...pendingAiDraft, aiOrigin: true });
+      setPendingAiDraft(null);
+      return;
+    }
+
     setPending({
       id: null,
       x,
@@ -99,6 +216,7 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
       description: '',
       file: null,
       previewUrl: null,
+      aiOrigin: false,
     });
   }
 
@@ -121,7 +239,119 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
       description: point.description,
       file: point.file,
       previewUrl: point.previewUrl,
+      aiOrigin: false,
     });
+  }
+
+  function handleAiPhotoSelect(file: File) {
+    if (aiPhoto?.previewUrl.startsWith('blob:')) URL.revokeObjectURL(aiPhoto.previewUrl);
+    setAiPhoto({ file, previewUrl: URL.createObjectURL(file) });
+    // Új fotó kiválasztásakor egy korábbi javaslat ELÉVÜL -- ne maradjon a képernyőn egy már
+    // nem releváns javaslat, ugyanaz az elv, mint a `StepDefects.tsx` `handleSelectFile()`-jénél.
+    setAiState(IDLE_AI_STATE);
+  }
+
+  function handleAiPhotoRemove() {
+    if (aiPhoto?.previewUrl.startsWith('blob:')) URL.revokeObjectURL(aiPhoto.previewUrl);
+    setAiPhoto(null);
+    setAiState(IDLE_AI_STATE);
+  }
+
+  /** "AI elemzés" gomb -- lásd `PLAN_ai_scan_defect.md` 3.6 pontját: KIZÁRÓLAG explicit
+   * felhasználói kérésre fut le, sosem automatikus a fotó kiválasztásakor. */
+  async function handleAiAnalyze() {
+    if (!aiPhoto || !inspectionId) return;
+
+    setAiState({ status: 'loading' });
+    try {
+      const imageDataUrl = await compressImageForAiScan(aiPhoto.file);
+
+      const response = await fetch('/api/ai/scan-damage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: imageDataUrl, inspectionId }),
+      });
+
+      // 402 (INSUFFICIENT_AI_QUOTA) -- lásd `InsufficientCreditsProvider.tsx`/`StepDefects.tsx`
+      // azonos elvű kezelését.
+      if (response.status === 402) {
+        notifyInsufficientCredits();
+        setAiState(IDLE_AI_STATE);
+        return;
+      }
+
+      let result: ScanDamageApiResponse | null = null;
+      try {
+        result = (await response.json()) as ScanDamageApiResponse;
+      } catch (parseError) {
+        console.error('[DamageCanvas] A /api/ai/scan-damage válasza nem érvényes JSON (státusz:', response.status, '):', parseError);
+      }
+
+      if (!response.ok || !result?.success || !result?.data) {
+        if (result?.details) console.error('[DamageCanvas] Gemini scan-damage hiba részletek:', result.details);
+        setAiState({ status: 'error', message: result?.error ?? AI_SCAN_FAILURE_MESSAGE });
+        return;
+      }
+
+      const { data } = result;
+      if (!data.damageDetected || !data.type || !data.title || !data.description) {
+        // A szerver `sanitizeScanDamageResponse()`-ja `type`/`title`/`description`-t
+        // KIZÁRÓLAG `damageDetected: true` esetén ad vissza -- ha bármelyik hiányzik, a
+        // BIZTONSÁGOS "nem talált sérülést" ágra esünk, semmit nem javaslunk.
+        setAiState({ status: 'not_detected' });
+        return;
+      }
+
+      setAiState({
+        status: 'suggested',
+        confidence: data.confidence,
+        type: data.type,
+        title: data.title,
+        description: data.description,
+        locationZone: data.locationZone ?? 'unclear',
+      });
+    } catch {
+      setAiState({ status: 'error', message: AI_SCAN_FAILURE_MESSAGE });
+    }
+  }
+
+  /** "Elfogadom" -- lásd a komponens-JSDoc "AI sérülés-felismerés fotóból panel" szakaszát:
+   * SOSE hoz létre közvetlenül pontot, csak a MÁR MEGLÉVŐ szerkesztő-popovert nyitja meg
+   * előre kitöltve (ismert hely esetén), vagy a KÖVETKEZŐ kattintáshoz készít elő egy
+   * piszkozatot (`'unclear'` hely esetén) -- mindkét esetben "Mentés" kell a tényleges
+   * ponthoz, lásd `PLAN_ai_scan_defect.md` 3.5 pontját. */
+  function handleAcceptAiSuggestion() {
+    if (aiState.status !== 'suggested' || !aiPhoto) return;
+    const { type, title, description, locationZone } = aiState;
+    const { file, previewUrl } = aiPhoto;
+
+    if (locationZone !== 'unclear') {
+      const point = DAMAGE_LOCATION_ZONE_POINT[locationZone];
+      setPending({ id: null, x: point.x, y: point.y, type, title, description, file, previewUrl, aiOrigin: true });
+    } else {
+      setPendingAiDraft({ type, title, description, file, previewUrl });
+    }
+
+    // A fotó "tulajdonjoga" átkerült a `pending`/`pendingAiDraft`-ba -- itt NEM szabad
+    // felszabadítani (`URL.revokeObjectURL`) az object URL-t, azt onnantól a popover Mentés/
+    // Mégse ágai (ill. a következő kattintás) kezelik, ugyanúgy, mint egy kézzel csatolt fotónál.
+    setAiPhoto(null);
+    setAiState(IDLE_AI_STATE);
+  }
+
+  /** "Elvetem" -- az AI javaslat (és a hozzá feltöltött fotó) teljesen eldobásra kerül,
+   * SEMMILYEN mező/jelölő nem jön létre belőle. */
+  function handleRejectAiSuggestion() {
+    if (aiPhoto?.previewUrl.startsWith('blob:')) URL.revokeObjectURL(aiPhoto.previewUrl);
+    setAiPhoto(null);
+    setAiState(IDLE_AI_STATE);
+  }
+
+  /** A "kattints a képre, ahol a sérülés van" felirat "Mégse" gombja -- lásd a
+   * `pendingAiDraft` JSDoc-ját. */
+  function handleCancelAiDraft() {
+    if (pendingAiDraft?.previewUrl?.startsWith('blob:')) URL.revokeObjectURL(pendingAiDraft.previewUrl);
+    setPendingAiDraft(null);
   }
 
   function handleSave() {
@@ -199,6 +429,145 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
 
   return (
     <div className={className}>
+      {/* "AI sérülés-felismerés fotóból" panel -- lásd a komponens-JSDoc-ot. Szándékosan
+          KIZÁRÓLAG `mode === 'edit'`-ben renderelt, Linear (dark) tokenekkel hardkódolva --
+          `edit` mód a `cars.webp` referenciaképpel EGYETLEN hívóhelyről (`StepDamageMap.tsx`)
+          fut, MINDIG `theme="dark"`-kal, ugyanúgy, ahogy a `StepDefects.tsx` "AI elemzés"
+          gombja is kizárólag a Linear Wizardban él, nincs BMW/light megfelelője. */}
+      {mode === 'edit' && (
+        <div className="mb-4 rounded-lg border border-linear-hairline-strong bg-linear-surface-2 p-3.5">
+          <div className="flex items-center gap-1.5 text-[13px] font-semibold text-linear-primary">
+            <Sparkles className="h-4 w-4" />
+            AI sérülés-felismerés fotóból
+          </div>
+          <p className="mt-1 text-[12px] text-linear-ink-subtle">
+            Tölts fel egy fotót a sérülésről -- az AI javaslatot ad a kategóriára és a leírásra,
+            ÉS megbecsüli, hogy a képen látható tájékozódási pontok alapján nagyjából hol lehet a
+            karosszérián. A helyet és a leírást is mindig ellenőrizd, mielőtt elfogadod és mented.
+          </p>
+
+          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start">
+            <DefectMediaUpload
+              file={aiPhoto?.file ?? null}
+              previewUrl={aiPhoto?.previewUrl ?? null}
+              onSelect={handleAiPhotoSelect}
+              onRemove={handleAiPhotoRemove}
+            />
+
+            <div className="flex flex-1 flex-col gap-2">
+              {aiPhoto && isAiPhotoVideo && (
+                <p className="text-[12px] text-linear-warning">
+                  Videóból nem kérhető AI elemzés -- tölts fel állóképet.
+                </p>
+              )}
+
+              {aiPhoto && !isAiPhotoVideo && aiState.status === 'idle' && (
+                <button
+                  type="button"
+                  onClick={handleAiAnalyze}
+                  disabled={!inspectionId}
+                  className="inline-flex h-8 w-fit items-center gap-1.5 rounded-md border border-linear-primary/40 bg-linear-primary/10 px-3 text-[12.5px] font-medium text-linear-primary transition-colors hover:bg-linear-primary/15 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  AI elemzés
+                </button>
+              )}
+
+              {aiState.status === 'loading' && (
+                <div className="flex items-center gap-1.5 text-[12px] text-linear-ink-subtle">
+                  <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+                  AI elemzi a fotót…
+                </div>
+              )}
+
+              {aiState.status === 'not_detected' && (
+                <p className="text-[12px] text-linear-ink-subtle">
+                  Az AI nem ismert fel egyértelmű sérülést ezen a képen -- jelöld be kézzel a
+                  képre kattintva.
+                </p>
+              )}
+
+              {aiState.status === 'error' && (
+                <div>
+                  <p className="text-[12px] text-linear-danger">{aiState.message}</p>
+                  <button
+                    type="button"
+                    onClick={handleAiAnalyze}
+                    className="mt-1 text-[12px] font-medium text-linear-primary hover:underline"
+                  >
+                    Újra próbálom
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* "AI javaslat" kártya -- SZÁNDÉKOSAN elkülönítve, KÜLÖN "Elfogadom"/"Elvetem"
+              gombbal, lásd a komponens-JSDoc-ot és `PLAN_ai_scan_defect.md` 3.5/3.7 pontját. */}
+          {aiState.status === 'suggested' && (
+            <div className="mt-3 rounded-md border border-dashed border-linear-primary/50 bg-linear-primary/5 p-3.5">
+              <div className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.4px] text-linear-primary">
+                <Sparkles className="h-3.5 w-3.5" />
+                AI javaslat
+              </div>
+              <p className="mt-2 text-[13.5px] text-linear-ink">
+                <span className="font-semibold">{aiState.title}</span> -- {aiState.description}
+              </p>
+              <p className="mt-1.5 text-[12.5px] text-linear-ink-subtle">
+                Becsült hely:{' '}
+                <span className="font-medium text-linear-ink">
+                  {aiState.locationZone !== 'unclear'
+                    ? DAMAGE_LOCATION_ZONE_LABEL[aiState.locationZone]
+                    : 'nem egyértelmű -- elfogadás után kattints a képre, ahol a sérülés van'}
+                </span>
+              </p>
+              {aiState.confidence === 'low' && (
+                <p className="mt-2 flex items-start gap-1.5 text-[12px] text-linear-warning">
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  Az AI bizonytalan ebben a javaslatban -- ellenőrizd különösen alaposan.
+                </p>
+              )}
+              <p className="mt-2 text-[11.5px] text-linear-ink-subtle">
+                Az AI-javaslat -- a kategória, a leírás ÉS a hely is -- tájékoztató jellegű, a
+                képen látottak alapján -- mindig ellenőrizd, mielőtt elfogadod és mented.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={handleAcceptAiSuggestion}
+                  className="inline-flex h-8 items-center rounded-md bg-linear-primary px-3 text-[12.5px] font-semibold text-white transition-colors hover:bg-linear-primary-hover"
+                >
+                  Elfogadom
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRejectAiSuggestion}
+                  className="inline-flex h-8 items-center rounded-md border border-linear-hairline-strong bg-linear-surface-2 px-3 text-[12.5px] font-medium text-linear-ink-muted transition-colors hover:bg-linear-surface-3"
+                >
+                  Elvetem
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* "Kattints a képre, ahol a sérülés van" felirat -- KIZÁRÓLAG akkor jelenik meg, ha egy
+          elfogadott AI-javaslat helye `'unclear'` volt, lásd `pendingAiDraft`/
+          `handleContainerClick()` JSDoc-ját. */}
+      {pendingAiDraft && (
+        <div className="mb-3 flex items-center justify-between gap-3 rounded-md border border-dashed border-linear-primary/50 bg-linear-primary/5 px-3 py-2 text-[12.5px] text-linear-ink">
+          <span>Kattints a képre, ahol a sérülés van -- az AI-javaslat adatai automatikusan kitöltődnek.</span>
+          <button
+            type="button"
+            onClick={handleCancelAiDraft}
+            className="shrink-0 font-medium text-linear-ink-subtle hover:text-linear-ink"
+          >
+            Mégse
+          </button>
+        </div>
+      )}
+
       <div
         ref={containerRef}
         onClick={handleContainerClick}
@@ -264,6 +633,15 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
 
             {mode === 'edit' ? (
               <div className="mt-3 flex flex-col gap-3">
+                {/* AI-eredetű, MÉG NEM mentett pontnál egy rövid emlékeztető MENTÉS ELŐTT --
+                    lásd `PendingDamage.aiOrigin` JSDoc-ját. */}
+                {pending.aiOrigin && (
+                  <p className="flex items-start gap-1.5 rounded-md border border-dashed border-linear-primary/40 bg-linear-primary/5 px-2.5 py-1.5 text-[11.5px] text-linear-ink-subtle">
+                    <Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-linear-primary" />
+                    Az AI javaslata alapján előre kitöltve -- ellenőrizd, majd mentsd, vagy
+                    módosítsd a mezőket.
+                  </p>
+                )}
                 <div className="flex flex-col gap-1.5">
                   <span className={fieldLabelClass}>Kategória</span>
                   <select
