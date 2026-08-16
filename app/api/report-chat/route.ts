@@ -36,13 +36,14 @@ import type { PublicReportData } from '@/lib/reports/types';
  * "elfogyott kereted" szövegű), mert ez nem egy a felhasználónak eladott/
  * számára ismert kvóta.
  *
- * **Modellválasztás + fallback-lánc:** ugyanaz a minta, mint a projekt többi
- * `/api/ai/*` route-jánál (lásd `generate-summary/route.ts` JSDoc-ját) --
- * elsődleges `gemini-2.0-flash`, fallback `gemini-flash-latest`.
+ * **Modellválasztás + fallback-lánc (2026-08-16, frissítve):** ugyanaz a minta, mint a
+ * projekt többi `/api/ai/*` route-jánál (lásd `generate-summary/route.ts` és
+ * `parse-equipment/route.ts` JSDoc-ját a `gemini-2.0-flash` 2026-06-01-i kivezetéséről) --
+ * elsődleges `gemini-3.1-flash-lite`, fallback `gemini-3.6-flash`.
  */
 export const runtime = 'nodejs';
 
-const MODEL_CANDIDATES = ['gemini-2.0-flash', 'gemini-flash-latest'] as const;
+const MODEL_CANDIDATES = ['gemini-3.1-flash-lite', 'gemini-3.6-flash'] as const;
 
 /** Egyetlen üzenet maximális hossza -- lásd PLAN_ai_report_chat.md 4.4 pont. */
 const MAX_MESSAGE_LENGTH = 500;

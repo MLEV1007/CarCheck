@@ -17,9 +17,10 @@ import { hasInspectionClaimedAiCredit, claimInspectionAiCredit } from '@/lib/ins
  * JSON-t, NEM markdown-t), amit a kliens közvetlenül a "Szöveges összefoglaló" textarea-ba
  * illeszt.
  *
- * **Modellválasztás + fallback-lánc:** UGYANAZ a minta, mint a `parse-equipment/route.ts`-nél
- * (lásd annak részletes JSDoc-ját) -- elsődleges `gemini-2.0-flash`, fallback
- * `gemini-flash-latest`. Itt NINCS `responseSchema`/strukturált JSON kimenet (a válasz maga
+ * **Modellválasztás + fallback-lánc (2026-08-16, frissítve):** UGYANAZ a minta, mint a
+ * `parse-equipment/route.ts`-nél (lásd annak részletes JSDoc-ját a `gemini-2.0-flash`
+ * 2026-06-01-i kivezetéséről és a fiókszintű napi kérés-plafonról) -- elsődleges
+ * `gemini-3.1-flash-lite`, fallback `gemini-3.6-flash`. Itt NINCS `responseSchema`/strukturált JSON kimenet (a válasz maga
  * egy szabad szöveges bekezdés), ezért a `generationConfig` egyszerűbb, mint a
  * `parse-equipment`/`scan-vin` route-oknál.
  *
@@ -31,9 +32,9 @@ import { hasInspectionClaimedAiCredit, claimInspectionAiCredit } from '@/lib/ins
  */
 export const runtime = 'nodejs';
 
-/** Lásd `parse-equipment/route.ts` "Modellválasztás + fallback-lánc" JSDoc pontját --
- * ugyanaz az elsődleges/fallback pár, ugyanazon indoklással. */
-const MODEL_CANDIDATES = ['gemini-2.0-flash', 'gemini-flash-latest'] as const;
+/** Lásd `parse-equipment/route.ts` "Modellválasztás + fallback-lánc" JSDoc pontját (2026-08-16
+ * frissítés) -- ugyanaz az elsődleges/fallback pár, ugyanazon indoklással. */
+const MODEL_CANDIDATES = ['gemini-3.1-flash-lite', 'gemini-3.6-flash'] as const;
 
 /** A `usage_logs.feature_name` értéke ehhez a route-hoz -- lásd `lib/credits.ts`. */
 const FEATURE_NAME = 'summary_generate';

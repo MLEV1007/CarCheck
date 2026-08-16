@@ -20,9 +20,9 @@ import { hasInspectionClaimedAiCredit, claimInspectionAiCredit } from '@/lib/ins
  * a `/api/ai/parse-equipment` strukturált feldolgozást indítja el (lásd `StepEquipment.tsx`
  * `onDictationEnd` propját), a nyers szöveg apró nyelvtani pontatlanságai ott irrelevánsak.
  *
- * **Modellválasztás + fallback-lánc:** UGYANAZ a minta, mint a projekt többi Gemini
- * route-jánál (lásd `parse-equipment/route.ts` részletes JSDoc-ját) -- elsődleges
- * `gemini-2.0-flash`, fallback `gemini-flash-latest`.
+ * **Modellválasztás + fallback-lánc (2026-08-16, frissítve):** UGYANAZ a minta, mint a
+ * projekt többi Gemini route-jánál (lásd `parse-equipment/route.ts` részletes JSDoc-ját) --
+ * elsődleges `gemini-3.1-flash-lite`, fallback `gemini-3.6-flash`.
  *
  * `runtime = 'nodejs'` -- ugyanazon okból, mint a projekt többi Gemini route-jánál.
  *
@@ -31,8 +31,9 @@ import { hasInspectionClaimedAiCredit, claimInspectionAiCredit } from '@/lib/ins
  */
 export const runtime = 'nodejs';
 
-/** Lásd `parse-equipment/route.ts` "Modellválasztás + fallback-lánc" JSDoc pontját. */
-const MODEL_CANDIDATES = ['gemini-2.0-flash', 'gemini-flash-latest'] as const;
+/** Lásd `parse-equipment/route.ts` "Modellválasztás + fallback-lánc" JSDoc pontját
+ * (2026-08-16 frissítés). */
+const MODEL_CANDIDATES = ['gemini-3.1-flash-lite', 'gemini-3.6-flash'] as const;
 
 /** A `usage_logs.feature_name` értéke ehhez a route-hoz -- lásd `lib/credits.ts`. */
 const FEATURE_NAME = 'grammar_fix';

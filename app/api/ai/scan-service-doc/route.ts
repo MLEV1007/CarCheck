@@ -31,8 +31,9 @@ import { SERVICE_ENTRY_TYPE_SUGGESTIONS } from '@/lib/inspections/constants';
  */
 export const runtime = 'nodejs';
 
-/** Modell-fallback lánc -- lásd `scan-vin/route.ts` azonos elvű kommentjét. */
-const MODEL_CANDIDATES = ['gemini-2.0-flash', 'gemini-flash-latest'] as const;
+/** Modell-fallback lánc -- lásd `scan-vin/route.ts` azonos elvű kommentjét (2026-08-16
+ * frissítés: `gemini-2.0-flash` kivezetve, lásd `parse-equipment/route.ts` JSDoc-ját). */
+const MODEL_CANDIDATES = ['gemini-3.1-flash-lite', 'gemini-3.6-flash'] as const;
 
 /** A `usage_logs.feature_name` értéke ehhez a route-hoz -- lásd `lib/credits.ts` és a
  * `components/credits/CreditDashboardModal.tsx` `FEATURE_NAME_LABELS` térképét (bővítve

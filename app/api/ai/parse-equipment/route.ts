@@ -19,16 +19,31 @@ import { hasInspectionClaimedAiCredit, claimInspectionAiCredit } from '@/lib/ins
  * `id`/`status`/`notes` frissítésekkel tudja utólag (merge-eléssel) átírni a wizard state-jét,
  * a `currentStates`-ben esetlegesen már meglévő, NEM említett elemeket változatlanul hagyva.
  *
- * **Modellválasztás + fallback-lánc (2026-08-02, végleges változat -- a korábbi hibás
- * kísérletek teljes története a git history-ban követhető, itt csak a jelenlegi,
- * ÉRVÉNYES állapot):** a felhasználói Google AI Studio API kulcs és számlázási fiók
- * aktiválása óta a `gemini-2.0-flash` és a mindenkori legfrissebb "flash" modell is
- * zökkenőmentesen elérhető -- a korábbi `1.5`-ös modellnevekre (amik a Google
- * modell-kivezetései miatt közben elavultak) többé NINCS szükség, minden ilyen
- * hivatkozás törölve. Elsődleges modell `gemini-2.0-flash`, fallback a
- * `gemini-flash-latest` (a Google mindenkori legújabb, stabil "flash" verzió-aliasa --
- * ez a NÉV saját magát tartja karban a Google oldalán, így egy jövőbeli
- * `gemini-2.0-flash`-kivezetés esetén sem kell a kódot módosítani).
+ * **Modellválasztás + fallback-lánc (2026-08-16, frissítve -- a korábbi kísérletek
+ * teljes története a git history-ban követhető, itt csak a jelenlegi, ÉRVÉNYES
+ * állapot):** kiderült, hogy a korábban használt `gemini-2.0-flash` modellt a Google
+ * 2026-06-01-jén kivezette (lásd https://ai.google.dev/gemini-api/docs/deprecations),
+ * ami minden hívásnál azonnali 404-et okozott, és a kódot a lassú, kiszámíthatatlan
+ * dinamikus `ai.models.list()` biztonsági hálóra kényszerítette -- ez magyarázta a
+ * felhasználó által észlelt "van ahol csak tölt, van ahol hibázik" tünetegyüttest. Emellett
+ * a felhasználó Google AI Studio irányítópultja azt mutatta, hogy a fiók (számlázás
+ * nélküli/nem-verifikált állapotban) egy fiókszintű, minden modellre egységes, napi 20
+ * kérés (RPD) plafonnal van korlátozva -- ez a modellnévtől függetlenül is 429/503
+ * hibákat okoz nagyobb terhelésnél. A modellnév-csere ezt önmagában nem oldja meg
+ * (lásd lent, "Ismert korlát" megjegyzés), de a 404-eket igen. Elsődleges modell mostantól
+ * `gemini-3.1-flash-lite` (a Google jelenlegi, kifejezetten a `gemini-2.0-flash-lite`
+ * utódjaként dokumentált, olcsó/gyors Lite-modellje), fallback `gemini-3.6-flash` (a
+ * `gemini-2.0-flash` hivatalos utódja, teljes képességű Flash-modell). Mindkét név
+ * explicit, verzióhoz kötött (NEM `-latest` alias), hogy a jövőbeli Google-oldali
+ * modellváltások ne okozzanak újra észrevétlen, csendes 404-fallback-eket -- egy jövőbeli
+ * kivezetésről a Google e-mailben értesít, és a docs/deprecations oldal is jelzi, ekkor
+ * itt kell frissíteni a nevet.
+ *
+ * **Ismert korlát (2026-08-16):** ha a fiók továbbra is a napi 20 kérés/nap fiókszintű
+ * plafonon van (a Google AI Studio irányítópult "Rate limits by model" táblázata szerint
+ * ez minden modellre egyformán vonatkozik, függetlenül a névtől), az éles, több
+ * felhasználós használathoz a Google Cloud projekten a számlázás bekapcsolása (Tier 1)
+ * szükséges -- ez a modellnév-választástól független, fiók/projekt-szintű beállítás.
  *
  * **Dinamikus modell-listázó végső biztonsági háló:** ha VÉLETLENÜL mindkét fix
  * `MODEL_CANDIDATES` név elbukna (pl. egy jövőbeli, előre nem látott Google-oldali
@@ -40,7 +55,7 @@ import { hasInspectionClaimedAiCredit, claimInspectionAiCredit } from '@/lib/ins
  * `MODEL_CANDIDATES` karbantartása továbbra is ajánlott).
  *
  * A hibaválasz `details` mezője TOVÁBBRA IS KIZÁRÓLAG az ELSŐDLEGES (`MODEL_CANDIDATES[0]`,
- * azaz `gemini-2.0-flash`) hibáját mutatja, függetlenül attól, hány fallback (statikus
+ * azaz `gemini-3.1-flash-lite`) hibáját mutatja, függetlenül attól, hány fallback (statikus
  * VAGY dinamikus) próbálkozás futott utána -- lásd a `POST` handler `primaryError`
  * változóját, és a korábbi (`gemini-1.5-pro` 404-es esetét dokumentáló) fejlesztési
  * lépést a `status.md`-ben arról, miért fontos ez a szétválasztás.
@@ -74,7 +89,7 @@ export const runtime = 'nodejs';
  * fallback-lánc" pontját. Az első sikeres válasz azonnal megszakítja a ciklust, a
  * `POST` handlerben. Ha MINDKETTŐ elbukna, a `POST` handler egy dinamikus
  * modell-listázó fallback-kel próbálkozik tovább (lásd `ai.models.list()` hívás lent). */
-const MODEL_CANDIDATES = ['gemini-2.0-flash', 'gemini-flash-latest'] as const;
+const MODEL_CANDIDATES = ['gemini-3.1-flash-lite', 'gemini-3.6-flash'] as const;
 
 /** A `usage_logs.feature_name` értéke ehhez a route-hoz -- lásd `lib/credits.ts`. */
 const FEATURE_NAME = 'equipment_parse';
@@ -264,7 +279,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ParseEqui
   // választ azonnal felhasználjuk. MINDEN próbálkozás hibáját logoljuk (modellnevenként
   // külön, hogy a Vercel logokból pontosan látszódjon, melyik modell hányadik
   // próbálkozásra bukott el), DE a kliensnek küldött `details` mezőbe KIZÁRÓLAG az
-  // ELSŐDLEGES (`MODEL_CANDIDATES[0]`, azaz `gemini-2.0-flash`) modell hibáját tesszük --
+  // ELSŐDLEGES (`MODEL_CANDIDATES[0]`, azaz `gemini-3.1-flash-lite`) modell hibáját tesszük --
   // egy esetleges fallback-modell hibája NE fedje el a valódi, elsődleges okot.
   let rawText: string | undefined;
   let succeeded = false;

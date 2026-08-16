@@ -24,9 +24,11 @@ import { hasInspectionClaimedAiCredit, claimInspectionAiCredit } from '@/lib/ins
  * ZÁRT enumként ("benzin"/"dizel"/"elektromos") -- lásd `buildSystemInstruction()`
  * "P.1"/"P.2"/"P.3"/"F.1"/"F.2" pontjait) is, az okmány nyelvétől függetlenül.
  *
- * **Modellválasztás + fallback-lánc:** ugyanaz a minta, mint a `parse-equipment` route-nál
- * (lásd ott a részletes JSDoc-ot) -- elsődleges modell `gemini-2.0-flash`, statikus fallback
- * `gemini-flash-latest` (a Google mindenkori legújabb, stabil "flash" alias-a), VÉGSŐ
+ * **Modellválasztás + fallback-lánc (2026-08-16, frissítve):** ugyanaz a minta, mint a
+ * `parse-equipment` route-nál (lásd ott a részletes JSDoc-ot a `gemini-2.0-flash`
+ * 2026-06-01-i kivezetéséről és a fiókszintű napi kérés-plafonról) -- elsődleges modell
+ * `gemini-3.1-flash-lite`, statikus fallback `gemini-3.6-flash` (mindkettő explicit,
+ * verzióhoz kötött név, NEM `-latest` alias). VÉGSŐ
  * biztonsági hálóként pedig egy dinamikus `ai.models.list()`-alapú, nevében "flash" szót
  * tartalmazó modell-kereséssel, ha MINDKÉT fix név elbukna egy jövőbeli Google-oldali
  * modell-kivezetés miatt. A hibaválasz `details` mezője KIZÁRÓLAG az elsődleges modell
@@ -42,7 +44,7 @@ export const runtime = 'nodejs';
 
 /** Modell-fallback lánc, kipróbálási sorrendben -- lásd a fenti JSDoc "Modellválasztás +
  * fallback-lánc" pontját. */
-const MODEL_CANDIDATES = ['gemini-2.0-flash', 'gemini-flash-latest'] as const;
+const MODEL_CANDIDATES = ['gemini-3.1-flash-lite', 'gemini-3.6-flash'] as const;
 
 /** A `usage_logs.feature_name` értéke ehhez a route-hoz -- lásd `lib/credits.ts`. */
 const FEATURE_NAME = 'vin_scan';
