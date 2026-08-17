@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Check, Loader2, Mail, Zap } from 'lucide-react';
-import { formatHuf } from '@/lib/format';
+import { AlertTriangle, Check, Loader2, Mail, X, Zap } from 'lucide-react';
+import { formatDateTimeHu, formatHuf } from '@/lib/format';
 import type { QuotaSummarySuccessResponse } from '@/app/api/quotas/summary/route';
 import type { QuotaPlanTier } from '@/types/quotas';
 
@@ -182,6 +182,14 @@ export function BillingTab({
   const [invoiceUrl, setInvoiceUrl] = useState<string | null | undefined>(undefined);
   const [checkoutLoadingKey, setCheckoutLoadingKey] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  /** "Előfizetés lemondása" (2026-08-17, felhasználói kérés) -- lásd
+   * `app/api/stripe/cancel-subscription/route.ts` JSDoc-ját. `isCancelModalOpen` a
+   * megerősítő modal (lásd lent `CancelSubscriptionModal`), `cancelActionLoading` a
+   * lemondás/visszavonás GOMB saját (a csomagváltó gombokétól KÜLÖN) töltési állapota,
+   * `cancelActionError` a hozzá tartozó hibaüzenet. */
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [cancelActionLoading, setCancelActionLoading] = useState(false);
+  const [cancelActionError, setCancelActionError] = useState<string | null>(null);
   /** Havi/éves kapcsoló -- 2026-08-07, "Havi/éves kapcsoló" lépés. Csak a 3 önkiszolgáló
    * előfizetési kártyát (Egyéni/Műhely Kereskedői/Profi) érinti, az Autóház (egyedi
    * ajánlat) és a Top-up/AI-kredit szekciók változatlanok maradnak. */
@@ -274,6 +282,61 @@ export function BillingTab({
       setCheckoutError('Nem sikerült elindítani a fizetést. Ellenőrizd az internetkapcsolatot.');
     } finally {
       setCheckoutLoadingKey(null);
+    }
+  }
+
+  /**
+   * Előfizetés lemondása/visszavonása (2026-08-17) -- lásd
+   * `app/api/stripe/cancel-subscription/route.ts` JSDoc-ját a "biztos megoldás"
+   * (`cancel_at_period_end`) indoklásáért. Sikeres válasz esetén OPTIMISTA módon,
+   * helyben frissítjük a `data.quota` állapotot (nem várjuk meg a webhook kör-utat,
+   * lásd a route JSDoc "DB write-through" pontját) -- a `planTier`/kvóta-oszlopok
+   * VÁLTOZATLANOK maradnak, hiszen a lemondás csak a `cancelAtPeriodEnd`/
+   * `subscriptionCurrentPeriodEnd` mezőket érinti, amíg a kifizetett ciklus le nem jár.
+   */
+  async function handleCancelAction(action: 'cancel' | 'resume') {
+    setCancelActionError(null);
+    setCancelActionLoading(true);
+
+    try {
+      const response = await fetch('/api/stripe/cancel-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      const json = (await response.json().catch(() => null)) as
+        | { success: true; cancelAtPeriodEnd: boolean; currentPeriodEnd: string | null }
+        | { success: false; error: string }
+        | null;
+
+      if (response.ok && json?.success) {
+        setData((prev) =>
+          prev
+            ? {
+                ...prev,
+                quota: {
+                  ...prev.quota,
+                  cancelAtPeriodEnd: json.cancelAtPeriodEnd,
+                  subscriptionCurrentPeriodEnd: json.currentPeriodEnd,
+                },
+              }
+            : prev
+        );
+        setIsCancelModalOpen(false);
+        return;
+      }
+
+      setCancelActionError(
+        json?.success === false
+          ? json.error
+          : action === 'cancel'
+            ? 'Nem sikerült lemondani az előfizetést.'
+            : 'Nem sikerült visszavonni a lemondást.'
+      );
+    } catch {
+      setCancelActionError('Nem sikerült teljesíteni a kérést. Ellenőrizd az internetkapcsolatot.');
+    } finally {
+      setCancelActionLoading(false);
     }
   }
 
@@ -438,9 +501,85 @@ export function BillingTab({
               1 AI-kredit egy TELJES vizsgálat összes AI-funkcióját fedezi (VIN-szkenneléstől a
               szakvélemény-összefoglalóig).
             </p>
+
+            {/* Előfizetés lemondása (2026-08-17) -- csak Menedzsernek, és csak ha van
+                tényleges Stripe-előfizetés (lásd `hasActiveStripeSubscription` JSDoc-ját --
+                az Autóház/business tier egyedi ajánlat, Stripe Subscription nélkül). */}
+            {role === 'manager' && data.quota.hasActiveStripeSubscription && (
+              <div className="border-t border-stripe-hairline pt-4">
+                {data.quota.cancelAtPeriodEnd ? (
+                  <div className="flex flex-col gap-3 rounded-stripe-md border border-amber-200 bg-amber-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="font-sohne text-[13px] font-light text-amber-800">
+                      Az előfizetésed lemondva --{' '}
+                      <span className="font-medium">
+                        {formatDateTimeHu(data.quota.subscriptionCurrentPeriodEnd) || 'a jelenlegi ciklus végéig'}
+                      </span>{' '}
+                      még teljes hozzáférésed van, utána a fiókod automatikusan Ingyenes csomagra vált. A fiókod
+                      NEM törlődik.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => handleCancelAction('resume')}
+                      disabled={cancelActionLoading}
+                      className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full border border-amber-300 bg-white px-4 font-sohne text-[13px] font-normal text-amber-900 transition-colors hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {cancelActionLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                      Lemondás visszavonása
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="font-sohne text-[12px] font-light text-stripe-ink-mute">
+                      Ha lemondod az előfizetésed, a már kifizetett időszak végéig (
+                      {formatDateTimeHu(data.quota.subscriptionCurrentPeriodEnd) || 'a ciklus végéig'}) még
+                      változatlanul használhatod a rendszert, utána automatikusan Ingyenes csomagra vált. A fiókod
+                      megmarad.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setIsCancelModalOpen(true)}
+                      className="inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-stripe-ruby/40 px-4 font-sohne text-[13px] font-normal text-stripe-ruby transition-colors hover:bg-stripe-ruby/5"
+                    >
+                      Előfizetés lemondása
+                    </button>
+                  </div>
+                )}
+                {cancelActionError && (
+                  <p role="alert" className="mt-2 font-sohne text-[12px] text-stripe-ruby">
+                    {cancelActionError}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {role === 'manager' && !data.quota.hasActiveStripeSubscription && data.quota.planTier === 'business' && (
+              <p className="border-t border-stripe-hairline pt-4 font-sohne text-[12px] font-light text-stripe-ink-mute">
+                Az Autóház csomag egyedi ajánlat -- a lemondásához{' '}
+                <a
+                  href="mailto:levente.manyi@buildmysite.hu?subject=Aut%C3%B3h%C3%A1z%20csomag%20-%20lemond%C3%A1s"
+                  className="font-medium text-stripe-primary underline underline-offset-2"
+                >
+                  vedd fel velünk a kapcsolatot
+                </a>
+                .
+              </p>
+            )}
           </div>
         )}
       </div>
+
+      {isCancelModalOpen && (
+        <CancelSubscriptionModal
+          isLoading={cancelActionLoading}
+          error={cancelActionError}
+          periodEndLabel={formatDateTimeHu(data?.quota.subscriptionCurrentPeriodEnd ?? null)}
+          onConfirm={() => handleCancelAction('cancel')}
+          onClose={() => {
+            setCancelActionError(null);
+            setIsCancelModalOpen(false);
+          }}
+        />
+      )}
 
       {/* 4 előfizetési csomag-kártya + Havi/Éves kapcsoló (2026-08-07, "Havi/éves kapcsoló"
           lépés) -- könnyű, függőségmentes szegmentált kapcsoló (nincs @radix-ui/react-switch,
@@ -666,6 +805,97 @@ export function BillingTab({
           {checkoutError}
         </p>
       )}
+    </div>
+  );
+}
+
+/**
+ * "Előfizetés lemondása" megerősítő modal (2026-08-17) -- ugyanaz a modal-mintázat, mint
+ * a `DeleteAccountCard.tsx` "Fiók törlése" modaljánál (háttér-kattintás/`X`/`Mégse` zárja
+ * be, amíg nincs folyamatban lévő kérés), DE annál KÖNNYEBB megerősítéssel (nincs beírandó
+ * email cím) -- a lemondás VISSZAVONHATÓ (lásd "Lemondás visszavonása" gomb), a fiók/
+ * adatok NEM vesznek el, tehát nem indokolt ugyanolyan szigorú megerősítés, mint egy
+ * végleges fiók-törlésnél.
+ */
+function CancelSubscriptionModal({
+  isLoading,
+  error,
+  periodEndLabel,
+  onConfirm,
+  onClose,
+}: {
+  isLoading: boolean;
+  error: string | null;
+  periodEndLabel: string;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={isLoading ? undefined : onClose}
+      role="presentation"
+    >
+      <div
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Előfizetés lemondásának megerősítése"
+        className="w-full max-w-md rounded-stripe-lg border border-stripe-hairline bg-white p-6 shadow-stripe-1"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-stripe-ruby/10 text-stripe-ruby">
+              <AlertTriangle className="h-4 w-4" />
+            </div>
+            <h3 className="font-sohne text-[16px] font-normal text-stripe-ink">Biztosan lemondod az előfizetést?</h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isLoading}
+            aria-label="Bezárás"
+            className="rounded-full p-1 text-stripe-ink-mute transition-colors hover:bg-stripe-canvas-soft hover:text-stripe-ink disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="mt-3 flex flex-col gap-2 font-sohne text-[13px] font-light leading-relaxed text-stripe-ink-secondary">
+          <p>
+            A már kifizetett időszak végéig ({periodEndLabel || 'a jelenlegi ciklus végéig'}) MINDEN funkciódat
+            változatlanul tovább használhatod.
+          </p>
+          <p>Utána a fiókod automatikusan Ingyenes csomagra vált -- a fiókod és a korábbi vizsgálataid megmaradnak.</p>
+          <p>A lemondást a ciklus vége előtt bármikor visszavonhatod.</p>
+        </div>
+
+        {error && (
+          <p role="alert" className="mt-3 rounded-stripe-sm border border-stripe-ruby/30 bg-stripe-ruby/5 px-3 py-2 font-sohne text-[13px] text-stripe-ruby">
+            {error}
+          </p>
+        )}
+
+        <div className="mt-6 flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isLoading}
+            className="inline-flex h-9 items-center justify-center rounded-full border border-stripe-hairline-input px-4 font-sohne text-[13px] font-normal text-stripe-ink-secondary transition-colors hover:bg-stripe-canvas-soft disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Mégse
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={isLoading}
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-stripe-ruby px-4 font-sohne text-[13px] font-normal text-white transition-colors hover:bg-stripe-ruby/90 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            Előfizetés lemondása
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

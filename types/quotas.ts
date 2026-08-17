@@ -44,4 +44,21 @@ export interface QuotaBalance {
    * felhasználónak ténylegesen "AI kredit"-ként kell mutatni (lásd
    * `HeaderCreditBadge.tsx`/`CreditDashboardModal.tsx`), NEM csak a havi rész. */
   totalAiAvailable: number;
+  /** `user_credits.stripe_subscription_id` léte -- 2026-08-17, "Előfizetés lemondása"
+   * lépés: `true`, ha a szervezetnek van egy Stripe-on keresztül létrejött, ÉLŐ
+   * előfizetése (tehát a `BillingTab.tsx` "Előfizetés lemondása" gombja ténylegesen
+   * hívható) -- KÜLÖNBÖZIK a `planTier !== 'free'`-től, mert az Autóház (`business`)
+   * tier EGYEDI ártárgyalással jár, Stripe Subscription objektum NÉLKÜL (lásd
+   * `BillingTab.tsx` "Kapcsolatfelvétel" CTA-ját), ott ez a mező `false` marad. */
+  hasActiveStripeSubscription: boolean;
+  /** `user_credits.cancel_at_period_end` -- `true`, ha a Menedzser lemondta az
+   * előfizetést (`/api/stripe/cancel-subscription`), de a MÁR KIFIZETETT számlázási
+   * ciklus végéig még aktív. */
+  cancelAtPeriodEnd: boolean;
+  /** `user_credits.subscription_current_period_end` (ISO string) -- a jelenlegi
+   * számlázási ciklus/előfizetés vége. `cancelAtPeriodEnd === true` esetén ez az a
+   * dátum, ameddig a szervezet MÉG hozzáfér a fizetett csomaghoz, utána a Stripe
+   * automatikusan 'free'-re fokozza vissza (lásd `app/api/stripe/webhook/route.ts`
+   * `handleSubscriptionEvent`-jét). `null`, ha nincs (soha nem volt) Stripe-előfizetés. */
+  subscriptionCurrentPeriodEnd: string | null;
 }

@@ -56,10 +56,16 @@ interface QuotaRow {
   monthly_ai_limit: number;
   monthly_ai_remaining: number;
   purchased_ai_remaining: number;
+  /** 2026-08-17, "Előfizetés lemondása" lépés -- lásd `types/quotas.ts`
+   * `QuotaBalance.hasActiveStripeSubscription`/`cancelAtPeriodEnd`/
+   * `subscriptionCurrentPeriodEnd` JSDoc-ját. */
+  stripe_subscription_id: string | null;
+  cancel_at_period_end: boolean;
+  subscription_current_period_end: string | null;
 }
 
 const QUOTA_COLUMNS =
-  'organization_id, plan_tier, monthly_inspections_limit, monthly_inspections_remaining, purchased_inspections_remaining, monthly_ai_limit, monthly_ai_remaining, purchased_ai_remaining';
+  'organization_id, plan_tier, monthly_inspections_limit, monthly_inspections_remaining, purchased_inspections_remaining, monthly_ai_limit, monthly_ai_remaining, purchased_ai_remaining, stripe_subscription_id, cancel_at_period_end, subscription_current_period_end';
 
 /** A DB `plan_tier` szöveges oszlopát a `QuotaPlanTier` unióra képezi le -- 2026-08-06,
  * "Árazási struktúra bővítés" lépés óta EXHAUSZTÍV (a korábbi bináris `=== 'pro' ? 'pro'
@@ -96,6 +102,9 @@ function toQuotaBalance(row: QuotaRow): QuotaBalance {
     monthlyAiRemaining: row.monthly_ai_remaining,
     purchasedAiRemaining: row.purchased_ai_remaining,
     totalAiAvailable: row.monthly_ai_remaining + row.purchased_ai_remaining,
+    hasActiveStripeSubscription: Boolean(row.stripe_subscription_id),
+    cancelAtPeriodEnd: row.cancel_at_period_end,
+    subscriptionCurrentPeriodEnd: row.subscription_current_period_end,
   };
 }
 

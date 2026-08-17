@@ -126,15 +126,32 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session):
 
 /**
  * `customer.subscription.created`/`updated`/`deleted` esemény-kezelő (2026-08-11,
- * "Platform Admin kredit/előfizetés-kezelés" lépés) -- KIZÁRÓLAG a `user_credits` Stripe-
- * mezőit (stripe_customer_id/stripe_subscription_id/subscription_status/
- * subscription_current_period_end) frissíti, a `plan_tier`/kvóta-oszlopokhoz NEM nyúl --
- * azokat továbbra is KIZÁRÓLAG a `checkout.session.completed` -> `apply_plan_purchase` RPC
- * (fent) vagy a Platform Admin felület kézi felülbírálása állítja. Ez a szándékos
- * szétválasztás (Levi tisztázó kérdésre adott döntése): a `/admin` felület kredit/csomag-
- * módosítása CSAK belső override, NEM hív Stripe API írási műveletet -- ez a handler csak
- * a FORDÍTOTT irányt (Stripe -> mi) szinkronizálja, kizárólag megjelenítési célra
- * (lejárati dátum/státusz az admin felületen).
+ * "Platform Admin kredit/előfizetés-kezelés" lépés) -- ELSŐDLEGESEN a `user_credits`
+ * Stripe-mezőit (stripe_customer_id/stripe_subscription_id/subscription_status/
+ * subscription_current_period_end/cancel_at_period_end) frissíti, a `plan_tier`/kvóta-
+ * oszlopokhoz csak EGY, kifejezetten szűk esetben nyúl (lásd lent, "Előfizetés
+ * lemondása" szakasz) -- egyébként azokat továbbra is KIZÁRÓLAG a
+ * `checkout.session.completed` -> `apply_plan_purchase` RPC (fent) vagy a Platform Admin
+ * felület kézi felülbírálása állítja. Ez a szándékos szétválasztás (Levi tisztázó
+ * kérdésre adott döntése): a `/admin` felület kredit/csomag-módosítása CSAK belső
+ * override, NEM hív Stripe API írási műveletet -- ez a handler alapvetően a FORDÍTOTT
+ * irányt (Stripe -> mi) szinkronizálja, kizárólag megjelenítési célra (lejárati dátum/
+ * státusz az admin/Billing felületen).
+ *
+ * **Előfizetés lemondása (2026-08-17, "Előfizetés lemondása" lépés) -- KIVÉTEL a fenti
+ * elv alól:** ha az esemény azt jelzi, hogy a Stripe-előfizetés VÉGLEGESEN lezárult
+ * (`subscription.status === 'canceled'` -- ez akár egy `customer.subscription.deleted`
+ * eseménnyel érkezik, amikor a `cancel_at_period_end=true`-val lemondott előfizetés
+ * számlázási ciklusa lejár ÉS a Stripe automatikusan lezárja, akár elméletileg egy
+ * `updated` eseménnyel, ha a Stripe Dashboardon valaki azonnal töröl egy előfizetést),
+ * a szervezetet VISSZAFOKOZZUK az 'free' csomagra az `apply_plan_purchase('free')` RPC-n
+ * keresztül (lásd `supabase/migrations/20260817_subscription_cancellation.sql`) -- ez a
+ * felhasználó KIFEJEZETT kérése ("ha valaki leiratkozik... a kifizetett részig
+ * használhatja a rendszert, utána biztosan nem"): enélkül egy lejárt előfizetésű
+ * szervezet a régi `plan_tier`-en (pl. Profi) maradt volna ÖRÖKRE, mert ez a handler
+ * korábban SOHA nem nyúlt a `plan_tier`-hez. A `stripe_subscription_id` is törlésre
+ * kerül (NULL-ra) -- ha a szervezet később ÚJRA előfizet, a checkout egy ÚJ Subscription
+ * objektumot hoz létre, a régi, már lezárt ID-t nem szabad megtartani.
  *
  * `subscription.metadata.organizationId` -- a `checkout/route.ts` `subscription_data.
  * metadata`-ja tölti ki ÚJ előfizetésnél; megújuláskor/státuszváltáskor a Stripe
@@ -149,7 +166,8 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session):
  * a Subscription objektum tetején él (`subscription.current_period_end` nem is létezik a
  * jelenlegi TypeScript típusokban), hanem soronként (SubscriptionItem) -- mivel ennek a
  * projektnek minden előfizetése egyetlen price-ot tartalmaz, az első (és egyetlen) tétel
- * ciklus-vége megegyezik a "teljes előfizetés" lejáratával.
+ * ciklus-vége megegyezik a "teljes előfizetés" lejáratával. Egy VÉGLEGESEN lezárt
+ * (`canceled`) előfizetésnél ez a mező jellemzően `undefined`, ezért `null`-ra esik.
  */
 async function handleSubscriptionEvent(subscription: Stripe.Subscription): Promise<void> {
   const organizationId = subscription.metadata?.organizationId;
@@ -164,6 +182,7 @@ async function handleSubscriptionEvent(subscription: Stripe.Subscription): Promi
 
   const customerId = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id;
   const currentPeriodEndUnix = subscription.items.data[0]?.current_period_end;
+  const isPermanentlyCanceled = subscription.status === 'canceled';
 
   const supabaseAdmin = createAdminClient();
 
@@ -174,16 +193,18 @@ async function handleSubscriptionEvent(subscription: Stripe.Subscription): Promi
   // a mezőkkel kiegészítve. Csak a LENTI mezők érintettek -- a plan_tier/kvóta-oszlopok a
   // meglévő soron VÁLTOZATLANOK maradnak (lásd a fenti JSDoc-ot), újonnan létrejövő sornál
   // pedig a tábla-alapértékeket (free/5/3 stb.) kapják, amíg a checkout.session.completed
-  // esemény be nem állítja a tényleges csomagot.
+  // esemény be nem állítja a tényleges csomagot. `isPermanentlyCanceled` esetén a
+  // `stripe_subscription_id`-t explicit NULL-ra állítjuk -- lásd a fenti JSDoc-ot.
   const { error } = await supabaseAdmin.from('user_credits').upsert(
     {
       organization_id: organizationId,
       stripe_customer_id: customerId,
-      stripe_subscription_id: subscription.id,
+      stripe_subscription_id: isPermanentlyCanceled ? null : subscription.id,
       subscription_status: subscription.status,
       subscription_current_period_end: currentPeriodEndUnix
         ? new Date(currentPeriodEndUnix * 1000).toISOString()
         : null,
+      cancel_at_period_end: isPermanentlyCanceled ? false : subscription.cancel_at_period_end,
       updated_at: new Date().toISOString(),
     },
     { onConflict: 'organization_id' }
@@ -202,7 +223,31 @@ async function handleSubscriptionEvent(subscription: Stripe.Subscription): Promi
     organizationId,
     subscriptionId: subscription.id,
     status: subscription.status,
+    cancelAtPeriodEnd: subscription.cancel_at_period_end,
   });
+
+  // Lásd a fenti JSDoc "Előfizetés lemondása" szakaszát -- a VÉGLEGESEN lezárt
+  // előfizetésű szervezetet visszafokozzuk 'free'-re, hogy a fizetett csomag ne
+  // maradjon örökre aktív egy lejárt előfizetésnél.
+  if (isPermanentlyCanceled) {
+    const { error: downgradeError } = await supabaseAdmin
+      .rpc('apply_plan_purchase', { p_organization_id: organizationId, p_plan_action: 'free' })
+      .maybeSingle();
+
+    if (downgradeError) {
+      console.error('[stripe/webhook] Visszafokozás \'free\'-re sikertelen (lejárt előfizetés):', {
+        organizationId,
+        subscriptionId: subscription.id,
+        downgradeError,
+      });
+      throw new Error(`apply_plan_purchase('free') sikertelen: ${downgradeError.message}`);
+    }
+
+    console.log('[stripe/webhook] Szervezet visszafokozva \'free\' csomagra (lejárt előfizetés):', {
+      organizationId,
+      subscriptionId: subscription.id,
+    });
+  }
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
