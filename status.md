@@ -1,6 +1,6 @@
 # Státusz — CarPass SaaS (MVP)
 
-_Utolsó frissítés: 2026-08-17 ("Sérülés-térkép (8. lépés) autó-referenciaképe lecserélve: az 5 nézetet egyetlen apró kompozit képbe zsúfoló `cars.webp` helyett 5 külön, nagyban megjelenő, a felhasználó saját AI-promptjaiból generált nézet (elöl/bal oldal/hátul/jobb oldal/felül) egy `CarViewSwitcher` fülváltóval -- lásd a 2026-08-17-i szakaszt legalul a teljes indoklásért. Ez a fejléc-sor a korábbi, egy hosszú beágyazott láncban túlnőtt verzió helyett újraindítva -- a teljes korábbi történet változatlanul megtalálható a dátumozott szakaszokban lejjebb.")_
+_Utolsó frissítés: 2026-08-17 ("Sérülés-térkép (8. lépés): az AI sérülés-felismerés hely-becslő/auto-bejelölő képessége eltávolítva, az AI mostantól KIZÁRÓLAG kategóriát és leírást javasol, a pontos helyet mindig a felhasználó jelöli be kézzel -- lásd a legalul, ugyanezen a napon található MÁSODIK szakaszt a teljes indoklásért.")_
 
 ## Kész funkciók
 
@@ -3457,3 +3457,55 @@ interaktív setup promptot dobna) -- ez egy MEGLÉVŐ, e körtől független hi�
 Böngészős manuális teszt (tényleges kattintás a Wizardban, fülváltás, AI-javaslat
 elfogadása, publikus riport megtekintése) NEM futott le ebben a munkamenetben -- ezt a
 felhasználónak érdemes helyben leellenőriznie.
+
+## 2026-08-17 (2.) -- Sérülés-térkép (8. lépés): az AI hely-becslés/auto-bejelölés eltávolítva
+
+A felhasználó kérése (a fenti, ugyanaznapi nézetenkénti-képes átalakítás UTÁN, miután
+jóváhagyta azt: "Tetszik jó lett."): a 8. lépés "AI sérülés-felismerés fotóból" panelje NE
+határozza meg/becsülje meg és NE jelölje be automatikusan a sérülés pontos helyét a
+karosszérián -- KIZÁRÓLAG a kategóriát és a leírást javasolja, a helyet a felhasználó MINDIG
+saját maga jelölje be a képre kattintva. A panel bevezető szövege a felhasználó által megadott,
+PONTOS szövegre cserélve:
+
+* RÉGI: "Tölts fel egy fotót a sérülésről -- az AI javaslatot ad a kategóriára és a leírásra,
+  ÉS megbecsüli, hogy a képen látható tájékozódási pontok alapján nagyjából hol lehet a
+  karosszérián. A helyet és a leírást is mindig ellenőrizd, mielőtt elfogadod és mented."
+* ÚJ: "Tölts fel egy fotót a sérülésről majd az AI javaslatot ad a kategóriára és a leírásra.
+  Ellenőrizd, mielőtt elfogadod és mented."
+
+**`app/api/ai/scan-damage/route.ts`:** a `locationZone` mező TELJESEN eltávolítva -- a
+rendszerutasításból (`buildSystemInstruction()`) törölve a teljes "SZIGORÚ SZABÁLYOK A HELY
+BECSLÉSÉRE" szakasz (a korábbi jármű-relatív bal/jobb vetület-geometriai levezetéssel együtt),
+a `responseSchema`-ból és a `propertyOrdering`-ból a `locationZone` property, a
+`sanitizeScanDamageResponse()`-ból a zóna-validáló ág, a `ScanDamageModelResponse`/
+`ScanDamageData` típusokból a mező. A modell mostantól KIZÁRÓLAG `damageDetected`/`confidence`/
+`type`/`title`/`description`-t ad vissza.
+
+**`components/inspections/DamageCanvas.tsx`:** a `ScanDamageApiResponse`/`DamageAiState`
+típusokból a `locationZone` mező törölve. `handleAcceptAiSuggestion()` LEEGYSZERŰSÍTVE -- a
+korábbi KÉTÁGÚ logika (ismert zóna esetén AZONNALI, determinisztikus koordinátára helyezés +
+fülváltás a `DAMAGE_LOCATION_ZONE_POINT` táblából, VAGY `'unclear'` esetén "kattints a képre"
+piszkozat) megszűnt, MOSTANTÓL "Elfogadás" MINDIG a `pendingAiDraft`-ba teszi a javaslatot, és a
+MÁR MEGLÉVŐ "Kattints a képre, ahol a sérülés van" felirat (korábban csak a `'unclear'` ág
+fallback-je volt, MOSTANTÓL az EGYETLEN út) kéri a felhasználót, hogy MAGA jelölje be a helyet
+az ÉPPEN AKTÍV fülön -- a `handleContainerClick()` ebből tölti ki az előre kitöltött
+szerkesztő-popovert, amit "Mentés"-sel kell jóváhagyni (VÁLTOZATLAN két lépéses emberi
+jóváhagyás elve: "Elfogadom" az AI-tartalomra, "Mentés" a konkrét pontra). Az "AI javaslat"
+kártyáról törölve a "Becsült hely: ..." sor, és a záró disclaimer-mondat pontosítva, hogy a
+hely bejelölése mindig a felhasználó feladata.
+
+**`lib/inspections/damageLocationZones.ts`:** NEM törölve -- a projekt "ne töröld jóváhagyás
+nélkül" konvenciója szerint (ugyanaz az elv, mint a korábban elvetett `carSilhouette.ts`-nél)
+a fájl a `DAMAGE_LOCATION_ZONES`/`DAMAGE_LOCATION_ZONE_POINT` katalógussal együtt VÁLTOZATLANUL
+a helyén maradt, egy magyarázó megjegyzéssel a fájl tetején, hogy MOSTANTÓL használaton kívül
+van (semmilyen élő kódból nincs importálva) -- ha valaha újra szükség lenne rá, könnyen
+visszakapcsolható.
+
+**Ellenőrzés:** a 3 érintett fájl (`DamageCanvas.tsx`, `scan-damage/route.ts`,
+`damageLocationZones.ts`) `npx tsc --noEmit`-tel ellenőrizve (inkrementális build-cache-sel,
+mert a `tsconfig.json`-ban `"incremental": true`) -- 0 hiba. `grep -rl "locationZone"` a teljes
+projektben (node_modules nélkül) megerősítette, hogy KIZÁRÓLAG e két fájl JSDoc-jában maradt
+említés (a funkció EREDETI, immár lezárt indoklásának dokumentálására), élő kódban/típusban
+sehol. Böngészős manuális teszt NEM futott le ebben a munkamenetben -- ezt a felhasználónak
+érdemes helyben leellenőriznie (fotó feltöltése, "AI elemzés", "Elfogadom", kattintás a képre,
+"Mentés").

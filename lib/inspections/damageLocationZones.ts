@@ -1,4 +1,12 @@
 /**
+ * **2026-08-17 -- HASZNÁLATON KÍVÜL.** A felhasználó explicit kérésére ("Nincs szükség az
+ * ai-nál arra, hogy elhelyezze és meghatározza a hiba pontos helyét, majd bejelölje azt") az
+ * AI-alapú hely-becslés funkció TELJESEN eltávolításra került a `DamageCanvas.tsx`-ből és a
+ * `/api/ai/scan-damage` route-ból -- ez a fájl semmilyen élő kódból nincs importálva. A
+ * projekt "ne töröld jóváhagyás nélkül" konvenciója szerint (lásd `carSilhouette.ts` hasonló
+ * esetét) a fájl változatlanul itt maradt, ha valaha újra szükség lenne rá. A lenti dokumentáció
+ * a funkció EREDETI (2026-08-16-i) indoklását írja le.
+ *
  * Zárt "hely-zóna" katalógus a Sérülés- és Hibatérkép (`StepDamageMap.tsx` / `DamageCanvas.tsx`)
  * AI-alapú, fotóból induló sérülés-felismeréséhez (`/api/ai/scan-damage`, 2026-08-16, a
  * felhasználó explicit kérésére: "ugyanaz a rendszer, mint a Hibák és Média AI-elemzése,

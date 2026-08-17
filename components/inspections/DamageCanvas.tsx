@@ -7,11 +7,6 @@ import type { CarPointView } from '@/lib/inspections/carViews';
 import { CarViewSwitcher } from '@/components/inspections/CarViewSwitcher';
 import { CarViewImage } from '@/components/inspections/CarViewImage';
 import { DAMAGE_TYPE_COLOR, DAMAGE_TYPE_LABEL, DAMAGE_TYPES } from '@/lib/inspections/constants';
-import {
-  DAMAGE_LOCATION_ZONE_LABEL,
-  DAMAGE_LOCATION_ZONE_POINT,
-  type DamageLocationZoneOrUnclear,
-} from '@/lib/inspections/damageLocationZones';
 import { DefectMediaUpload } from '@/components/inspections/wizard/DefectMediaUpload';
 import { VoiceInputButton } from '@/components/ui/VoiceInputButton';
 import { CarPointPin } from '@/components/inspections/CarPointPin';
@@ -86,7 +81,6 @@ interface ScanDamageApiResponse {
     type?: DamageType;
     title?: string;
     description?: string;
-    locationZone?: DamageLocationZoneOrUnclear;
   };
   error?: string;
   details?: string;
@@ -99,6 +93,11 @@ interface ScanDamageApiResponse {
  * pontot, csak explicit "Elfogadom" kattintásra nyitja meg a MÁR MEGLÉVŐ szerkesztő-popovert
  * (`pending`), amit a felhasználónak MÉG "Mentés"-sel is jóvá kell hagynia -- lásd a
  * `handleAcceptAiSuggestion()` JSDoc-ját.
+ *
+ * **2026-08-17 -- a hely-becslés eltávolítva (a felhasználó explicit kérésére):** az AI
+ * KIZÁRÓLAG a kategóriát és a leírást javasolja, a sérülés pontos helyét NEM határozza meg és
+ * NEM jelöli be automatikusan -- ezt mindig a felhasználó teszi meg, a képre kattintva. Lásd
+ * lent a `PendingAiDraft` JSDoc-ját.
  */
 type DamageAiState =
   | { status: 'idle' }
@@ -109,18 +108,18 @@ type DamageAiState =
       type: DamageType;
       title: string;
       description: string;
-      locationZone: DamageLocationZoneOrUnclear;
     }
   | { status: 'not_detected' }
   | { status: 'error'; message: string };
 
 const IDLE_AI_STATE: DamageAiState = { status: 'idle' };
 
-/** Egy elfogadott AI-javaslat adatai, amikor a `locationZone` `'unclear'` volt -- ilyenkor
- * NINCS koordináta, amit a szerkesztő-popover megnyitásához fel lehetne használni, ezért a
- * felhasználónak MÉG rá kell kattintania a képre; a KÖVETKEZŐ kattintás ebből a piszkozatból
- * tölti ki az új pontot (lásd `handleContainerClick()`), a hardkódolt "karcolás" alapérték
- * helyett. */
+/** Egy elfogadott AI-javaslat adatai -- az AI SOSE határozza meg/jelöli be a sérülés pontos
+ * helyét (lásd a `DamageAiState` JSDoc "2026-08-17" szakaszát), ezért "Elfogadás" után NINCS
+ * koordináta, amit a szerkesztő-popover azonnali megnyitásához fel lehetne használni; a
+ * felhasználót egy felirat kéri, hogy kattintson a képre, ahol a sérülés van -- a KÖVETKEZŐ
+ * kattintás ebből a piszkozatból tölti ki az új pontot (lásd `handleContainerClick()`), a
+ * hardkódolt "karcolás" alapérték helyett. */
 interface PendingAiDraft {
   type: DamageType;
   title: string;
@@ -164,27 +163,32 @@ interface PendingAiDraft {
  * telefonon dolgozó szakemberek) könnyen kilógna/levágódna ennyi tartalommal.
  *
  * **"AI sérülés-felismerés fotóból" panel (2026-08-16, `mode="edit"`-ben, a felhasználó
- * explicit kérésére -- "ugyanaz a rendszer, mint a Hibák és Média AI-elemzése, DE jelölje is
- * be, hogy nagyjából hol lehet a sérülés"):** a kép FÖLÖTT megjelenő, önálló panel, ami
- * FÜGGETLEN a kattintásos pont-felvételtől -- a felhasználó fotót tölt fel (`aiPhoto`), az
- * "AI elemzés" gomb meghívja a `/api/ai/scan-damage` route-ot (`handleAiAnalyze()`), ami a
- * `scan-defect`-hez hasonlóan kategóriát (`type`)+leírást ad, PLUSZ egy zárt zóna-katalógusból
- * (`lib/inspections/damageLocationZones.ts`) egy hely-becslést (`locationZone`). Az eredmény
- * SOSE ír közvetlenül a `points` tömbbe -- egy elkülönült "AI javaslat" kártyaként jelenik
- * meg (`aiState.status === 'suggested'`), KÜLÖN "Elfogadom"/"Elvetem" gombbal, UGYANAZ az elv,
- * mint a `StepDefects.tsx`-nél (lásd `PLAN_ai_scan_defect.md` 3.5 pontját).
+ * explicit kérésére -- "ugyanaz a rendszer, mint a Hibák és Média AI-elemzése"):** a kép
+ * FÖLÖTT megjelenő, önálló panel, ami FÜGGETLEN a kattintásos pont-felvételtől -- a
+ * felhasználó fotót tölt fel (`aiPhoto`), az "AI elemzés" gomb meghívja a
+ * `/api/ai/scan-damage` route-ot (`handleAiAnalyze()`), ami a `scan-defect`-hez hasonlóan
+ * kategóriát (`type`) + leírást ad. Az eredmény SOSE ír közvetlenül a `points` tömbbe -- egy
+ * elkülönült "AI javaslat" kártyaként jelenik meg (`aiState.status === 'suggested'`), KÜLÖN
+ * "Elfogadom"/"Elvetem" gombbal, UGYANAZ az elv, mint a `StepDefects.tsx`-nél (lásd
+ * `PLAN_ai_scan_defect.md` 3.5 pontját).
  *
- * "Elfogadom" (`handleAcceptAiSuggestion()`) NEM hoz létre azonnal pontot -- a MÁR MEGLÉVŐ
- * `pending` szerkesztő-popovert nyitja meg, előre kitöltve (`aiOrigin: true`), a
- * `DAMAGE_LOCATION_ZONE_POINT` táblából determinisztikusan számolt koordinátán -- a
- * felhasználónak MÉG "Mentés"-t kell kattintania, hogy a pont ténylegesen létrejöjjön (KÉT
- * FÜGGETLEN emberi jóváhagyás egy AI-eredetű pontnál: "Elfogadom" az AI-tartalomra, "Mentés" a
- * konkrét pontra -- ugyanaz a popover/Mentés-kényszer, mint egy kézzel felvett pontnál, csak
- * előre kitöltve). Ha a `locationZone` `'unclear'` (a modell nem tudta megállapítani a helyet
- * a fotóból), NINCS koordináta, amit fel lehetne használni -- ilyenkor a javaslat egy
- * `pendingAiDraft`-ba kerül, és a felhasználót egy felirat kéri, hogy kattintson a képre; a
- * KÖVETKEZŐ `handleContainerClick()` ebből tölti ki az új pontot a hardkódolt "karcolás"
- * alapérték helyett.
+ * **2026-08-17 -- a hely-becslés eltávolítva (a felhasználó explicit kérésére: "Nincs szükség
+ * az ai-nál arra, hogy elhelyezze és meghatározza a hiba pontos helyét, majd bejelölje azt"):**
+ * korábban az AI egy zárt zóna-katalógusból (`lib/inspections/damageLocationZones.ts`, MOSTANTÓL
+ * használaton kívül, de a projekt "ne töröld jóváhagyás nélkül" konvenciója szerint a fájlban
+ * hagyva) egy hely-becslést (`locationZone`) is adott, amit "Elfogadás" után determinisztikusan
+ * koordinátára képeztünk le -- ez a viselkedés TELJESEN megszűnt, az AI KIZÁRÓLAG a kategóriát
+ * és a leírást javasolja, a `/api/ai/scan-damage` route válasza és rendszerutasítása se kér, se
+ * ad vissza helyadatot.
+ *
+ * "Elfogadom" (`handleAcceptAiSuggestion()`) NEM hoz létre azonnal pontot -- a javaslat egy
+ * `pendingAiDraft`-ba kerül, és a felhasználót egy felirat kéri, hogy kattintson a képre, ahol a
+ * sérülés van; a KÖVETKEZŐ `handleContainerClick()` ebből tölti ki a MÁR MEGLÉVŐ `pending`
+ * szerkesztő-popovert (előre kitöltve, `aiOrigin: true`, a kattintás helyén és az ÉPPEN AKTÍV
+ * fülön), a hardkódolt "karcolás" alapérték helyett -- a felhasználónak MÉG "Mentés"-t kell
+ * kattintania, hogy a pont ténylegesen létrejöjjön (KÉT FÜGGETLEN emberi jóváhagyás egy
+ * AI-eredetű pontnál: "Elfogadom" az AI-tartalomra, "Mentés" a konkrét pontra -- ugyanaz a
+ * popover/Mentés-kényszer, mint egy kézzel felvett pontnál, csak előre kitöltve).
  */
 export function DamageCanvas({ points, mode, onChange, theme, className, onOpenPhoto, inspectionId }: DamageCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -230,10 +234,10 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
     const x = Math.min(100, Math.max(0, rawX));
     const y = Math.min(100, Math.max(0, rawY));
 
-    // Ha van egy "helyre váró" AI-piszkozat (lásd `handleAcceptAiSuggestion()` `'unclear'`
-    // ága), EZ a kattintás tölti ki az új pontot -- a hardkódolt "karcolás" alapérték helyett.
-    // Az AKTÍV fület használjuk `view`-nek, mert az "unclear" ágnál nincs AI-becsült nézet --
-    // a felhasználó pont azért kattint, mert MAGA választotta ki a megfelelő fület előtte.
+    // Ha van egy "helyre váró" AI-piszkozat (lásd `handleAcceptAiSuggestion()`), EZ a
+    // kattintás tölti ki az új pontot -- a hardkódolt "karcolás" alapérték helyett. Az AKTÍV
+    // fület használjuk `view`-nek, mert az AI nem becsül nézetet/helyet -- a felhasználó pont
+    // azért kattint, mert MAGA választotta ki a megfelelő fület előtte.
     if (pendingAiDraft) {
       setPending({ id: null, x, y, view, ...pendingAiDraft, aiOrigin: true });
       setPendingAiDraft(null);
@@ -343,7 +347,6 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
         type: data.type,
         title: data.title,
         description: data.description,
-        locationZone: data.locationZone ?? 'unclear',
       });
     } catch {
       setAiState({ status: 'error', message: AI_SCAN_FAILURE_MESSAGE });
@@ -351,39 +354,21 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
   }
 
   /** "Elfogadom" -- lásd a komponens-JSDoc "AI sérülés-felismerés fotóból panel" szakaszát:
-   * SOSE hoz létre közvetlenül pontot, csak a MÁR MEGLÉVŐ szerkesztő-popovert nyitja meg
-   * előre kitöltve (ismert hely esetén), vagy a KÖVETKEZŐ kattintáshoz készít elő egy
-   * piszkozatot (`'unclear'` hely esetén) -- mindkét esetben "Mentés" kell a tényleges
-   * ponthoz, lásd `PLAN_ai_scan_defect.md` 3.5 pontját. Ismert hely esetén a `zonePoint.view`
-   * a MEGFELELŐ fülre is átvált (`setView`), hogy a felhasználó rögtön lássa, hova került az
-   * előre kitöltött jelölő -- lásd `lib/inspections/damageLocationZones.ts`. */
+   * SOSE hoz létre közvetlenül pontot -- az AI nem határozza meg/jelöli be a helyet (2026-08-17
+   * óta), ezért ez a javaslatot MINDIG egy `pendingAiDraft`-ba teszi, és a felhasználót a
+   * képre kattintásra kéri; a KÖVETKEZŐ kattintás nyitja meg ebből a MÁR MEGLÉVŐ szerkesztő-
+   * popovert előre kitöltve, amit "Mentés"-sel kell jóváhagyni, lásd `PLAN_ai_scan_defect.md`
+   * 3.5 pontját. */
   function handleAcceptAiSuggestion() {
     if (aiState.status !== 'suggested' || !aiPhoto) return;
-    const { type, title, description, locationZone } = aiState;
+    const { type, title, description } = aiState;
     const { file, previewUrl } = aiPhoto;
 
-    if (locationZone !== 'unclear') {
-      const zonePoint = DAMAGE_LOCATION_ZONE_POINT[locationZone];
-      setView(zonePoint.view);
-      setPending({
-        id: null,
-        x: zonePoint.x,
-        y: zonePoint.y,
-        view: zonePoint.view,
-        type,
-        title,
-        description,
-        file,
-        previewUrl,
-        aiOrigin: true,
-      });
-    } else {
-      setPendingAiDraft({ type, title, description, file, previewUrl });
-    }
+    setPendingAiDraft({ type, title, description, file, previewUrl });
 
-    // A fotó "tulajdonjoga" átkerült a `pending`/`pendingAiDraft`-ba -- itt NEM szabad
-    // felszabadítani (`URL.revokeObjectURL`) az object URL-t, azt onnantól a popover Mentés/
-    // Mégse ágai (ill. a következő kattintás) kezelik, ugyanúgy, mint egy kézzel csatolt fotónál.
+    // A fotó "tulajdonjoga" átkerült a `pendingAiDraft`-ba -- itt NEM szabad felszabadítani
+    // (`URL.revokeObjectURL`) az object URL-t, azt onnantól a popover Mentés/Mégse ágai (ill.
+    // a következő kattintás) kezelik, ugyanúgy, mint egy kézzel csatolt fotónál.
     setAiPhoto(null);
     setAiState(IDLE_AI_STATE);
   }
@@ -491,9 +476,8 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
             AI sérülés-felismerés fotóból
           </div>
           <p className="mt-1 text-[12px] text-linear-ink-subtle">
-            Tölts fel egy fotót a sérülésről -- az AI javaslatot ad a kategóriára és a leírásra,
-            ÉS megbecsüli, hogy a képen látható tájékozódási pontok alapján nagyjából hol lehet a
-            karosszérián. A helyet és a leírást is mindig ellenőrizd, mielőtt elfogadod és mented.
+            Tölts fel egy fotót a sérülésről majd az AI javaslatot ad a kategóriára és a
+            leírásra. Ellenőrizd, mielőtt elfogadod és mented.
           </p>
 
           <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start">
@@ -563,14 +547,6 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
               <p className="mt-2 text-[13.5px] text-linear-ink">
                 <span className="font-semibold">{aiState.title}</span> -- {aiState.description}
               </p>
-              <p className="mt-1.5 text-[12.5px] text-linear-ink-subtle">
-                Becsült hely:{' '}
-                <span className="font-medium text-linear-ink">
-                  {aiState.locationZone !== 'unclear'
-                    ? DAMAGE_LOCATION_ZONE_LABEL[aiState.locationZone]
-                    : 'nem egyértelmű -- elfogadás után kattints a képre, ahol a sérülés van'}
-                </span>
-              </p>
               {aiState.confidence === 'low' && (
                 <p className="mt-2 flex items-start gap-1.5 text-[12px] text-linear-warning">
                   <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -578,8 +554,9 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
                 </p>
               )}
               <p className="mt-2 text-[11.5px] text-linear-ink-subtle">
-                Az AI-javaslat -- a kategória, a leírás ÉS a hely is -- tájékoztató jellegű, a
-                képen látottak alapján -- mindig ellenőrizd, mielőtt elfogadod és mented.
+                Az AI-javaslat -- a kategória és a leírás -- tájékoztató jellegű, a képen
+                látottak alapján -- mindig ellenőrizd, mielőtt elfogadod és mented. A sérülés
+                pontos helyét neked kell bejelölnöd a képen.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
