@@ -5,6 +5,7 @@ import { DamageCanvas } from '@/components/inspections/DamageCanvas';
 import { WizardStepFooter } from '@/components/inspections/wizard/WizardBottomBar';
 import { HintCallout } from '@/components/onboarding/HintCallout';
 import { useInspectionId } from '@/components/inspections/wizard/InspectionIdContext';
+import { CAR_VIEW_LABEL, DEFAULT_CAR_VIEW } from '@/lib/inspections/carViews';
 import type { DamagePointState } from '@/lib/inspections/types';
 
 interface StepDamageMapProps {
@@ -17,12 +18,13 @@ interface StepDamageMapProps {
 }
 
 /**
- * LÉPÉS -- Sérülés- és Hibatérkép modul: PONTOSAN a Festékvastagság-mérő "Szabadkézi
- * (Free-form Canvas)" mintáját követi (`DamageCanvas`, `mode="edit"`) -- nincs előre
- * definiált karosszéria-elem, a felhasználó a `cars.webp` referenciakép TETSZŐLEGES
- * pontjára kattinthat egy sérülés/esztétikai hiba felvételéhez, amihez kategóriát (ill.
- * "Egyéb" esetén egy rövid megnevezést), opcionális leírást és opcionális fotót is
- * rögzíthet -- lásd `DamageCanvas.tsx` JSDoc-ját a "cím" mező 2026-08-04-i
+ * LÉPÉS -- Sérülés- és Hibatérkép modul: a Festékvastagság-mérő "Szabadkézi (Free-form
+ * Canvas)" mintáját követi (`DamageCanvas`, `mode="edit"`) -- nincs előre definiált
+ * karosszéria-elem, a felhasználó egy `CarViewSwitcher` fülváltóval kiválasztott
+ * autó-nézet (elöl/bal oldal/hátul/jobb oldal/felül -- lásd `lib/inspections/carViews.ts`,
+ * 2026-08-17) TETSZŐLEGES pontjára kattinthat egy sérülés/esztétikai hiba felvételéhez,
+ * amihez kategóriát (ill. "Egyéb" esetén egy rövid megnevezést), opcionális leírást és
+ * opcionális fotót is rögzíthet -- lásd `DamageCanvas.tsx` JSDoc-ját a "cím" mező 2026-08-04-i
  * egyszerűsítéséről. Egy meglévő, színes markerre kattintva a pont módosítható vagy
  * törölhető.
  *
@@ -75,6 +77,11 @@ export function StepDamageMap({ value, onChange, onBack, onNext, nextLabel }: St
                 {point.title !== DAMAGE_TYPE_LABEL[point.type] ? point.title : ''}
               </span>
               <span className="shrink-0 text-[12px] text-linear-ink-subtle">{DAMAGE_TYPE_LABEL[point.type]}</span>
+              {/* Melyik nézeten ül a pont -- fontos, mióta 5 külön fül létezik (korábban egy
+                  kompozit képen minden pont "látszott", most csak az adott fülre váltva). */}
+              <span className="shrink-0 rounded-full border border-linear-hairline-strong px-2 py-0.5 text-[11px] text-linear-ink-subtle">
+                {CAR_VIEW_LABEL[point.view ?? DEFAULT_CAR_VIEW]}
+              </span>
             </li>
           ))}
         </ul>

@@ -12,8 +12,8 @@ interface DamageMapCardProps {
 
 /**
  * Sérülés- és Hibatérkép kártya a publikus riportban (BMW Corporate Design -- 0px
- * lekerekítés). UGYANAZ a `cars.webp` referenciaképre épülő `DamageCanvas` komponens fut
- * itt, mint a Wizard 8. lépésében (`mode="view"`, `theme="light"`), hogy az ügyfél
+ * lekerekítés). UGYANAZ a nézetenkénti autó-referenciaképekre épülő `DamageCanvas`
+ * komponens fut itt, mint a Wizard 8. lépésében (`mode="view"`, `theme="light"`), hogy az ügyfél
  * PONTOSAN ugyanazokat a színkódolt markereket lássa a TÉNYLEGES koordinátákon, amiket a
  * vizsgáló a helyszínen rögzített -- ugyanaz az elv, mint a `PaintMap.tsx`-nél.
  *
@@ -37,6 +37,7 @@ export function DamageMapCard({ damages }: DamageMapCardProps) {
     id: damage.id,
     x: damage.x,
     y: damage.y,
+    view: damage.view ?? undefined,
     type: damage.type,
     title: damage.title,
     description: damage.description,

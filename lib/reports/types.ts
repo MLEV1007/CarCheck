@@ -7,6 +7,7 @@ import type {
   ServiceHistoryStatus,
   TirePosition,
 } from '@/lib/inspections/types';
+import type { CarPointView } from '@/lib/inspections/carViews';
 
 /**
  * A `public.get_public_report(p_token uuid)` Postgres RPC (SECURITY DEFINER)
@@ -92,14 +93,18 @@ export interface PublicReportFinalAssessment {
 }
 
 /**
- * Sérülés- és Hibatérkép modul -- egy szabadkézi pont a `cars.webp` referenciaképen
+ * Sérülés- és Hibatérkép modul -- egy szabadkézi pont az autó-nézetenkénti referenciaképeken
  * (ugyanaz az `x`/`y` százalékos-relatív-pozíció elv, mint a `PublicReportPaintMeasurement`-
  * nél). Lásd `lib/inspections/types.ts` `DamagePointState` a wizard-oldali megfelelőjéért.
+ * A `view` OPCIONÁLIS -- lásd `lib/inspections/carViews.ts` (2026-08-17) a "RENDSZER-CSERE,
+ * 2. NEKIFUTÁS" teljes indoklásáért; egy RÉGI, e mező bevezetése előtt mentett pontnál
+ * hiányzik, ilyenkor a `DamageCanvas.tsx` a `DEFAULT_CAR_VIEW`-ra esik vissza.
  */
 export interface PublicReportDamage {
   id: string;
   x: number;
   y: number;
+  view?: CarPointView | null;
   type: DamageType;
   title: string;
   description: string;

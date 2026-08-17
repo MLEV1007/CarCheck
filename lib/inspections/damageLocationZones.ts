@@ -4,6 +4,17 @@
  * felhasználó explicit kérésére: "ugyanaz a rendszer, mint a Hibák és Média AI-elemzése,
  * DE jelölje is be, hogy nagyjából hol lehet a sérülés").
  *
+ * **2026-08-17 FRISSÍTÉS -- nézetenkénti képek (lásd `lib/inspections/carViews.ts`):** a
+ * `cars.webp` egyetlen kompozit képe helyett MOSTANTÓL 5 külön kép/fül (elöl/bal oldal/
+ * hátul/jobb oldal/felül) létezik -- egy zóna ezért már NEM elég egyetlen `{x,y}` ponttal,
+ * meg kell mondania AZT IS, MELYIK fülre kell váltani (`view`). A lenti "bal"/"jobb"
+ * vetület-geometriai levezetés (jármű-relatív irány -> hol jelenik meg a KÉPEN) továbbra is
+ * érvényes, csak most már nem egy kompozit kép egy-egy sávján belüli pozíciót jelent, hanem
+ * a MEGFELELŐ ÖNÁLLÓ kép/fül belsejét. A `side_right_*` zónák a `right` fülre mutatnak, ami
+ * a `car-side.webp` CSS-sel (`scaleX(-1)`) TÜKRÖZÖTT megjelenítése (lásd `CarViewImage.tsx`)
+ * -- az `x` koordináták ezért a MEGJELENÍTETT (tükrözött) képre vonatkoznak, nem a fájlban
+ * tárolt eredeti pixelekre (lásd lent a `side_right_*` bejegyzéseknél).
+ *
  * **MIÉRT ZÁRT ZÓNA-KATALÓGUS, NEM NYERS x/y KOORDINÁTA A MODELLTŐL:** a `PLAN_ai_scan_defect.md`
  * 3. pontjában leírt hallucináció-védelmi elv itt MÉG SZIGORÚBBAN érvényes -- a Gemini modell
  * a felhasználó KÖZELI sérülés-fotóját látja, a `public/cars.webp` REFERENCIAKÉPET (amin a
@@ -64,6 +75,7 @@
  */
 
 import type { DamageType } from '@/lib/inspections/types';
+import type { CarPointView } from '@/lib/inspections/carViews';
 
 export const DAMAGE_LOCATION_ZONES = [
   'front_left',
@@ -113,34 +125,37 @@ export const DAMAGE_LOCATION_ZONE_LABEL: Record<DamageLocationZone, string> = {
   roof: 'Tetőn',
 };
 
-/** A `public/cars.webp` (850x563px) képen belüli, SZÁZALÉKBAN (0-100) kifejezett pont minden
- * zónához -- lásd a fájl-JSDoc "A koordináták eredete" ÉS a "bal"/"jobb" vetület-geometriai
+/** Nézet (fül) + az azon belüli, SZÁZALÉKBAN (0-100) kifejezett pont minden zónához -- lásd
+ * a fájl-JSDoc "2026-08-17 FRISSÍTÉS" szakaszát ÉS a "bal"/"jobb" vetület-geometriai
  * levezetését. FIGYELEM: a `front_left`/`front_right` KOORDINÁTÁI FEL VANNAK CSERÉLVE a
- * kép-relatív elhelyezkedésükhöz képest (a `front_left` -- jármű bal oldala -- a `cars.webp`
- * elölnézetének KÉP SZERINT JOBB oldali harmadára mutat) -- ez SZÁNDÉKOS, lásd a fájl-JSDoc
+ * kép-relatív elhelyezkedésükhöz képest (a `front_left` -- jármű bal oldala -- a
+ * `car-front.webp` KÉP SZERINT JOBB oldali harmadára mutat) -- ez SZÁNDÉKOS, lásd a fájl-JSDoc
  * elölnézet-levezetését, NEM elírás. A `rear_left`/`rear_right` NINCS felcserélve (hátulnézetnél
  * nincs tükröződés). Ugyanaz a koordináta-rendszer, mint a `DamagePointState.x`/`y` mezőié
- * (`CarPointPin.tsx`). */
-export const DAMAGE_LOCATION_ZONE_POINT: Record<DamageLocationZone, { x: number; y: number }> = {
-  front_left: { x: 25.7, y: 20.3 },
-  front_center: { x: 17.1, y: 20.3 },
-  front_right: { x: 8.5, y: 20.3 },
-  rear_left: { x: 42.8, y: 20.3 },
-  rear_center: { x: 50.9, y: 20.3 },
-  rear_right: { x: 58.9, y: 20.3 },
-  // FELSŐ oldalnézet-sor (y~51.6) -- orra a képen BALRA néz -- lásd a fájl-JSDoc oldalnézet-
-  // levezetését -- ez a jármű BAL (vezető-) oldala. Az "elöl" (nose-hoz közeli) a sor KÉP
-  // SZERINT BAL harmada, a "hátul" a KÉP SZERINT JOBB harmada.
-  side_left_front: { x: 13.9, y: 51.6 },
-  side_left_middle: { x: 33.7, y: 51.6 },
-  side_left_rear: { x: 53.5, y: 51.6 },
-  // ALSÓ oldalnézet-sor (y~81.0) -- orra a képen JOBBRA néz -- ez a jármű JOBB (utas-) oldala.
-  // Az "elöl" itt a KÉP SZERINT JOBB harmad, a "hátul" a KÉP SZERINT BAL harmad (tükrözött a
-  // felső sorhoz képest).
-  side_right_front: { x: 53.9, y: 81.0 },
-  side_right_middle: { x: 33.9, y: 81.0 },
-  side_right_rear: { x: 14.0, y: 81.0 },
-  roof: { x: 82.2, y: 50.6 },
+ * (`CarPointPin.tsx`) -- KONTÉNER-relatív, nem a kép fájlban tárolt pixeleire vonatkozik, ezért
+ * a `side_right_*` `x` értékei a MEGJELENÍTETT (CSS-sel tükrözött) képre vonatkoznak: a
+ * `side_left_*`-hoz képest `100 - x`, hogy a tükrözött megjelenítésen is a jármű valódi elejére/
+ * hátuljára mutassanak (lásd `CarViewImage.tsx` a tükrözésért). */
+export const DAMAGE_LOCATION_ZONE_POINT: Record<DamageLocationZone, { view: CarPointView; x: number; y: number }> = {
+  front_left: { view: 'front', x: 75, y: 58 },
+  front_center: { view: 'front', x: 50, y: 58 },
+  front_right: { view: 'front', x: 25, y: 58 },
+  rear_left: { view: 'rear', x: 25, y: 58 },
+  rear_center: { view: 'rear', x: 50, y: 58 },
+  rear_right: { view: 'rear', x: 75, y: 58 },
+  // `left` fül (`car-side.webp`, NEM tükrözve) -- orra a képen BALRA néz, lásd a fájl-JSDoc
+  // oldalnézet-levezetését -- ez a jármű BAL (vezető-) oldala. Az "elöl" (nose-hoz közeli) a
+  // KÉP SZERINT BAL harmad, a "hátul" a KÉP SZERINT JOBB harmad.
+  side_left_front: { view: 'left', x: 25, y: 55 },
+  side_left_middle: { view: 'left', x: 50, y: 55 },
+  side_left_rear: { view: 'left', x: 75, y: 55 },
+  // `right` fül -- UGYANAZ a `car-side.webp` fájl, de MEGJELENÍTÉSKOR `scaleX(-1)`-gyel
+  // tükrözve -- a `left`-hez képest `100 - x`, hogy a tükrözött képen is helyesen az elejére/
+  // hátuljára mutasson.
+  side_right_front: { view: 'right', x: 75, y: 55 },
+  side_right_middle: { view: 'right', x: 50, y: 55 },
+  side_right_rear: { view: 'right', x: 25, y: 55 },
+  roof: { view: 'top', x: 50, y: 50 },
 };
 
 /** Csak dokumentációs célból újra-exportálva -- lásd `scan-damage/route.ts`, ahol a

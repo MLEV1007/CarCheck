@@ -1,9 +1,11 @@
 'use client';
 
-import { useRef, useState } from 'react';
-import Image from 'next/image';
+import { useMemo, useRef, useState } from 'react';
 import { AlertTriangle, Loader2, Sparkles, Trash2, X, ZoomIn } from 'lucide-react';
-import { CAR_IMAGE_HEIGHT, CAR_IMAGE_SRC, CAR_IMAGE_WIDTH } from '@/lib/inspections/carImageMap';
+import { CAR_VIEW_IMAGE, DEFAULT_CAR_VIEW } from '@/lib/inspections/carViews';
+import type { CarPointView } from '@/lib/inspections/carViews';
+import { CarViewSwitcher } from '@/components/inspections/CarViewSwitcher';
+import { CarViewImage } from '@/components/inspections/CarViewImage';
 import { DAMAGE_TYPE_COLOR, DAMAGE_TYPE_LABEL, DAMAGE_TYPES } from '@/lib/inspections/constants';
 import {
   DAMAGE_LOCATION_ZONE_LABEL,
@@ -54,6 +56,9 @@ interface PendingDamage {
   id: string | null;
   x: number;
   y: number;
+  /** Melyik autó-nézeten (elöl/bal oldal/hátul/jobb oldal/felül) ül a pont -- lásd
+   * `lib/inspections/carViews.ts` fájl-JSDoc-ja. */
+  view: CarPointView;
   type: DamageType;
   title: string;
   description: string;
@@ -125,11 +130,21 @@ interface PendingAiDraft {
 }
 
 /**
- * Sérülés- és Hibatérkép "Szabadkézi" (Free-form Canvas) komponens -- PONTOSAN a
- * `PaintCanvas.tsx` mintáját követi (NINCS előre definiált elem/hotspot a `cars.webp`
- * referenciaképen, a felhasználó a kép TETSZŐLEGES pontjára kattinthat), de itt minden
- * ponthoz egy kategória (karcolás/horpadás/rozsda/kavicsfelverődés/repedés/egyéb) tartozik,
- * plusz egy opcionális leírás és egy opcionális fotó.
+ * Sérülés- és Hibatérkép "Szabadkézi" (Free-form Canvas) komponens -- NINCS előre
+ * definiált elem/hotspot az autó-referenciaképeken, a felhasználó a kép TETSZŐLEGES
+ * pontjára kattinthat, de itt minden ponthoz egy kategória (karcolás/horpadás/rozsda/
+ * kavicsfelverődés/repedés/egyéb) tartozik, plusz egy opcionális leírás és egy opcionális
+ * fotó.
+ *
+ * **Nézetenkénti referenciaképek (2026-08-17, "RENDSZER-CSERE, 2. NEKIFUTÁS"):** a korábbi,
+ * mind az 5 nézetet egy apró kompozit képbe zsúfoló `cars.webp` helyett MOSTANTÓL egy
+ * `CarViewSwitcher` fülváltóval öt KÜLÖN, nagyban megjelenő kép közül lehet választani
+ * (elöl/bal oldal/hátul/jobb oldal/felül -- lásd `lib/inspections/carViews.ts` fájl-JSDoc-ja
+ * a teljes indoklásért/előzményért). A `points` tömb MINDEN eleme egy `view` mezővel jelzi,
+ * MELYIK fülhöz tartozik -- a komponens csak az AKTÍV fülhöz tartozó pontokat jeleníti meg
+ * (`visiblePoints`), az ÚJ pont pedig mindig az ÉPPEN AKTÍV fül `view` értékét kapja. Egy
+ * RÉGI, e rendszer előtti pont (nincs `view` mezője) a `DEFAULT_CAR_VIEW` ("Elöl") fül alatt
+ * jelenik meg -- az adatai nem vesznek el, csak a pontos pozíciója már csak hozzávetőleges.
  *
  * **Cím mező (2026-08-04, "vegyük ki a cím megadását" UX-egyszerűsítés):** a `title` mező
  * MOSTANTÓL NEM önálló, mindig kitöltendő szövegmező -- az 5 fix kategóriánál (karcolás/
@@ -174,7 +189,23 @@ interface PendingAiDraft {
 export function DamageCanvas({ points, mode, onChange, theme, className, onOpenPhoto, inspectionId }: DamageCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [pending, setPending] = useState<PendingDamage | null>(null);
+  const [view, setView] = useState<CarPointView>(DEFAULT_CAR_VIEW);
   const accent = ACCENT[theme];
+
+  // Nézetenkénti pontszám a `CarViewSwitcher` jelvényeihez -- egy RÉGI, `view` mező nélküli
+  // pont a `DEFAULT_CAR_VIEW` alá számolódik, lásd a komponens-JSDoc "Nézetenkénti
+  // referenciaképek" szakaszát.
+  const viewCounts = useMemo(() => {
+    const counts: Partial<Record<CarPointView, number>> = {};
+    for (const point of points) {
+      const pointView = point.view ?? DEFAULT_CAR_VIEW;
+      counts[pointView] = (counts[pointView] ?? 0) + 1;
+    }
+    return counts;
+  }, [points]);
+
+  // Csak az AKTÍV fülhöz tartozó pontok jelennek meg a képen -- lásd ugyanott.
+  const visiblePoints = useMemo(() => points.filter((point) => (point.view ?? DEFAULT_CAR_VIEW) === view), [points, view]);
 
   // AI sérülés-felismerés fotóból (`/api/ai/scan-damage`) -- lásd a fenti komponens-JSDoc
   // "AI sérülés-felismerés fotóból panel" szakaszát. KIZÁRÓLAG `mode === 'edit'`-ben
@@ -201,8 +232,10 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
 
     // Ha van egy "helyre váró" AI-piszkozat (lásd `handleAcceptAiSuggestion()` `'unclear'`
     // ága), EZ a kattintás tölti ki az új pontot -- a hardkódolt "karcolás" alapérték helyett.
+    // Az AKTÍV fület használjuk `view`-nek, mert az "unclear" ágnál nincs AI-becsült nézet --
+    // a felhasználó pont azért kattint, mert MAGA választotta ki a megfelelő fület előtte.
     if (pendingAiDraft) {
-      setPending({ id: null, x, y, ...pendingAiDraft, aiOrigin: true });
+      setPending({ id: null, x, y, view, ...pendingAiDraft, aiOrigin: true });
       setPendingAiDraft(null);
       return;
     }
@@ -211,6 +244,7 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
       id: null,
       x,
       y,
+      view,
       type: 'scratch',
       title: DAMAGE_TYPE_LABEL.scratch,
       description: '',
@@ -234,6 +268,7 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
       id: point.id,
       x: point.x,
       y: point.y,
+      view: point.view ?? DEFAULT_CAR_VIEW,
       type: point.type,
       title: point.title,
       description: point.description,
@@ -319,15 +354,29 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
    * SOSE hoz létre közvetlenül pontot, csak a MÁR MEGLÉVŐ szerkesztő-popovert nyitja meg
    * előre kitöltve (ismert hely esetén), vagy a KÖVETKEZŐ kattintáshoz készít elő egy
    * piszkozatot (`'unclear'` hely esetén) -- mindkét esetben "Mentés" kell a tényleges
-   * ponthoz, lásd `PLAN_ai_scan_defect.md` 3.5 pontját. */
+   * ponthoz, lásd `PLAN_ai_scan_defect.md` 3.5 pontját. Ismert hely esetén a `zonePoint.view`
+   * a MEGFELELŐ fülre is átvált (`setView`), hogy a felhasználó rögtön lássa, hova került az
+   * előre kitöltött jelölő -- lásd `lib/inspections/damageLocationZones.ts`. */
   function handleAcceptAiSuggestion() {
     if (aiState.status !== 'suggested' || !aiPhoto) return;
     const { type, title, description, locationZone } = aiState;
     const { file, previewUrl } = aiPhoto;
 
     if (locationZone !== 'unclear') {
-      const point = DAMAGE_LOCATION_ZONE_POINT[locationZone];
-      setPending({ id: null, x: point.x, y: point.y, type, title, description, file, previewUrl, aiOrigin: true });
+      const zonePoint = DAMAGE_LOCATION_ZONE_POINT[locationZone];
+      setView(zonePoint.view);
+      setPending({
+        id: null,
+        x: zonePoint.x,
+        y: zonePoint.y,
+        view: zonePoint.view,
+        type,
+        title,
+        description,
+        file,
+        previewUrl,
+        aiOrigin: true,
+      });
     } else {
       setPendingAiDraft({ type, title, description, file, previewUrl });
     }
@@ -379,6 +428,7 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
           id: crypto.randomUUID(),
           x: pending.x,
           y: pending.y,
+          view: pending.view,
           type: pending.type,
           title: pending.title,
           description: pending.description,
@@ -568,27 +618,29 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
         </div>
       )}
 
+      {/* Nézetváltó fülek -- lásd a komponens-JSDoc "Nézetenkénti referenciaképek" szakaszát.
+          A `counts` jelvény megmutatja, melyik fülön van már rögzített pont, anélkül, hogy oda
+          kellene váltani. Nézetet `view`/`edit` módban EGYARÁNT lehet váltani. */}
+      <div className="mx-auto mb-3 w-full max-w-[560px]">
+        <CarViewSwitcher view={view} onChange={setView} theme={theme} counts={viewCounts} />
+      </div>
+
       <div
         ref={containerRef}
         onClick={handleContainerClick}
         role={mode === 'edit' ? 'button' : undefined}
         aria-label={mode === 'edit' ? 'Kattints a képre egy sérülés-/hiba pont felvételéhez' : undefined}
         className={
-          'relative mx-auto w-full max-w-[560px] overflow-visible rounded-lg bg-white ' +
+          'relative mx-auto w-full max-w-[560px] overflow-visible rounded-lg ' +
+          (theme === 'dark' ? 'bg-linear-surface-2' : 'bg-white') +
+          ' ' +
           (mode === 'edit' ? 'cursor-crosshair' : '')
         }
-        style={{ aspectRatio: `${CAR_IMAGE_WIDTH} / ${CAR_IMAGE_HEIGHT}` }}
+        style={{ aspectRatio: `${CAR_VIEW_IMAGE[view].width} / ${CAR_VIEW_IMAGE[view].height}` }}
       >
-        <Image
-          src={CAR_IMAGE_SRC}
-          alt="Autó öt nézete (elöl, hátul, felül, bal oldal, jobb oldal) a sérülések/hibák jelöléséhez"
-          fill
-          sizes="(max-width: 640px) 100vw, 560px"
-          className="pointer-events-none select-none object-contain"
-          priority={false}
-        />
+        <CarViewImage view={view} />
 
-        {points.map((point) => {
+        {visiblePoints.map((point) => {
           const isSelected = pending?.id === point.id;
           return (
             <CarPointPin

@@ -35,6 +35,8 @@ import type {
 } from '@/lib/inspections/types';
 import { EMPTY_CLIENT_INFO, EMPTY_TIRE_GENERAL_INFO, EMPTY_TIRES } from '@/lib/inspections/types';
 import { FUEL_TYPES } from '@/lib/inspections/constants';
+import { CAR_VIEWS } from '@/lib/inspections/carViews';
+import type { CarPointView } from '@/lib/inspections/carViews';
 
 /** Üzemanyag típusa (2026-08-10) -- DB -> wizard state konverzió típus-őre, ugyanaz az
  * elv, mint a `toInitialDamages()` `DAMAGE_TYPES.includes(...)` ellenőrzésénél: egy
@@ -184,6 +186,7 @@ function toInitialDamages(raw: unknown): DamagePointState[] {
         id?: string;
         x?: number;
         y?: number;
+        view?: string | null;
         type?: string;
         title?: string;
         description?: string;
@@ -194,6 +197,10 @@ function toInitialDamages(raw: unknown): DamagePointState[] {
     id: entry.id ?? `damage-${index}`,
     x: entry.x ?? 0,
     y: entry.y ?? 0,
+    // `view` opcionális -- egy RÉGI, `view` mező bevezetése (2026-08-17) előtt mentett pontnál
+    // `undefined` marad, a `DamageCanvas.tsx` ilyenkor a `DEFAULT_CAR_VIEW`-ra esik vissza.
+    // Lásd `toInitialDamages` fájl-JSDoc-ja fent.
+    view: (CAR_VIEWS as string[]).includes(entry.view ?? '') ? (entry.view as CarPointView) : undefined,
     type: (DAMAGE_TYPES as string[]).includes(entry.type ?? '') ? (entry.type as DamageType) : 'other',
     title: entry.title ?? '',
     description: entry.description ?? '',

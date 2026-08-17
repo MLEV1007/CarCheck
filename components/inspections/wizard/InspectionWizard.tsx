@@ -473,6 +473,12 @@ export function InspectionWizard({
               id: damage.id,
               x: damage.x,
               y: damage.y,
+              // Melyik autó-nézeten (elöl/bal oldal/hátul/jobb oldal/felül) lett felvéve a pont
+              // -- lásd `lib/inspections/carViews.ts` (2026-08-17). `damages` egy sima JSONB
+              // oszlop, ezért ehhez NEM kellett DB-migráció -- egy RÉGI, e mező bevezetése
+              // előtt mentett pontnál `damage.view` `undefined`, ilyenkor `null`-t mentünk
+              // (a `DamageCanvas.tsx` a `DEFAULT_CAR_VIEW`-ra esik vissza olvasáskor).
+              view: damage.view ?? null,
               type: damage.type,
               title: damage.title,
               description: damage.description,

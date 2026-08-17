@@ -6,6 +6,8 @@
  * a végleges DB típusokra (lásd InspectionWizard.tsx `handleSubmit`).
  */
 
+import type { CarPointView } from '@/lib/inspections/carViews';
+
 export interface CarInfoState {
   carBrand: string;
   carModel: string;
@@ -343,6 +345,14 @@ export interface DamagePointState {
   id: string;
   x: number;
   y: number;
+  /** Melyik autó-nézeten (elöl/bal oldal/hátul/jobb oldal/felül) lett felvéve a pont --
+   * lásd `lib/inspections/carViews.ts` fájl-JSDoc-ja (2026-08-17, "RENDSZER-CSERE, 2.
+   * NEKIFUTÁS") a teljes indoklásért. OPCIONÁLIS, mert egy e rendszer BEVEZETÉSE ELŐTT
+   * mentett pontnak nincs `view` mezője a DB-ben -- a `DamageCanvas.tsx` ilyenkor a
+   * `DEFAULT_CAR_VIEW` alá sorolja be (a pont adatai megmaradnak, csak a pozíciója már
+   * csak hozzávetőleges az új, nézetenkénti képeken). ÚJ pont felvételekor MINDIG kitöltött.
+   */
+  view?: CarPointView;
   type: DamageType;
   title: string;
   description: string;
@@ -355,16 +365,18 @@ export interface DamagePointState {
   previewUrl: string | null;
 }
 
-/** Új pont létrehozása a kattintás relatív pozíciójából (`x`/`y` százalék) --
- * `crypto.randomUUID()` generálja a stabil kliens-oldali (és mentéskor DB-) azonosítót,
- * ugyanúgy, mint a többi `EMPTY_*`/`CREATE_*` helyernél ebben a fájlban. */
-export const EMPTY_DAMAGE_POINT = (x: number, y: number): DamagePointState => ({
+/** Új pont létrehozása a kattintás relatív pozíciójából (`x`/`y` százalék) és az aktív
+ * autó-nézetből (`view`) -- `crypto.randomUUID()` generálja a stabil kliens-oldali (és
+ * mentéskor DB-) azonosítót, ugyanúgy, mint a többi `EMPTY_*`/`CREATE_*` helyernél ebben a
+ * fájlban. */
+export const EMPTY_DAMAGE_POINT = (x: number, y: number, view: CarPointView): DamagePointState => ({
   id:
     typeof crypto !== 'undefined' && 'randomUUID' in crypto
       ? crypto.randomUUID()
       : `damage-${Date.now()}-${Math.random().toString(36).slice(2)}`,
   x,
   y,
+  view,
   type: 'scratch',
   title: '',
   description: '',
