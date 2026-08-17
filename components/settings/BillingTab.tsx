@@ -81,9 +81,14 @@ export const PLAN_TIER_LABELS: Record<QuotaPlanTier, string> = {
  * Checkout-ot indító gomb (csomagváltás, +10 vizsgálat Top-up, AI-kredit vásárlása)
  * TELJESEN NORMÁL kinézettel LÁTHATÓ marad (nem tűnik el, nem halványul el), de nem
  * kattintható -- a "Kapcsolatfelvétel" (Autóház, mailto) gomb és a Havi/Éves kapcsoló NEM
- * érintett, mert azok nem indítanak valódi fizetést. Kikapcsoláshoz (élesítés előtt)
- * egyszerűen `false`-ra állítandó -- NINCS hozzá env-változó vagy DB-mező, mert ez egy
- * szándékosan ideiglenes, kód-szintű kapcsoló a tesztelési időszakra.
+ * érintett, mert azok nem indítanak valódi fizetést.
+ *
+ * **2026-08-17, "Fizetés élesítése" lépés: `false`-ra állítva** -- a felhasználó kérte a
+ * tesztelési zár feloldását, mostantól minden Menedzser ténylegesen vásárolhat
+ * (előfizetés-csomag, +10 vizsgálat Top-up, AI-kredit csomagok). A kapcsoló és a fenti
+ * teszt-időszaki dokumentáció szándékosan a helyén maradt (NINCS törölve/kód-eltávolítva)
+ * -- ha egy KÉSŐBBI tesztelési időszakhoz megint kellene, elég `true`-ra visszaállítani,
+ * nincs hozzá env-változó vagy DB-mező.
  *
  * **FONTOS -- SZÁNDÉKOSAN NEM a natív HTML `disabled` attribútummal van megvalósítva
  * (2026-08-12, 2. finomítás, felhasználói kérés: "ha ráviszem a kurzort piros kör
@@ -100,7 +105,7 @@ export const PLAN_TIER_LABELS: Record<QuotaPlanTier, string> = {
  * `disabled:` variánsként) kerül a gombra -- ez a kombináció MINDEN böngészőben
  * megbízhatóan mutatja a kör-áthúzva kurzort ÉS a `title` tooltipet is, miközben a gomb
  * kinézete (szín/árnyalat) nem változik, tehát nem "tűnik el"/halványul. */
-const PURCHASES_DISABLED_FOR_TESTING = true;
+const PURCHASES_DISABLED_FOR_TESTING = false;
 
 type LoadState = 'loading' | 'ready' | 'error';
 type BillingPeriod = 'monthly' | 'yearly';
