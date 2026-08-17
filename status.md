@@ -1,6 +1,6 @@
 # Státusz — CarPass SaaS (MVP)
 
-_Utolsó frissítés: 2026-08-17 ("Sérülés-térkép (8. lépés): az AI sérülés-felismerés hely-becslő/auto-bejelölő képessége eltávolítva, az AI mostantól KIZÁRÓLAG kategóriát és leírást javasol, a pontos helyet mindig a felhasználó jelöli be kézzel -- lásd a legalul, ugyanezen a napon található MÁSODIK szakaszt a teljes indoklásért.")_
+_Utolsó frissítés: 2026-08-17 (3.) ("Sérülés-térkép (8. lépés): az AI hely-becslés (`locationZone`) MÉGEGYSZER eltávolítva a `scan-damage/route.ts`-ből, mert egy párhuzamosan futó, másik funkción dolgozó session commitja (2de4bc8) véletlenül visszahozta egy régi, még nem commitolt munkakönyvtár-állapotból -- lásd a legalul, ugyanezen a napon található HARMADIK szakaszt.")_
 
 ## Kész funkciók
 
@@ -3509,3 +3509,36 @@ említés (a funkció EREDETI, immár lezárt indoklásának dokumentálására)
 sehol. Böngészős manuális teszt NEM futott le ebben a munkamenetben -- ezt a felhasználónak
 érdemes helyben leellenőriznie (fotó feltöltése, "AI elemzés", "Elfogadom", kattintás a képre,
 "Mentés").
+
+## 2026-08-17 (3.) -- Sérülés-térkép (8. lépés): AI hely-becslés MÉGEGYSZER eltávolítva
+
+A felhasználó jelezte, hogy a 8. lépés AI sérülés-felismerése "még mindig meg akarja
+határozni, hogy helyileg hol történt a sérülés" -- pedig ezt a fenti, ugyanaznapi (2.)
+szakasz már egyszer eltávolította és commitolta (`063445a`). Kiderült: egy PÁRHUZAMOSAN futó,
+teljesen más funkción (AI API hívás napló a Platform Adminban) dolgozó másik Cowork session
+ugyanabban az ablakban egy RÉGI, a `063445a` előtti, még nem commitolt munkakönyvtár-állapotból
+indult ki a `scan-damage/route.ts`-nél -- a saját commit-üzenete (`2de4bc8`) ezt EXPLICIT le is
+írta: "A scan-damage/route.ts emellett tartalmazza a munkakönyvtárban már készen álló, még nem
+commitolt sérülés-hely (locationZone) jármű-relatív bal/jobb-javítást is." Ez a session tehát
+akaratlanul VISSZAHOZTA a `locationZone` mezőt (rendszerutasítás, `responseSchema`,
+`ScanDamageModelResponse`/`ScanDamageData` típusok, `sanitizeScanDamageResponse()`), miközben az
+ÚJ AI-hívás-naplózó funkciót (`logAiApiCall`, `usedModel`) is hozzáadta ugyanehhez a fájlhoz --
+ez a commit MÁR `origin/main`-en volt, tehát éles/deploy-olt állapotban is visszatért a hiba.
+
+**A javítás (`065c20c`):** a `locationZone` mező MÉGEGYSZER, immár a naplózó funkció (`logAiApiCall`/
+`usedModel`) MEGTARTÁSÁVAL eltávolítva a `scan-damage/route.ts`-ből -- ugyanaz a kód-változtatás,
+mint a (2.) szakaszban, csak az azóta hozzáadott naplózó kódra alkalmazva. A `DamageCanvas.tsx`-t
+ez a párhuzamos session NEM érintette, ott a (2.) szakaszban leírt javítás változatlanul érvényben
+maradt (`handleAcceptAiSuggestion()` mindig `pendingAiDraft`-ot hoz létre, a felhasználó a képre
+kattintva jelöli be a helyet).
+
+**FONTOS, NYITOTT TEENDŐ:** ez a commit (`065c20c`) a felhasználó Mac-jén HELYBEN létrejött, DE
+a `git push origin main` a `device_bash`-ből 403-as proxy-hibával elutasítva (a helyi eszköz-híd
+nem enged kimenő hálózati hozzáférést GitHub-hoz) -- a commit tehát MÉG NEM jutott fel
+`origin/main`-re, így a Vercel-deploy (ha a `main`-re pusholásra épül) MÉG NEM tartalmazza ezt a
+javítást. A felhasználónak saját maga kell futtatnia egy `git push`-t a projekt mappájában (pl.
+Terminálból vagy a szokásos Git-kliensével), hogy a javítás éles környezetbe kerüljön.
+
+**Ellenőrzés:** `npx tsc --noEmit` a teljes projektre -- 0 hiba. `grep -rl "locationZone"` a
+teljes projektben (node_modules nélkül) megerősítette, hogy KIZÁRÓLAG a `scan-damage/route.ts`
+és a `DamageCanvas.tsx` JSDoc-jaiban maradt (történeti) említés, élő kódban/típusban sehol.
