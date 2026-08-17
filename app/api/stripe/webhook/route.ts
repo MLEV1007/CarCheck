@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import type Stripe from 'stripe';
 import { getStripeClient } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { sendPaymentSuccessEmail } from '@/lib/emails/paymentSuccessEmail';
 
 /**
  * Stripe Webhook végpont (PROJEKT_INSTRUKCIOK.md "Webhook logika" lépés, 2026-08-04) --
@@ -59,6 +60,49 @@ function resolvePlanAction(
   if (priceId === process.env.STRIPE_PRICE_ID_AI_TOPUP_15) return 'ai_topup15';
   if (priceId === process.env.STRIPE_PRICE_ID_AI_TOPUP_40) return 'ai_topup40';
   return null;
+}
+
+/** `resolvePlanAction` eredménye -> ügyfélnek mutatott, magyar tétel-név a "Sikeres fizetés"
+ * emailben (2026-08-17, "Sikeres fizetés email" lépés) -- lásd `buildPaymentSuccessEmailHtml`
+ * hívását lent. A csomag-neveknél UGYANAZ a megjelenített elnevezés
+ * (Egyéni/Műhely Kereskedői/Profi), mint a `BillingTab.tsx` `PLAN_TIER_LABELS`-nél -- a belső
+ * `starter`/`growth`/`pro` azonosító itt is csak UI-réteg, lásd a fenti `resolvePlanAction`
+ * JSDoc-ját. */
+const PLAN_ACTION_LABELS: Record<NonNullable<ReturnType<typeof resolvePlanAction>>, string> = {
+  starter: 'Egyéni csomag (havi előfizetés)',
+  growth: 'Műhely Kereskedői csomag (havi előfizetés)',
+  pro: 'Profi csomag (havi előfizetés)',
+  topup10: '+10 Autó vizsgálat-csomag',
+  ai_topup5: 'AI-kredit csomag (5)',
+  ai_topup15: 'AI-kredit csomag (15)',
+  ai_topup40: 'AI-kredit csomag (40)',
+};
+
+/** Stripe "zero-decimal" (tizedesjegy nélküli) devizák -- ezeknél a `session.amount_total`
+ * MÁR a teljes (nem század-egységben mért) összeg, lásd
+ * https://docs.stripe.com/currencies#zero-decimal. FONTOS: a HUF NINCS ezen a listán (a
+ * Stripe a forintot is századokban -- gyakorlatilag fillérben -- tárolja/adja vissza, tehát
+ * `amount_total`-t a HUF-nál is 100-zal KELL osztani, ugyanúgy, mint pl. EUR-nál). A projekt
+ * jelenleg kizárólag HUF-ban árazott (lásd `.env.local.example` `STRIPE_PRICE_ID_*`), a lista
+ * a teljesség kedvéért (jövőbeli más deviza esetére) a Stripe teljes zero-decimal
+ * deviza-halmazát tartalmazza. */
+const ZERO_DECIMAL_CURRENCIES = new Set([
+  'bif', 'clp', 'djf', 'gnf', 'jpy', 'kmf', 'krw', 'mga', 'pyg', 'rwf', 'ugx', 'vnd', 'vuv', 'xaf', 'xof', 'xpf',
+]);
+
+/** `session.amount_total` (Stripe kisebb pénzegységben -- HUF-nál fillér-egységben, lásd
+ * `ZERO_DECIMAL_CURRENCIES`) -> ügyfélnek mutatott, formázott összeg (pl. `9 900 Ft`). */
+function formatAmountLabel(amountTotal: number | null, currency: string): string {
+  if (amountTotal === null) return '—';
+  const isZeroDecimal = ZERO_DECIMAL_CURRENCIES.has(currency.toLowerCase());
+  const amount = isZeroDecimal ? amountTotal : amountTotal / 100;
+  try {
+    return new Intl.NumberFormat('hu-HU', { style: 'currency', currency: currency.toUpperCase() }).format(amount);
+  } catch {
+    // Ismeretlen/érvénytelen currency kód esetén (elméletileg nem fordulhat elő, a Stripe
+    // mindig érvényes ISO kódot ad) egyszerű szám + a nyers currency kód.
+    return `${new Intl.NumberFormat('hu-HU').format(amount)} ${currency.toUpperCase()}`;
+  }
 }
 
 async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session): Promise<void> {
@@ -119,6 +163,56 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session):
         organizationId,
         invoiceId: session.invoice,
         sendError,
+      });
+    }
+  }
+
+  // "Sikeres fizetés" visszaigazoló email az ügyfélnek -- 2026-08-17, "Sikeres fizetés email +
+  // számlázási cím kötelezővé tétele" lépés, Levi kifejezett kérésére. Lásd
+  // `lib/emails/paymentSuccessEmail.ts` JSDoc-ját a sablon-tartalom (fizetési azonosító + "24
+  // órán belül" ígéret) kötelező elemeiért.
+  //
+  // `to` -- a `session.customer_details.email` a VALÓS, a Stripe Checkout oldalon ténylegesen
+  // beírt/megerősített email cím; erre esik vissza a `session.customer_email` (a
+  // `checkout/route.ts`-ben a session létrehozásakor előre kitöltött érték), ha az előbbi
+  // valamiért hiányozna. Ha egyik sincs (elméletileg nem fordulhat elő, mert a `checkout/
+  // route.ts` mindig kitölti a `customer_email`-t a bejelentkezett user címéből), az emailt
+  // kihagyjuk -- nincs kinek küldeni.
+  const recipientEmail = session.customer_details?.email ?? session.customer_email;
+  if (!recipientEmail) {
+    console.error('[stripe/webhook] Sikeres fizetés email KIHAGYVA -- nincs ügyfél email cím a session-ön.', {
+      organizationId,
+      sessionId: session.id,
+    });
+  } else {
+    // `paymentId` -- lásd `PaymentSuccessEmailParams.paymentId` JSDoc-ját: 'payment' módú
+    // (egyszeri) vásárlásnál a PaymentIntent ID a legpontosabb ügyfélnek mutatható azonosító,
+    // 'subscription' módnál (nincs PaymentIntent a Session-ön) a Subscription ID a helyette
+    // használt azonosító, végső esetben (egyik sem elérhető) maga a Checkout Session ID --
+    // ez utóbbi MINDIG létezik, tehát a `paymentId` sosem üres.
+    const paymentId =
+      (typeof session.payment_intent === 'string' ? session.payment_intent : null) ??
+      (typeof session.subscription === 'string' ? session.subscription : null) ??
+      session.id;
+
+    try {
+      await sendPaymentSuccessEmail({
+        to: recipientEmail,
+        paymentId,
+        itemLabel: PLAN_ACTION_LABELS[planAction],
+        amountLabel: formatAmountLabel(session.amount_total, session.currency ?? 'huf'),
+        paidAt: new Date(),
+      });
+      console.log('[stripe/webhook] Sikeres fizetés email elküldve:', { organizationId, to: recipientEmail, paymentId });
+    } catch (emailError) {
+      // Szándékosan NEM dobunk hibát -- ugyanaz az elv, mint a fenti számla-email küldésnél:
+      // a kredit/csomag jóváírása ekkorra már megtörtént, egy `throw` itt a Stripe-ot
+      // felesleges retry-ra késztetné, ami az `apply_plan_purchase` RPC-t (nem idempotens)
+      // ismét lefuttatná ugyanarra a vásárlásra.
+      console.error('[stripe/webhook] Sikeres fizetés email küldése sikertelen (a kredit jóváírása ettől függetlenül megtörtént):', {
+        organizationId,
+        to: recipientEmail,
+        emailError,
       });
     }
   }

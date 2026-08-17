@@ -106,6 +106,17 @@ export async function POST(
     const session = await stripe.checkout.sessions.create({
       mode,
       customer_email: user.email ?? undefined,
+      // `billing_address_collection: 'required'` -- 2026-08-17, "Sikeres fizetés email +
+      // számlázási cím kötelezővé tétele" lépés, Levi kifejezett kérésére: a Stripe Checkout
+      // oldalon a fizetés előtt KÖTELEZŐEN ki kell tölteni a teljes számlázási címet (ország,
+      // irányítószám, város, cím, opcionálisan 2. sor). Enélkül ('auto', az eddigi
+      // alapértelmezett) a Stripe csak akkor kéri be a címet, ha az adott fizetési mód (pl.
+      // kártya) megköveteli -- emiatt gyakran hiányzott a számlázási cím, ami a
+      // `invoice_creation`-nel generált Stripe-számlát hiányosan (vagy cím nélkül) állította
+      // ki. Ez a beállítás közvetlenül összefügg a webhook `sendPaymentSuccessEmail` hívásának
+      // "24 órán belül, amennyiben minden számlázási adat rendelkezésre áll" ígéretével --
+      // ezzel a kapcsolóval gyakorlatilag MINDIG rendelkezésre fog állni.
+      billing_address_collection: 'required',
       line_items: [{ price: priceId, quantity: 1 }],
       // `allow_promotion_codes` -- 2026-08-09, "Fizetési folyamat élő tesztelése" lépés:
       // megjeleníti a "Kedvezménykód hozzáadása" mezőt a Stripe Checkout oldalon. Eredetileg

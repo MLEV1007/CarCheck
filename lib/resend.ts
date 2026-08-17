@@ -39,25 +39,24 @@ const RESEND_API_URL = 'https://api.resend.com/emails';
  * akarod írni (pl. teszt-környezetben). */
 const DEFAULT_FROM_EMAIL = 'CarPass Riasztás <noreply@carpass.hu>';
 
-interface SendAlertEmailParams {
+/** Ügyfélnek szóló (nem belső riasztás) tranzakciós emailek alapértelmezett feladója --
+ * 2026-08-17, "Sikeres fizetés email" lépés. Külön env változóval (`RESEND_FROM_EMAIL`)
+ * felülírható, hogy a "Riasztás" feladó-név NE jelenjen meg ügyfélnek szóló levélben
+ * (pl. `lib/emails/paymentSuccessEmail.ts`). Ugyanaz a hitelesített `carpass.hu` domain. */
+const DEFAULT_TRANSACTIONAL_FROM_EMAIL = 'CarPass <noreply@carpass.hu>';
+
+interface SendViaResendParams {
+  from: string;
   to: string;
   subject: string;
   html: string;
 }
 
-/**
- * Egyetlen, tetszőleges tartalmú email elküldése a Resend REST API-n keresztül.
- * DOB hibát, ha a küldés sikertelen (hívja a `lib/adminAlerts.ts` `notifyUnauthorizedAdminAccess`-e,
- * ami ezt elkapva csak logol -- a riasztás-küldés hibája SOHA nem szabad, hogy az `/admin`
- * oldal renderelését megakassza).
- */
-export async function sendAlertEmail({ to, subject, html }: SendAlertEmailParams): Promise<void> {
+async function sendViaResend({ from, to, subject, html }: SendViaResendParams): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY?.trim();
   if (!apiKey) {
     throw new MissingResendApiKeyError();
   }
-
-  const from = process.env.RESEND_ALERT_FROM_EMAIL?.trim() || DEFAULT_FROM_EMAIL;
 
   const response = await fetch(RESEND_API_URL, {
     method: 'POST',
@@ -72,4 +71,42 @@ export async function sendAlertEmail({ to, subject, html }: SendAlertEmailParams
     const details = await response.text().catch(() => '(nincs válasz-törzs)');
     throw new Error(`Resend email küldés sikertelen (HTTP ${response.status}): ${details}`);
   }
+}
+
+interface SendAlertEmailParams {
+  to: string;
+  subject: string;
+  html: string;
+}
+
+/**
+ * Egyetlen, tetszőleges tartalmú email elküldése a Resend REST API-n keresztül.
+ * DOB hibát, ha a küldés sikertelen (hívja a `lib/adminAlerts.ts` `notifyUnauthorizedAdminAccess`-e,
+ * ami ezt elkapva csak logol -- a riasztás-küldés hibája SOHA nem szabad, hogy az `/admin`
+ * oldal renderelését megakassza).
+ */
+export async function sendAlertEmail({ to, subject, html }: SendAlertEmailParams): Promise<void> {
+  const from = process.env.RESEND_ALERT_FROM_EMAIL?.trim() || DEFAULT_FROM_EMAIL;
+  await sendViaResend({ from, to, subject, html });
+}
+
+interface SendTransactionalEmailParams {
+  to: string;
+  subject: string;
+  html: string;
+}
+
+/**
+ * Ügyfélnek szóló tranzakciós email (pl. sikeres fizetés visszaigazolás, lásd
+ * `lib/emails/paymentSuccessEmail.ts`) küldése a Resend REST API-n keresztül -- 2026-08-17,
+ * "Sikeres fizetés email" lépés. Ugyanaz az infrastruktúra, mint a `sendAlertEmail`-nél
+ * (ugyanaz a hitelesített domain), csak MÁS alapértelmezett feladó-névvel ("CarPass", NEM
+ * "CarPass Riasztás") -- lásd `DEFAULT_TRANSACTIONAL_FROM_EMAIL`. DOB hibát, ha a küldés
+ * sikertelen -- a hívó (`app/api/stripe/webhook/route.ts`) elkapja és csak logolja, UGYANAZ
+ * az elv, mint a `stripe.invoices.sendInvoice()` hívásnál: az email-küldés hibája SOHA nem
+ * szabad, hogy a webhook (és vele a kredit/csomag jóváírás) hiba-státuszra álljon.
+ */
+export async function sendTransactionalEmail({ to, subject, html }: SendTransactionalEmailParams): Promise<void> {
+  const from = process.env.RESEND_FROM_EMAIL?.trim() || DEFAULT_TRANSACTIONAL_FROM_EMAIL;
+  await sendViaResend({ from, to, subject, html });
 }
