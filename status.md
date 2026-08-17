@@ -3542,3 +3542,53 @@ Terminálból vagy a szokásos Git-kliensével), hogy a javítás éles környez
 **Ellenőrzés:** `npx tsc --noEmit` a teljes projektre -- 0 hiba. `grep -rl "locationZone"` a
 teljes projektben (node_modules nélkül) megerősítette, hogy KIZÁRÓLAG a `scan-damage/route.ts`
 és a `DamageCanvas.tsx` JSDoc-jaiban maradt (történeti) említés, élő kódban/típusban sehol.
+
+## 2026-08-17 (4.) -- Fizetés élesítése: vásárlás gombok tesztelési zárjának feloldása
+
+**Kérés:** "A fizetési lehetőséget tedd aktívvá. Lehessen vásárolni előfizetéseket, ai
+tokeneket, minden felhasználónak."
+
+**Talált állapot:** a fizetési infrastruktúra (Stripe Checkout/Webhook, `apply_plan_purchase`
+RPC, `user_credits` tábla, `BillingTab.tsx` UI) már régóta készen állt és élesben egyszer már
+valódi (élő, `cs_live_...`) teszt-vásárlásokkal is le lett ellenőrizve (lásd 2026-08-09-i
+szakaszok). A 2026-08-12-i "Vásárlás gombok inaktívvá tétele a tesztelési időszakra" szakasz
+óta viszont a `BillingTab.tsx` tetején lévő `PURCHASES_DISABLED_FOR_TESTING` kód-szintű
+kapcsoló `true` volt -- ez a 3 TÉNYLEGES Stripe Checkout-ot indító gombot (csomagváltás, +10
+vizsgálat Top-up, AI-kredit csomagok) látszólag normál kinézetűnek, de nem kattinthatónak
+mutatta minden Menedzsernek.
+
+**Javítás:** `components/settings/BillingTab.tsx` -- `PURCHASES_DISABLED_FOR_TESTING` értéke
+`true` -> `false`. Ez az EGYETLEN szükséges kód-változtatás (a kapcsoló pontosan erre a
+célra lett így megépítve 2026-08-12-én, egy helyen, könnyen visszaállítható módon) --
+mostantól minden szervezet Menedzsere ténylegesen végig tudja vinni mindhárom vásárlási
+folyamatot. A "Kapcsolatfelvétel" (Autóház/business tier, mailto) gomb és a Havi/Éves
+kapcsoló nem érintett, azok korábban sem voltak zárolva.
+
+**NEM változott (szándékosan):** a vásárlás továbbra is KIZÁRÓLAG Menedzser szerepkörnek
+érhető el (`/api/stripe/checkout` 403-at ad Átvizsgálónak, a `SettingsTabs.tsx` az egész
+"Előfizetés" fület is elrejti nem-Menedzser elől) -- ez a PROJEKT_INSTRUKCIOK.md-ben és a
+`checkout/route.ts` JSDoc-jában rögzített, szándékos multi-tenant biztonsági szabály, nem
+egy tesztelési korlátozás, tehát a mostani kérés ("minden felhasználónak") ezt nem írja
+felül -- minden SZERVEZET (cég) Menedzsere vásárolhat, nem minden egyéni felhasználói fiók.
+
+**Ellenőrizve, DE nem módosítva ebben a lépésben:**
+* A helyi `.env.local`-ban a `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET` továbbra is a
+  `.env.local.example` PLACEHOLDER értékét tartalmazza (`sk_test_REPLACE_WITH_YOUR_OWN_KEY`/
+  `whsec_REPLACE_WITH_YOUR_OWN_SECRET`, pontos hosszegyezés ellenőrizve) -- ez csak a HELYI
+  `npm run dev` fejlesztői tesztelést érinti, az ÉLES (Vercel) környezeti változók
+  külön vannak, és a 2026-08-09-i élő teszt-vásárlások szerint korábban helyesen be voltak
+  állítva ott. A `STRIPE_PRICE_ID_*` változók helyi értéke valódinak tűnő `price_...`
+  azonosító (nem placeholder).
+* A 2026-08-11-i szakaszban dokumentált, még el nem végzett kézi lépés (a `customer.
+  subscription.*` események felvétele az élő Stripe webhook endpoint "Listen to"
+  listájára a Stripe Dashboardon) továbbra is nyitott -- ez NEM blokkolja a vásárlást/
+  kredit-jóváírást (azt a `checkout.session.completed` esemény önmagában elvégzi), csak
+  az admin felületen megjelenő előfizetés-lejárat/-státusz szinkronját érinti.
+
+**Ellenőrzés:** `npx tsc --noEmit -p tsconfig.json` -- szinkron, egyetlen bash-hívásban,
+hibamentes, exit code 0.
+
+**FONTOS, NYITOTT TEENDŐ:** ez a commit a felhasználó Mac-jén HELYBEN létrejött, DE a
+`git push origin main` a `device_bash`-ből (nincs hálózati hozzáférése) nem végezhető el --
+a felhasználónak saját maga kell futtatnia egy `git push`-t a projekt mappájában, hogy a
+fizetés-élesítés ténylegesen a Vercel-deployba (carpass.hu) kerüljön.
