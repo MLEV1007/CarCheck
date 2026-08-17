@@ -3,6 +3,7 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { createClient } from '@/lib/supabase/server';
 import { checkAiQuota, consumeAiQuota } from '@/lib/quotas';
 import { hasInspectionClaimedAiCredit, claimInspectionAiCredit } from '@/lib/inspectionAiCredit';
+import { logAiApiCall } from '@/lib/aiApiCallLog';
 import { DEFECT_CATEGORIES } from '@/lib/inspections/constants';
 
 /**
@@ -321,6 +322,10 @@ export async function POST(request: NextRequest): Promise<NextResponse<ScanDefec
   let rawText: string | undefined;
   let succeeded = false;
   let primaryError: unknown;
+  // Melyik modell adta a ténylegesen felhasznált választ -- Platform Admin
+  // AI-hívás-napló célja (lásd `lib/aiApiCallLog.ts`), a statikus ÉS a dinamikus
+  // fallback ág is beállítja siker esetén.
+  let usedModel: string | undefined;
 
   for (let i = 0; i < MODEL_CANDIDATES.length; i++) {
     const model = MODEL_CANDIDATES[i];
@@ -328,6 +333,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ScanDefec
       const response = await ai.models.generateContent({ model, contents, config: generationConfig });
       rawText = response.text;
       succeeded = true;
+      usedModel = model;
       break;
     } catch (error) {
       console.error(`Gemini API Error details (model: ${model}):`, error);
@@ -356,6 +362,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ScanDefec
           const response = await ai.models.generateContent({ model: dynamicModelName, contents, config: generationConfig });
           rawText = response.text;
           succeeded = true;
+          usedModel = dynamicModelName;
         } catch (error) {
           console.error(`Gemini API Error details (dynamic fallback model: ${dynamicModelName}):`, error);
         }
@@ -366,6 +373,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<ScanDefec
       console.error('[scan-defect] Dinamikus modell-listázás (ai.models.list()) hívási hiba:', error);
     }
   }
+
+  // Platform Admin AI-hívás-napló (2026-08-17) -- MINDEN ténylegesen megtörtént
+  // Gemini-hívás-próbálkozást naplózunk, sikereset ÉS sikertelent is, FÜGGETLENÜL
+  // az alábbi JSON-validáció kimenetétől -- lásd `lib/aiApiCallLog.ts`. Best-effort,
+  // sosem dob hibát/nem akasztja meg a választ.
+  await logAiApiCall(user.id, FEATURE_NAME, usedModel ?? MODEL_CANDIDATES[0], succeeded);
 
   if (!succeeded) {
     return NextResponse.json(

@@ -97,7 +97,7 @@ export default async function AdminPage() {
   //     (jelenleg maroknyi ügyfél) ez egyszerűbb és átláthatóbb, mint egy külön count-RPC-t
   //     bevezetni, ha a szervezetszám jelentősen megnő, érdemes lesz lecserélni egy `group by`
   //     SQL nézetre/RPC-re.
-  const [{ data: organizations }, { data: profiles }, { data: credits }, { data: inspectionRows }] =
+  const [{ data: organizations }, { data: profiles }, { data: credits }, { data: inspectionRows }, { data: aiApiCallRows }] =
     await Promise.all([
       supabase
         .from('organizations')
@@ -114,11 +114,40 @@ export default async function AdminPage() {
           'organization_id, plan_tier, monthly_inspections_limit, monthly_inspections_remaining, purchased_inspections_remaining, monthly_ai_limit, monthly_ai_remaining, purchased_ai_remaining, subscription_status, subscription_current_period_end'
         ),
       supabase.from('inspections').select('organization_id'),
+      // "AI API hívás" statisztika (2026-08-17, Levi kérésére: "lássam, mennyi AI API
+      // hívást tettek az egyes fiókok, és melyik modellnek") -- lásd `ai_api_calls`
+      // tábla (`supabase/migrations/20260817000000_ai_api_calls_admin_usage_tracking.sql`),
+      // `lib/aiApiCallLog.ts`. Az utolsó 30 napra szűkítve -- ez a tábla (a `inspections`-
+      // szel ellentétben) sűrűn, MINDEN egyes Gemini-hívásnál ír, tehát idővel jóval
+      // gyorsabban nőhet; egy időablak nélküli lekérdezés hosszú távon egyre nagyobb
+      // sorszámot húzna be minden admin-oldal-betöltéskor. Ha a szervezetszám/hívásszám
+      // jelentősen megnő, érdemes lesz ezt egy `group by` SQL nézetre/RPC-re lecserélni
+      // (ugyanaz a megjegyzés, mint az `inspectionCountsByOrg`-nál).
+      supabase
+        .from('ai_api_calls')
+        .select('organization_id, model, success')
+        .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()),
     ]);
 
   const inspectionCountsByOrg = new Map<string, number>();
   for (const row of inspectionRows ?? []) {
     inspectionCountsByOrg.set(row.organization_id, (inspectionCountsByOrg.get(row.organization_id) ?? 0) + 1);
+  }
+
+  // Szervezetenkénti + modellenkénti AI API hívás-bontás -- lásd `AdminOrganizationRow.aiApiCallStats`
+  // JSDoc-ját. Kliens-oldalon (itt, a Server Component-ben) aggregálva, ugyanaz a minta,
+  // mint az `inspectionCountsByOrg`-nál.
+  const aiCallStatsByOrg = new Map<string, { totalCalls: number; successCalls: number; byModel: Map<string, number> }>();
+  for (const row of aiApiCallRows ?? []) {
+    const existing = aiCallStatsByOrg.get(row.organization_id) ?? {
+      totalCalls: 0,
+      successCalls: 0,
+      byModel: new Map<string, number>(),
+    };
+    existing.totalCalls += 1;
+    if (row.success) existing.successCalls += 1;
+    existing.byModel.set(row.model, (existing.byModel.get(row.model) ?? 0) + 1);
+    aiCallStatsByOrg.set(row.organization_id, existing);
   }
 
   // `invited_by` -> meghívó email feloldásához (2026-08-14, "Meghívás-attribúció"
@@ -179,6 +208,17 @@ export default async function AdminPage() {
       purchasedAiRemaining: credit?.purchased_ai_remaining ?? 0,
       subscriptionStatus: credit?.subscription_status ?? null,
       subscriptionCurrentPeriodEnd: credit?.subscription_current_period_end ?? null,
+      aiApiCallStats: (() => {
+        const stats = aiCallStatsByOrg.get(org.id);
+        if (!stats) return { totalCalls: 0, successCalls: 0, byModel: [] };
+        return {
+          totalCalls: stats.totalCalls,
+          successCalls: stats.successCalls,
+          byModel: Array.from(stats.byModel.entries())
+            .map(([model, count]) => ({ model, count }))
+            .sort((a, b) => b.count - a.count),
+        };
+      })(),
     };
   });
 

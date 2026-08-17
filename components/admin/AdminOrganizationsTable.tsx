@@ -49,6 +49,18 @@ export interface AdminOrganizationRow {
   /** ISO timestamp -- a Stripe-előfizetés aktuális számlázási ciklusának vége (meddig
    * érvényes/mikor újul meg). `null`, ha nincs Stripe-előfizetés. */
   subscriptionCurrentPeriodEnd: string | null;
+  /** AI API hívás-statisztika, az utolsó 30 napra (2026-08-17, Levi kérésére: "lássam,
+   * mennyi AI API hívást tettek az egyes fiókok, és melyik modellnek") -- az `ai_api_calls`
+   * táblából, `app/admin/page.tsx`-ben szervezetenként/modellenként aggregálva. MINDEN
+   * ténylegesen megtörtént Gemini-hívás-próbálkozást tartalmazza (a 7 `/api/ai/*` route +
+   * a publikus riport AI chat is), NEM azonos az "1 AI-kredit = 1 vizsgálat" elszámolással
+   * (`monthlyAiRemaining` stb.) -- lásd `lib/aiApiCallLog.ts`. Csak MEGJELENÍTÉS, nem
+   * szerkeszthető innen. */
+  aiApiCallStats: {
+    totalCalls: number;
+    successCalls: number;
+    byModel: { model: string; count: number }[];
+  };
 }
 
 interface AdminOrganizationsTableProps {
@@ -171,6 +183,55 @@ function MembersPanel({ members }: { members: AdminOrganizationMemberRow[] }) {
                     ? `Meghívta: ${member.invitedByEmail}`
                     : 'Meghívó nincs rögzítve'}
               </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * "AI API hívások" panel (2026-08-17, Levi kérésére: "lássam, mennyi AI API hívást tettek
+ * az egyes fiókok, és melyik modellnek") -- a "Csapattagok és meghívások" panel ALATT,
+ * ugyanabban a kibontható szekcióban. Modellenkénti bontás soronként (hívásszám +
+ * hányad-sáv), fejlécben az összesített hívásszám és a sikeres/sikertelen arány. Az
+ * utolsó 30 napra vonatkozik (lásd `app/admin/page.tsx` lekérdezését), MINDEN
+ * ténylegesen megtörtént Gemini-hívást számol, nem csak a kredit-fogyasztókat. Csak
+ * MEGJELENÍTÉS, nem szerkeszthető innen.
+ */
+function AiUsagePanel({ stats }: { stats: AdminOrganizationRow['aiApiCallStats'] }) {
+  if (stats.totalCalls === 0) return null;
+
+  const failedCalls = stats.totalCalls - stats.successCalls;
+
+  return (
+    <div className="mt-6 flex flex-col gap-3 border-t border-linear-hairline pt-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="text-[12px] font-medium uppercase tracking-[0.3px] text-linear-ink-subtle">
+          AI API hívások (utolsó 30 nap)
+        </p>
+        <p className="text-[12px] text-linear-ink-muted">
+          <span className="tabular-nums text-linear-ink">{stats.totalCalls}</span> hívás összesen
+          {failedCalls > 0 && (
+            <span className="text-linear-danger"> · {failedCalls} sikertelen</span>
+          )}
+        </p>
+      </div>
+      <div className="overflow-hidden rounded-md border border-linear-hairline">
+        <ul className="divide-y divide-linear-hairline">
+          {stats.byModel.map(({ model, count }) => (
+            <li key={model} className="flex items-center justify-between gap-3 px-3.5 py-2.5">
+              <span className="truncate text-[13px] text-linear-ink">{model}</span>
+              <div className="flex shrink-0 items-center gap-2">
+                <div className="h-1.5 w-24 overflow-hidden rounded-full bg-linear-surface-2">
+                  <div
+                    className="h-full rounded-full bg-linear-primary"
+                    style={{ width: `${Math.round((count / stats.totalCalls) * 100)}%` }}
+                  />
+                </div>
+                <span className="w-8 text-right text-[12px] tabular-nums text-linear-ink-muted">{count}</span>
+              </div>
             </li>
           ))}
         </ul>
@@ -506,6 +567,7 @@ export function AdminOrganizationsTable({ organizations: initial }: AdminOrganiz
                           </div>
                         </div>
 
+                        <AiUsagePanel stats={org.aiApiCallStats} />
                         <MembersPanel members={org.members} />
                       </div>
                     )}

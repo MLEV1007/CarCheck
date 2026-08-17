@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createHash } from 'node:crypto';
 import { GoogleGenAI } from '@google/genai';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { logPublicReportAiApiCall } from '@/lib/aiApiCallLog';
 import type { PublicReportData } from '@/lib/reports/types';
 
 /**
@@ -40,10 +43,125 @@ import type { PublicReportData } from '@/lib/reports/types';
  * projekt többi `/api/ai/*` route-jánál (lásd `generate-summary/route.ts` és
  * `parse-equipment/route.ts` JSDoc-ját a `gemini-2.0-flash` 2026-06-01-i kivezetéséről) --
  * elsődleges `gemini-3.1-flash-lite`, fallback `gemini-3.6-flash`.
+ *
+ * **Prompt cache (2026-08-17, Levi kérésére):** a rendszerprompt (a TELJES riport-JSON-t
+ * tartalmazza) korábban MINDEN egyes üzenetnél újra el lett küldve -- pedig ugyanahhoz a
+ * riport-tokenhez tartozó ÖSSZES beszélgetés (akár TÖBB látogatótól, több üzeneten át) ugyanazt
+ * a rendszerpromptot használja. A `getOrCreateReportChatCache()` a Gemini explicit context
+ * caching API-jával (`ai.caches.create`) riport-tokenenként EGYSZER hozza létre a cache-t
+ * (1 órás TTL, lásd `report_chat_context_cache` tábla/migráció), utána `cachedContent`
+ * hivatkozással újrahasználja -- csak a beszélgetés-előzmény + az új üzenet megy ki
+ * hívásonként, a (tipikusan a legtöbb token-t vivő) rendszerprompt nem.
+ *
+ * **FONTOS, NYITOTT KOCKÁZAT:** a Gemini explicit cache-elésnek történelmileg volt egy
+ * modellenként eltérő MINIMÁLIS cache-elhető token-mérete -- ha a riport-JSON+rendszerprompt
+ * ez alatt van (egy tipikus riportnál ez simán előfordulhat), a `ai.caches.create()` hívás
+ * hibázhat, VAGY a jelenlegi `gemini-3.1-flash-lite`/`gemini-3.6-flash` modelleknél ez a
+ * korlát/API-alak MÁSKÉNT viselkedhet, mint a korábbi Gemini-generációknál -- ezt
+ * implementáció idején NEM lehetett megbízhatóan ellenőrizni (lásd `ai.google.dev/pricing`
+ * és a caching dokumentáció friss állapotát). Emiatt a `getOrCreateReportChatCache()`
+ * MINDEN hibát elnyel és `null`-lal tér vissza -- ilyenkor a hívó a RÉGI, cache NÉLKÜLI,
+ * teljes rendszerprompt-küldős útra esik vissza (lásd a `useCacheForThisAttempt` ágat lent),
+ * tehát a chat funkció a cache-elés tényleges sikerétől FÜGGETLENÜL, változatlanul működik.
+ * A `used_cache` mező (lásd `ai_api_calls` napló, `/admin` felület) mutatja meg utólag, hogy
+ * a cache ténylegesen aktiválódott-e éles forgalomban.
  */
 export const runtime = 'nodejs';
 
 const MODEL_CANDIDATES = ['gemini-3.1-flash-lite', 'gemini-3.6-flash'] as const;
+
+/** A cache-eléshez használt modell -- egy Gemini `CachedContent` egy KONKRÉT modellhez van
+ * kötve, ezért a cache-t KIZÁRÓLAG az ELSŐDLEGES (`MODEL_CANDIDATES[0]`) modellnél próbáljuk
+ * felhasználni; ha emiatt (vagy bármi más miatt) a primér hívás elbukik, a fallback modellnél
+ * (`MODEL_CANDIDATES[1]`) MINDIG a teljes rendszerpromptot küldjük, cache nélkül -- egy cache-
+ * referencia egy MÁSIK modellel érvénytelen hívást eredményezne. */
+const CACHE_MODEL: (typeof MODEL_CANDIDATES)[number] = MODEL_CANDIDATES[0];
+
+/** A Gemini-oldali cache TTL-je -- elég hosszú ahhoz, hogy egy aktív beszélgetés/több
+ * egymást követő látogató (ugyanarra a riportra) kihasználja, de nem túl hosszú ahhoz, hogy
+ * egy riport-revalidálás (adatváltozás) sokáig "beragadjon" -- bár azt amúgy is a
+ * `content_hash`-eltérés azonnal érvényteleníti, függetlenül a TTL-től. */
+const CACHE_TTL_SECONDS = 3600;
+
+/** Biztonsági ráhagyás a Gemini-oldali TTL lejárta előtt -- sose próbáljunk egy éppen
+ * lejáró/lejárt cache-referenciát felhasználni (a válasz emiatt hibázna). */
+const CACHE_EXPIRY_SAFETY_MARGIN_MS = 5 * 60 * 1000;
+
+function hashSystemInstruction(text: string): string {
+  return createHash('sha256').update(text).digest('hex');
+}
+
+/**
+ * Lekéri a riport-tokenhez tartozó, MÉG ÉRVÉNYES Gemini prompt-cache-t (ha a tartalom
+ * időközben nem változott, lásd `content_hash`), vagy létrehoz egy újat -- lásd a fájl
+ * tetején lévő JSDoc "Prompt cache" szakaszát a teljes indoklásért/kockázatért. A
+ * `report_chat_context_cache` tábla service-role (`createAdminClient()`) klienssel
+ * érhető el, mert ez egy rendszer-szintű könyvelés, nincs bejelentkezett user-session
+ * (publikus route), amivel a normál cookie-alapú kliens RLS-e működne.
+ *
+ * @returns a Gemini `CachedContent` erőforrás neve, vagy `null`, ha a cache-elés bármiért
+ * (hiba, DB-elérés, vagy a Gemini API oldali korlát) nem sikerült -- ilyenkor a hívó a
+ * cache NÉLKÜLI, teljes rendszerprompt-küldős útra esik vissza.
+ */
+async function getOrCreateReportChatCache(
+  ai: GoogleGenAI,
+  token: string,
+  systemInstruction: string
+): Promise<string | null> {
+  const contentHash = hashSystemInstruction(systemInstruction);
+
+  try {
+    const admin = createAdminClient();
+
+    const { data: existing } = await admin
+      .from('report_chat_context_cache')
+      .select('cache_name, model, content_hash, expires_at')
+      .eq('public_token', token)
+      .maybeSingle();
+
+    if (
+      existing &&
+      existing.model === CACHE_MODEL &&
+      existing.content_hash === contentHash &&
+      new Date(existing.expires_at).getTime() - Date.now() > CACHE_EXPIRY_SAFETY_MARGIN_MS
+    ) {
+      return existing.cache_name;
+    }
+
+    const cache = await ai.caches.create({
+      model: CACHE_MODEL,
+      config: {
+        systemInstruction,
+        ttl: `${CACHE_TTL_SECONDS}s`,
+      },
+    });
+
+    if (!cache.name) return null;
+
+    const expiresAt = new Date(Date.now() + CACHE_TTL_SECONDS * 1000).toISOString();
+
+    await admin.from('report_chat_context_cache').upsert(
+      {
+        public_token: token,
+        cache_name: cache.name,
+        model: CACHE_MODEL,
+        content_hash: contentHash,
+        expires_at: expiresAt,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'public_token' }
+    );
+
+    return cache.name;
+  } catch (error) {
+    console.error(
+      '[report-chat] Prompt cache létrehozás/lekérés sikertelen -- gyorsítótár nélkül, a teljes ' +
+        'rendszerprompttal folytatjuk (a chat funkció ettől függetlenül működik):',
+      error
+    );
+    return null;
+  }
+}
 
 /** Egyetlen üzenet maximális hossza -- lásd PLAN_ai_report_chat.md 4.4 pont. */
 const MAX_MESSAGE_LENGTH = 500;
@@ -242,10 +360,13 @@ export async function POST(
 
   const ai = new GoogleGenAI({ apiKey });
 
-  const generationConfig = {
-    systemInstruction: SYSTEM_INSTRUCTION_TEMPLATE(reportContextJson),
-    temperature: 0.3,
-  };
+  const systemInstruction = SYSTEM_INSTRUCTION_TEMPLATE(reportContextJson);
+
+  // Prompt cache -- lásd a fájl tetején lévő JSDoc "Prompt cache" szakaszát. `null`, ha a
+  // cache-elés bármiért nem sikerült -- ez esetben MINDEN modell-próbálkozás a teljes
+  // rendszerpromptot küldi (a `useCacheForThisAttempt` lent mindig `false` lesz), a chat
+  // funkció ettől függetlenül, változatlanul működik.
+  const cacheName = await getOrCreateReportChatCache(ai, token, systemInstruction);
 
   const contents = [
     ...history.map((item) => ({ role: item.role, parts: [{ text: item.text }] })),
@@ -255,19 +376,39 @@ export async function POST(
   let rawText: string | undefined;
   let succeeded = false;
   let primaryError: unknown;
+  // Melyik modell adta a ténylegesen felhasznált választ, ÉS élt-e cache-eléssel --
+  // Platform Admin AI-hívás-napló célja (lásd `lib/aiApiCallLog.ts`).
+  let usedModel: string | undefined;
+  let usedCache = false;
 
   for (let i = 0; i < MODEL_CANDIDATES.length; i++) {
     const model = MODEL_CANDIDATES[i];
+    // A cache-t KIZÁRÓLAG a `CACHE_MODEL`-lel (az elsődleges modellel) próbáljuk -- egy
+    // másik modellel a cache-referencia érvénytelen hívást eredményezne, lásd `CACHE_MODEL`
+    // JSDoc-ját. Ha nincs cache (`cacheName === null`) VAGY ez épp a fallback modell
+    // próbálkozása, a teljes rendszerpromptot küldjük, ugyanúgy, mint eddig.
+    const useCacheForThisAttempt = Boolean(cacheName) && model === CACHE_MODEL;
+    const config = useCacheForThisAttempt
+      ? { cachedContent: cacheName as string, temperature: 0.3 }
+      : { systemInstruction, temperature: 0.3 };
+
     try {
-      const response = await ai.models.generateContent({ model, contents, config: generationConfig });
+      const response = await ai.models.generateContent({ model, contents, config });
       rawText = response.text;
       succeeded = true;
+      usedModel = model;
+      usedCache = useCacheForThisAttempt;
       break;
     } catch (error) {
       console.error(`Gemini API Error details (model: ${model}):`, error);
       if (i === 0) primaryError = error;
     }
   }
+
+  // Platform Admin AI-hívás-napló (2026-08-17) -- MINDEN ténylegesen megtörtént
+  // Gemini-hívás-próbálkozást naplózunk, sikereset ÉS sikertelent is -- lásd
+  // `lib/aiApiCallLog.ts`. Best-effort, sosem dob hibát/nem akasztja meg a választ.
+  await logPublicReportAiApiCall(token, usedModel ?? MODEL_CANDIDATES[0], succeeded, usedCache);
 
   if (!succeeded) {
     return NextResponse.json(

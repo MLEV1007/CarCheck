@@ -3,6 +3,7 @@ import { GoogleGenAI } from '@google/genai';
 import { createClient } from '@/lib/supabase/server';
 import { checkAiQuota, consumeAiQuota } from '@/lib/quotas';
 import { hasInspectionClaimedAiCredit, claimInspectionAiCredit } from '@/lib/inspectionAiCredit';
+import { logAiApiCall } from '@/lib/aiApiCallLog';
 
 /**
  * Google Gemini backend a "Végső Szakvélemény & Várható Költségek" modul (10. wizard
@@ -180,6 +181,9 @@ export async function POST(
   let rawText: string | undefined;
   let succeeded = false;
   let primaryError: unknown;
+  // Melyik modell adta a ténylegesen felhasznált választ -- Platform Admin
+  // AI-hívás-napló célja (lásd `lib/aiApiCallLog.ts`).
+  let usedModel: string | undefined;
 
   for (let i = 0; i < MODEL_CANDIDATES.length; i++) {
     const model = MODEL_CANDIDATES[i];
@@ -187,12 +191,18 @@ export async function POST(
       const response = await ai.models.generateContent({ model, contents, config: generationConfig });
       rawText = response.text;
       succeeded = true;
+      usedModel = model;
       break;
     } catch (error) {
       console.error(`Gemini API Error details (model: ${model}):`, error);
       if (i === 0) primaryError = error;
     }
   }
+
+  // Platform Admin AI-hívás-napló (2026-08-17) -- MINDEN ténylegesen megtörtént
+  // Gemini-hívás-próbálkozást naplózunk, sikereset ÉS sikertelent is -- lásd
+  // `lib/aiApiCallLog.ts`. Best-effort, sosem dob hibát/nem akasztja meg a választ.
+  await logAiApiCall(user.id, FEATURE_NAME, usedModel ?? MODEL_CANDIDATES[0], succeeded);
 
   if (!succeeded) {
     return NextResponse.json(

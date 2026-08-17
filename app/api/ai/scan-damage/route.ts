@@ -3,14 +3,16 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { createClient } from '@/lib/supabase/server';
 import { checkAiQuota, consumeAiQuota } from '@/lib/quotas';
 import { hasInspectionClaimedAiCredit, claimInspectionAiCredit } from '@/lib/inspectionAiCredit';
+import { logAiApiCall } from '@/lib/aiApiCallLog';
 import { DAMAGE_TYPE_LABEL, DAMAGE_TYPES } from '@/lib/inspections/constants';
+import { DAMAGE_LOCATION_ZONES, isDamageLocationZone, type DamageLocationZoneOrUnclear } from '@/lib/inspections/damageLocationZones';
 import type { DamageType } from '@/lib/inspections/types';
 
 /**
  * Google Gemini Vision (multimodal) backend a "Sérülés- és Hibatérkép" wizard-lépés
  * (`StepDamageMap.tsx` / `DamageCanvas.tsx`) AI-alapú sérülés-felismeréséhez (2026-08-16,
  * a felhasználó explicit kérésére: "ugyanaz a rendszer, mint a Hibák és Média AI-elemzése
- * (`/api/ai/scan-defect`)").
+ * (`/api/ai/scan-defect`), DE jelölje is be, hogy nagyjából hol lehet a sérülés a képen").
  *
  * Ez a route 1:1 a `scan-defect/route.ts` szerkezetét/védelmi rétegeit követi (auth, kredit,
  * modell-fallback, szigorú szerver-oldali "MÉG EGYSZER" validáció) -- ide csak a
@@ -20,13 +22,19 @@ import type { DamageType } from '@/lib/inspections/types';
  *     `handleTypeChange()` -- a 5 fix típusnál a cím MINDIG a `DAMAGE_TYPE_LABEL[type]`,
  *     sosem szabad szöveg). A szerver a fix típusoknál a modell esetleges `title` javaslatát
  *     EL SEM OLVASSA, determinisztikusan felülírja -- lásd `sanitizeScanDamageResponse()`.
- *  2. **2026-08-17 -- a hely-becslés (`locationZone`) eltávolítva (a felhasználó explicit
- *     kérésére: "Nincs szükség az ai-nál arra, hogy elhelyezze és meghatározza a hiba pontos
- *     helyét, majd bejelölje azt"):** a route korábban egy zárt zóna-katalógusból
- *     (`lib/inspections/damageLocationZones.ts`, MOSTANTÓL használaton kívül, de a projekt
- *     "ne töröld jóváhagyás nélkül" konvenciója szerint a fájlban hagyva) egy hely-becslést is
- *     kért/adott a modelltől -- ez TELJESEN megszűnt, a modell KIZÁRÓLAG a kategóriát és a
- *     leírást adja vissza, a rendszerutasítás/`responseSchema` nem is említi a helyet.
+ *  2. ÚJ mező: `locationZone` -- a `lib/inspections/damageLocationZones.ts` zárt
+ *     zóna-katalógusának egyik értéke, VAGY `'unclear'`. Lásd annak fájl-JSDoc-ját a teljes
+ *     indoklásért, hogy MIÉRT egy zárt katalógus, NEM nyers x/y koordináta a modell kimenete.
+ *  3. **2026-08-16 (folyt.) -- JAVÍTÁS:** az eredeti verzió itt explicit TILTOTTA, hogy a modell
+ *     a jármű bal/jobb oldalát megkülönböztesse (`side_front`/`side_middle`/`side_rear`, kép-
+ *     relatív zónák) -- ez okozta a felhasználó által jelzett hibát (a modell rendszeresen
+ *     összekeverte a bal/jobb oldalt). A gyökérok NEM az volt, hogy egy közeli fotóból ez
+ *     megállapíthatatlan, hanem hogy a régi zóna-katalógus KÉP-relatív "bal"/"jobb" fogalmat
+ *     használt, miközben a modell (helyesen) JÁRMŰ-relatívan gondolkodott. A rendszerutasítás
+ *     mostantól EXPLICIT, nézet-specifikus (elöl-tükrözött/hátul-nem-tükrözött/oldal-orr-irány)
+ *     szabályokat ad a modellnek a JÁRMŰ-relatív bal/jobb helyes levezetéséhez -- lásd a
+ *     `damageLocationZones.ts` fájl-JSDoc geometriai levezetését és `buildSystemInstruction()`
+ *     8-9. pontját.
  *
  * A hallucináció elleni védelem többi rétege (zárt katalógus MÉG EGYSZER ellenőrizve, kötelező
  * "nem látok egyértelmű sérülést" kimenet, "csak amit látsz" szigorú prompt, NINCS
@@ -96,13 +104,14 @@ interface ScanDamageModelResponse {
   type?: unknown;
   title?: unknown;
   description?: unknown;
+  locationZone?: unknown;
 }
 
 /**
  * A kliens felé visszaadott, MÁR megtisztított javaslat. `damageDetected: false` esetén
- * `type`/`title`/`description` SOSE kerül a válaszba -- a kliens ilyenkor a "nem ismert fel
- * egyértelmű sérülést" üzenetet mutatja, semmilyen mező/jelölő nem tölthető ki (lásd
- * `scan-defect/route.ts` azonos elvű `ScanDefectData` JSDoc-ját).
+ * `type`/`title`/`description`/`locationZone` SOSE kerül a válaszba -- a kliens ilyenkor a
+ * "nem ismert fel egyértelmű sérülést" üzenetet mutatja, semmilyen mező/jelölő nem tölthető
+ * ki (lásd `scan-defect/route.ts` azonos elvű `ScanDefectData` JSDoc-ját).
  */
 type ScanDamageData =
   | { damageDetected: false; confidence: ScanDamageConfidence }
@@ -112,6 +121,7 @@ type ScanDamageData =
       type: DamageType;
       title: string;
       description: string;
+      locationZone: DamageLocationZoneOrUnclear;
     };
 
 interface ScanDamageSuccessResponse {
@@ -147,6 +157,12 @@ function parseDataUrl(image: string): { mimeType: string; data: string } | null 
  * validáció -- lásd `scan-defect/route.ts` `sanitizeScanDefectResponse()` azonos elvű
  * JSDoc-ját és a fájl-JSDoc-ot a teljes indoklásért. Bármilyen bizonytalanság/eltérés esetén
  * a BIZTONSÁGOS, visszafogottabb `{ damageDetected: false }` eredményre esünk vissza.
+ *
+ * A `locationZone` KIVÉTEL ez alól: érvénytelen/hiányzó érték esetén NEM dobjuk el a teljes
+ * javaslatot, csak `'unclear'`-re esünk vissza -- a hely egy KIEGÉSZÍTŐ, "best effort" mező
+ * (a `type`/`description` a lényegi, azonosító tartalom, ugyanaz a súlya, mint a
+ * `scan-defect`-nél), egy hibás/hiányzó hely-tipp önmagában nem teszi értéktelenné a
+ * kategória+leírás javaslatot.
  *
  * @returns `null`, ha a `confidence` mező érvénytelen -- ez SÉMAHIBA (nem tartalmi
  * bizonytalanság), ilyenkor a hívó `502`-t ad vissza, nem csendes fallback-et.
@@ -185,34 +201,36 @@ function sanitizeScanDamageResponse(raw: ScanDamageModelResponse): ScanDamageDat
     title = DAMAGE_TYPE_LABEL[type];
   }
 
-  return { damageDetected: true, confidence, type, title, description };
+  const locationZone: DamageLocationZoneOrUnclear = isDamageLocationZone(raw.locationZone) ? raw.locationZone : 'unclear';
+
+  return { damageDetected: true, confidence, type, title, description, locationZone };
 }
 
 /**
  * A Gemini modellt szigorúan a képen TÉNYLEGESEN látható tartalomra korlátozzuk -- lásd
  * `scan-defect/route.ts` `buildSystemInstruction()` azonos elvű JSDoc-ját. A `DAMAGE_TYPES`
- * katalógust is explicit felsoroljuk, hogy a modell ne találjon ki új típus-nevet.
+ * ÉS a `DAMAGE_LOCATION_ZONES` katalógust is explicit felsoroljuk, hogy a modell ne találjon
+ * ki új típus-/zóna-nevet.
  *
- * **2026-08-16 -- JAVÍTÁS:** a felhasználó jelezte, hogy a "description" megfogalmazása legyen
- * pontosabb/szakszerűbb -- ezt a leírásra vonatkozó szabály (6. pont) orvosolja, konkrét
- * karosszéria-elem-neveket és méret-becslést kérve a homályos megfogalmazás helyett.
- *
- * **2026-08-17 -- a hely-becslés eltávolítva (a felhasználó explicit kérésére):** a
- * rendszerutasítás korábban egy zárt zóna-katalógusból ("locationZone" mező, lásd a
- * `lib/inspections/damageLocationZones.ts` fájl-JSDoc-ját, MOSTANTÓL használaton kívül) egy
- * hely-becslést is kért a modelltől, JÁRMŰ-relatív (nem kép-relatív) bal/jobb-levezetési
- * szabályokkal -- ez a teljes szakasz TÖRÖLVE, a modell KIZÁRÓLAG a kategóriát (`type`) és a
- * leírást (`description`) adja vissza.
+ * **2026-08-16 (folyt.) -- JAVÍTÁS:** a felhasználó két konkrét hibát jelzett: (1) a "description"
+ * megfogalmazása legyen pontosabb/szakszerűbb, (2) a modell összekeveri a jármű bal/jobb oldalát
+ * a hely-becslésnél. Mindkettőt ez a függvény orvosolja: a leírásra vonatkozó szabály (6. pont)
+ * konkrét karosszéria-elem-neveket és méret-becslést kér a homályos megfogalmazás helyett, a
+ * hely-becslésre vonatkozó szabályok (8-9. pont) pedig EXPLICIT, nézetenkénti (elöl/hátul/oldal)
+ * gyakorlati útmutatást adnak a JÁRMŰ-relatív (nem kép-relatív!) bal/jobb helyes
+ * levezetéséhez -- lásd a `damageLocationZones.ts` fájl-JSDoc geometriai levezetését, amiből ez
+ * az útmutató származik.
  */
 function buildSystemInstruction(): string {
   const typesJson = JSON.stringify(DAMAGE_TYPES);
+  const zonesJson = JSON.stringify([...DAMAGE_LOCATION_ZONES, 'unclear']);
 
-  return `Te egy magyar nyelvű autóvizsgálati sérülés-felismerő asszisztens vagy. A feladatod, hogy a felhasználó által feltöltött fotóról (egy autó karosszéria-részletének közeli képe) megállapítsd, látható-e rajta EGYÉRTELMŰ felületi/esztétikai sérülés (karcolás, horpadás, rozsda, kavicsfelverődés, repedés vagy egyéb), és ha igen, tömören leírd, amit TÉNYLEGESEN látsz.
+  return `Te egy magyar nyelvű autóvizsgálati sérülés-felismerő asszisztens vagy. A feladatod, hogy a felhasználó által feltöltött fotóról (egy autó karosszéria-részletének közeli képe) megállapítsd, látható-e rajta EGYÉRTELMŰ felületi/esztétikai sérülés (karcolás, horpadás, rozsda, kavicsfelverődés, repedés vagy egyéb), és ha igen, tömören leírd, amit TÉNYLEGESEN látsz, ÉS megbecsüld, a karosszéria mely részén lehet a sérülés.
 
 SZIGORÚ SZABÁLYOK A SÉRÜLÉS LEÍRÁSÁRA:
 1. KIZÁRÓLAG azt írd le, ami a képen ténylegesen látható: a sérülés típusa, mérete/kiterjedése, ha ez vizuálisan megállapítható.
 2. SOHA ne találj ki, ne feltételezz olyan információt, ami NEM látható a képen: ne adj okot vagy diagnózist, ne adj javítási javaslatot, ne adj költségbecslést, ne minősítsd szavakkal a súlyosságot (pl. "veszélyes", "azonnal javítandó").
-3. Ha nem vagy egyértelműen biztos abban, hogy mit látsz, VAGY a kép nem alkalmas sérülés azonosítására (homályos, rossz szög, nem releváns tárgy, vagy egyszerűen nem látszik rajta semmi problémás), a "damageDetected" mezőt ÁLLÍTSD "false"-ra, és NE adj vissza "type"/"title"/"description" mezőt. Bizonytalan esetben MINDIG a visszafogottabb válasz a helyes, SOHA ne "találgass csak azért, hogy legyen mit visszaadni".
+3. Ha nem vagy egyértelműen biztos abban, hogy mit látsz, VAGY a kép nem alkalmas sérülés azonosítására (homályos, rossz szög, nem releváns tárgy, vagy egyszerűen nem látszik rajta semmi problémás), a "damageDetected" mezőt ÁLLÍTSD "false"-ra, és NE adj vissza "type"/"title"/"description"/"locationZone" mezőt. Bizonytalan esetben MINDIG a visszafogottabb válasz a helyes, SOHA ne "találgass csak azért, hogy legyen mit visszaadni".
 4. Ha "damageDetected: true", a "type" mező KIZÁRÓLAG az alábbi 6 érték egyike lehet, PONTOSAN ebben az írásmódban: ${typesJson} ("scratch"=karcolás, "dent"=horpadás, "rust"=rozsda, "chip"=kavicsfelverődés, "crack"=repedés, "other"=egyéb). Ha egyik konkrét típus sem illik egyértelműen, használd az "other"-t.
 5. Ha "type" értéke "other", a "title" mezőbe írj egy rövid (max kb. 8 szó), magyar, tényszerű megnevezést arról, mit látsz (pl. "Törött hátsó lámpabúra"). MINDEN MÁS "type" értéknél a "title" mezőt HAGYD ÜRESEN -- azt a rendszer automatikusan tölti ki a kategória nevével.
 6. A "description" tömör, magyar, SZAKMAI és KONKRÉT mondat legyen (max kb. 2 mondat), amit egy autóvizsgáló szakember a saját jegyzeteként írna le. KERÜLD az általános, homályos megfogalmazásokat (pl. "valamilyen sérülés látható", "kisebb probléma van rajta", "úgy tűnik, hogy..."). Helyette:
@@ -222,7 +240,21 @@ SZIGORÚ SZABÁLYOK A SÉRÜLÉS LEÍRÁSÁRA:
    - Példák a kívánt stílusra: "Kb. 8 cm-es karcolás a hátsó lökhárítón, a festékig hatol." / "Enyhe horpadás a bal első ajtópanelen, a lakkréteg nem sérült." / "Rozsdásodás a jobb hátsó sárvédő alsó élén, kb. 5 cm-es sávban."
    - Ha bizonytalan vagy valamiben, azt a "confidence" mezőben fejezd ki -- NE bujtass bizonytalanságot töltelékszavakkal ("esetleg", "talán", "úgy néz ki") a leírás szövegébe.
 7. A "confidence" mező a SAJÁT bizonyosságod: "high" (egyértelmű, tisztán látható sérülés), "medium" (valószínű sérülés, de a kép minősége/szöge miatt van bizonytalanság), "low" (a kép rossz minőségű, vagy csak részben látszik a sérülés).
-8. NE add meg, hol helyezkedik el a sérülés a karosszérián -- ezt a felhasználó jelöli be kézzel a referenciaképen, ez NEM a te feladatod.
+
+SZIGORÚ SZABÁLYOK A HELY BECSLÉSÉRE ("locationZone" mező) -- EZ EGY MÁSODIK, FÜGGETLEN REFERENCIAKÉPEN (az autó 5 sematikus nézete: elölnézet, hátulnézet, felülnézet, 2 oldalnézet) kerül majd bejelölésre, amit TE NEM LÁTSZ -- KIZÁRÓLAG a beküldött közeli fotón látható tájékozódási pontok (lámpa, lökhárító, ajtó, kerék, tetőív stb.) alapján válassz az alábbi ZÁRT listából:
+8. A "locationZone" mező KIZÁRÓLAG az alábbi értékek egyike lehet, PONTOSAN ebben az írásmódban: ${zonesJson}.
+   - "front_left" / "front_center" / "front_right": a jármű ELEJÉN (lökhárító, fényszóró, motorháztető, hűtőrács) látható sérülés, a JÁRMŰ SAJÁT bal / közép / jobb oldalán (lásd 9. pont, hogyan állapítsd meg).
+   - "rear_left" / "rear_center" / "rear_right": a jármű HÁTULJÁN (lökhárító, hátsó lámpa, csomagtérajtó) látható sérülés, a JÁRMŰ SAJÁT bal / közép / jobb oldalán.
+   - "side_left_front" / "side_left_middle" / "side_left_rear": a jármű BAL (vezető-) oldalán -- elöl (első ajtó/kerék környéke) / középen / hátul (hátsó ajtó/kerék környéke).
+   - "side_right_front" / "side_right_middle" / "side_right_rear": a jármű JOBB (utas-) oldalán -- elöl / középen / hátul.
+   - "roof": a tetőn látható sérülés.
+   - "unclear": ha a fotóból NEM állapítható meg egyértelműen, hogy a karosszéria melyik részén van a sérülés (pl. túl közeli/kontextus nélküli kép, beltéri sérülés, vagy nincs rajta felismerhető tájékozódási pont).
+9. KRITIKUSAN FONTOS -- a "bal"/"jobb" fenti zónáknál MINDIG a JÁRMŰ SAJÁT bal/jobb oldalát jelenti (ahogy egy vezető ülne benne, előre nézve) -- ez NEM ugyanaz, mint hogy a fotón melyik oldalon LÁTSZIK a sérülés! A fotó nézőpontjától függően a jármű bal oldala akár a kép JOBB felén is megjelenhet -- ez NEM találgatás, hanem egyszerű vetület-geometria. Kövesd ezt a 3 szabályt:
+   - **Elölnézeti fotó** (a jármű elejét látod szemből: fényszóró, hűtőrács, motorháztető elölről): a kép TÜKRÖZÖTT a járműhöz képest -- a jármű BAL oldala a KÉPEN JOBBRA esik, a jármű JOBB oldala a KÉPEN BALRA esik.
+   - **Hátulnézeti fotó** (a jármű hátulját látod szemből: hátsó lökhárító, hátsó lámpa, csomagtérajtó hátulról): NINCS tükröződés -- a jármű BAL oldala a KÉPEN IS BALRA esik, a JOBB oldala a KÉPEN IS JOBBRA esik.
+   - **Oldalnézeti fotó** (ajtók, sárvédők, küszöb, kerekek egy hosszanti sorban látszanak): nézd meg, merre néz a jármű ORRA (motorháztető/fényszóró iránya) a képen. Ha az orr a KÉPEN BALRA néz -> a jármű BAL (vezető-) oldalát látod. Ha az orr a KÉPEN JOBBRA néz -> a jármű JOBB (utas-) oldalát látod.
+   - Ha a fotó túl közeli vagy kontextus nélküli ahhoz, hogy egyértelműen eldöntsd, melyik nézetet/oldalt látod, NE alkalmazd találgatva a fenti szabályokat -- válaszd az "unclear"-t.
+10. Bizonytalan esetben MINDIG az "unclear" a helyes válasz a "locationZone" mezőnél -- SOHA ne találgass csak azért, hogy legyen mit visszaadni. Az "unclear" NEM hiba, ez egy teljesen elfogadható, gyakori válasz.
 
 Kizárólag a megadott JSON séma szerinti választ add -- semmi mást, se magyarázatot, se markdown jelölést, se kódblokkot.`;
 }
@@ -323,10 +355,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<ScanDamag
         type: { type: Type.STRING, enum: [...DAMAGE_TYPES] },
         title: { type: Type.STRING },
         description: { type: Type.STRING },
+        locationZone: { type: Type.STRING, enum: [...DAMAGE_LOCATION_ZONES, 'unclear'] },
       },
-      propertyOrdering: ['damageDetected', 'confidence', 'type', 'title', 'description'],
-      // `type`/`title`/`description` SZÁNDÉKOSAN nincs a `required`-ben -- a modell
-      // `damageDetected: false` esetén jogosan hagyja ki őket, lásd a fájl-JSDoc-ot.
+      propertyOrdering: ['damageDetected', 'confidence', 'type', 'title', 'description', 'locationZone'],
+      // `type`/`title`/`description`/`locationZone` SZÁNDÉKOSAN nincs a `required`-ben -- a
+      // modell `damageDetected: false` esetén jogosan hagyja ki őket, lásd a fájl-JSDoc-ot.
       required: ['damageDetected', 'confidence'],
     },
   };
@@ -348,6 +381,10 @@ export async function POST(request: NextRequest): Promise<NextResponse<ScanDamag
   let rawText: string | undefined;
   let succeeded = false;
   let primaryError: unknown;
+  // Melyik modell adta a ténylegesen felhasznált választ -- Platform Admin
+  // AI-hívás-napló célja (lásd `lib/aiApiCallLog.ts`), a statikus ÉS a dinamikus
+  // fallback ág is beállítja siker esetén.
+  let usedModel: string | undefined;
 
   for (let i = 0; i < MODEL_CANDIDATES.length; i++) {
     const model = MODEL_CANDIDATES[i];
@@ -355,6 +392,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ScanDamag
       const response = await ai.models.generateContent({ model, contents, config: generationConfig });
       rawText = response.text;
       succeeded = true;
+      usedModel = model;
       break;
     } catch (error) {
       console.error(`Gemini API Error details (model: ${model}):`, error);
@@ -383,6 +421,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ScanDamag
           const response = await ai.models.generateContent({ model: dynamicModelName, contents, config: generationConfig });
           rawText = response.text;
           succeeded = true;
+          usedModel = dynamicModelName;
         } catch (error) {
           console.error(`Gemini API Error details (dynamic fallback model: ${dynamicModelName}):`, error);
         }
@@ -393,6 +432,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<ScanDamag
       console.error('[scan-damage] Dinamikus modell-listázás (ai.models.list()) hívási hiba:', error);
     }
   }
+
+  // Platform Admin AI-hívás-napló (2026-08-17) -- MINDEN ténylegesen megtörtént
+  // Gemini-hívás-próbálkozást naplózunk, sikereset ÉS sikertelent is, FÜGGETLENÜL
+  // az alábbi JSON-validáció kimenetétől -- lásd `lib/aiApiCallLog.ts`. Best-effort,
+  // sosem dob hibát/nem akasztja meg a választ.
+  await logAiApiCall(user.id, FEATURE_NAME, usedModel ?? MODEL_CANDIDATES[0], succeeded);
 
   if (!succeeded) {
     return NextResponse.json(
