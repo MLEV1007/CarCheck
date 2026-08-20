@@ -26,6 +26,19 @@ const appUrl = process.env.NEXT_PUBLIC_FORMBRICKS_API_HOST;
  * `NEXT_PUBLIC_FORMBRICKS_ENVIRONMENT_ID` -- a kód ehhez a TÉNYLEGESEN beállított
  * névhez igazodik (a `workspaceId` mező technikailag ugyanúgy működne, de az azzal járó
  * env var átnevezés a Vercelen felesleges plusz lépés lenne).
+ *
+ * **`setUserId`/`setEmail` ELTÁVOLÍTVA (2026-08-20, éles konzol-hiba alapján):** a
+ * felhasználó éles konzoljában minden auth-állapotváltáskor megjelent egy 403-as hiba:
+ * `"Failed to send updates: User identification is only available for enterprise
+ * users."` -- a Formbricks Cloud **Hobby (ingyenes) csomagja NEM támogatja a
+ * felhasználó-azonosítást** (`setUserId`/`setEmail`), ez kizárólag Enterprise
+ * előfizetéssel érhető el. A hívás emiatt a hoszted API-n mindig elbukott, feleslegesen
+ * zajos hibaüzeneteket generált minden oldalbetöltésen/bejelentkezésen -- eltávolítva.
+ * A visszajelzések így NÉVTELENÜL (Formbricks-oldali session-azonosítóval) érkeznek,
+ * ami az eredeti követelménynek ("a visszajelzések legyenek privátak, csak az admin
+ * látja") továbbra is megfelel. Ha később szükség lenne arra, hogy a visszajelzéshez a
+ * beküldő felhasználó/email is társuljon, az csak a Formbricks Cloud előfizetés
+ * Enterprise szintre emelésével lehetséges -- addig ezt a két hívást ne állítsd vissza.
  */
 export default function FormbricksClient() {
   const pathname = usePathname();
@@ -43,35 +56,21 @@ export default function FormbricksClient() {
     import('@formbricks/js')
       .then(({ default: formbricks }) => formbricks.setup({ environmentId, appUrl }))
       .catch((error) => console.error('[Formbricks] setup() hiba:', error));
-    // A jelenlegi user azonosítását NEM itt végezzük -- lásd lent, a 2) useEffect
-    // (onAuthStateChange feliratkozás) gondoskodik róla, hogy setup UTÁN azonnal (és
-    // minden későbbi login/logout eseményre is) lefusson a setUserId/setEmail/logout.
   }, []);
 
-  // 2) Auth-állapot követése -- mivel a projektnek nincs globális kliens-oldali auth
-  // contextje (lásd az elemzés 3.2 pontját), közvetlenül a Supabase auth eseményeire
-  // iratkozunk fel. Ez automatikusan lefedi: első betöltéskor meglévő session,
-  // bejelentkezés, KIJELENTKEZÉS (kritikus multi-tenant biztonsági szempontból -- lásd
-  // 3.2 -- hogy a következő user ne az előző identitásával küldjön visszajelzést, pl.
-  // egy közösen használt céges tableten a műhelyben).
+  // 2) Kijelentkezés -- a widget lokális (böngésző-oldali) session-állapotát nullázzuk,
+  // hogy egy közösen használt céges tableten (pl. a műhelyben) a következő bejelentkező
+  // user NE a korábbi böngészési session válaszfolyamába kerüljön bele. (Felhasználó-
+  // azonosítás -- `setUserId`/`setEmail` -- NEM történik itt, lásd a fenti JSDoc-ot: a
+  // Formbricks Cloud Hobby csomag ezt nem támogatja, 403-at ad rá.)
   useEffect(() => {
     const supabase = createClient();
 
-    const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: subscription } = supabase.auth.onAuthStateChange((event) => {
+      if (event !== 'SIGNED_OUT') return;
       import('@formbricks/js')
-        .then(async ({ default: formbricks }) => {
-          if (event === 'SIGNED_OUT') {
-            await formbricks.logout();
-            return;
-          }
-          if (session?.user) {
-            await formbricks.setUserId(session.user.id);
-            if (session.user.email) {
-              await formbricks.setEmail(session.user.email);
-            }
-          }
-        })
-        .catch((error) => console.error('[Formbricks] auth-állapot szinkronizálási hiba:', error));
+        .then(({ default: formbricks }) => formbricks.logout())
+        .catch((error) => console.error('[Formbricks] logout() hiba:', error));
     });
 
     return () => subscription.subscription.unsubscribe();
