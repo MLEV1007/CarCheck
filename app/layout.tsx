@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import { InsufficientCreditsProvider } from '@/components/credits/InsufficientCreditsProvider';
+import { FormbricksProvider } from '@/components/feedback/FormbricksProvider';
 import './globals.css';
 
 // A Stripe design system (stripe.md) a proprietary "Sohne"-t írja elő, ennek dokumentált
@@ -51,7 +52,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="hu" className={inter.variable} suppressHydrationWarning>
       <body className="font-sohne antialiased">
         <ThemeProvider>
-          <InsufficientCreditsProvider>{children}</InsufficientCreditsProvider>
+          <InsufficientCreditsProvider>
+            {children}
+            {/* Formbricks visszajelzés-widget (2026-08-20) -- csak védett útvonalon
+                aktiválódik, lásd docs/formbricks-feedback-widget-elemzes-2026-08-20.md. */}
+            <FormbricksProvider />
+          </InsufficientCreditsProvider>
         </ThemeProvider>
       </body>
     </html>

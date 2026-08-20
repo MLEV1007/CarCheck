@@ -1,11 +1,16 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { PROTECTED_PREFIXES } from '@/lib/formbricks/protectedPrefixes';
 
 // Ezekhez az útvonalakhoz (és minden al-útvonalukhoz) érvényes bejelentkezés kell.
 // `/admin` (Platform Admin felület, lásd `app/admin/page.tsx`) itt CSAK a bejelentkezést
 // követeli meg -- a tényleges "platform admin-e a user?" ellenőrzés (allow-list,
 // `platform_admins` tábla) az oldal Server Component-jében történik, RLS-sel védve.
-const PROTECTED_PREFIXES = ['/dashboard', '/inspections', '/settings', '/admin'];
+//
+// A lista maga 2026-08-20 óta a `lib/formbricks/protectedPrefixes.ts`-ben él (nem itt) --
+// ugyanezt a forrást használja a `FormbricksProvider.tsx` is annak eldöntésére, mely
+// útvonalakon töltse be a visszajelzés-widgetet, lásd
+// docs/formbricks-feedback-widget-elemzes-2026-08-20.md 5. pontját.
 
 // Ha egy már bejelentkezett felhasználó idelátogat, inkább a dashboardra tereljük,
 // nincs értelme neki újra a login/register képernyőt mutatni.

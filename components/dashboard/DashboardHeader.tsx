@@ -3,6 +3,7 @@ import { Settings } from 'lucide-react';
 import { SignOutButton } from '@/components/auth/SignOutButton';
 import { HeaderCreditBadge } from '@/components/credits/HeaderCreditBadge';
 import { CarPassLogo } from '@/components/branding/CarPassLogo';
+import { FeedbackTriggerButton } from '@/components/feedback/FeedbackTriggerButton';
 
 interface DashboardHeaderProps {
   companyName: string | null;
@@ -67,6 +68,10 @@ export function DashboardHeader({ companyName, logoUrl, role = 'manager' }: Dash
 
       <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
         {role !== 'inspector' && <HeaderCreditBadge />}
+        {/* Formbricks visszajelzés-trigger (2026-08-20) -- explicit gomb, nem az
+            alapértelmezett lebegő widget-bubble, lásd FeedbackTriggerButton.tsx JSDoc-ját
+            arról, miért (z-index-ütközés elkerülése a wizard mobil alsó sávjával). */}
+        <FeedbackTriggerButton />
         {/* < 1024px (telefon ÉS tablet, a projekt fő céleszközei) csak az ikon látszik --
             ilyenkor a `min-w-11`/`h-11` a tényleges dobozt is 44x44px-re növeli, mert a
             szöveges label hiányában a korábbi `px-2` padding-only szélesség kb. csak 32px
