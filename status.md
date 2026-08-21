@@ -3592,3 +3592,129 @@ hibamentes, exit code 0.
 `git push origin main` a `device_bash`-ből (nincs hálózati hozzáférése) nem végezhető el --
 a felhasználónak saját maga kell futtatnia egy `git push`-t a projekt mappájában, hogy a
 fizetés-élesítés ténylegesen a Vercel-deployba (carpass.hu) kerüljön.
+
+## 2026-08-21 -- Videó-tömörítés + QR-kódos telefonos média-feltöltés
+
+**Kérés:** (1) minden feltöltött videó (telefonkamera/galéria/asztali fájlválasztó/QR-kódos
+telefonos feltöltés) kliens-oldalon tömörödjön (kb. 720p, ~2 Mbps + 128 kbps AAC, max. 90 mp,
+hosszabbnál explicit vágás-megerősítés) MIELŐTT a Supabase Storage-ba kerülne, sose menjen fel
+tömörítetlenül; (2) a wizard minden média-feltöltési lépésén (Általános fotók ÉS Hiba-média)
+asztali nézeten jelenjen meg egy "Feltöltés telefonról" QR-kód, amivel a szakértő a SAJÁT
+telefonjáról (bejelentkezés nélkül) tud fotót/videót küldeni, ami ÉLŐBEN (Realtime) megjelenik
+a wizardban; (3) a videó-csatolás (mindkét úton) KIZÁRÓLAG Profi/Autóház csomagú szervezeteknek
+érhető el, szerver-oldalon kikényszerítve (`user_credits.plan_tier`, NEM a `profiles.plan_tier`
+-- a két mező duplikációja élőben ellenőrizve, még mindig fennáll).
+
+**Terv:** `PLAN_video_qr_upload.md` (commit `28cc291`) -- 6 nyitott architekturális döntés a
+felhasználóval egyeztetve (mindegyiknél az ajánlott opció lett elfogadva): session-szintű
+(nem darabonkénti) QR-token claim; videó-opció mindig látszik, kattintásra upsell (nem
+elrejtve); bucket `file_size_limit` 50 MB; tiszta Postgres Realtime (`qr_uploads` tábla) a
+`storage.objects`-re épülő megoldás helyett; a tervben eredetileg javasolt tömörítési
+paraméterek (1280px/2 Mbps/128 kbps/90 mp) változatlanul; QR-panel újranyitása MINDIG új
+session-t hoz létre (v1, nincs "folytatás").
+
+**DB migráció (`supabase/migrations/20260821_video_qr_upload.sql`, ÉLESBEN már korábban
+alkalmazva a Supabase MCP-vel, most a repo-ba is bekerült):**
+* `organization_allows_video_upload(uuid)` / `current_user_can_upload_video()` SECURITY
+  DEFINER függvények -- `user_credits.plan_tier IN ('pro','business')`, `anon`+`authenticated`
+  +`service_role`-nak grantolva (élőben ellenőrizve: a `service_role` MINDKÉT új RPC-t --
+  ideértve a `resolve_qr_upload_session`-t is, amit csak `anon`/`authenticated`-nek grantoltunk
+  explicit -- futtathatja, mert a Supabase projekt alap-jogosultságai ezt biztosítják).
+* `storage.objects` INSERT/UPDATE policy bővítve -- videó-kiterjesztésű objektum a KÖZVETLEN,
+  hitelesített feltöltési úton csak jogosult szervezetnél írható (második védelmi vonal; a
+  jelölt URL-es utat ez nem érinti, azt az alkalmazás-kód gate-eli a token kiadása előtt).
+* `inspection-media` bucket `file_size_limit`: `null` -> 50 MB.
+* Új táblák: `qr_upload_sessions` (token/inspection_id/organization_id/created_by/target/
+  expires_at/claimed_at/claim_secret -- NINCS FK az `inspections.id`-ra, ugyanaz a minta, mint
+  `inspection_ai_credit_usage`-nál) és `qr_uploads` (session_token FK/organization_id/media_url/
+  media_type, felvéve a `supabase_realtime` publikációba).
+* `resolve_qr_upload_session(token, claim_secret)` SECURITY DEFINER RPC -- "első hívás
+  claim-el és titkot generál, későbbi hívásnak pontosan azt kell felmutatnia" logika.
+
+**Implementáció (`npx tsc --noEmit` a teljes projektre hibamentes, egy cloud-oldali,
+teljes forrásfát tükröző munkakönyvtárban, `npm install`-lal ellenőrizve -- lásd lent a
+"FONTOS, NYITOTT TEENDŐ" részt a HELYI `npm install` szükségességéről):**
+
+* `lib/inspections/videoCompression.ts` (ÚJ) -- `ffmpeg.wasm`-alapú tömörítés
+  (`@ffmpeg/ffmpeg` + `@ffmpeg/util`), automatikus multi-/single-threaded motor-választás
+  (`window.crossOriginIsolated` alapján, automatikus visszaeséssel), `getVideoDuration`,
+  `compressVideo` (SOSE esik vissza a tömörítetlen eredetire hiba esetén, mindig dob).
+* `lib/inspections/mediaUploadServer.ts` (ÚJ) -- szerver-oldali: `assertVideoUploadAllowed`
+  (az `organization_allows_video_upload` RPC-t hívja), `buildInspectionMediaPath`
+  (`{userId}/{inspectionId}/{general|defect}/...`, ugyanaz a minta, mint a wizard régi
+  `.upload()` hívásainál), `issueMediaUploadTicket` (`createSignedUploadUrl`, admin kliens),
+  `resolveQrUploadSession` (típusos burok a fenti RPC köré, mindhárom QR-route közös).
+* `lib/inspections/mediaUpload.ts` (ÚJ, KLIENS-oldali) -- `uploadWithTicket`: 6 MB alatt
+  `uploadToSignedUrl` (egyetlen PUT), fölötte `tus-js-client`-tel TUS resumable upload
+  közvetlenül a Supabase `https://{projectId}.storage.supabase.co/storage/v1/upload/resumable`
+  endpoint-ja ellen (`x-signature` fejlécben a jelölt token, `authorization` fejlécben a
+  publikus/anon kulcs -- ez teszi lehetővé, hogy egy Supabase-munkamenet NÉLKÜLI, anonim
+  QR-telefon kliens is fel tudjon tölteni). `uploadInspectionMediaViaServer` -- kényelmi
+  wrapper az asztali wizardhoz.
+* `lib/inspections/mediaSelection.ts` (ÚJ) -- `useMediaSelection` hook: kép azonnal
+  visszaadva; videó + nem jogosult -> upsell; videó + jogosult + ≤90 mp -> tömörítés; videó +
+  jogosult + >90 mp -> vágás-megerősítő modal-állapot; bármilyen hiba -> hibaüzenet-állapot,
+  a fájl mindig elutasítva hiba esetén.
+* `components/credits/VideoUpsellModal.tsx` + `VideoUpsellProvider.tsx` (ÚJ) -- 1:1 az
+  `InsufficientCreditsModal`/`Provider` mintáját követve, `app/layout.tsx`-be bekötve.
+* `components/inspections/wizard/MediaProcessingOverlay.tsx` (ÚJ) -- a fenti hook
+  `modalState`-jét megjelenítő, közös prezentációs komponens (`StepGeneralPhotos.tsx` ÉS
+  `DefectMediaUpload.tsx` egyaránt használja).
+* `components/inspections/wizard/QrUploadPanel.tsx` (ÚJ) -- "Feltöltés telefonról" gomb
+  (`hidden md:flex`, VISZONTAG NEM user-agent sniffing, ahogy kérve volt), `qrcode` csomaggal
+  generált QR-kép, Supabase Realtime feliratkozás a `qr_uploads` táblára
+  (`session_token=eq.<token>` szűrővel) -- ez a projekt ELSŐ Realtime-felhasználása.
+* `components/qr-upload/QrUploadClient.tsx` + `app/qr-upload/[token]/page.tsx` (ÚJ) --
+  publikus, Linear Dark stílusú telefonos feltöltő oldal (PROJEKT_INSTRUKCIOK.md 4.2 pontja
+  szerint indokolva Linearral, nem BMW-vel), `claimSecret` a `sessionStorage`-ban tárolva
+  (tokenenként), fotó/videó választás, ugyanaz a tömörítési motor, majd feltöltés + `/confirm`.
+* 5 új API route: `app/api/inspections/media-upload-url` (asztali, hitelesített),
+  `app/api/qr-upload/session` (asztali, session létrehozás), `app/api/qr-upload/[token]`
+  (publikus GET, session feloldás), `.../media-upload-url` (publikus POST, token+claimSecret),
+  `.../confirm` (publikus POST, admin klienssel írja a `qr_uploads` sort -- ez triggereli a
+  Realtime broadcastot).
+* Meglévő fájlok módosítva: `DefectMediaUpload.tsx` (videó-gate + QR-panel, `videoAllowed`/
+  `qrTarget`/`onReceiveFromQr` propok OPCIONÁLISAK, hogy a `DamageCanvas.tsx` két, hatókörön
+  KÍVÜLI hívása -- sérülés-pont fotók -- ne törjön); `StepGeneralPhotos.tsx` (videó elfogadása,
+  QR-panel); `StepDefects.tsx` (`videoAllowed` prop átadása, `handleReceiveFromQr`);
+  `InspectionWizard.tsx` (`videoAllowed` egyszeri lekérdezése `/api/quotas/summary`-vel,
+  `uploadMediaSmart` helper -- videó/6 MB feletti fájl a szerver+TUS úton, KIZÁRÓLAG a
+  `general`/`defect` kategóriáknál, a szervizmúlt/felszereltség/sérülés fotóinál a régi, sima
+  `.upload()` út VÁLTOZATLAN maradt, hogy a módosítás hatóköre a ténylegesen videó-képes
+  útvonalakra korlátozódjon); `RemovablePhotoThumbnail.tsx` (`isVideo` opcionális prop, hogy
+  egy videó `previewUrl` ne törjön el egy `<img>`-ben); `app/layout.tsx`
+  (`VideoUpsellProvider`); `next.config.mjs` (COOP/COEP fejlécek KIZÁRÓLAG `/inspections/*` +
+  `/qr-upload/*`-ra, `credentialless` móddal, hogy a publikus riport-oldal cross-origin Storage
+  média-elemei ne törjenek); `package.json` (`@ffmpeg/ffmpeg`, `@ffmpeg/core`, `@ffmpeg/core-mt`,
+  `@ffmpeg/util`, `qrcode`, `tus-js-client` + `postinstall` szkript); `.gitignore`
+  (`/public/ffmpeg-core/`, `/public/ffmpeg-core-mt/` -- build-artefaktumok, nem verziókövetve).
+* `scripts/copy-ffmpeg-core.mjs` (ÚJ) -- `postinstall`, átmásolja a két ffmpeg.wasm "core"
+  build-et `node_modules/@ffmpeg/core(-mt)`-ből a `public/ffmpeg-core(-mt)` alá.
+
+**Ellenőrzés:** `npx tsc --noEmit` a teljes projektre (a fenti mindegyik fájllal EGYÜTT,
+egyetlen szinkron hívásban) -- 0 hiba. `has_function_privilege` lekérdezéssel élőben
+megerősítve, hogy a `service_role` mindkét új SECURITY DEFINER RPC-t futtathatja. A
+migrációt korábban `get_advisors(type: "security")`-val is ellenőriztük -- csak a várt,
+SECURITY DEFINER függvényekre vonatkozó INFO/WARN lint jelent meg, ugyanaz a minta, mint a
+meglévő `get_public_report()`-nál.
+
+**FONTOS, NYITOTT TEENDŐK (a felhasználónak):**
+1. **Helyi `npm install` KÖTELEZŐ** a projekt mappájában -- az új függőségek
+   (`@ffmpeg/*`, `qrcode`, `tus-js-client`) és a `postinstall` szkript (ami a ~60 MB-os
+   ffmpeg.wasm "core" build-eket másolja a `public/` alá) csak ekkor kerülnek a helyi
+   `node_modules`/`public` mappákba -- eddig a `device_bash`-nek (a Mac-en fut, DE nincs
+   hálózati hozzáférése) ezt NEM lehetett innen elvégezni, a `npm install` KIZÁRÓLAG a
+   cloud-oldali munkakönyvtárban futott le (típus-ellenőrzéshez), a HELYI `node_modules`
+   változatlan.
+2. **Böngészős manuális teszt NEM futott le** ebben a munkamenetben (sem a videó-
+   tömörítés, sem a QR-kódos telefonos feltöltés, sem a Realtime élő frissítés) -- ezeket a
+   felhasználónak érdemes helyben leellenőriznie, KÜLÖNÖS TEKINTETTEL a Realtime-ra (a
+   projekt ELSŐ ilyen felhasználása) és a COOP/COEP fejlécek `next dev`/Vercel alatti
+   tényleges érvényesülésére.
+3. **`next.config.mjs` COOP/COEP fejlécei Vercel Edge/Middleware mögött** -- ha a projekt
+   futtat egyéni middleware-t VAGY egy CDN-réteget, ami felülírhatja a válasz-fejléceket,
+   érdemes egy éles (Vercel-en futó) betöltés Network fülén ellenőrizni, hogy a
+   `Cross-Origin-Opener-Policy`/`Cross-Origin-Embedder-Policy` ténylegesen megérkezik-e az
+   `/inspections/*`/`/qr-upload/*` route-okra.
+4. **Git commit** -- lásd a commit-üzenetet a git történetben, `git push` a felhasználó
+   eredeti kérése szerint NEM történt meg.

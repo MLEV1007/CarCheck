@@ -24,3 +24,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# ffmpeg.wasm core build-ek -- a `postinstall` szkript (scripts/copy-ffmpeg-core.mjs) minden
+# `npm install`-nál újragenerálja a node_modules/@ffmpeg/core(-mt) csomagokból, lásd
+# lib/inspections/videoCompression.ts modul-JSDoc-ját. NEM verziókövetett (fejenként
+# kb. 30 MB, tisztán származtatott build-artefaktum).
+/public/ffmpeg-core/
+/public/ffmpeg-core-mt/

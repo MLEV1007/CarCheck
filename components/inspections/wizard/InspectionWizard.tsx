@@ -23,6 +23,7 @@ import { StepDefects } from '@/components/inspections/wizard/StepDefects';
 import { StepFinalAssessment } from '@/components/inspections/wizard/StepFinalAssessment';
 import { StepSummary } from '@/components/inspections/wizard/StepSummary';
 import { InspectionIdProvider } from '@/components/inspections/wizard/InspectionIdContext';
+import { uploadInspectionMediaViaServer } from '@/lib/inspections/mediaUpload';
 import { OnboardingHintProvider } from '@/components/onboarding/OnboardingHintProvider';
 import { QuickDisableTipsHint } from '@/components/onboarding/QuickDisableTipsHint';
 import {
@@ -206,6 +207,34 @@ export function InspectionWizard({
   // (`/inspections/[id]`) -- ez a különbségtétel a hibakezelésnél kritikus, lásd lent.
   const isEditMode = Boolean(initialInspectionId);
 
+  // Videó-csatolási jogosultság (2026-08-21, "Videó-tömörítés + QR-kódos telefonos
+  // feltöltés" lépés) -- EGYETLEN alkalommal, a wizard megnyitásakor lekérdezve
+  // (`/api/quotas/summary`, ugyanaz a végpont, mint az `InsufficientCreditsModal`/
+  // `VideoUpsellModal` szerepkör-lekérdezése), majd propként adva a `StepGeneralPhotos`-nak
+  // ÉS a `StepDefects`-nek -- lásd azok `videoAllowed` propjának JSDoc-ját. Alapértéke
+  // `false` ("fail-closed" -- amíg a lekérdezés fut vagy hibázik, a videó-opció NEM
+  // jelenik meg; a TÉNYLEGES kikényszerítés úgyis a szerveren történik a feltöltési token
+  // kiadásakor, ez itt csak UX-gyorsítás).
+  const [videoAllowed, setVideoAllowed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch('/api/quotas/summary');
+        const json = await response.json().catch(() => null);
+        if (!cancelled && response.ok && json?.success) {
+          setVideoAllowed(json.quota.planTier === 'pro' || json.quota.planTier === 'business');
+        }
+      } catch {
+        // Csendben megtartjuk a "fail-closed" `false` alapértéket -- lásd a fenti JSDoc-ot.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // AUTOMATIKUS PISZKOZAT-MENTÉS -- lásd `draftPersistence.ts` modul-JSDoc-ját. A
   // `latestSnapshotArgsRef`-et MINDEN renderelésnél frissítjük (ez egy jól bevált, olcsó
   // "legfrissebb érték" minta, NEM okoz extra renderelést) -- így a lent regisztrált
@@ -335,6 +364,34 @@ export function InspectionWizard({
       // ezekben a függvényekben. `userId` viszont már egyszerű `string`, nincs mit szűkíteni.
       const userId = user.id;
 
+      // Videó ÉS 6 MB feletti fájlok szerver-oldali, jelölt (signed) URL + TUS resumable
+      // úton mennek fel (`lib/inspections/mediaUpload.ts` `uploadInspectionMediaViaServer`,
+      // ami a `/api/inspections/media-upload-url` végponton keresztül a videó-csomag-
+      // jogosultságot is ellenőrzi -- lásd PLAN_video_qr_upload.md 4. és 6. szakaszát). Ez a
+      // "smart" döntés KIZÁRÓLAG az `general`/`defect` kategóriáknál (ahol videó egyáltalán
+      // előfordulhat, lásd `StepGeneralPhotos.tsx`/`StepDefects.tsx`) került bevezetésre --
+      // a szervizmúlt/felszereltség/sérülés fotóinál (mindig kép, gyakorlatban sosem éri el
+      // a 6 MB-ot) a meglévő, jól bevált sima `.upload()` út VÁLTOZATLAN maradt, hogy a
+      // módosítás blast radiusa a ténylegesen érintett (videó-képes) útvonalakra korlátozódjon.
+      async function uploadMediaSmart(file: File, category: 'general' | 'defect'): Promise<string> {
+        const TUS_THRESHOLD_BYTES = 6 * 1024 * 1024;
+        if (file.type.startsWith('video/') || file.size > TUS_THRESHOLD_BYTES) {
+          const { publicUrl } = await uploadInspectionMediaViaServer(supabase, {
+            inspectionId,
+            category,
+            file,
+            originalFilename: file.name,
+          });
+          return publicUrl;
+        }
+
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const path = `${userId}/${inspectionId}/${category}/${crypto.randomUUID()}-${safeName}`;
+        const { error: uploadError } = await supabase.storage.from('inspection-media').upload(path, file, { upsert: true });
+        if (uploadError) throw uploadError;
+        return supabase.storage.from('inspection-media').getPublicUrl(path).data.publicUrl;
+      }
+
       // TELJESÍTMÉNY-OPTIMALIZÁCIÓ (2026-08-07, "Teljesítmény-audit és refaktorálás" lépés):
       // az alábbi 6 Storage-feltöltési/adatelőkészítési blokk (általános fotók, szervizmúlt
       // fotók, CarVertical PDF, felszereltség hibafotók, sérülés-fotók, hiba-média) EGYMÁSTÓL
@@ -359,13 +416,7 @@ export function InspectionWizard({
         return Promise.all(
           generalPhotos.map(async (photo) => {
             if (photo.file) {
-              const safeName = photo.file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-              const path = `${userId}/${inspectionId}/general/${crypto.randomUUID()}-${safeName}`;
-              const { error: uploadError } = await supabase.storage
-                .from('inspection-media')
-                .upload(path, photo.file, { upsert: true });
-              if (uploadError) throw uploadError;
-              return supabase.storage.from('inspection-media').getPublicUrl(path).data.publicUrl;
+              return uploadMediaSmart(photo.file, 'general');
             }
             return photo.previewUrl;
           })
@@ -498,13 +549,7 @@ export function InspectionWizard({
           relevantDefects.map(async (defect) => {
             let mediaUrl: string | null = null;
             if (defect.file) {
-              const safeName = defect.file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-              const path = `${userId}/${inspectionId}/${crypto.randomUUID()}-${safeName}`;
-              const { error: uploadError } = await supabase.storage
-                .from('inspection-media')
-                .upload(path, defect.file, { upsert: true });
-              if (uploadError) throw uploadError;
-              mediaUrl = supabase.storage.from('inspection-media').getPublicUrl(path).data.publicUrl;
+              mediaUrl = await uploadMediaSmart(defect.file, 'defect');
             } else if (defect.previewUrl && !defect.previewUrl.startsWith('blob:')) {
               // Piszkozat szerkesztésekor a korábban már feltöltött médiát (a `previewUrl`
               // ilyenkor a Storage publikus URL-je, NEM egy kliens-oldali `blob:` object URL)
@@ -875,6 +920,7 @@ export function InspectionWizard({
             onBack={() => setStep(1)}
             onNext={() => setStep(3)}
             nextLabel={NEXT_STEP_SHORT_LABEL[3]}
+            videoAllowed={videoAllowed}
           />
         )}
         {step === 3 && (
@@ -942,6 +988,7 @@ export function InspectionWizard({
             onBack={() => setStep(8)}
             onNext={() => setStep(10)}
             nextLabel={NEXT_STEP_SHORT_LABEL[10]}
+            videoAllowed={videoAllowed}
           />
         )}
         {step === 10 && (

@@ -9,6 +9,11 @@ interface RemovablePhotoThumbnailProps {
   onRemove: () => void;
   alt?: string;
   removeLabel?: string;
+  /** Igaz, ha a `previewUrl` egy videóra mutat (2026-08-21, "Videó-tömörítés + QR-kódos
+   * telefonos feltöltés" lépés -- lásd `StepGeneralPhotos.tsx`, az EGYETLEN jelenlegi hívó,
+   * ahol a média videó is lehet) -- ilyenkor `<video>`-t renderelünk `<img>` helyett, hogy a
+   * kép ne törjön el egy videó URL-lel. */
+  isVideo?: boolean;
 }
 
 /**
@@ -31,12 +36,17 @@ export function RemovablePhotoThumbnail({
   onRemove,
   alt = '',
   removeLabel = 'Fotó eltávolítása',
+  isVideo = false,
 }: RemovablePhotoThumbnailProps) {
   return (
     <div className="relative aspect-square rounded-md border border-linear-hairline bg-linear-surface-2">
       <div className="absolute inset-0 overflow-hidden rounded-md">
-        {/* eslint-disable-next-line @next/next/no-img-element -- kliens-oldali object URL / meglévő Storage URL előnézet */}
-        <img src={previewUrl} alt={alt} className="h-full w-full object-cover" />
+        {isVideo ? (
+          <video src={previewUrl} className="h-full w-full object-cover" muted />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element -- kliens-oldali object URL / meglévő Storage URL előnézet
+          <img src={previewUrl} alt={alt} className="h-full w-full object-cover" />
+        )}
       </div>
       <button
         type="button"

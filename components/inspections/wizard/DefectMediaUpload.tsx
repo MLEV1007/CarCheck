@@ -5,29 +5,70 @@ import { ImagePlus, X } from 'lucide-react';
 import { isVideoUrl } from '@/lib/reports/media';
 import { cn } from '@/lib/utils';
 import { iconHitSlopClass } from '@/components/ui/IconButton';
+import { QrUploadPanel } from '@/components/inspections/wizard/QrUploadPanel';
+import { MediaProcessingOverlay } from '@/components/inspections/wizard/MediaProcessingOverlay';
+import { useMediaSelection } from '@/lib/inspections/mediaSelection';
 
 interface DefectMediaUploadProps {
   file: File | null;
   previewUrl: string | null;
   onSelect: (file: File) => void;
   onRemove: () => void;
+  /** A hívó szervezet videó-csatolási jogosultsága -- lásd `StepGeneralPhotos.tsx`
+   * `videoAllowed` propjának JSDoc-ját, ugyanaz a wizard-szintű, egyszer lekérdezett érték.
+   * Opcionális, alapértéke `false` -- a `DamageCanvas.tsx` sérülés-pont fotóinál (ahol a
+   * videó/QR-feltöltés NINCS a hatókörben, lásd a felhasználói kérés "Általános fotók ÉS
+   * Hiba-média" pontját) egyszerűen kihagyható. */
+  videoAllowed?: boolean;
+  /** `defect:${clientId}` -- a `qr_upload_sessions.target` oszlopba kerülő, EBBE a konkrét
+   * hiba-kártyába célzó azonosító, lásd `QrUploadPanel.tsx`. Opcionális -- ha nincs megadva
+   * (pl. `DamageCanvas.tsx` sérülés-pont fotóinál), a "Feltöltés telefonról" panel EGYSZERŰEN
+   * nem jelenik meg. */
+  qrTarget?: string;
+  /** A QR-kódos telefonos feltöltésből érkező, MÁR feltöltött média befogadása -- a szülő
+   * (`StepDefects.tsx`) ezt `file: null, previewUrl: item.url`-lel írja a `DefectState`-be,
+   * ugyanabban az alakban, mint egy piszkozat szerkesztésekor visszaolvasott, korábban már
+   * feltöltött média (lásd `draftPersistence.ts`). Opcionális, lásd a `qrTarget` JSDoc-ját. */
+  onReceiveFromQr?: (item: { url: string; type: 'photo' | 'video' }) => void;
 }
 
 /**
  * Fotó/videó választó a hiba-kártyához. A tényleges Supabase Storage feltöltés
- * (`inspection-media` bucket) csak a wizard végleges beküldésekor történik meg
- * (lásd InspectionWizard.tsx `handleSubmit`) -- itt csak a fájl kiválasztása és
- * kliens-oldali előnézete zajlik, hogy a felhasználó a lépések közti navigáció
- * közben ne generáljon felesleges storage-hívásokat.
+ * (`inspection-media` bucket) csak a wizard végleges beküldésekor történik meg (lásd
+ * InspectionWizard.tsx `handleSubmit`) -- itt csak a fájl kiválasztása és kliens-oldali
+ * előnézete zajlik, hogy a felhasználó a lépések közti navigáció közben ne generáljon
+ * felesleges storage-hívásokat. **Kivétel a QR-kódos telefonos feltöltés** (`QrUploadPanel`):
+ * az MÁR ténylegesen feltöltött Storage URL-t ad vissza, mert a fájl egy MÁSIK eszközön
+ * (a felhasználó telefonján) él, nem lehet kliens-oldali `File`-ként "hazahozni" a wizard
+ * böngészőjébe.
  *
- * Piszkozat szerkesztésekor (`/inspections/[id]`) a `previewUrl` egy már meglévő
- * Storage publikus URL is lehet `file` nélkül (a médiát korábban töltötték fel) --
- * ilyenkor a `file.type` nem elérhető, a videó/fotó eldöntése az URL kiterjesztése
- * alapján történik (`isVideoUrl`, ugyanaz a segédfüggvény, mint a publikus riportban).
+ * Piszkozat szerkesztésekor (`/inspections/[id]`) a `previewUrl` egy már meglévő Storage
+ * publikus URL is lehet `file` nélkül (a médiát korábban töltötték fel) -- ilyenkor a
+ * `file.type` nem elérhető, a videó/fotó eldöntése az URL kiterjesztése alapján történik
+ * (`isVideoUrl`, ugyanaz a segédfüggvény, mint a publikus riportban).
+ *
+ * **2026-08-21, "Videó-tömörítés + QR-kódos telefonos feltöltés" lépés:** a videó
+ * kiválasztásának jogosultság-ellenőrzését/tömörítését a `useMediaSelection` hook végzi
+ * (lásd `lib/inspections/mediaSelection.ts`) -- `onSelect` mostantól MINDIG egy MÁR
+ * tömörített (vagy változatlan kép-) `File`-lal hívódik.
  */
-export function DefectMediaUpload({ file, previewUrl, onSelect, onRemove }: DefectMediaUploadProps) {
+export function DefectMediaUpload({
+  file,
+  previewUrl,
+  onSelect,
+  onRemove,
+  videoAllowed = false,
+  qrTarget,
+  onReceiveFromQr,
+}: DefectMediaUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const isVideo = file ? file.type.startsWith('video/') : previewUrl ? isVideoUrl(previewUrl) : false;
+  const { selectMediaFile, modalState } = useMediaSelection({ videoAllowed });
+
+  async function handleFileChange(selected: File) {
+    const result = await selectMediaFile(selected);
+    if (result) onSelect(result);
+  }
 
   if (previewUrl) {
     return (
@@ -61,24 +102,29 @@ export function DefectMediaUpload({ file, previewUrl, onSelect, onRemove }: Defe
   }
 
   return (
-    <button
-      type="button"
-      onClick={() => inputRef.current?.click()}
-      className="flex w-full max-w-[220px] flex-col items-center justify-center gap-1.5 rounded-md border border-dashed border-linear-hairline-strong bg-linear-surface-2 px-4 py-6 text-center transition-colors hover:border-linear-primary hover:bg-linear-surface-3"
-    >
-      <ImagePlus className="h-5 w-5 text-linear-ink-subtle" />
-      <span className="text-[12px] font-medium text-linear-ink-subtle">Fotó / videó feltöltése</span>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*,video/*"
-        className="hidden"
-        onChange={(e) => {
-          const selected = e.target.files?.[0];
-          if (selected) onSelect(selected);
-          e.target.value = '';
-        }}
-      />
-    </button>
+    <div className="flex w-full max-w-[220px] flex-col gap-2">
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        className="flex w-full flex-col items-center justify-center gap-1.5 rounded-md border border-dashed border-linear-hairline-strong bg-linear-surface-2 px-4 py-6 text-center transition-colors hover:border-linear-primary hover:bg-linear-surface-3"
+      >
+        <ImagePlus className="h-5 w-5 text-linear-ink-subtle" />
+        <span className="text-[12px] font-medium text-linear-ink-subtle">Fotó / videó feltöltése</span>
+        <input
+          ref={inputRef}
+          type="file"
+          accept={videoAllowed ? 'image/*,video/*' : 'image/*'}
+          className="hidden"
+          onChange={(e) => {
+            const selected = e.target.files?.[0];
+            if (selected) void handleFileChange(selected);
+            e.target.value = '';
+          }}
+        />
+      </button>
+
+      {qrTarget && onReceiveFromQr && <QrUploadPanel target={qrTarget} onReceive={onReceiveFromQr} />}
+      <MediaProcessingOverlay state={modalState} />
+    </div>
   );
 }

@@ -21,6 +21,9 @@ interface StepDefectsProps {
   onNext: () => void;
   /** A KÖVETKEZŐ lépés rövid címe -- lásd StepCarInfo.tsx ugyanerről a propról. */
   nextLabel: string;
+  /** A hívó szervezet videó-csatolási jogosultsága -- lásd `StepGeneralPhotos.tsx`
+   * `videoAllowed` propjának JSDoc-ját, ugyanaz a wizard-szintű, egyszer lekérdezett érték. */
+  videoAllowed: boolean;
 }
 
 /** A `/api/ai/scan-defect` route válasz-alakja -- lásd `app/api/ai/scan-defect/route.ts`
@@ -64,7 +67,7 @@ function isDefectVideo(defect: DefectState): boolean {
 }
 
 /** LÉPÉS -- Hibák és Média rögzítése (PROJEKT_INSTRUKCIOK.md 5.B.3). */
-export function StepDefects({ value, onChange, onBack, onNext, nextLabel }: StepDefectsProps) {
+export function StepDefects({ value, onChange, onBack, onNext, nextLabel, videoAllowed }: StepDefectsProps) {
   // AI hiba-felismerés fotóból (`PLAN_ai_scan_defect.md`) -- hiba-kártyánkénti, KLIENS-OLDALI
   // állapot, sosem íródik közvetlenül a `value`-ba (a `DefectState`-be), lásd a `DefectAiState`
   // JSDoc-ját. A `notifyInsufficientCredits`/`inspectionId` ugyanaz a minta, mint a projekt
@@ -117,6 +120,15 @@ export function StepDefects({ value, onChange, onBack, onNext, nextLabel }: Step
     const target = value.find((defect) => defect.clientId === clientId);
     if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl);
     updateDefect(clientId, { file: null, previewUrl: null });
+    clearAiState(clientId);
+  }
+
+  /** A QR-kódos telefonos feltöltésből érkező, MÁR feltöltött média befogadása -- lásd
+   * `DefectMediaUpload.tsx` `onReceiveFromQr` propjának JSDoc-ját. Ugyanaz a
+   * "file: null, previewUrl: <url>" alak, mint egy piszkozat szerkesztésekor visszaolvasott,
+   * korábban már feltöltött médiánál (`draftPersistence.ts`). */
+  function handleReceiveFromQr(clientId: string, item: { url: string; type: 'photo' | 'video' }) {
+    updateDefect(clientId, { file: null, previewUrl: item.url });
     clearAiState(clientId);
   }
 
@@ -258,6 +270,9 @@ export function StepDefects({ value, onChange, onBack, onNext, nextLabel }: Step
                     previewUrl={defect.previewUrl}
                     onSelect={(file) => handleSelectFile(defect.clientId, file)}
                     onRemove={() => handleRemoveMedia(defect.clientId)}
+                    videoAllowed={videoAllowed}
+                    qrTarget={`defect:${defect.clientId}`}
+                    onReceiveFromQr={(item) => handleReceiveFromQr(defect.clientId, item)}
                   />
 
                   {canAnalyze && aiState.status === 'idle' && (
