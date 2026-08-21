@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { Video } from 'lucide-react';
 import type { PublicReportDefect } from '@/lib/reports/types';
 import { isVideoUrl } from '@/lib/reports/media';
 import { SectionHeading } from '@/components/report/SectionHeading';
@@ -72,29 +73,36 @@ function DefectRow({
   return (
     <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:gap-6">
       {defect.media_url ? (
-        <button
-          type="button"
-          onClick={() => onOpenMedia(defect.media_url!)}
-          className="group relative h-24 w-32 shrink-0 overflow-hidden rounded-none border border-bmw-hairline-strong bg-bmw-surface-card"
-          aria-label="Média megnyitása nagyobb nézetben"
-        >
-          {isVideoUrl(defect.media_url) ? (
-            <>
-              {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-              <video src={defect.media_url} className="h-full w-full object-cover" muted />
-              <span className="absolute inset-0 flex items-center justify-center bg-black/35 text-[18px] text-white">
-                ▶
-              </span>
-            </>
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element
+        isVideoUrl(defect.media_url) ? (
+          // A videó a riportban KIZÁRÓLAG linkként jelenik meg -- NEM beágyazott
+          // lejátszóként/előnézeti thumbnail-ként, lásd a felhasználó 2026-08-21-i
+          // visszajelzését ("A riportban egy linkként jelenjen meg a videó."). A
+          // `MediaLightbox`-ot ez az ág SZÁNDÉKOSAN nem nyitja meg -- a link közvetlenül,
+          // egy új lapon nyitja meg a videó URL-jét a böngésző natív lejátszójával.
+          <a
+            href={defect.media_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group relative flex h-24 w-32 shrink-0 flex-col items-center justify-center gap-1.5 overflow-hidden rounded-none border border-bmw-hairline-strong bg-bmw-surface-card transition-colors hover:border-bmw-ink"
+          >
+            <Video className="h-5 w-5 text-bmw-muted-soft" />
+            <span className="text-[11px] font-light text-bmw-body">Videó megtekintése</span>
+          </a>
+        ) : (
+          <button
+            type="button"
+            onClick={() => onOpenMedia(defect.media_url!)}
+            className="group relative h-24 w-32 shrink-0 overflow-hidden rounded-none border border-bmw-hairline-strong bg-bmw-surface-card"
+            aria-label="Média megnyitása nagyobb nézetben"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={defect.media_url}
               alt={defect.description || defect.category}
               className="h-full w-full object-cover transition-opacity group-hover:opacity-80"
             />
-          )}
-        </button>
+          </button>
+        )
       ) : (
         <div className="flex h-24 w-32 shrink-0 items-center justify-center rounded-none border border-dashed border-bmw-hairline-strong text-[12px] font-light text-bmw-muted-soft print:hidden">
           Nincs média

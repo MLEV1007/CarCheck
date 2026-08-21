@@ -109,7 +109,17 @@ export function DefectMediaUpload({
         className="flex w-full flex-col items-center justify-center gap-1.5 rounded-md border border-dashed border-linear-hairline-strong bg-linear-surface-2 px-4 py-6 text-center transition-colors hover:border-linear-primary hover:bg-linear-surface-3"
       >
         <ImagePlus className="h-5 w-5 text-linear-ink-subtle" />
-        <span className="text-[12px] font-medium text-linear-ink-subtle">Fotó / videó feltöltése</span>
+        {/* A gomb szövege NEM említi a videót, ha a szervezet nem jogosult rá -- korábban ez
+            a szöveg MINDIG "Fotó / videó feltöltése" volt, függetlenül a jogosultságtól, és
+            csak az `accept` attribútum tért el csendben -- ez a felhasználó szerint nem volt
+            egyértelmű (2026-08-21-i visszajelzés: "legyen egyértelműbb... hogy a nem jogosult
+            csomagok nem tudnak feltölteni videót"). A tényleges kikényszerítés VÁLTOZATLANUL
+            a szerveren történik (lásd `useMediaSelection`/`assertVideoUploadAllowed`), ez itt
+            KIZÁRÓLAG a szöveg, hogy a felhasználó már a gomb megpillantásakor tudja, mire
+            számíthat, ne csak egy elutasított feltöltési kísérlet után. */}
+        <span className="text-[12px] font-medium text-linear-ink-subtle">
+          {videoAllowed ? 'Fotó / videó feltöltése' : 'Fotó feltöltése'}
+        </span>
         <input
           ref={inputRef}
           type="file"

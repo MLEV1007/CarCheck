@@ -264,7 +264,9 @@ export function StepDefects({ value, onChange, onBack, onNext, nextLabel, videoA
                 </div>
 
                 <div className="sm:w-[220px] sm:shrink-0">
-                  <span className="mb-1.5 block text-[13px] font-medium text-linear-ink-muted">Fotó / videó</span>
+                  <span className="mb-1.5 block text-[13px] font-medium text-linear-ink-muted">
+                    {videoAllowed ? 'Fotó / videó' : 'Fotó'}
+                  </span>
                   <DefectMediaUpload
                     file={defect.file}
                     previewUrl={defect.previewUrl}
@@ -284,6 +286,16 @@ export function StepDefects({ value, onChange, onBack, onNext, nextLabel, videoA
                       <Sparkles className="h-3.5 w-3.5" />
                       AI elemzés
                     </button>
+                  )}
+
+                  {/* Videónál az "AI elemzés" gomb SZÁNDÉKOSAN nem jelenik meg (lásd
+                      `isDefectVideo` JSDoc-ját), de ezt EXPLICIT szöveggel is jelezzük -- ne
+                      csak a gomb csendes hiánya kommunikálja, hogy a funkció nem elérhető
+                      videónál (2026-08-21-i felhasználói visszajelzés). */}
+                  {isDefectVideo(defect) && (
+                    <p className="mt-2 max-w-[220px] text-[12px] text-linear-ink-subtle">
+                      Az AI hibafelismerés csak fotó alapján működik, videónál nem elérhető.
+                    </p>
                   )}
 
                   {aiState.status === 'loading' && (

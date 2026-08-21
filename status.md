@@ -3718,3 +3718,98 @@ meglévő `get_public_report()`-nál.
    `/inspections/*`/`/qr-upload/*` route-okra.
 4. **Git commit** -- lásd a commit-üzenetet a git történetben, `git push` a felhasználó
    eredeti kérése szerint NEM történt meg.
+
+## 2026-08-21 (2.) -- Videó/AI UX-finomítások + 60 napos automatikus videó-megőrzés
+
+Felhasználói visszajelzés a frissen leszállított videó-tömörítés/QR-feltöltés funkcióra --
+4 különálló módosítás, egy körben elvégezve:
+
+**a) AI elemzés -- explicit "csak fotóból" szöveg.** `StepDefects.tsx`: eddig a videónál az
+"AI elemzés" gomb egyszerűen NEM jelent meg (`isDefectVideo` gate), semmilyen magyarázat
+nélkül. Mostantól, ha a hiba-kártya médiája videó, egy explicit szöveg jelenik meg a gomb
+helyén ("Az AI hibafelismerés csak fotó alapján működik, videónál nem elérhető."), hogy a
+felhasználó ne csendes hiányként, hanem megmagyarázott korlátozásként találkozzon a
+funkcióval.
+
+**b) Videó-jogosultság -- egyértelműbb UX nem jogosult csomagoknál.** A felhasználó két
+opciót ajánlott fel ("vagy ne jelenjen meg a videó szöveg, vagy legyen ott az ikon, de
+kattinthatatlan"), a döntés az implementáció során: az ELSŐ opció mellett döntöttem, mert a
+feltöltő widgetnek EGYETLEN gombja van (nincs külön kép-/videó-ikon, amit részlegesen
+tudnánk letiltani) -- `DefectMediaUpload.tsx`/`StepDefects.tsx`: a gomb szövege/címkéje
+("Fotó / videó feltöltése" / "Fotó / videó") mostantól a `videoAllowed` proptól függ --
+NEM jogosult szervezetnél EGYSZERŰEN "Fotó feltöltése"/"Fotó", a videó szó SEHOL nem jelenik
+meg. A tényleges kikényszerítés (szerver + RLS) VÁLTOZATLAN, ez KIZÁRÓLAG a szöveg, hogy a
+korlátozás már a gomb megpillantásakor, ne csak egy elutasított feltöltési kísérlet UTÁN
+legyen egyértelmű.
+
+**c) Videó a publikus riportban -- KIZÁRÓLAG linkként.** Eddig a `DefectsGallery.tsx` egy
+inline, `muted` videó-előnézetet (thumbnail + ▶ overlay) mutatott, kattintásra a
+`MediaLightbox`-ban beágyazott, lejátszható videót nyitott meg; a `GeneralPhotosGallery.tsx`
+pedig egyáltalán NEM kezelte a videó esetet (egy videó URL-t egyszerűen `<img>`-ként
+próbált volna megjeleníteni -- látens hiba, ha egy Profi/Autóház szervezet videót tett az
+Általános fotók közé). Mindkét galéria mostantól `isVideoUrl`-lel dönt: videónál egy
+`target="_blank"` linket renderel (videó-ikon + "Videó megtekintése" felirat), ami közvetlenül
+egy új lapon nyitja meg a videó URL-jét a böngésző natív lejátszójával -- NEM a
+`MediaLightbox`-ot. A `MediaLightbox.tsx` maga változatlan maradt (a szervizmúlt/felszereltség/
+sérülés-térkép galériái továbbra is használják képekhez, azok sosem videó típusúak).
+
+**d) 60 napos automatikus videó-megőrzés.** ÚJ, kifejezetten "fontos beállításnak" jelölt
+funkció: "a videókat 60 napig tárolja csak a rendszer, utána automatikusan törli. A képek
+minden más megmarad." Architektúra:
+
+* `video_assets` ÚJ tábla (lásd `supabase/migrations/20260821_video_retention_cleanup.sql`)
+  -- egyetlen sor = egyetlen sikeresen feltöltött VIDEÓ (fotó SOHA), `{inspection_id
+  (NINCS FK, ugyanaz a minta mint `qr_upload_sessions`-nél), organization_id, created_by,
+  category ('general'/'defect'), storage_path, media_url, created_at, deleted_at}`. A
+  feltöltés PILLANATÁBAN íródik -- asztali úton `InspectionWizard.tsx` `uploadMediaSmart`-ja
+  (a hitelesített kliens saját, RLS-t tiszteletben tartó Supabase-klienesén keresztül, csak
+  TÉNYLEGES videónál, best-effort -- egy sikertelen nyilvántartás-beszúrás sose hiúsítja meg
+  a már megtörtént tényleges feltöltést/mentést), QR-kódos úton az admin klienses
+  `.../confirm/route.ts` (`mediaType === 'video'` esetén).
+* `remove_general_photo_url(inspection_id, url)` SECURITY DEFINER RPC -- `array_remove`-mal
+  tisztítja az `inspections.general_photos` tömböt (a Supabase JS `.update()` nem tud SQL-
+  kifejezést küldeni oszlopértékként). ÉLESBEN ellenőrizve: az alapértelmezett PUBLIC
+  EXECUTE grantot EXPLICIT `revoke`-olni kellett `public`/`anon`/`authenticated`-től (`grant
+  execute ... to service_role` KIZÁRÓLAG) -- enélkül a `get_advisors(type: "security")`
+  "Public Can Execute SECURITY DEFINER Function" WARN-t adott, és bármely bejelentkezett/
+  anonim felhasználó tetszőleges inspection_id+URL párossal törölhetett volna egy fotó-
+  hivatkozást BÁRKI vizsgálatából (a SECURITY DEFINER miatt az RLS-t is megkerülné). A
+  javítás UTÁN a `get_advisors` már nem listázza ezt a függvényt -- ugyanaz a lint-kép, mint
+  a `20260821_video_qr_upload.sql` migráció után.
+* `app/api/cron/cleanup-expired-videos/route.ts` (ÚJ) -- napi Vercel Cron végpont
+  (`vercel.json` `crons`, `0 3 * * *`, `CRON_SECRET` env változóval hitelesítve, lásd
+  `.env.local.example`). A `video_assets`-ben `deleted_at is null and created_at < now() -
+  60 nap` sorokat dolgozza fel, mindegyiknél: (1) tényleges Storage-törlés
+  (`.storage.from('inspection-media').remove()` -- KIZÁRÓLAG ez törli a valódi
+  fájlbájtokat, egy közvetlen `storage.objects` SQL-törlés csak a metaadat-sort törölné,
+  örökre árva objektumot hagyva a tárolóban), (2) a dangling hivatkozás megtisztítása
+  (`general` -> `remove_general_photo_url` RPC, `defect` -> `defects.media_url = null`,
+  pontos `media_url` egyezés alapján -- a `defects` sorok minden wizard-mentéskor törlésre/
+  újra-beszúrásra kerülnek, a sor lehet, hogy már nem is létezik, ilyenkor a frissítés 0
+  sort érint, nem hiba), (3) a `video_assets` sor `deleted_at`-jének beállítása (a sort
+  MEGTARTJUK, auditnapló céljából).
+* Miért NEM közvetlen `storage.objects` lekérdezés/`pg_cron`: a `storage.objects` séma
+  alapból NINCS kitéve a PostgREST/Supabase JS API-n, a `video_assets` egy könnyű,
+  alkalmazás-oldali nyilvántartás; a `pg_cron`/`pg_net` DB-oldali ütemezés bonyolultabb lenne
+  a Storage-API-hívás (nem sima SQL) miatt, mint egy natív Vercel Cron + Route Handler.
+
+**Ellenőrzés:** `npx tsc --noEmit` a teljes projektre (mind a 9 érintett/új fájllal) -- 0
+hiba. A `video_retention_cleanup` migráció élesben alkalmazva (`nsejmkcwvksbwxscvrvb`),
+`get_advisors(type: "security")`-val ellenőrizve (a `remove_general_photo_url` PUBLIC-grant
+hibáját ez a lépés fedte fel és javította, lásd fent).
+
+**FONTOS, NYITOTT TEENDŐK (a felhasználónak):**
+1. **`CRON_SECRET` beállítása Vercelen** -- Project -> Settings -> Environment Variables,
+   ÉS a Cron Jobs UI-n is (lásd `.env.local.example` új bejegyzését) -- enélkül a napi
+   törlő-végpont mindig 401-et adna, a videók SOHA nem törlődnének automatikusan.
+2. **A törlés visszamenőleg NEM érinti a MÁR feltöltött, régebbi videókat** -- a
+   `video_assets` tábla csak MOSTANTÓL, az ÚJ feltöltésektől kezdve épül; a
+   `20260821_video_qr_upload.sql` óta (a videó-funkció bevezetése óta) feltöltött,
+   MÁR meglévő videók nincsenek nyilvántartva, ezeket a 60 napos automatikus törlés NEM
+   fogja érinteni, amíg valaki (vagy egy külön, egyszeri backfill-szkript) fel nem veszi
+   őket a táblába. Ha ez fontos, jelezd, és készítek egy egyszeri backfill-migrációt is.
+3. **Böngészős manuális teszt NEM futott le** ebben a munkamenetben egyik módosításra
+   sem -- érdemes helyben leellenőrizni, KÜLÖNÖS TEKINTETTEL a cron végpont Vercelen
+   futó, ténylegesen ütemezett viselkedésére (helyben `curl -H "authorization: Bearer
+   <CRON_SECRET>" http://localhost:3000/api/cron/cleanup-expired-videos`-lal tesztelhető).
+4. **Git commit** -- lásd a commit-üzenetet a git történetben, `git push` NEM történt meg.

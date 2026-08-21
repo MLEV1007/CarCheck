@@ -376,12 +376,36 @@ export function InspectionWizard({
       async function uploadMediaSmart(file: File, category: 'general' | 'defect'): Promise<string> {
         const TUS_THRESHOLD_BYTES = 6 * 1024 * 1024;
         if (file.type.startsWith('video/') || file.size > TUS_THRESHOLD_BYTES) {
-          const { publicUrl } = await uploadInspectionMediaViaServer(supabase, {
+          const { path, publicUrl } = await uploadInspectionMediaViaServer(supabase, {
             inspectionId,
             category,
             file,
             originalFilename: file.name,
           });
+
+          // 60 napos automatikus videó-megőrzési politika (2026-08-21-i felhasználói kérés,
+          // lásd `supabase/migrations/20260821_video_retention_cleanup.sql`) -- KIZÁRÓLAG
+          // tényleges videónál rögzítünk `video_assets` sort (a nagy, de kép típusú fájlok
+          // is ide, a szerver+TUS útra kerülnek a fenti feltétel miatt, DE azokra a
+          // megőrzési politika NEM vonatkozik, lásd a felhasználó "A képek minden más
+          // megmarad" kikötését). Szándékosan BEST-EFFORT: egy sikertelen nyilvántartás-
+          // beszúrás SOSE hiúsíthatja meg a tényleges (már megtörtént) feltöltést/mentést --
+          // legrosszabb esetben az adott videó nem kerül automatikusan törlésre 60 nap
+          // után, ami messze kevésbé súlyos, mint egy elveszett vizsgálat-mentés.
+          if (file.type.startsWith('video/')) {
+            const { error: trackError } = await supabase.from('video_assets').insert({
+              inspection_id: inspectionId,
+              organization_id: organizationId,
+              created_by: userId,
+              category,
+              storage_path: path,
+              media_url: publicUrl,
+            });
+            if (trackError) {
+              console.error('[InspectionWizard] Nem sikerült rögzíteni a videót a megőrzési nyilvántartásba:', trackError);
+            }
+          }
+
           return publicUrl;
         }
 
