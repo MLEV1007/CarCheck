@@ -6,20 +6,20 @@ import type { OrganizationRole, PlanTier, UsageLog, UserCredit } from '@/types/c
 
 /**
  * Kredit- és előfizetés-áttekintés végpont a kliens-oldali UI komponenseknek
- * (`HeaderCreditBadge.tsx`, `CreditDashboardModal.tsx`) -- ezek `'use client'`
+ * (`HeaderCreditBadge.tsx`, `CreditDashboardModal.tsx`), ezek `'use client'`
  * komponensek, így nem hívhatják közvetlenül a `lib/credits.ts` szerver-oldali
  * (cookie-alapú Supabase kliens, `next/headers`-re épülő) függvényeit, ezért ez a route
  * egyetlen hívásban adja vissza mindhármat: a csomag-szintet (`plan_tier`), a
- * kredit-egyenleget (`user_credits`, automatikusan létrehozva, ha még nem létezik --
+ * kredit-egyenleget (`user_credits`, automatikusan létrehozva, ha még nem létezik,
  * lásd `getUserCreditBalance`) és a legutóbbi AI-használati audit-bejegyzéseket
  * (`usage_logs`).
  *
  * Ugyanaz az autentikációs minta, mint a `/api/ai/*` route-oknál (lásd
- * `app/api/ai/parse-equipment/route.ts` "Autentikáció + kredit-védelem" JSDoc-ját) --
+ * `app/api/ai/parse-equipment/route.ts` "Autentikáció + kredit-védelem" JSDoc-ját),
  * `lib/supabase/server.ts` cookie-alapú kliens, `401` bejelentkezés nélkül.
  *
  * **`role`/`canViewAllReports` (2026-08-03, "Szervezeti szerepkezelés" lépés):** a
- * válasz ezeket is tartalmazza -- a `HeaderCreditBadge`/`InsufficientCreditsModal`
+ * válasz ezeket is tartalmazza, a `HeaderCreditBadge`/`InsufficientCreditsModal`
  * (mindkettő kliens-komponens) ezen keresztül tudja meg a hívó szerepkörét, hogy
  * Átvizsgálónak elrejtse a kredit-egyenleget, illetve testreszabott "keresd meg a
  * Menedzseredet" üzenetet mutasson kifogyott céges kereten.

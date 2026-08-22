@@ -27,7 +27,7 @@ import type {
   TiresState,
 } from '@/lib/inspections/types';
 
-/** A `/api/ai/generate-summary` route bemenetéhez -- a wizard aktuális állapotának
+/** A `/api/ai/generate-summary` route bemenetéhez, a wizard aktuális állapotának
  * KIZÁRÓLAG a szakvélemény szempontjából releváns, JSON-szerializálható részhalmaza
  * (a `File`/`blob:` mezők nélkül, lásd `buildInspectionSnapshot()` lent). */
 export interface AiSummaryContext {
@@ -46,10 +46,10 @@ interface StepFinalAssessmentProps {
   onChange: (value: FinalAssessmentState) => void;
   onBack: () => void;
   onNext: () => void;
-  /** A KÖVETKEZŐ lépés rövid címe -- lásd StepCarInfo.tsx ugyanerről a propról. */
+  /** A KÖVETKEZŐ lépés rövid címe, lásd StepCarInfo.tsx ugyanerről a propról. */
   nextLabel: string;
   /** A "AI Szakértői Összefoglaló" gombhoz szükséges, a wizard szülőjéből (`InspectionWizard.tsx`)
-   * összeállított aktuális vizsgálati adat -- lásd `buildInspectionSnapshot()` lent. */
+   * összeállított aktuális vizsgálati adat, lásd `buildInspectionSnapshot()` lent. */
   aiSummaryContext: AiSummaryContext;
 }
 
@@ -64,7 +64,7 @@ interface GenerateSummaryApiResponse {
 }
 
 /** A wizard teljes állapotából KIZÁRÓLAG a szakvélemény-generáláshoz releváns, tisztán
- * JSON-szerializálható adatokat állítja össze -- a `File`/`blob:` mezőket (fotók, videók)
+ * JSON-szerializálható adatokat állítja össze, a `File`/`blob:` mezőket (fotók, videók)
  * szándékosan kihagyja, mert azok a Gemini szöveg-modellnek irrelevánsak, és a `File`
  * objektum egyébként sem szerializálható JSON-ná. */
 function buildInspectionSnapshot(context: AiSummaryContext) {
@@ -123,23 +123,23 @@ function buildInspectionSnapshot(context: AiSummaryContext) {
 }
 
 /**
- * LÉPÉS -- Végső Szakvélemény & Várható Költségek modul (a wizard utolsó, szakértői-adat
- * lépése, közvetlenül az Összegzés & Publikálás előtt). TELJESEN OPCIONÁLIS -- egyetlen
+ * LÉPÉS, Végső Szakvélemény & Várható Költségek modul (a wizard utolsó, szakértői-adat
+ * lépése, közvetlenül az Összegzés & Publikálás előtt). TELJESEN OPCIONÁLIS, egyetlen
  * mező sem kötelező, a "Tovább" gomb soha nincs letiltva ezen a lépésen. Ha a vizsgáló
  * semmit nem tölt ki, a `final_assessment` JSONB az üres alapértelmezett struktúrával
  * kerül mentésre, és a publikus riporton a `FinalAssessmentCard.tsx` a teljes szekciót
- * elrejti (`return null`) -- ugyanaz a "csak akkor jelenik meg, ha van tartalom" minta,
+ * elrejti (`return null`), ugyanaz a "csak akkor jelenik meg, ha van tartalom" minta,
  * mint a `ServiceHistoryCard`/`EquipmentMatrix`-nél.
  *
- * A) Javaslat -- 3 választható rádiógomb-kártya, ugyanaz a minta, mint a
+ * A) Javaslat, 3 választható rádiógomb-kártya, ugyanaz a minta, mint a
  *    `StepServiceHistory.tsx` Általános státusz pillérénél, azzal a különbséggel, hogy
- *    itt a már kiválasztott kártyára kattintva a választás visszavonható (`null`-ra áll) --
+ *    itt a már kiválasztott kártyára kattintva a választás visszavonható (`null`-ra áll),
  *    ez a modul teljes opcionalitása miatt fontos, hogy egy véletlen kattintás se
  *    kényszerítsen ki egy nem szándékolt végleges véleményt.
- * B) Várható költségek -- min/max becsült szervizköltség (HUF, ezres-elválasztós élő
+ * B) Várható költségek, min/max becsült szervizköltség (HUF, ezres-elválasztós élő
  *    formázással, ugyanaz a minta, mint a Szervizmúlt km óra állás mezőjénél) + szabad
  *    szöveges megjegyzés (pl. "Vezérlés csere, fékek és új téli gumi szett").
- * C) Összefoglaló szakértői vélemény -- szabad szöveges összefoglaló (hangalapú
+ * C) Összefoglaló szakértői vélemény, szabad szöveges összefoglaló (hangalapú
  *    jegyzeteléssel, mert `TextareaField`-et használ).
  */
 export function StepFinalAssessment({
@@ -159,10 +159,10 @@ export function StepFinalAssessment({
     onChange({ ...value, recommendation: value.recommendation === recommendation ? null : recommendation });
   }
 
-  /** "AI Szakértői Összefoglaló" gomb -- a `buildInspectionSnapshot()`-tal összeállított
+  /** "AI Szakértői Összefoglaló" gomb, a `buildInspectionSnapshot()`-tal összeállított
    * aktuális vizsgálati adatot elküldi a `/api/ai/generate-summary` route-nak, majd a
    * visszakapott 3-4 mondatos szöveget beilleszti a "Szöveges összefoglaló" mezőbe
-   * (a korábbi tartalmat felülírva -- a user a mentés/publikálás előtt bármikor
+   * (a korábbi tartalmat felülírva, a user a mentés/publikálás előtt bármikor
    * kézzel is szerkesztheti/finomíthatja a kapott szöveget). */
   async function handleGenerateSummary() {
     setIsGeneratingSummary(true);
@@ -174,7 +174,7 @@ export function StepFinalAssessment({
         body: JSON.stringify({ inspectionData: buildInspectionSnapshot(aiSummaryContext), inspectionId }),
       });
 
-      // 402 (INSUFFICIENT_AI_QUOTA) -- lásd `InsufficientCreditsProvider.tsx`. A globális
+      // 402 (INSUFFICIENT_AI_QUOTA), lásd `InsufficientCreditsProvider.tsx`. A globális
       // "Elfogyott az AI kereted" modalt nyitjuk meg a lokális hibaüzenet helyett.
       if (response.status === 402) {
         notifyInsufficientCredits();
@@ -191,7 +191,7 @@ export function StepFinalAssessment({
 
       onChange({ ...value, summaryText: data.summary.trim() });
     } catch {
-      setSummaryError('Hálózati hiba -- az összefoglaló generálása nem sikerült. Próbáld újra.');
+      setSummaryError('Hálózati hiba, az összefoglaló generálása nem sikerült. Próbáld újra.');
     } finally {
       setIsGeneratingSummary(false);
     }

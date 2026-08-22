@@ -10,11 +10,11 @@ interface CreditDashboardModalProps {
   onClose: () => void;
 }
 
-/** `plan_tier` -> magyar megjelenítendő címke -- 2026-08-06, "Árazási struktúra bővítés"
+/** `plan_tier` -> magyar megjelenítendő címke, 2026-08-06, "Árazási struktúra bővítés"
  * lépés óta a `QuotaPlanTier`-t követi (`starter`/`growth`/`pro`/`business`), NEM a régi,
  * elavult `PlanTier`-t (`free`/`starter`/`pro`/`enterprise`, `types/credits.ts`), lásd a
  * fájl-JSDoc "KRITIKUS hibajavítás" szakaszát. 2026-08-07-től `free` is szerepel (lásd
- * `BillingTab.tsx` ugyanezen címke-térképének JSDoc-ját -- ugyanaz a forrás/indoklás). */
+ * `BillingTab.tsx` ugyanezen címke-térképének JSDoc-ját, ugyanaz a forrás/indoklás). */
 const PLAN_TIER_LABELS: Record<QuotaPlanTier, string> = {
   free: 'Ingyenes csomag',
   starter: 'Egyéni csomag',
@@ -26,27 +26,27 @@ const PLAN_TIER_LABELS: Record<QuotaPlanTier, string> = {
 type LoadState = 'loading' | 'ready' | 'error';
 
 /**
- * Kredit & Előfizetés Dashboard modal -- a `HeaderCreditBadge.tsx`-re kattintva nyílik meg
+ * Kredit & Előfizetés Dashboard modal, a `HeaderCreditBadge.tsx`-re kattintva nyílik meg
  * (PROJEKT_INSTRUKCIOK.md "Felhasználói Kredit & Előfizetés Dashboard" lépés). Linear Dark
  * Design Style, mert a badge (és ezzel a modal megnyitása) kizárólag a Szakértői
  * Munkaterület (`/dashboard`, `/inspections/*`) fejléceiben jelenik meg.
  *
- * **2026-08-06, "AI kredit kijelzés javítása" lépés -- KRITIKUS hibajavítás:** korábban a
+ * **2026-08-06, "AI kredit kijelzés javítása" lépés, KRITIKUS hibajavítás:** korábban a
  * `/api/credits/summary` (régi, `user_credits.monthly_credits_remaining`/`profiles.
- * plan_tier` alapú) végpontról töltötte az adatot -- élő adatban megerősítve, hogy ez a
+ * plan_tier` alapú) végpontról töltötte az adatot, élő adatban megerősítve, hogy ez a
  * felület egy fizető Starter ügyfélnek "Díjmentes fiók"-ot ÉS egy a valós csomagtól
  * teljesen független kredit-számot mutatott (a `profiles.plan_tier` sosem frissül a
  * Stripe-vásárláskor, az csak `user_credits.plan_tier`-t írja). Mostantól a
  * `/api/quotas/summary` (a TÉNYLEGES, Stripe-vásárlás által frissített forrás) adatait
  * mutatja, UGYANAZT a két számot (hátralévő vizsgálat + hátralévő AI-kredit), mint a
- * Beállítások > Előfizetés oldal "Jelenlegi csomag" kártyája -- a korábbi "AI használati
+ * Beállítások > Előfizetés oldal "Jelenlegi csomag" kártyája, a korábbi "AI használati
  * előzmények" táblázat (a régi, hívásonkénti `usage_logs` audit alapján) eltávolítva,
  * mert 2026-08-06 óta (lásd `lib/inspectionAiCredit.ts` "1 AI kredit = 1 vizsgálat")
  * ehelyett a "1 AI kredit = 1 vizsgálat" elv érvényes: nem AI-HÍVÁSONKÉNT, hanem
  * VIZSGÁLATONKÉNT fogy 1 kredit, a régi, hívásonkénti napló ezért félrevezető lenne.
  *
  * Önállóan, kliens-oldalon tölti be a `/api/quotas/summary` végpontról a friss adatot
- * MINDEN megnyitáskor (nem a badge-től kapott, esetleg már elavult adatot használja) --
+ * MINDEN megnyitáskor (nem a badge-től kapott, esetleg már elavult adatot használja),
  * ez garantálja, hogy egy AI-hívás UTÁN megnyitva mindig a ténylegesen aktuális egyenleg
  * látszik, nem egy oldal-betöltéskori pillanatkép.
  *
@@ -171,7 +171,7 @@ export function CreditDashboardModal({ onClose }: CreditDashboardModalProps) {
                 </div>
               </div>
 
-              {/* AI kredit keret -- "1 AI kredit = 1 vizsgálat" (2026-08-06) */}
+              {/* AI kredit keret, "1 AI kredit = 1 vizsgálat" (2026-08-06) */}
               <div>
                 <p className="mb-2 text-[12px] font-medium uppercase tracking-wide text-linear-ink-subtle">
                   AI kredit keret
@@ -197,11 +197,11 @@ export function CreditDashboardModal({ onClose }: CreditDashboardModalProps) {
                 </div>
                 <p className="mt-2 text-[11px] text-linear-ink-subtle">
                   1 AI-kredit egy TELJES vizsgálat összes AI-funkcióját fedezi (VIN-szkenneléstől a
-                  szakvélemény-összefoglalóig) -- nem hívásonként fogy.
+                  szakvélemény-összefoglalóig), nem hívásonként fogy.
                 </p>
               </div>
 
-              {/* Előfizetés/Top-up -- valódi link a Billing felületre (2026-08-04-től) */}
+              {/* Előfizetés/Top-up, valódi link a Billing felületre (2026-08-04-től) */}
               <Link
                 href="/settings/billing"
                 onClick={onClose}

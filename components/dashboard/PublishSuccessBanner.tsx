@@ -6,7 +6,7 @@ import { Check, Copy, ExternalLink, PartyPopper, X } from 'lucide-react';
 
 interface PublishSuccessBannerProps {
   publicToken: string;
-  /** A vizsgálatot végző cég logója (`profiles.logo_url`, lásd `app/dashboard/page.tsx`) --
+  /** A vizsgálatot végző cég logója (`profiles.logo_url`, lásd `app/dashboard/page.tsx`),
    * ha van feltöltve logó, az jelenik meg a link fölötti jelvényben a generikus
    * `PartyPopper` ikon helyett (2026-08-08, felhasználói jelzés: "a link küldésnél
    * jelenjen meg a link fölött a logóm, jelenleg ott nem jelenik meg semmi"). Nincs
@@ -17,7 +17,7 @@ interface PublishSuccessBannerProps {
 
 /**
  * Siker-banner a wizard "Vizsgálat befejezése & Publikálás" lépése után
- * (PROJEKT_INSTRUKCIOK.md 5.B.4) -- a /dashboard?published=<public_token> query
+ * (PROJEKT_INSTRUKCIOK.md 5.B.4), a /dashboard?published=<public_token> query
  * paramétert az InspectionWizard.tsx redirect-je állítja be. Linear design system:
  * primary/10 kitöltésű surface, hairline szegély, egy kattintásos link-másolás.
  */
@@ -32,7 +32,7 @@ export function PublishSuccessBanner({ publicToken, logoUrl, companyName }: Publ
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Clipboard API nem elérhető -- a user a "Megnyitás" gombbal manuálisan is másolhat.
+      // Clipboard API nem elérhető, a user a "Megnyitás" gombbal manuálisan is másolhat.
     }
   }
 
@@ -44,7 +44,7 @@ export function PublishSuccessBanner({ publicToken, logoUrl, companyName }: Publ
     <div className="flex flex-col gap-3 rounded-lg border border-linear-primary/30 bg-linear-primary/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-start gap-3">
         {logoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- a logó a Supabase Storage-ból, tetszőleges méretben érkezik
+          // eslint-disable-next-line @next/next/no-img-element, a logó a Supabase Storage-ból, tetszőleges méretben érkezik
           <img
             src={logoUrl}
             alt={companyName || 'Cég logó'}
@@ -80,7 +80,7 @@ export function PublishSuccessBanner({ publicToken, logoUrl, companyName }: Publ
           {copied ? 'Másolva' : 'Link másolása'}
         </button>
         {/* 36px vizuális méret + before:-inset-1 (4px/oldal) hit-slop = 44px érintési terület
-            -- lásd docs/ux-touch-targets-plan-2026-08-14.md 3. fejezet (bónusz találatok). */}
+           , lásd docs/ux-touch-targets-plan-2026-08-14.md 3. fejezet (bónusz találatok). */}
         <button
           type="button"
           onClick={handleDismiss}

@@ -14,14 +14,14 @@ interface StepDiagnosticsProps {
   onChange: (value: DiagnosticsState) => void;
   onBack: () => void;
   onNext: () => void;
-  /** A KÖVETKEZŐ lépés rövid címe -- lásd StepCarInfo.tsx ugyanerről a propról. */
+  /** A KÖVETKEZŐ lépés rövid címe, lásd StepCarInfo.tsx ugyanerről a propról. */
   nextLabel: string;
 }
 
 /**
- * LÉPÉS -- Diagnosztikai Hibakódok Modul (PROJEKT_INSTRUKCIOK.md, "3 új szakértői
+ * LÉPÉS, Diagnosztikai Hibakódok Modul (PROJEKT_INSTRUKCIOK.md, "3 új szakértői
  * modul" lépés, A pont). Ha az "OBD Tiszta" checkbox be van pipálva, a hibakód-lista
- * elrejtődik -- mentéskor (InspectionWizard.tsx) a `codes` ilyenkor figyelmen kívül
+ * elrejtődik, mentéskor (InspectionWizard.tsx) a `codes` ilyenkor figyelmen kívül
  * marad, függetlenül attól, hogy volt-e korábban beírt (majd elrejtett) sor.
  */
 export function StepDiagnostics({ value, onChange, onBack, onNext, nextLabel }: StepDiagnosticsProps) {

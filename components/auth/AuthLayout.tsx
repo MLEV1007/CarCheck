@@ -13,13 +13,13 @@ interface AuthLayoutProps {
  * Stripe design system (stripe.md) alapján:
  * - `{colors.canvas-soft}` (#f6f9fc) az oldal alapszíne
  * - halvány, elmosott gradiens-háló (cream / lavender / indigo / ruby) a felső sávban
- *   -- a márka "non-negotiable" hero eleme, itt visszafogott, auth-oldalhoz illő erősséggel
+ *  , a márka "non-negotiable" hero eleme, itt visszafogott, auth-oldalhoz illő erősséggel
  * - a `card-feature-light` komponens: fehér kártya, `rounded-lg` (12px), hairline keret, 32px padding
  */
 export function AuthLayout({ eyebrow, title, subtitle, children, footer }: AuthLayoutProps) {
   return (
     <div className="relative flex min-h-screen flex-col items-center bg-stripe-canvas-soft px-4 py-12">
-      {/* Gradiens-háló háttér -- a Stripe márka szignatúrája, nagyon tompítva, hogy egy B2B
+      {/* Gradiens-háló háttér, a Stripe márka szignatúrája, nagyon tompítva, hogy egy B2B
           admin belépőképernyőn ne legyen zavaró/agresszív, csak egy halvány atmoszférikus lehelet. */}
       <div
         aria-hidden
@@ -35,7 +35,7 @@ export function AuthLayout({ eyebrow, title, subtitle, children, footer }: AuthL
       </div>
 
       <div className="relative z-10 flex w-full flex-col items-center">
-        {/* CarPass logó -- a felhasználó által mellékelt referencia-design "light" (világos
+        {/* CarPass logó, a felhasználó által mellékelt referencia-design "light" (világos
             hátterű) variánsa, lásd `components/branding/CarPassLogo.tsx`. Nagyobb méret
             (52px), hogy az auth-oldal hero-eleme legyen, ne csak egy apró fejléc-jelvény. */}
         <div className="mb-10">

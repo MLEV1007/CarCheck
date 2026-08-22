@@ -12,16 +12,16 @@ export const metadata: Metadata = {
 const EFFECTIVE_DATE = '2026. augusztus 7.';
 
 /**
- * Adatkezelési tájékoztató (`/adatkezeles`) -- Stripe design system (stripe.md), mert
+ * Adatkezelési tájékoztató (`/adatkezeles`), Stripe design system (stripe.md), mert
  * ez jogi/settings jellegű, publikus, bejelentkezés nélkül elérhető felület (nincs
- * middleware-védelem rajta, lásd `middleware.ts` -- csak a `/dashboard`, `/inspections`,
+ * middleware-védelem rajta, lásd `middleware.ts`, csak a `/dashboard`, `/inspections`,
  * `/settings` előtagok védettek).
  *
  * **A dokumentum KÉT adatkezelési kört fed le, szándékosan élesen elválasztva (I./II.
  * rész), mert jogilag valóban két különböző szerepről van szó:**
- *   I. Mányi Levente EV. mint ADATKEZELŐ -- a CarPass-előfizető (vizsgáló cég /
+ *   I. Mányi Levente EV. mint ADATKEZELŐ, a CarPass-előfizető (vizsgáló cég /
  *      Menedzser / Átvizsgáló) saját fiók- és szolgáltatás-használati adatai.
- *   II. Mányi Levente EV. mint ADATFELDOLGOZÓ -- a publikus riporton (`/report/
+ *   II. Mányi Levente EV. mint ADATFELDOLGOZÓ, a publikus riporton (`/report/
  *       [public_token]`) esetlegesen megjelenő Megrendelői (autó vevője) adatok,
  *       amelyeknek az ADATKEZELŐJE maga az előfizető vizsgáló cég, mi csak technikai
  *       feldolgozóként tároljuk ezeket a cég megbízásából.
@@ -29,7 +29,7 @@ const EFFECTIVE_DATE = '2026. augusztus 7.';
  * A konkrét tartalom (adatkörök, jogalapok, megőrzési idő, adatfeldolgozók) a
  * ténylegesen létező adatbázis-sémára és kódra épül (lásd `SettingsForm.tsx`,
  * `20260806_inspector_and_client_fields.sql`, `20260803_organizations_rbac.sql`,
- * `app/api/account/delete/route.ts`, `.env.local.example` -- Supabase/Stripe/Gemini
+ * `app/api/account/delete/route.ts`, `.env.local.example`, Supabase/Stripe/Gemini
  * integrációk), NEM generikus sablon-szöveg.
  */
 export default function AdatkezelesPage() {
@@ -83,7 +83,7 @@ export default function AdatkezelesPage() {
               számlázási adatainál <b>Adatkezelőként</b>, (II) a vizsgálati riportokon
               esetlegesen megjelenő, az autót vásárló/megrendelő ügyfelek adatainál
               pedig kizárólag <b>Adatfeldolgozóként</b> (technikai közreműködőként) jár
-              el -- ott az Adatkezelő maga az előfizető vizsgáló cég. A két kört a
+              el, ott az Adatkezelő maga az előfizető vizsgáló cég. A két kört a
               tájékoztató I. és II. része külön tárgyalja.
             </Callout>
 
@@ -94,7 +94,7 @@ export default function AdatkezelesPage() {
                 ['Székhely / levelezési cím', '1033 Budapest, Hévízi út 29.'],
                 ['Adószám', '91557542-1-41'],
                 ['Adatvédelmi kapcsolattartó e-mail', 'info@buildmysite.hu'],
-                ['Szolgáltatás / domain', 'CarPass -- carpass.hu'],
+                ['Szolgáltatás / domain', 'CarPass, carpass.hu'],
               ]}
             />
             <P>
@@ -112,8 +112,8 @@ export default function AdatkezelesPage() {
                   regisztrál és előfizet a Szolgáltatásra.
                 </>,
                 <>
-                  <b>Megrendelő:</b> a Vizsgáló cég saját ügyfele -- jellemzően az
-                  átvizsgált autó tulajdonosa vagy vásárlója --, akinek a nevét,
+                  <b>Megrendelő:</b> a Vizsgáló cég saját ügyfele, jellemzően az
+                  átvizsgált autó tulajdonosa vagy vásárlója, akinek a nevét,
                   telefonszámát és/vagy e-mail címét a Vizsgáló cég opcionálisan
                   rögzítheti egy vizsgálathoz.
                 </>,
@@ -132,7 +132,7 @@ export default function AdatkezelesPage() {
             />
 
             <SectionTitle number="3">
-              I. rész -- Saját adatkezelésünk (Adatkezelőként): a Vizsgáló cégek és
+              I. rész, Saját adatkezelésünk (Adatkezelőként): a Vizsgáló cégek és
               felhasználóik fiók- és szolgáltatás-adatai
             </SectionTitle>
             <P>
@@ -158,7 +158,7 @@ export default function AdatkezelesPage() {
                   <b>Passkey (Face ID / Touch ID / biztonsági kulcs, WebAuthn
                   szabvány):</b> a beállítások oldalon regisztrálható gyorsbelépési
                   mód. <b>Az ujjlenyomat-/arcfelismerési biometrikus adat SOHA nem
-                  hagyja el az Ön eszközét</b> -- a szerverünkhöz kizárólag egy
+                  hagyja el az Ön eszközét</b>, a szerverünkhöz kizárólag egy
                   nyilvános kulcs és egy véletlenszerű azonosító (credential ID) kerül,
                   amelyekből a biometrikus mintázat nem állítható vissza. Ez nem
                   minősül a GDPR szerinti biometrikus (különleges kategóriájú)
@@ -215,7 +215,7 @@ export default function AdatkezelesPage() {
               a II. részben leírt adatfeldolgozói szabályok szerint kezelendő.
             </P>
             <P>
-              <b>Jogalap:</b> szerződés teljesítése -- a funkció a Vizsgáló cég aktív,
+              <b>Jogalap:</b> szerződés teljesítése, a funkció a Vizsgáló cég aktív,
               önkéntes kezdeményezésére fut le (6. cikk (1) b)).
             </P>
 
@@ -225,7 +225,7 @@ export default function AdatkezelesPage() {
               feldolgozása a Stripe (Stripe Payments Europe, Ltd., illetve a Stripe,
               Inc. csoport) bankkártya-elfogadó rendszerén keresztül történik. A
               bankkártyaadatokat (kártyaszám, lejárat, CVC) <b>mi soha nem látjuk és
-              nem tároljuk</b> -- azokat közvetlenül a Stripe PCI-DSS tanúsítvánnyal
+              nem tároljuk</b>, azokat közvetlenül a Stripe PCI-DSS tanúsítvánnyal
               rendelkező rendszere kezeli. Hozzánk a fizetés eredménye, a számlázási
               név/cím (ha megadásra kerül) és a tranzakció azonosítója jut el.
             </P>
@@ -264,7 +264,7 @@ export default function AdatkezelesPage() {
               titoktartásra kötelezett személyek férnek hozzá.
             </P>
             <P>
-              <b>Jogalap:</b> jogos érdek -- a Szolgáltatás biztonságos üzemeltetése,
+              <b>Jogalap:</b> jogos érdek, a Szolgáltatás biztonságos üzemeltetése,
               visszaélések megelőzése, ügyfélszolgálat (6. cikk (1) f)).
             </P>
 
@@ -290,7 +290,7 @@ export default function AdatkezelesPage() {
 
             <SubTitle>3.9. Fiók törlése</SubTitle>
             <P>
-              A Beállítások -- Veszélyzóna menüpontban a felhasználó saját fiókja
+              A Beállítások, Veszélyzóna menüpontban a felhasználó saját fiókja
               bármikor, önállóan, végleg törölhető (e-mail cím megerősítésével). A
               törlés a bejelentkezési fiókot és a hozzá kötött személyes adatokat
               (e-mail, hitelesítési adatok) véglegesen megszünteti.{' '}
@@ -298,14 +298,14 @@ export default function AdatkezelesPage() {
                 A korábban rögzített vizsgálatok (autóadatok, fotók, riportok) a
                 Vizsgáló cég (szervezet) üzleti adataként megmaradnak
               </b>{' '}
-              -- ez szándékos, mert ezek nem kizárólag a törölt személyhez, hanem a
+             , ez szándékos, mert ezek nem kizárólag a törölt személyhez, hanem a
               céghez, mint önálló üzleti/számviteli irathoz tartoznak; a törölt
               felhasználóra való hivatkozás (pl. &bdquo;Átvizsgálást végezte&rdquo;
               mező) ilyenkor automatikusan eltávolításra kerül a rekordból.
             </P>
 
             <SectionTitle number="4">
-              II. rész -- Adatfeldolgozói szerepünk: a Megrendelők (autó vevője)
+              II. rész, Adatfeldolgozói szerepünk: a Megrendelők (autó vevője)
               adatai a publikus riporton
             </SectionTitle>
             <Callout>
@@ -321,9 +321,9 @@ export default function AdatkezelesPage() {
             <SubTitle>4.1. Milyen adatokat érint</SubTitle>
             <List
               items={[
-                <>A vizsgált gépjármű adatai (márka, modell, évjárat, alvázszám/VIN, rendszám, km óra állás) -- ezek jellemzően nem a Megrendelő, hanem a jármű adatai.</>,
-                <>A Megrendelő neve, telefonszáma és e-mail címe -- a Vizsgáló cég döntése alapján, <b>opcionálisan</b> rögzíthető egy vizsgálathoz.</>,
-                <>A vizsgálat során készült fotók és videók (sérülések, felszereltség, általános állapot) -- ezek elsődlegesen a járművet ábrázolják, előfordulhat, hogy háttérben személyt is rögzítenek.</>,
+                <>A vizsgált gépjármű adatai (márka, modell, évjárat, alvázszám/VIN, rendszám, km óra állás), ezek jellemzően nem a Megrendelő, hanem a jármű adatai.</>,
+                <>A Megrendelő neve, telefonszáma és e-mail címe, a Vizsgáló cég döntése alapján, <b>opcionálisan</b> rögzíthető egy vizsgálathoz.</>,
+                <>A vizsgálat során készült fotók és videók (sérülések, felszereltség, általános állapot), ezek elsődlegesen a járművet ábrázolják, előfordulhat, hogy háttérben személyt is rögzítenek.</>,
               ]}
             />
 
@@ -337,13 +337,13 @@ export default function AdatkezelesPage() {
             </P>
             <P>
               <b>A Megrendelő elérhetőségi adatai (telefon, e-mail) alapértelmezetten
-              NEM jelennek meg a publikus riporton</b> -- ehhez a Vizsgáló cégnek a
+              NEM jelennek meg a publikus riporton</b>, ehhez a Vizsgáló cégnek a
               vizsgálat véglegesítésekor kifejezetten be kell kapcsolnia a
               &bdquo;Megrendelő adatainak megjelenítése&rdquo; kapcsolót. Ez a
               korlátozás szerveroldalon (nem csak a felületen) érvényesül: kikapcsolt
               állapotban a Megrendelő adatai a hálózati válaszban sem szerepelnek. Az
-              Átvizsgáló nevének megjelenítése -- mivel az szakmai/bizalomépítő adat,
-              nem a Megrendelőé -- alapértelmezetten bekapcsolt, de ez is
+              Átvizsgáló nevének megjelenítése, mivel az szakmai/bizalomépítő adat,
+              nem a Megrendelőé, alapértelmezetten bekapcsolt, de ez is
               kikapcsolható.
             </P>
 
@@ -351,8 +351,8 @@ export default function AdatkezelesPage() {
             <P>
               Mivel a Vizsgáló cég e körben önálló Adatkezelő, <b>rá hárul a
               felelősség</b>, hogy a saját Megrendelőjét a vonatkozó jogszabályok
-              szerint tájékoztassa arról, hogy adatait rögzíti és -- a fenti kapcsoló
-              bekapcsolása esetén -- egy nyilvánosan (bejelentkezés nélkül) elérhető
+              szerint tájékoztassa arról, hogy adatait rögzíti és, a fenti kapcsoló
+              bekapcsolása esetén, egy nyilvánosan (bejelentkezés nélkül) elérhető
               linken közzéteszi, és hogy ehhez szükség esetén beszerezze a
               Megrendelő hozzájárulását vagy más megfelelő jogalapot biztosítson.
               Javasoljuk Vizsgáló partnereinknek, hogy a Megrendelővel kötött
@@ -364,13 +364,13 @@ export default function AdatkezelesPage() {
             <P>
               A riportadatokat a Vizsgáló cég előfizetői fiókjának/szervezetének
               fennállásáig, illetve a Vizsgáló cég kifejezett törlési kérelméig
-              tároljuk -- a törlés ütemezéséről és módjáról a Vizsgáló cég (mint
+              tároljuk, a törlés ütemezéséről és módjáról a Vizsgáló cég (mint
               Adatkezelő) rendelkezik, ezt a Beállítások felületén saját maga
               elvégezheti (adott vizsgálat törlése), vagy tőlünk kérheti.
             </P>
 
             <SectionTitle number="5">
-              Közös rendelkezések -- adattovábbítás, címzettek
+              Közös rendelkezések, adattovábbítás, címzettek
             </SectionTitle>
             <P>
               A Szolgáltatás működtetéséhez az alábbi adatfeldolgozókat/külső
@@ -381,11 +381,11 @@ export default function AdatkezelesPage() {
               items={[
                 [
                   'Supabase, Inc.',
-                  'Adatbázis, hitelesítés és fájltárhely (fotók/videók). Az adatbázis és a tárhely az Európai Unió területén (Frankfurt, Németország -- AWS eu-central-1 régió) van elhelyezve.',
+                  'Adatbázis, hitelesítés és fájltárhely (fotók/videók). Az adatbázis és a tárhely az Európai Unió területén (Frankfurt, Németország, AWS eu-central-1 régió) van elhelyezve.',
                 ],
                 [
                   'Google Ireland Limited / Google LLC',
-                  'Gemini API -- az AI-funkciókhoz beküldött szöveg/kép feldolgozása (lásd 3.4. pont). Az adattovábbítás az Európai Gazdasági Térségen kívülre (USA) is történhet, a GDPR 46. cikke szerinti megfelelő garanciák (általános adatvédelmi szerződési feltételek -- Standard Contractual Clauses) mellett.',
+                  'Gemini API, az AI-funkciókhoz beküldött szöveg/kép feldolgozása (lásd 3.4. pont). Az adattovábbítás az Európai Gazdasági Térségen kívülre (USA) is történhet, a GDPR 46. cikke szerinti megfelelő garanciák (általános adatvédelmi szerződési feltételek, Standard Contractual Clauses) mellett.',
                 ],
                 [
                   'Stripe Payments Europe, Ltd. / Stripe, Inc.',
@@ -407,9 +407,9 @@ export default function AdatkezelesPage() {
             <SectionTitle number="6">Adatbiztonság</SectionTitle>
             <List
               items={[
-                <>Az adatbázis <b>sor-szintű biztonsági szabályokkal (Row-Level Security)</b> védett minden táblán -- egy előfizető kizárólag a saját szervezetéhez tartozó adatokhoz férhet hozzá, más cég adataihoz technikailag sem.</>,
+                <>Az adatbázis <b>sor-szintű biztonsági szabályokkal (Row-Level Security)</b> védett minden táblán, egy előfizető kizárólag a saját szervezetéhez tartozó adatokhoz férhet hozzá, más cég adataihoz technikailag sem.</>,
                 <>Az adatforgalom végponttól végpontig titkosított (HTTPS/TLS).</>,
-                <>Jelszó nélküli hitelesítés (Magic Link, Passkey) -- csökkenti a jelszó-alapú fiókfeltörés kockázatát.</>,
+                <>Jelszó nélküli hitelesítés (Magic Link, Passkey), csökkenti a jelszó-alapú fiókfeltörés kockázatát.</>,
                 <>A fiók végleges törléséhez szükséges, RLS-t megkerülő rendszerkulcs kizárólag a szerveroldalon, korlátozott hozzáféréssel érhető el.</>,
               ]}
             />
@@ -424,7 +424,7 @@ export default function AdatkezelesPage() {
                 <><b>Az adatkezelés korlátozásához való jog</b> (18. cikk).</>,
                 <><b>Adathordozhatósághoz való jog</b> (20. cikk): tagolt, géppel olvasható formátumban kérheti a rá vonatkozó adatokat.</>,
                 <><b>Tiltakozás joga</b> (21. cikk) jogos érdeken alapuló adatkezelés ellen.</>,
-                <>Amennyiben a Vizsgáló cég ügyfele (Megrendelő), és a fentiek a saját adataira vonatkoznak, e jogokat elsődlegesen a <b>Vizsgáló cégnél, mint Adatkezelőnél</b> gyakorolhatja -- mi feldolgozóként segítjük ennek teljesítését.</>,
+                <>Amennyiben a Vizsgáló cég ügyfele (Megrendelő), és a fentiek a saját adataira vonatkoznak, e jogokat elsődlegesen a <b>Vizsgáló cégnél, mint Adatkezelőnél</b> gyakorolhatja, mi feldolgozóként segítjük ennek teljesítését.</>,
               ]}
             />
             <P>
@@ -467,7 +467,7 @@ export default function AdatkezelesPage() {
         </div>
 
         <p className="mt-8 text-center font-sohne text-[13px] font-light text-stripe-ink-mute">
-          &copy; {new Date().getFullYear()} CarPass -- Mányi Levente EV.
+          &copy; {new Date().getFullYear()} CarPass, Mányi Levente EV.
         </p>
       </main>
     </div>
@@ -475,7 +475,7 @@ export default function AdatkezelesPage() {
 }
 
 /* -------------------------------------------------------------------------------
- * Belső, csak ezen az oldalon használt tipográfiai segédkomponensek -- a projektben
+ * Belső, csak ezen az oldalon használt tipográfiai segédkomponensek, a projektben
  * nincs telepítve @tailwindcss/typography plugin, ezért a jogi szöveg egységes
  * megjelenítését (Stripe design tokenek: font-sohne, stripe-ink/-ink-mute, hairline
  * elválasztók) kézzel, ezekkel a wrapperekkel biztosítjuk.

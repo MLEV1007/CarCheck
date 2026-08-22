@@ -9,16 +9,16 @@ import { useInspectionId } from '@/components/inspections/wizard/InspectionIdCon
 import { iconHitSlopClass } from '@/components/ui/IconButton';
 
 interface VoiceInputButtonProps {
-  /** A cél mező (textarea/input) JELENLEGI tartalma -- a felismert szöveg ehhez fűződik. */
+  /** A cél mező (textarea/input) JELENLEGI tartalma, a felismert szöveg ehhez fűződik. */
   value: string;
-  /** A cél mező setter-e -- a TELJES (bővített) szöveggel hívódik minden felismerésnél. */
+  /** A cél mező setter-e, a TELJES (bővített) szöveggel hívódik minden felismerésnél. */
   onChange: (nextValue: string) => void;
   className?: string;
   /**
-   * "Auto-Trigger AI Diktálás" lépés (2026-08-02) -- ha meg van adva, a mikrofon
+   * "Auto-Trigger AI Diktálás" lépés (2026-08-02), ha meg van adva, a mikrofon
    * KIKAPCSOLÁSAKOR ez hívódik (a diktálás-indításkori mező-tartalommal és az EBBEN a
    * session-ben ténylegesen felismert nyers szöveg-szegmenssel), és EZ TELJESEN
-   * KIVÁLTJA az alapértelmezett nyelvhelyesség-javítást lent -- a hívó fél felelőssége a
+   * KIVÁLTJA az alapértelmezett nyelvhelyesség-javítást lent, a hívó fél felelőssége a
    * mező tényleges frissítése (`onChange`) és/vagy bármilyen egyéb AI-hívás elindítása.
    * Példa: `StepEquipment.tsx` AI diktálás kártyája ezzel indítja el AUTOMATIKUSAN a
    * `/api/ai/parse-equipment` feldolgozást a diktálás végén, "Feldolgozás AI-val" gombra
@@ -40,19 +40,19 @@ interface VoiceInputButtonProps {
  * Univerzális, 100% ingyenes, KIZÁRÓLAG magyar nyelvű (hu-HU) hangalapú diktáló gomb a
  * natív böngésző Web Speech API-jával (PROJEKT_INSTRUKCIOK.md "Hangalapú Jegyzetelés"
  * lépés). A hosszabb beviteli mezők (Textarea/Notes) jobb felső/alsó sarkába kerül,
- * input addon-ként -- lásd `FormControls.tsx` `TextareaField`, `DamageCanvas.tsx`,
+ * input addon-ként, lásd `FormControls.tsx` `TextareaField`, `DamageCanvas.tsx`,
  * `StepDiagnostics.tsx`.
  *
  * **"Auto-Trigger AI Diktálás" lépés (2026-08-02):** korábban a diktálás vége nem
- * indított semmilyen automatikus utófeldolgozást -- a felhasználónak minden mezőnél
+ * indított semmilyen automatikus utófeldolgozást, a felhasználónak minden mezőnél
  * kézzel kellett rendbe tennie/feldolgoznia a nyersen felismert szöveget. Mostantól a
  * mikrofon KIKAPCSOLÁSAKOR (nem minden `onresult`-nál, csak EGYSZER, a session végén)
- * automatikusan lefut egy utófeldolgozás -- lásd `onDictationEnd`/`autoFixGrammar`
+ * automatikusan lefut egy utófeldolgozás, lásd `onDictationEnd`/`autoFixGrammar`
  * propok fent a pontos szabályokért. Hiba esetén a mezőben már ott lévő, élőben
- * felismert NYERS szöveg marad -- egy sikertelen AI-hívás SOSEM okoz adatvesztést.
+ * felismert NYERS szöveg marad, egy sikertelen AI-hívás SOSEM okoz adatvesztést.
  *
  * Graceful fallback: ha a böngésző NEM támogatja a Web Speech API-t (pl. Firefox, vagy
- * régebbi Safari), a komponens `null`-t rendereli -- a mező diktálás nélkül, sima
+ * régebbi Safari), a komponens `null`-t rendereli, a mező diktálás nélkül, sima
  * szövegbeviteli mezőként működik tovább, semmi nem törik el.
  */
 export function VoiceInputButton({
@@ -66,7 +66,7 @@ export function VoiceInputButton({
   const { notifyInsufficientCredits } = useInsufficientCredits();
   const inspectionId = useInspectionId();
 
-  /** Alapértelmezett diktálás-vége viselkedés -- KIZÁRÓLAG akkor fut, ha a hívó fél NEM
+  /** Alapértelmezett diktálás-vége viselkedés, KIZÁRÓLAG akkor fut, ha a hívó fél NEM
    * adott meg egyedi `onDictationEnd`-et. Lásd a `/api/ai/fix-grammar` route JSDoc-ját a
    * pontos motivációért/mintáért. */
   async function handleDefaultDictationEnd(sessionText: string, baseValueAtStart: string) {
@@ -80,7 +80,7 @@ export function VoiceInputButton({
         body: JSON.stringify({ text: sessionText, inspectionId }),
       });
 
-      // 402 (INSUFFICIENT_AI_QUOTA) -- lásd `InsufficientCreditsProvider.tsx`. A mezőben már
+      // 402 (INSUFFICIENT_AI_QUOTA), lásd `InsufficientCreditsProvider.tsx`. A mezőben már
       // ott van az élő, nyers felismert szöveg, ezért itt is (a többi hibaágnál megszokott
       // módon) CSENDBEN visszaesünk arra, csak a modalt nyitjuk meg extra jelzésként, hogy a
       // felhasználó tudja, MIÉRT nem futott le a nyelvhelyesség-javítás.
@@ -94,12 +94,12 @@ export function VoiceInputButton({
       if (response.ok && data?.success && data.text) {
         onChange(joinDictatedText(baseValueAtStart, data.text));
       }
-      // Sikertelen válasz esetén CSENDBEN elnyeljük a hibát -- a mezőben már ott van az
+      // Sikertelen válasz esetén CSENDBEN elnyeljük a hibát, a mezőben már ott van az
       // élő, nyers felismert szöveg (a `useSpeechToText` `onresult`-ja folyamatosan
       // frissítette diktálás közben), tehát a nyelvhelyesség-javítás sikertelensége NEM
       // jár adatvesztéssel, csak a mező a nyers (nem finomított) formában marad.
     } catch {
-      // Lásd fent -- hálózati hiba esetén is csendes fallback a nyers szövegre.
+      // Lásd fent, hálózati hiba esetén is csendes fallback a nyers szövegre.
     } finally {
       setIsFixingGrammar(false);
     }
@@ -136,7 +136,7 @@ export function VoiceInputButton({
         aria-pressed={isListening}
         className={cn(
           // Érintési célterület: a vizuális kör 28px marad, egy láthatatlan hit-slop
-          // pszeudo-elem bővíti 44x44px-re -- lásd docs/ux-touch-targets-plan-2026-08-14.md A) pont.
+          // pszeudo-elem bővíti 44x44px-re, lásd docs/ux-touch-targets-plan-2026-08-14.md A) pont.
           'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60',
           iconHitSlopClass(28),
           isListening ? 'animate-pulse bg-red-500 text-white' : 'bg-slate-100 text-slate-400 hover:text-slate-600'

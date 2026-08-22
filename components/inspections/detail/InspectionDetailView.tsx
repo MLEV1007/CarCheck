@@ -89,7 +89,7 @@ interface InspectionDetailViewProps {
   tireGeneralInfo: TireGeneralInfoState;
   damages: DamagePointState[];
   finalAssessment: FinalAssessmentState;
-  /** Riport küszöbértékek (2026-08-07) -- lásd `InspectionWizard.tsx` JSDoc-ját.
+  /** Riport küszöbértékek (2026-08-07), lásd `InspectionWizard.tsx` JSDoc-ját.
    * Alapértéke `DEFAULT_REPORT_THRESHOLDS`. */
   reportThresholds?: ReportThresholds;
 }
@@ -103,12 +103,12 @@ const FEATURE_ICON_CLASS = {
 
 /**
  * Befejezett vizsgálat belső szakértői adatlapja (`/inspections/[id]`, ha a
- * vizsgálat státusza 'completed' -- lásd app/inspections/[id]/page.tsx elágazása).
+ * vizsgálat státusza 'completed', lásd app/inspections/[id]/page.tsx elágazása).
  * Linear Dark Design Style, ugyanazok a tokenek és komponens-minták (StatusBadge,
  * PaintStatusBadge), mint a Dashboardon és a wizard Összegzés lépésén.
  *
  * Akciók: publikus riport megnyitása új lapon, link vágólapra másolása (toast +
- * inline visszajelzéssel), illetve visszaállítás piszkozatba -- ez utóbbi a
+ * inline visszajelzéssel), illetve visszaállítás piszkozatba, ez utóbbi a
  * `get_public_report` RPC-t (2026-07-31-es migráció óta) is inaktiválja a linken,
  * amíg a vizsgáló újra nem publikálja, így a régi ügyfél-link nem mutat félkész adatot.
  */
@@ -157,7 +157,7 @@ export function InspectionDetailView({
       setTimeout(() => setCopied(false), 2000);
       setTimeout(() => setShowToast(false), 4000);
     } catch {
-      // Clipboard API nem elérhető -- a user a "Publikus riport megtekintése" gombbal
+      // Clipboard API nem elérhető, a user a "Publikus riport megtekintése" gombbal
       // manuálisan is másolhat a böngésző címsorából.
     }
   }
@@ -190,7 +190,7 @@ export function InspectionDetailView({
     }
 
     // A szülő Server Component (app/inspections/[id]/page.tsx) az `inspections.status`
-    // alapján ágazik el draft/completed nézet között -- egy `router.refresh()` újra
+    // alapján ágazik el draft/completed nézet között, egy `router.refresh()` újra
     // lekérdezi a szervertől, és mostantól a wizardot fogja renderelni ugyanezen az URL-en.
     router.refresh();
   }
@@ -258,7 +258,7 @@ export function InspectionDetailView({
 
         <p className="rounded-md border border-linear-hairline bg-linear-surface-1 px-3 py-2.5 text-[12px] text-linear-ink-subtle">
           A "Visszaállítás piszkozatba" a publikus riport linkjét is inaktiválja, amíg újra nem publikálod a
-          vizsgálatot -- így az ügyfél nem lát félkész adatot szerkesztés közben.
+          vizsgálatot, így az ügyfél nem lát félkész adatot szerkesztés közben.
         </p>
 
         <div className="rounded-lg border border-linear-hairline bg-linear-surface-1 p-5">
@@ -392,7 +392,7 @@ export function InspectionDetailView({
           {diagnostics.noDtc ? (
             <p className="mt-2 inline-flex items-center gap-1.5 text-[13px] text-linear-success">
               <CheckCircle2 className="h-3.5 w-3.5" />
-              OBD Tiszta -- nincs hibakód
+              OBD Tiszta, nincs hibakód
             </p>
           ) : diagnosticCodes.length === 0 ? (
             <p className="mt-2 text-[13px] text-linear-ink-subtle">Nincs rögzített hibakód.</p>
@@ -582,7 +582,7 @@ export function InspectionDetailView({
           finalAssessment.costNotes.trim() === '' &&
           finalAssessment.summaryText.trim() === '' ? (
             <p className="mt-2 text-[13px] text-linear-ink-subtle">
-              Nincs megadva -- ez a szekció opcionális, üresen a publikus riporton nem jelenik meg.
+              Nincs megadva, ez a szekció opcionális, üresen a publikus riporton nem jelenik meg.
             </p>
           ) : (
             <div className="mt-2 flex flex-col gap-2 text-[13px]">
@@ -621,11 +621,11 @@ function DetailField({
   value: string;
   mono?: boolean;
   /** 17 karakteres VIN-hez: a 2-oszlopos mobil rácsban (`grid-cols-2 sm:grid-cols-4`) teljes
-   * szélességű sort kap, hogy ne csússzon/lógjon bele a szomszédos mezőbe -- `sm:` felett a
+   * szélességű sort kap, hogy ne csússzon/lógjon bele a szomszédos mezőbe, `sm:` felett a
    * 4-oszlopos elrendezésben már mindenképp elfér a saját cellájában. */
   fullWidth?: boolean;
   /** Ha meg van adva, ez jelenik meg a `value` sima szövege HELYETT (pl. a Rendszám mezőnél
-   * a `LicensePlateBadge` -- lásd "Rendszám felségjelzés" lépés). */
+   * a `LicensePlateBadge`, lásd "Rendszám felségjelzés" lépés). */
   valueNode?: ReactNode;
 }) {
   return (

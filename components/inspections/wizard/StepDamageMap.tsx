@@ -13,23 +13,23 @@ interface StepDamageMapProps {
   onChange: (value: DamagePointState[]) => void;
   onBack: () => void;
   onNext: () => void;
-  /** A KÖVETKEZŐ lépés rövid címe -- lásd StepCarInfo.tsx ugyanerről a propról. */
+  /** A KÖVETKEZŐ lépés rövid címe, lásd StepCarInfo.tsx ugyanerről a propról. */
   nextLabel: string;
 }
 
 /**
- * LÉPÉS -- Sérülés- és Hibatérkép modul: a Festékvastagság-mérő "Szabadkézi (Free-form
- * Canvas)" mintáját követi (`DamageCanvas`, `mode="edit"`) -- nincs előre definiált
+ * LÉPÉS, Sérülés- és Hibatérkép modul: a Festékvastagság-mérő "Szabadkézi (Free-form
+ * Canvas)" mintáját követi (`DamageCanvas`, `mode="edit"`), nincs előre definiált
  * karosszéria-elem, a felhasználó egy `CarViewSwitcher` fülváltóval kiválasztott
- * autó-nézet (elöl/bal oldal/hátul/jobb oldal/felül -- lásd `lib/inspections/carViews.ts`,
+ * autó-nézet (elöl/bal oldal/hátul/jobb oldal/felül, lásd `lib/inspections/carViews.ts`,
  * 2026-08-17) TETSZŐLEGES pontjára kattinthat egy sérülés/esztétikai hiba felvételéhez,
  * amihez kategóriát (ill. "Egyéb" esetén egy rövid megnevezést), opcionális leírást és
- * opcionális fotót is rögzíthet -- lásd `DamageCanvas.tsx` JSDoc-ját a "cím" mező 2026-08-04-i
+ * opcionális fotót is rögzíthet, lásd `DamageCanvas.tsx` JSDoc-ját a "cím" mező 2026-08-04-i
  * egyszerűsítéséről. Egy meglévő, színes markerre kattintva a pont módosítható vagy
  * törölhető.
  *
  * **AI sérülés-felismerés fotóból (2026-08-16):** a `DamageCanvas` `mode="edit"`-ben egy
- * beépített "AI sérülés-felismerés fotóból" panelt is renderel (`/api/ai/scan-damage`) --
+ * beépített "AI sérülés-felismerés fotóból" panelt is renderel (`/api/ai/scan-damage`),
  * ugyanaz a rendszer, mint a `StepDefects.tsx` "Hibák és Média" AI-elemzése, KIEGÉSZÍTVE egy
  * hely-becsléssel, ami a jóváhagyás után a MEGLÉVŐ szerkesztő-popovert nyitja meg előre
  * kitöltve, a kép megfelelő pontján. Lásd a `DamageCanvas.tsx` komponens-JSDoc-ját a teljes
@@ -52,7 +52,7 @@ export function StepDamageMap({ value, onChange, onBack, onNext, nextLabel }: St
       <HintCallout id="damage-map" title="Tipp: jelöld be a látható sérüléseket, vagy kérj AI javaslatot fotóból">
         Kattints a képen pontosan arra a helyre, ahol a karcolást/horpadást találtad. A meglévő
         jelölőre kattintva bármikor módosíthatod vagy törölheted. Vagy tölts fel egy fotót az "AI
-        sérülés-felismerés fotóból" panelben -- a modell javaslatot ad a kategóriára, a leírásra,
+        sérülés-felismerés fotóból" panelben, a modell javaslatot ad a kategóriára, a leírásra,
         és nagyjából a helyre is; ezt mindig ellenőrizd, mielőtt elfogadod és mented.
       </HintCallout>
 
@@ -71,13 +71,13 @@ export function StepDamageMap({ value, onChange, onBack, onNext, nextLabel }: St
             <li key={point.id} className="flex items-center gap-3 px-4 py-2.5">
               <span className="text-[13px] text-linear-ink-subtle">{index + 1}.</span>
               {/* Csak akkor jelenik meg külön szöveg, ha a cím ELTÉR a kategória
-                  feliratától (lásd DamageCanvas.tsx JSDoc) -- fix kategóriáknál a kettő
+                  feliratától (lásd DamageCanvas.tsx JSDoc), fix kategóriáknál a kettő
                   megegyezik, azt fölöslegesen duplikálná ez a lista. */}
               <span className="min-w-0 flex-1 truncate text-[13px] text-linear-ink">
                 {point.title !== DAMAGE_TYPE_LABEL[point.type] ? point.title : ''}
               </span>
               <span className="shrink-0 text-[12px] text-linear-ink-subtle">{DAMAGE_TYPE_LABEL[point.type]}</span>
-              {/* Melyik nézeten ül a pont -- fontos, mióta 5 külön fül létezik (korábban egy
+              {/* Melyik nézeten ül a pont, fontos, mióta 5 külön fül létezik (korábban egy
                   kompozit képen minden pont "látszott", most csak az adott fülre váltva). */}
               <span className="shrink-0 rounded-full border border-linear-hairline-strong px-2 py-0.5 text-[11px] text-linear-ink-subtle">
                 {CAR_VIEW_LABEL[point.view ?? DEFAULT_CAR_VIEW]}

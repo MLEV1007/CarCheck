@@ -5,16 +5,16 @@ import { DEFAULT_LICENSE_PLATE_COUNTRY } from '@/lib/inspections/constants';
 interface LicensePlateBadgeProps {
   value: string | null | undefined;
   className?: string;
-  /** A kék sáv betűkódja (pl. "H", "SK", "Egyéb") -- lásd `lib/inspections/constants.ts`
+  /** A kék sáv betűkódja (pl. "H", "SK", "Egyéb"), lásd `lib/inspections/constants.ts`
    * `LICENSE_PLATE_COUNTRIES`. Ha nincs megadva, `DEFAULT_LICENSE_PLATE_COUNTRY` ("H") a
-   * fallback -- ez csak a modul bevezetése ELŐTTI, `license_plate_country` nélküli
+   * fallback, ez csak a modul bevezetése ELŐTTI, `license_plate_country` nélküli
    * korábbi adatoknál fordulhat elő ténylegesen (a DB oszlop `not null default 'H'`). */
   countryCode?: string | null;
-  /** `sm` a szűk helyeken (Dashboard táblázat sora, fix `h-7` magassággal) -- `md`
+  /** `sm` a szűk helyeken (Dashboard táblázat sora, fix `h-7` magassággal), `md`
    * (alapértelmezett) mindenhol máshol (Wizard Áttekintés, `/inspections/[id]` adatlap,
    * Publikus Riport hero). */
   size?: 'sm' | 'md';
-  /** Alapértelmezetten `true` -- a kék sávban a betűkód mellett megjelenő EU-csillag.
+  /** Alapértelmezetten `true`, a kék sávban a betűkód mellett megjelenő EU-csillag.
    * A Publikus Riport hero-ja (`ReportHero.tsx`) `false`-ra állítja (felhasználói kérés,
    * 2026-08-06): az ügyfélnek szánt riporton a csillag feleslegesnek/zajosnak hatott,
    * a szakértői felületeken (Wizard Áttekintés, `/inspections/[id]`) VÁLTOZATLANUL
@@ -23,9 +23,9 @@ interface LicensePlateBadgeProps {
 }
 
 /**
- * Rendszám "felségjelzés" -- az EU rendszámtáblák bal oldali kék sávjának vizuális utánzata
+ * Rendszám "felségjelzés", az EU rendszámtáblák bal oldali kék sávjának vizuális utánzata
  * (ország-jelölés betűkóddal + csillag), a rendszám szövege mellett. Design-rendszer-FÜGGETLEN,
- * direkt ezért él a `components/ui/`-ban (`Button.tsx`/`Input.tsx` mintájára) -- Linear dark
+ * direkt ezért él a `components/ui/`-ban (`Button.tsx`/`Input.tsx` mintájára), Linear dark
  * app (Wizard Áttekintés, `/inspections/[id]`) és BMW light Publikus Riport egyaránt
  * UGYANEZT használja: egy fizikai rendszámtábla mindig fehér/kék/fekete, FÜGGETLENÜL a
  * körülötte lévő felület design rendszerétől vagy világos/sötét témájától, ezért itt
@@ -33,25 +33,25 @@ interface LicensePlateBadgeProps {
  * (`slate-*`, `#003399`, `#ffcc00`).
  *
  * **"Rendszám komponens letisztítása" lépés (2026-08-02):** a Dashboard LISTA nézete
- * (`InspectionsExplorer.tsx`) mostantól NEM ezt a komponenst használja -- a szűk,
+ * (`InspectionsExplorer.tsx`) mostantól NEM ezt a komponenst használja, a szűk,
  * sűrűn egymás mellett futó táblázat-oszlopban a felségjelzés-sávos jelvény szétesett/
  * nehezen olvashatóvá vált, ezért ott egy sokkal egyszerűbb, inline `border-2
  * border-blue-600` jelvény váltotta fel. Ugyanekkor a `StepCarInfo.tsx` (Wizard 1.
- * lépés, "Jármű adatok") ŰRLAPJÁBÓL is eltűnt -- a Rendszám mező alatt korábban
+ * lépés, "Jármű adatok") ŰRLAPJÁBÓL is eltűnt, a Rendszám mező alatt korábban
  * megjelenő élő előnézeti jelvény felesleges duplikációnak (kétszer megjelenő
- * rendszám -- input mező ÉS grafikai előnézet egymás alatt) hatott, egyetlen sima
+ * rendszám, input mező ÉS grafikai előnézet egymás alatt) hatott, egyetlen sima
  * szöveges input maradt. Ez a komponens a `StepSummary.tsx` Áttekintés lépésen, a
  * `/inspections/[id]` adatlapon (`InspectionDetailView.tsx`) és a publikus riport
  * hero-ján (`ReportHero.tsx`) változatlanul él tovább.
  *
  * A kék sáv EGY SORBAN (nem stack-elve) jeleníti meg a csillagot + a betűkódot, mert a
- * `countryCode` 1-5 karakter hosszú is lehet ("H"-tól "Egyéb"-ig) -- egy vízszintes
+ * `countryCode` 1-5 karakter hosszú is lehet ("H"-tól "Egyéb"-ig), egy vízszintes
  * elrendezés magától szélesedik a tartalommal, míg egy függőlegesen egymásra rakott
  * elrendezésnél a hosszabb kódok (pl. "Egyéb") kicsorbultak/tördelődtek volna a kis
  * badge-ben. A `min-w-[24px]`/`min-w-[28px]` garantálja, hogy egyetlen karakteres kódnál
  * ("H") se legyen aránytalanul keskeny a sáv.
  *
- * A rendszám-szöveg `min-w-0 truncate`-et kap -- egy szokatlanul hosszú (pl. teszt-)
+ * A rendszám-szöveg `min-w-0 truncate`-et kap, egy szokatlanul hosszú (pl. teszt-)
  * rendszám ellipszisre vágódik, sosem feszíti szét/lógat ki a badge dobozából.
  *
  * Ha nincs megadva rendszám, egyszerű "—" jelenik meg badge nélkül (ugyanaz a fallback,

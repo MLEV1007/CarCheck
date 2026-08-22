@@ -5,7 +5,7 @@ import type { QuotaBalance } from '@/types/quotas';
 
 /**
  * Vizsgálati kvóta levonó végpont (PROJEKT_INSTRUKCIOK.md "Keret-ellenőrző és fogyasztó
- * logika" lépés, 2026-08-04) -- a `InspectionWizard.tsx` ('use client', tehát nem hívhatja
+ * logika" lépés, 2026-08-04), a `InspectionWizard.tsx` ('use client', tehát nem hívhatja
  * közvetlenül a `lib/quotas.ts` szerver-oldali, `next/headers`-re épülő függvényeit) egy
  * VADONATÚJ vizsgálat ELSŐ sikeres mentése UTÁN hívja ezt a route-ot (lásd
  * `InspectionWizard.tsx` `handleSubmit`, `!isEditMode` ág), hogy ténylegesen levonja a

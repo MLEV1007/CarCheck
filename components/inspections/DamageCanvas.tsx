@@ -18,32 +18,32 @@ import type { DamagePointState, DamageType } from '@/lib/inspections/types';
 interface DamageCanvasProps {
   points: DamagePointState[];
   /** `edit`: kattintásra a képen BÁRHOL új sérülés-pontot vehet fel (Wizard), egy meglévő
-   * markerre kattintva pedig szerkesztheti/törölheti azt -- UGYANAZ az interakciós minta,
+   * markerre kattintva pedig szerkesztheti/törölheti azt, UGYANAZ az interakciós minta,
    * mint a `PaintCanvas.tsx`-nél.
-   * `view`: kizárólag olvasásra -- kattintásra a meglévő pont adatai (kategória, cím,
+   * `view`: kizárólag olvasásra, kattintásra a meglévő pont adatai (kategória, cím,
    * leírás, fotó) megtekinthetők, de nem hozható létre új pont és nem módosítható/törölhető
    * a meglévő (Publikus riport). */
   mode: 'edit' | 'view';
-  /** KÖTELEZŐ `edit` módban -- minden pont-hozzáadás/-módosítás/-törlés után hívódik a
+  /** KÖTELEZŐ `edit` módban, minden pont-hozzáadás/-módosítás/-törlés után hívódik a
    * TELJES, frissített tömbbel. */
   onChange?: (points: DamagePointState[]) => void;
   /** `dark` = Linear design tokenek (Wizard), `light` = BMW design tokenek (Publikus riport). */
   theme: 'dark' | 'light';
   className?: string;
-  /** `view` módban, ha a felhasználó a modalban a fotóra kattint -- a szülő ilyenkor tudja
+  /** `view` módban, ha a felhasználó a modalban a fotóra kattint, a szülő ilyenkor tudja
    * megnyitni a `MediaLightbox`-ot (ugyanaz a minta, mint a `DefectsGallery.tsx`-nél).
    * `edit` módban nincs szükség rá, mert ott a `DefectMediaUpload` maga kezeli az előnézetet. */
   onOpenPhoto?: (url: string) => void;
-  /** KIZÁRÓLAG `edit` módban releváns -- az "AI sérülés-felismerés fotóból" panel
+  /** KIZÁRÓLAG `edit` módban releváns, az "AI sérülés-felismerés fotóból" panel
    * (`/api/ai/scan-damage`) "1 AI kredit = 1 vizsgálat" hívásaihoz kell, lásd
    * `lib/inspectionAiCredit.ts`. Prop-ként kapja (NEM `useInspectionId()`-vel olvassa ki
    * közvetlenül), mert ez a komponens `view` módban a Wizardon KÍVÜL is renderelődik
-   * (`InspectionDetailView.tsx`/`DamageMapCard.tsx` publikus riport) -- ott NINCS
+   * (`InspectionDetailView.tsx`/`DamageMapCard.tsx` publikus riport), ott NINCS
    * `InspectionIdProvider`, egy feltétel nélküli `useInspectionId()` hívás ott hibát dobna. */
   inspectionId?: string;
 }
 
-/** A popoverben/modalban szerkesztés alatt álló pont -- `id: null` egy MÉG NEM mentett,
+/** A popoverben/modalban szerkesztés alatt álló pont, `id: null` egy MÉG NEM mentett,
  * most kattintott új pontot jelöl (a `x`/`y` a kattintás helye, a többi mező üres/alapérték),
  * `id: string` egy MEGLÉVŐ, a `points` tömbben már szereplő pont szerkesztését/törlését
  * (VAGY `view` módban a puszta megtekintését). */
@@ -51,7 +51,7 @@ interface PendingDamage {
   id: string | null;
   x: number;
   y: number;
-  /** Melyik autó-nézeten (elöl/bal oldal/hátul/jobb oldal/felül) ül a pont -- lásd
+  /** Melyik autó-nézeten (elöl/bal oldal/hátul/jobb oldal/felül) ül a pont, lásd
    * `lib/inspections/carViews.ts` fájl-JSDoc-ja. */
   view: CarPointView;
   type: DamageType;
@@ -59,8 +59,8 @@ interface PendingDamage {
   description: string;
   file: File | null;
   previewUrl: string | null;
-  /** Igaz, ha ez a MÉG NEM mentett (`id: null`) pont egy elfogadott AI-javaslatból nyílt meg
-   * -- kizárólag arra szolgál, hogy a szerkesztő-popover egy rövid "AI javaslata alapján"
+  /** Igaz, ha ez a MÉG NEM mentett (`id: null`) pont egy elfogadott AI-javaslatból nyílt meg,
+   * kizárólag arra szolgál, hogy a szerkesztő-popover egy rövid "AI javaslata alapján"
    * emlékeztetőt mutasson MENTÉS ELŐTT (lásd lent a JSX-ben), a `DamagePointState`-be SOSE
    * kerül át (a `handleSave()` explicit felsorolja a mentendő mezőket, ez nincs köztük). */
   aiOrigin: boolean;
@@ -70,7 +70,7 @@ const ACCENT = { dark: '#5e6ad2', light: '#1c69d4' };
 
 const AI_SCAN_FAILURE_MESSAGE = 'Az AI elemzés nem sikerült. Próbáld újra, vagy jelöld be kézzel.';
 
-/** A `/api/ai/scan-damage` route válasz-alakja -- lásd `app/api/ai/scan-damage/route.ts`
+/** A `/api/ai/scan-damage` route válasz-alakja, lásd `app/api/ai/scan-damage/route.ts`
  * (és `StepDefects.tsx` `ScanDefectApiResponse`-ját, ugyanaz a minta), csak a kliensnek
  * releváns mezők. */
 interface ScanDamageApiResponse {
@@ -87,16 +87,16 @@ interface ScanDamageApiResponse {
 }
 
 /**
- * Az "AI sérülés-felismerés fotóból" panel állapota -- KIZÁRÓLAG kliens-oldali, EFEMER
+ * Az "AI sérülés-felismerés fotóból" panel állapota, KIZÁRÓLAG kliens-oldali, EFEMER
  * UI-állapot, SOSE kerül a `DamagePointState`-be/a mentett vizsgálati adatba, ugyanaz az elv,
  * mint a `StepDefects.tsx` `DefectAiState`-jénél: az AI javaslat sosem írhat közvetlenül
  * pontot, csak explicit "Elfogadom" kattintásra nyitja meg a MÁR MEGLÉVŐ szerkesztő-popovert
- * (`pending`), amit a felhasználónak MÉG "Mentés"-sel is jóvá kell hagynia -- lásd a
+ * (`pending`), amit a felhasználónak MÉG "Mentés"-sel is jóvá kell hagynia, lásd a
  * `handleAcceptAiSuggestion()` JSDoc-ját.
  *
- * **2026-08-17 -- a hely-becslés eltávolítva (a felhasználó explicit kérésére):** az AI
+ * **2026-08-17, a hely-becslés eltávolítva (a felhasználó explicit kérésére):** az AI
  * KIZÁRÓLAG a kategóriát és a leírást javasolja, a sérülés pontos helyét NEM határozza meg és
- * NEM jelöli be automatikusan -- ezt mindig a felhasználó teszi meg, a képre kattintva. Lásd
+ * NEM jelöli be automatikusan, ezt mindig a felhasználó teszi meg, a képre kattintva. Lásd
  * lent a `PendingAiDraft` JSDoc-ját.
  */
 type DamageAiState =
@@ -114,10 +114,10 @@ type DamageAiState =
 
 const IDLE_AI_STATE: DamageAiState = { status: 'idle' };
 
-/** Egy elfogadott AI-javaslat adatai -- az AI SOSE határozza meg/jelöli be a sérülés pontos
+/** Egy elfogadott AI-javaslat adatai, az AI SOSE határozza meg/jelöli be a sérülés pontos
  * helyét (lásd a `DamageAiState` JSDoc "2026-08-17" szakaszát), ezért "Elfogadás" után NINCS
  * koordináta, amit a szerkesztő-popover azonnali megnyitásához fel lehetne használni; a
- * felhasználót egy felirat kéri, hogy kattintson a képre, ahol a sérülés van -- a KÖVETKEZŐ
+ * felhasználót egy felirat kéri, hogy kattintson a képre, ahol a sérülés van, a KÖVETKEZŐ
  * kattintás ebből a piszkozatból tölti ki az új pontot (lásd `handleContainerClick()`), a
  * hardkódolt "karcolás" alapérték helyett. */
 interface PendingAiDraft {
@@ -129,7 +129,7 @@ interface PendingAiDraft {
 }
 
 /**
- * Sérülés- és Hibatérkép "Szabadkézi" (Free-form Canvas) komponens -- NINCS előre
+ * Sérülés- és Hibatérkép "Szabadkézi" (Free-form Canvas) komponens, NINCS előre
  * definiált elem/hotspot az autó-referenciaképeken, a felhasználó a kép TETSZŐLEGES
  * pontjára kattinthat, de itt minden ponthoz egy kategória (karcolás/horpadás/rozsda/
  * kavicsfelverődés/repedés/egyéb) tartozik, plusz egy opcionális leírás és egy opcionális
@@ -138,56 +138,56 @@ interface PendingAiDraft {
  * **Nézetenkénti referenciaképek (2026-08-17, "RENDSZER-CSERE, 2. NEKIFUTÁS"):** a korábbi,
  * mind az 5 nézetet egy apró kompozit képbe zsúfoló `cars.webp` helyett MOSTANTÓL egy
  * `CarViewSwitcher` fülváltóval öt KÜLÖN, nagyban megjelenő kép közül lehet választani
- * (elöl/bal oldal/hátul/jobb oldal/felül -- lásd `lib/inspections/carViews.ts` fájl-JSDoc-ja
+ * (elöl/bal oldal/hátul/jobb oldal/felül, lásd `lib/inspections/carViews.ts` fájl-JSDoc-ja
  * a teljes indoklásért/előzményért). A `points` tömb MINDEN eleme egy `view` mezővel jelzi,
- * MELYIK fülhöz tartozik -- a komponens csak az AKTÍV fülhöz tartozó pontokat jeleníti meg
+ * MELYIK fülhöz tartozik, a komponens csak az AKTÍV fülhöz tartozó pontokat jeleníti meg
  * (`visiblePoints`), az ÚJ pont pedig mindig az ÉPPEN AKTÍV fül `view` értékét kapja. Egy
  * RÉGI, e rendszer előtti pont (nincs `view` mezője) a `DEFAULT_CAR_VIEW` ("Elöl") fül alatt
- * jelenik meg -- az adatai nem vesznek el, csak a pontos pozíciója már csak hozzávetőleges.
+ * jelenik meg, az adatai nem vesznek el, csak a pontos pozíciója már csak hozzávetőleges.
  *
  * **Cím mező (2026-08-04, "vegyük ki a cím megadását" UX-egyszerűsítés):** a `title` mező
- * MOSTANTÓL NEM önálló, mindig kitöltendő szövegmező -- az 5 fix kategóriánál (karcolás/
+ * MOSTANTÓL NEM önálló, mindig kitöltendő szövegmező, az 5 fix kategóriánál (karcolás/
  * horpadás/rozsda/kavicsfelverődés/repedés) a kategória-választás automatikusan kitölti
  * `title`-t a kategória feliratával (`DAMAGE_TYPE_LABEL[type]`), a mező NEM jelenik meg a
  * formban. KIZÁRÓLAG "Egyéb" kategóriánál jelenik meg egy szabad szöveges input, mert ott
- * a kategória önmagában nem elég leíró -- ilyenkor a "Mentés" is csak akkor engedélyezett,
+ * a kategória önmagában nem elég leíró, ilyenkor a "Mentés" is csak akkor engedélyezett,
  * ha ezt kitöltötte a felhasználó. A `DamagePointState.title` mező TÍPUSA/DB-oszlopa
  * változatlan (mindig van érvényes, nem üres szöveg benne), csak a KITÖLTÉS módja változott.
  *
  * SZÁNDÉKOS ELTÉRÉS a `PaintCanvas`-tól: ott egy apró, a kattintott ponthoz horgonyzott
- * (`position: absolute`, % koordinátás) popover elég volt egyetlen szám mezőhöz -- itt a
+ * (`position: absolute`, % koordinátás) popover elég volt egyetlen szám mezőhöz, itt a
  * jóval gazdagabb tartalom (select + 2 szövegmező + fotó-feltöltő + gombok) miatt egy
  * KÖZÉPRE IGAZÍTOTT, `fixed` pozíciójú modal (a `MediaLightbox.tsx`-hez hasonló minta)
- * a robusztusabb megoldás -- egy kis, a kattintás helyéhez horgonyzott popover a kép
+ * a robusztusabb megoldás, egy kis, a kattintás helyéhez horgonyzott popover a kép
  * SZÉLÉN/ALJÁN, KIFEJEZETTEN mobilon (a projekt mobil-first célközönsége, garázsban,
  * telefonon dolgozó szakemberek) könnyen kilógna/levágódna ennyi tartalommal.
  *
  * **"AI sérülés-felismerés fotóból" panel (2026-08-16, `mode="edit"`-ben, a felhasználó
- * explicit kérésére -- "ugyanaz a rendszer, mint a Hibák és Média AI-elemzése"):** a kép
- * FÖLÖTT megjelenő, önálló panel, ami FÜGGETLEN a kattintásos pont-felvételtől -- a
+ * explicit kérésére, "ugyanaz a rendszer, mint a Hibák és Média AI-elemzése"):** a kép
+ * FÖLÖTT megjelenő, önálló panel, ami FÜGGETLEN a kattintásos pont-felvételtől, a
  * felhasználó fotót tölt fel (`aiPhoto`), az "AI elemzés" gomb meghívja a
  * `/api/ai/scan-damage` route-ot (`handleAiAnalyze()`), ami a `scan-defect`-hez hasonlóan
- * kategóriát (`type`) + leírást ad. Az eredmény SOSE ír közvetlenül a `points` tömbbe -- egy
+ * kategóriát (`type`) + leírást ad. Az eredmény SOSE ír közvetlenül a `points` tömbbe, egy
  * elkülönült "AI javaslat" kártyaként jelenik meg (`aiState.status === 'suggested'`), KÜLÖN
  * "Elfogadom"/"Elvetem" gombbal, UGYANAZ az elv, mint a `StepDefects.tsx`-nél (lásd
  * `PLAN_ai_scan_defect.md` 3.5 pontját).
  *
- * **2026-08-17 -- a hely-becslés eltávolítva (a felhasználó explicit kérésére: "Nincs szükség
+ * **2026-08-17, a hely-becslés eltávolítva (a felhasználó explicit kérésére: "Nincs szükség
  * az ai-nál arra, hogy elhelyezze és meghatározza a hiba pontos helyét, majd bejelölje azt"):**
  * korábban az AI egy zárt zóna-katalógusból (`lib/inspections/damageLocationZones.ts`, MOSTANTÓL
  * használaton kívül, de a projekt "ne töröld jóváhagyás nélkül" konvenciója szerint a fájlban
  * hagyva) egy hely-becslést (`locationZone`) is adott, amit "Elfogadás" után determinisztikusan
- * koordinátára képeztünk le -- ez a viselkedés TELJESEN megszűnt, az AI KIZÁRÓLAG a kategóriát
+ * koordinátára képeztünk le, ez a viselkedés TELJESEN megszűnt, az AI KIZÁRÓLAG a kategóriát
  * és a leírást javasolja, a `/api/ai/scan-damage` route válasza és rendszerutasítása se kér, se
  * ad vissza helyadatot.
  *
- * "Elfogadom" (`handleAcceptAiSuggestion()`) NEM hoz létre azonnal pontot -- a javaslat egy
+ * "Elfogadom" (`handleAcceptAiSuggestion()`) NEM hoz létre azonnal pontot, a javaslat egy
  * `pendingAiDraft`-ba kerül, és a felhasználót egy felirat kéri, hogy kattintson a képre, ahol a
  * sérülés van; a KÖVETKEZŐ `handleContainerClick()` ebből tölti ki a MÁR MEGLÉVŐ `pending`
  * szerkesztő-popovert (előre kitöltve, `aiOrigin: true`, a kattintás helyén és az ÉPPEN AKTÍV
- * fülön), a hardkódolt "karcolás" alapérték helyett -- a felhasználónak MÉG "Mentés"-t kell
+ * fülön), a hardkódolt "karcolás" alapérték helyett, a felhasználónak MÉG "Mentés"-t kell
  * kattintania, hogy a pont ténylegesen létrejöjjön (KÉT FÜGGETLEN emberi jóváhagyás egy
- * AI-eredetű pontnál: "Elfogadom" az AI-tartalomra, "Mentés" a konkrét pontra -- ugyanaz a
+ * AI-eredetű pontnál: "Elfogadom" az AI-tartalomra, "Mentés" a konkrét pontra, ugyanaz a
  * popover/Mentés-kényszer, mint egy kézzel felvett pontnál, csak előre kitöltve).
  */
 export function DamageCanvas({ points, mode, onChange, theme, className, onOpenPhoto, inspectionId }: DamageCanvasProps) {
@@ -196,7 +196,7 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
   const [view, setView] = useState<CarPointView>(DEFAULT_CAR_VIEW);
   const accent = ACCENT[theme];
 
-  // Nézetenkénti pontszám a `CarViewSwitcher` jelvényeihez -- egy RÉGI, `view` mező nélküli
+  // Nézetenkénti pontszám a `CarViewSwitcher` jelvényeihez, egy RÉGI, `view` mező nélküli
   // pont a `DEFAULT_CAR_VIEW` alá számolódik, lásd a komponens-JSDoc "Nézetenkénti
   // referenciaképek" szakaszát.
   const viewCounts = useMemo(() => {
@@ -208,10 +208,10 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
     return counts;
   }, [points]);
 
-  // Csak az AKTÍV fülhöz tartozó pontok jelennek meg a képen -- lásd ugyanott.
+  // Csak az AKTÍV fülhöz tartozó pontok jelennek meg a képen, lásd ugyanott.
   const visiblePoints = useMemo(() => points.filter((point) => (point.view ?? DEFAULT_CAR_VIEW) === view), [points, view]);
 
-  // AI sérülés-felismerés fotóból (`/api/ai/scan-damage`) -- lásd a fenti komponens-JSDoc
+  // AI sérülés-felismerés fotóból (`/api/ai/scan-damage`), lásd a fenti komponens-JSDoc
   // "AI sérülés-felismerés fotóból panel" szakaszát. KIZÁRÓLAG `mode === 'edit'`-ben
   // rendereljük/használjuk, de a hook-ok feltétel nélküli hívása biztonságos: az
   // `useInsufficientCredits()` Providere a gyökér layoutban MINDEN oldalt körbevesz.
@@ -235,8 +235,8 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
     const y = Math.min(100, Math.max(0, rawY));
 
     // Ha van egy "helyre váró" AI-piszkozat (lásd `handleAcceptAiSuggestion()`), EZ a
-    // kattintás tölti ki az új pontot -- a hardkódolt "karcolás" alapérték helyett. Az AKTÍV
-    // fület használjuk `view`-nek, mert az AI nem becsül nézetet/helyet -- a felhasználó pont
+    // kattintás tölti ki az új pontot, a hardkódolt "karcolás" alapérték helyett. Az AKTÍV
+    // fület használjuk `view`-nek, mert az AI nem becsül nézetet/helyet, a felhasználó pont
     // azért kattint, mert MAGA választotta ki a megfelelő fület előtte.
     if (pendingAiDraft) {
       setPending({ id: null, x, y, view, ...pendingAiDraft, aiOrigin: true });
@@ -285,7 +285,7 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
   function handleAiPhotoSelect(file: File) {
     if (aiPhoto?.previewUrl.startsWith('blob:')) URL.revokeObjectURL(aiPhoto.previewUrl);
     setAiPhoto({ file, previewUrl: URL.createObjectURL(file) });
-    // Új fotó kiválasztásakor egy korábbi javaslat ELÉVÜL -- ne maradjon a képernyőn egy már
+    // Új fotó kiválasztásakor egy korábbi javaslat ELÉVÜL, ne maradjon a képernyőn egy már
     // nem releváns javaslat, ugyanaz az elv, mint a `StepDefects.tsx` `handleSelectFile()`-jénél.
     setAiState(IDLE_AI_STATE);
   }
@@ -296,7 +296,7 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
     setAiState(IDLE_AI_STATE);
   }
 
-  /** "AI elemzés" gomb -- lásd `PLAN_ai_scan_defect.md` 3.6 pontját: KIZÁRÓLAG explicit
+  /** "AI elemzés" gomb, lásd `PLAN_ai_scan_defect.md` 3.6 pontját: KIZÁRÓLAG explicit
    * felhasználói kérésre fut le, sosem automatikus a fotó kiválasztásakor. */
   async function handleAiAnalyze() {
     if (!aiPhoto || !inspectionId) return;
@@ -311,7 +311,7 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
         body: JSON.stringify({ image: imageDataUrl, inspectionId }),
       });
 
-      // 402 (INSUFFICIENT_AI_QUOTA) -- lásd `InsufficientCreditsProvider.tsx`/`StepDefects.tsx`
+      // 402 (INSUFFICIENT_AI_QUOTA), lásd `InsufficientCreditsProvider.tsx`/`StepDefects.tsx`
       // azonos elvű kezelését.
       if (response.status === 402) {
         notifyInsufficientCredits();
@@ -335,7 +335,7 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
       const { data } = result;
       if (!data.damageDetected || !data.type || !data.title || !data.description) {
         // A szerver `sanitizeScanDamageResponse()`-ja `type`/`title`/`description`-t
-        // KIZÁRÓLAG `damageDetected: true` esetén ad vissza -- ha bármelyik hiányzik, a
+        // KIZÁRÓLAG `damageDetected: true` esetén ad vissza, ha bármelyik hiányzik, a
         // BIZTONSÁGOS "nem talált sérülést" ágra esünk, semmit nem javaslunk.
         setAiState({ status: 'not_detected' });
         return;
@@ -353,8 +353,8 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
     }
   }
 
-  /** "Elfogadom" -- lásd a komponens-JSDoc "AI sérülés-felismerés fotóból panel" szakaszát:
-   * SOSE hoz létre közvetlenül pontot -- az AI nem határozza meg/jelöli be a helyet (2026-08-17
+  /** "Elfogadom", lásd a komponens-JSDoc "AI sérülés-felismerés fotóból panel" szakaszát:
+   * SOSE hoz létre közvetlenül pontot, az AI nem határozza meg/jelöli be a helyet (2026-08-17
    * óta), ezért ez a javaslatot MINDIG egy `pendingAiDraft`-ba teszi, és a felhasználót a
    * képre kattintásra kéri; a KÖVETKEZŐ kattintás nyitja meg ebből a MÁR MEGLÉVŐ szerkesztő-
    * popovert előre kitöltve, amit "Mentés"-sel kell jóváhagyni, lásd `PLAN_ai_scan_defect.md`
@@ -366,14 +366,14 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
 
     setPendingAiDraft({ type, title, description, file, previewUrl });
 
-    // A fotó "tulajdonjoga" átkerült a `pendingAiDraft`-ba -- itt NEM szabad felszabadítani
+    // A fotó "tulajdonjoga" átkerült a `pendingAiDraft`-ba, itt NEM szabad felszabadítani
     // (`URL.revokeObjectURL`) az object URL-t, azt onnantól a popover Mentés/Mégse ágai (ill.
     // a következő kattintás) kezelik, ugyanúgy, mint egy kézzel csatolt fotónál.
     setAiPhoto(null);
     setAiState(IDLE_AI_STATE);
   }
 
-  /** "Elvetem" -- az AI javaslat (és a hozzá feltöltött fotó) teljesen eldobásra kerül,
+  /** "Elvetem", az AI javaslat (és a hozzá feltöltött fotó) teljesen eldobásra kerül,
    * SEMMILYEN mező/jelölő nem jön létre belőle. */
   function handleRejectAiSuggestion() {
     if (aiPhoto?.previewUrl.startsWith('blob:')) URL.revokeObjectURL(aiPhoto.previewUrl);
@@ -381,7 +381,7 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
     setAiState(IDLE_AI_STATE);
   }
 
-  /** A "kattints a képre, ahol a sérülés van" felirat "Mégse" gombja -- lásd a
+  /** A "kattints a képre, ahol a sérülés van" felirat "Mégse" gombja, lásd a
    * `pendingAiDraft` JSDoc-ját. */
   function handleCancelAiDraft() {
     if (pendingAiDraft?.previewUrl?.startsWith('blob:')) URL.revokeObjectURL(pendingAiDraft.previewUrl);
@@ -448,7 +448,7 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
     theme === 'dark' ? 'border-linear-hairline-strong bg-linear-surface-2' : 'border-bmw-hairline-strong bg-white';
   const headingClass = theme === 'dark' ? 'text-[14px] font-semibold text-linear-ink' : 'text-[14px] font-bold text-bmw-ink';
   // Érintési célterület: a vizuális gomb 28px marad, a hit-slop pszeudo-elem 44x44px-re
-  // bővíti a kattintható/koppintható zónát -- lásd docs/ux-touch-targets-plan-2026-08-14.md D) pont.
+  // bővíti a kattintható/koppintható zónát, lásd docs/ux-touch-targets-plan-2026-08-14.md D) pont.
   const closeButtonClass =
     'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors ' +
     iconHitSlopClass(28) +
@@ -464,8 +464,8 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
 
   return (
     <div className={className}>
-      {/* "AI sérülés-felismerés fotóból" panel -- lásd a komponens-JSDoc-ot. Szándékosan
-          KIZÁRÓLAG `mode === 'edit'`-ben renderelt, Linear (dark) tokenekkel hardkódolva --
+      {/* "AI sérülés-felismerés fotóból" panel, lásd a komponens-JSDoc-ot. Szándékosan
+          KIZÁRÓLAG `mode === 'edit'`-ben renderelt, Linear (dark) tokenekkel hardkódolva,
           `edit` mód a `cars.webp` referenciaképpel EGYETLEN hívóhelyről (`StepDamageMap.tsx`)
           fut, MINDIG `theme="dark"`-kal, ugyanúgy, ahogy a `StepDefects.tsx` "AI elemzés"
           gombja is kizárólag a Linear Wizardban él, nincs BMW/light megfelelője. */}
@@ -491,7 +491,7 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
             <div className="flex flex-1 flex-col gap-2">
               {aiPhoto && isAiPhotoVideo && (
                 <p className="text-[12px] text-linear-warning">
-                  Videóból nem kérhető AI elemzés -- tölts fel állóképet.
+                  Videóból nem kérhető AI elemzés, tölts fel állóképet.
                 </p>
               )}
 
@@ -516,7 +516,7 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
 
               {aiState.status === 'not_detected' && (
                 <p className="text-[12px] text-linear-ink-subtle">
-                  Az AI nem ismert fel egyértelmű sérülést ezen a képen -- jelöld be kézzel a
+                  Az AI nem ismert fel egyértelmű sérülést ezen a képen, jelöld be kézzel a
                   képre kattintva.
                 </p>
               )}
@@ -536,7 +536,7 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
             </div>
           </div>
 
-          {/* "AI javaslat" kártya -- SZÁNDÉKOSAN elkülönítve, KÜLÖN "Elfogadom"/"Elvetem"
+          {/* "AI javaslat" kártya, SZÁNDÉKOSAN elkülönítve, KÜLÖN "Elfogadom"/"Elvetem"
               gombbal, lásd a komponens-JSDoc-ot és `PLAN_ai_scan_defect.md` 3.5/3.7 pontját. */}
           {aiState.status === 'suggested' && (
             <div className="mt-3 rounded-md border border-dashed border-linear-primary/50 bg-linear-primary/5 p-3.5">
@@ -545,17 +545,17 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
                 AI javaslat
               </div>
               <p className="mt-2 text-[13.5px] text-linear-ink">
-                <span className="font-semibold">{aiState.title}</span> -- {aiState.description}
+                <span className="font-semibold">{aiState.title}</span>, {aiState.description}
               </p>
               {aiState.confidence === 'low' && (
                 <p className="mt-2 flex items-start gap-1.5 text-[12px] text-linear-warning">
                   <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  Az AI bizonytalan ebben a javaslatban -- ellenőrizd különösen alaposan.
+                  Az AI bizonytalan ebben a javaslatban, ellenőrizd különösen alaposan.
                 </p>
               )}
               <p className="mt-2 text-[11.5px] text-linear-ink-subtle">
-                Az AI-javaslat -- a kategória és a leírás -- tájékoztató jellegű, a képen
-                látottak alapján -- mindig ellenőrizd, mielőtt elfogadod és mented. A sérülés
+                Az AI-javaslat, a kategória és a leírás, tájékoztató jellegű, a képen
+                látottak alapján, mindig ellenőrizd, mielőtt elfogadod és mented. A sérülés
                 pontos helyét neked kell bejelölnöd a képen.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
@@ -579,12 +579,12 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
         </div>
       )}
 
-      {/* "Kattints a képre, ahol a sérülés van" felirat -- KIZÁRÓLAG akkor jelenik meg, ha egy
+      {/* "Kattints a képre, ahol a sérülés van" felirat, KIZÁRÓLAG akkor jelenik meg, ha egy
           elfogadott AI-javaslat helye `'unclear'` volt, lásd `pendingAiDraft`/
           `handleContainerClick()` JSDoc-ját. */}
       {pendingAiDraft && (
         <div className="mb-3 flex items-center justify-between gap-3 rounded-md border border-dashed border-linear-primary/50 bg-linear-primary/5 px-3 py-2 text-[12.5px] text-linear-ink">
-          <span>Kattints a képre, ahol a sérülés van -- az AI-javaslat adatai automatikusan kitöltődnek.</span>
+          <span>Kattints a képre, ahol a sérülés van, az AI-javaslat adatai automatikusan kitöltődnek.</span>
           <button
             type="button"
             onClick={handleCancelAiDraft}
@@ -595,7 +595,7 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
         </div>
       )}
 
-      {/* Nézetváltó fülek -- lásd a komponens-JSDoc "Nézetenkénti referenciaképek" szakaszát.
+      {/* Nézetváltó fülek, lásd a komponens-JSDoc "Nézetenkénti referenciaképek" szakaszát.
           A `counts` jelvény megmutatja, melyik fülön van már rögzített pont, anélkül, hogy oda
           kellene váltani. Nézetet `view`/`edit` módban EGYARÁNT lehet váltani. */}
       <div className="mx-auto mb-3 w-full max-w-[560px]">
@@ -662,12 +662,12 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
 
             {mode === 'edit' ? (
               <div className="mt-3 flex flex-col gap-3">
-                {/* AI-eredetű, MÉG NEM mentett pontnál egy rövid emlékeztető MENTÉS ELŐTT --
+                {/* AI-eredetű, MÉG NEM mentett pontnál egy rövid emlékeztető MENTÉS ELŐTT,
                     lásd `PendingDamage.aiOrigin` JSDoc-ját. */}
                 {pending.aiOrigin && (
                   <p className="flex items-start gap-1.5 rounded-md border border-dashed border-linear-primary/40 bg-linear-primary/5 px-2.5 py-1.5 text-[11.5px] text-linear-ink-subtle">
                     <Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-linear-primary" />
-                    Az AI javaslata alapján előre kitöltve -- ellenőrizd, majd mentsd, vagy
+                    Az AI javaslata alapján előre kitöltve, ellenőrizd, majd mentsd, vagy
                     módosítsd a mezőket.
                   </p>
                 )}
@@ -686,7 +686,7 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
                   </select>
                 </div>
 
-                {/* Csak "Egyéb" kategóriánál jelenik meg -- a fix kategóriáknál a `title`
+                {/* Csak "Egyéb" kategóriánál jelenik meg, a fix kategóriáknál a `title`
                     automatikusan a kategória feliratára áll (lásd `handleTypeChange`), itt
                     nincs rá szükség, feleslegesen duplikálná a select tartalmát. */}
                 {pending.type === 'other' && (
@@ -767,7 +767,7 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
                 </span>
                 {/* A kategória-jelvény felett csak akkor jelenik meg külön cím, ha az
                     valóban EGYEDI szöveg ("Egyéb" kategóriánál a felhasználó által beírt
-                    megnevezés) -- a fix kategóriáknál a `title` megegyezik a jelvény
+                    megnevezés), a fix kategóriáknál a `title` megegyezik a jelvény
                     feliratával, azt fölöslegesen duplikálná. */}
                 {pending.title !== DAMAGE_TYPE_LABEL[pending.type] && (
                   <p className={theme === 'dark' ? 'text-[14px] font-semibold text-linear-ink' : 'text-[14px] font-bold text-bmw-ink'}>
@@ -798,7 +798,7 @@ export function DamageCanvas({ points, mode, onChange, theme, className, onOpenP
         </div>
       )}
 
-      {/* Jelmagyarázat -- mindig látszik, hogy a marker-színek jelentése edit ÉS view
+      {/* Jelmagyarázat, mindig látszik, hogy a marker-színek jelentése edit ÉS view
           módban egyaránt egyértelmű legyen. */}
       <div className="mt-4 flex flex-wrap justify-center gap-x-5 gap-y-2">
         {DAMAGE_TYPES.map((type) => (

@@ -11,30 +11,30 @@ interface EquipmentMatrixProps {
 }
 
 /**
- * Felszereltség szekció -- UX teljes újratervezés (2026-08-02). Két, egymástól élesen
+ * Felszereltség szekció, UX teljes újratervezés (2026-08-02). Két, egymástól élesen
  * elkülönített rész:
  *
- *  A) "⚠️ Észrevételek / Hibás extrák" -- kiemelt, piros figyelmeztető kártya a
+ *  A) "⚠️ Észrevételek / Hibás extrák", kiemelt, piros figyelmeztető kártya a
  *     LEGELEJÉN, KIZÁRÓLAG ha van legalább egy `defective` elem. Itt jelenik meg a
  *     szaki megjegyzése és a felnagyítható hibafotó (a meglévő `MediaLightbox`-szal,
  *     ugyanaz a komponens, mint a hiba-/sérülés-médiáknál). Ha nincs hibás elem, ez a
  *     kártya EGYÁLTALÁN nem renderelődik.
- *  B) A `working` elemek letisztult, kompakt chip-rácsban -- egy 200+ elemes
+ *  B) A `working` elemek letisztult, kompakt chip-rácsban, egy 200+ elemes
  *     katalógusnál egy tömör pill-felhő sokkal áttekinthetőbb, mint az egyenkénti nagy
  *     kártyák (a korábbi verzió mintája), ezért NEM azt a mintát követi.
  *
  * **"Extrák szűrése" lépés (2026-08-02):** a `not_present` ("nincs benne") státuszú
- * elemek SOHA nem jelennek meg a publikus riporton -- egy 200+ elemes katalógusnál a
+ * elemek SOHA nem jelennek meg a publikus riporton, egy 200+ elemes katalógusnál a
  * vásárlót/ügyfelet kizárólag az érdekli, mi VAN és MŰKÖDIK-e az autóban, a katalógus
  * túlnyomó többsége (ami az adott autóban egyszerűen nincs felszerelve) csak zajt
- * jelentene. A korábbi "Nem található extrák (N)" chip-szekció ezért TELJESEN törölve
- * -- a wizard (`StepEquipment.tsx`) és a szakértői adatlap (`InspectionDetailView.tsx`)
+ * jelentene. A korábbi "Nem található extrák (N)" chip-szekció ezért TELJESEN törölve,
+ * a wizard (`StepEquipment.tsx`) és a szakértői adatlap (`InspectionDetailView.tsx`)
  * TOVÁBBRA IS mutatja a `not_present` elemeket (ott a szakinak releváns, mit NEM
  * pipált be), KIZÁRÓLAG a publikus, ügyfélnek szánt riport szűri ki őket.
  *
  * Ha az `equipment` tömb teljesen üres, VAGY a szűrés után nincs egyetlen megjelenítendő
  * (`working`/`defective`) elem sem (elméletileg ritka, de egy csupa `not_present`
- * katalógusnál előfordulhat), a teljes szekció nem renderelődik -- egy üres "Felszereltség
+ * katalógusnál előfordulhat), a teljes szekció nem renderelődik, egy üres "Felszereltség
  * állapota" fejléc tartalom nélkül félrevezető lenne. BMW design: `rounded-none`.
  */
 export function EquipmentMatrix({ equipment }: EquipmentMatrixProps) {
@@ -49,7 +49,7 @@ export function EquipmentMatrix({ equipment }: EquipmentMatrixProps) {
     <section className="border-t border-bmw-hairline py-16 first:border-t-0 first:pt-0">
       <SectionHeading eyebrow="Kényelmi & Biztonsági Extrák" title="Felszereltség állapota" />
 
-      {/* A) Kiemelt figyelmeztető kártya -- csak hibás elem esetén. */}
+      {/* A) Kiemelt figyelmeztető kártya, csak hibás elem esetén. */}
       {defective.length > 0 && (
         <div className="mt-8 border border-bmw-error bg-[#fdedec] p-5 sm:p-6">
           <div className="flex items-center gap-2.5">
@@ -87,7 +87,7 @@ export function EquipmentMatrix({ equipment }: EquipmentMatrixProps) {
         </div>
       )}
 
-      {/* B) Működő / nem található extrák -- letisztult chip-rács. */}
+      {/* B) Működő / nem található extrák, letisztult chip-rács. */}
       {working.length > 0 && (
         <div className="mt-8">
           <p className="text-[13px] font-bold uppercase tracking-[1px] text-bmw-muted">Működő extrák ({working.length})</p>

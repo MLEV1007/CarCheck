@@ -174,7 +174,7 @@ import { cn } from '@/lib/utils';
 interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   /** Vizuális doboz mérete (px) — a tényleges <button> ekkora marad, az ikon a hívó fél
    * felelőssége (gyerekként adja át). Alapértelmezetten a Linear-mintázatokban használt
-   * méretek. Az érintési terület MINDIG minimum 44x44px, a `size`-tól függetlenül --
+   * méretek. Az érintési terület MINDIG minimum 44x44px, a `size`-tól függetlenül,
    * lásd a `docs/ux-touch-targets-plan-2026-08-14.md` tervet. */
   size?: 24 | 28 | 32;
   variant?: 'ghost' | 'ghost-danger';
@@ -187,7 +187,7 @@ const SIZE_CLASS: Record<NonNullable<IconButtonProps['size']>, string> = {
 };
 
 // Minden mérethez a 44px cél eléréséhez szükséges szimmetrikus hit-slop (inset), lásd a
-// terv 2. fejezetének "Recept" sorait -- (44 - méret) / 2, Tailwind spacing tokenre kerekítve.
+// terv 2. fejezetének "Recept" sorait, (44 - méret) / 2, Tailwind spacing tokenre kerekítve.
 const HIT_SLOP_CLASS: Record<NonNullable<IconButtonProps['size']>, string> = {
   24: 'before:-inset-2.5', // 24 + 2*10 = 44
   28: 'before:-inset-2',   // 28 + 2*8  = 44

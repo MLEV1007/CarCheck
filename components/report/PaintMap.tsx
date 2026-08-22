@@ -8,7 +8,7 @@ import { SectionHeading } from '@/components/report/SectionHeading';
  * Karosszéria & festékvastagság térkép (PROJEKT_INSTRUKCIOK.md 5.C + "Rétegvastagság-mérő
  * Szabadkézi (Free-form Canvas) átalakítása" lépés): UGYANAZ a `cars.webp` referenciaképre
  * épülő `PaintCanvas` komponens fut itt, mint a Wizard 6. lépésében (`mode="view"`,
- * `theme="light"` -- BMW design tokenek), hogy az ügyfél PONTOSAN ugyanazt a
+ * `theme="light"`, BMW design tokenek), hogy az ügyfél PONTOSAN ugyanazt a
  * színkódolt buborékos hőtérképet lássa, amit a vizsgáló a helyszínen rögzített, a
  * TENYLEGES koordinátákon (nincs előre definiált elem/hotspot). `mode="view"`-ban a
  * kép kattintása nem hoz létre új pontot, csak a meglévő buborékok értéke tekinthető
@@ -22,7 +22,7 @@ export function PaintMap({
   thresholds = DEFAULT_REPORT_THRESHOLDS,
 }: {
   measurements: PublicReportPaintMeasurement[];
-  /** Riport küszöbértékek (2026-08-07) -- lásd `TiresCard.tsx` JSDoc-ját ugyanerről a
+  /** Riport küszöbértékek (2026-08-07), lásd `TiresCard.tsx` JSDoc-ját ugyanerről a
    * mintáról. Alapértéke `DEFAULT_REPORT_THRESHOLDS`. */
   thresholds?: ReportThresholds;
 }) {

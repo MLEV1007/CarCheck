@@ -7,7 +7,7 @@ interface DiagnosticsCardProps {
 }
 
 /**
- * Diagnosztika kártya (PROJEKT_INSTRUKCIOK.md, "3 új szakértői modul" lépés, 3. pont) --
+ * Diagnosztika kártya (PROJEKT_INSTRUKCIOK.md, "3 új szakértői modul" lépés, 3. pont),
  * zöld "OBD Tiszta" jelvény, ha nincs hibakód, egyébként szembetűnő piros hibalista.
  * BMW design: `rounded-none`, hairline szegélyű kártyák/sorok.
  */
@@ -21,7 +21,7 @@ export function DiagnosticsCard({ diagnostics }: DiagnosticsCardProps) {
       {diagnostics.no_dtc ? (
         <div className="mt-8 flex items-center gap-3 rounded-none border border-bmw-success bg-[#f0faf3] px-5 py-4">
           <CheckCircle2 className="h-5 w-5 shrink-0 text-bmw-success" />
-          <p className="text-[15px] font-bold text-bmw-ink">OBD Tiszta -- nincs rögzített hibakód</p>
+          <p className="text-[15px] font-bold text-bmw-ink">OBD Tiszta, nincs rögzített hibakód</p>
         </div>
       ) : codes.length === 0 ? (
         <p className="mt-8 text-[15px] font-light text-bmw-body">

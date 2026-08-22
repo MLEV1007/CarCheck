@@ -11,10 +11,10 @@ import type { CarPointView } from '@/lib/inspections/carViews';
 
 /**
  * A `public.get_public_report(p_token uuid)` Postgres RPC (SECURITY DEFINER)
- * visszatérési (jsonb) struktúrájának TS megfelelője -- lásd PROJEKT_INSTRUKCIOK.md
+ * visszatérési (jsonb) struktúrájának TS megfelelője, lásd PROJEKT_INSTRUKCIOK.md
  * 5.C: Publikus Ügyfélriport. A függvény bejelentkezés nélkül (anon szerepkörrel)
  * is hívható, és csak a `public_token`-hez tartozó egyetlen vizsgálatot adja vissza,
- * RLS megkerülésével -- ezért az oldal SOHA nem kérdezhet le közvetlenül táblákat,
+ * RLS megkerülésével, ezért az oldal SOHA nem kérdezhet le közvetlenül táblákat,
  * kizárólag ezt az RPC-t.
  */
 
@@ -25,53 +25,53 @@ export interface PublicReportInspection {
   year: number | null;
   vin: string | null;
   license_plate: string | null;
-  /** Rendszám felségjelzés betűkódja (pl. "H", "SK") -- lásd
+  /** Rendszám felségjelzés betűkódja (pl. "H", "SK"), lásd
    * `lib/inspections/constants.ts` `LICENSE_PLATE_COUNTRIES`. */
   license_plate_country: string | null;
   odometer: number | null;
-  /** Motor típusa/üzemanyag, Teljesítmény (kW) és Megengedett össztömeg (kg) -- 2026-08-09,
+  /** Motor típusa/üzemanyag, Teljesítmény (kW) és Megengedett össztömeg (kg), 2026-08-09,
    * "Motor/Teljesítmény/Össztömeg mezők" lépés, a forgalmi engedélyről (AI-fotószkennerrel
-   * vagy kézzel) rögzítve. A lóerő (LE) érték SOHA nem külön mező -- a `power_kw`-ból
+   * vagy kézzel) rögzítve. A lóerő (LE) érték SOHA nem külön mező, a `power_kw`-ból
    * élőben számolódik (`lib/format.ts` `formatKw()`/`kwToHp()`), lásd `ReportHero.tsx`. */
   engine_type: string | null;
   power_kw: number | null;
   gross_weight_kg: number | null;
-  /** Üzemanyag típusa (2026-08-10, "Autó alapadatok kiegészítése -- Üzemanyag típusa" lépés)
-   * -- ZÁRT enum ("benzin"/"dizel"/"elektromos"/`null`), lásd `lib/inspections/types.ts`
+  /** Üzemanyag típusa (2026-08-10, "Autó alapadatok kiegészítése, Üzemanyag típusa" lépés),
+   * ZÁRT enum ("benzin"/"dizel"/"elektromos"/`null`), lásd `lib/inspections/types.ts`
    * `CarInfoState.fuelType` JSDoc-ját. A megjelenítendő magyar felirat a
    * `FUEL_TYPE_LABEL`-ből jön (`ReportHero.tsx`). */
   fuel_type: FuelType | null;
   status: 'draft' | 'completed' | string;
-  /** Általános autó fotók (elölről/hátulról/oldalról/beltér/műszerfal stb.) -- a
+  /** Általános autó fotók (elölről/hátulról/oldalról/beltér/műszerfal stb.), a
    * `get_public_report` RPC 2026-07-31-es kiegészítése óta tartalmazza. */
   general_photos: string[];
-  /** Diagnosztikai hibakódok modul (3 új szakértői modul lépés) -- ha `no_dtc` igaz,
+  /** Diagnosztikai hibakódok modul (3 új szakértői modul lépés), ha `no_dtc` igaz,
    * a `codes` a mentéskor mindig üresen kerül be (lásd InspectionWizard.tsx). */
   diagnostics: PublicReportDiagnostics;
-  /** Felszereltségi elemek állapota modul -- UX teljes újratervezés (2026-08-02),
+  /** Felszereltségi elemek állapota modul, UX teljes újratervezés (2026-08-02),
    * "Szupergyors tömeges kijelölés" lépés. */
   equipment: PublicReportFeature[];
-  /** Gumiabroncsok állapota modul -- kerékpozíciónként opcionális, mert egy régi
+  /** Gumiabroncsok állapota modul, kerékpozíciónként opcionális, mert egy régi
    * (e modul előtti) vizsgálatnál vagy részlegesen kitöltött piszkozatnál hiányozhat.
-   * A `rim_type`/`brand` ÁLTALÁNOS mezők (Gumiabroncs & Felni modul bővítése, A pont) --
+   * A `rim_type`/`brand` ÁLTALÁNOS mezők (Gumiabroncs & Felni modul bővítése, A pont),
    * ugyanabban a `tires` JSONB objektumban élnek, a kerékpozíciók testvéreiként. */
   tires: PublicReportTiresData;
-  /** Szervizmúlt & Dokumentumok modul -- `status` `null` lehet, ha a vizsgáló még nem
+  /** Szervizmúlt & Dokumentumok modul, `status` `null` lehet, ha a vizsgáló még nem
    * választott (a `get_public_report` RPC 2026-08-01-es kiegészítése óta tartalmazza). */
   service_history: PublicReportServiceHistory;
-  /** Sérülés- és Hibatérkép modul -- ugyanaz a `general_photos`/`diagnostics`/`equipment`/
+  /** Sérülés- és Hibatérkép modul, ugyanaz a `general_photos`/`diagnostics`/`equipment`/
    * `tires` minta: egyetlen JSONB oszlop az `inspections` sorban, nincs külön gyerek-tábla. */
   damages: PublicReportDamage[];
-  /** Végső Szakvélemény & Várható Költségek modul -- TELJESEN OPCIONÁLIS, minden mező
+  /** Végső Szakvélemény & Várható Költségek modul, TELJESEN OPCIONÁLIS, minden mező
    * `null` lehet (a `get_public_report` RPC 2026-08-02-es kiegészítése óta tartalmazza).
    * Ha minden mező `null`/üres, a `FinalAssessmentCard.tsx` a teljes szekciót elrejti. */
   final_assessment: PublicReportFinalAssessment;
-  /** Átvizsgáló és Ügyfél adatok + PDF megjelenítési kapcsolók (2026-08-06) -- a
+  /** Átvizsgáló és Ügyfél adatok + PDF megjelenítési kapcsolók (2026-08-06), a
    * `get_public_report` RPC (lásd `supabase/migrations/20260806_inspector_and_client_fields.sql`)
    * ezeket a mezőket a megfelelő `show_*_on_pdf` kapcsoló SZERVER OLDALI ellenőrzésével
    * adja vissza: ha a kapcsoló ki van kapcsolva, a hozzá tartozó `inspector_name`/
    * `client_*` mező mindig `null`, MÉG AKKOR IS, ha a vizsgálónál ténylegesen van
-   * elmentve érték -- ezért a `components/report/InspectorClientCard.tsx`-nek elég
+   * elmentve érték, ezért a `components/report/InspectorClientCard.tsx`-nek elég
    * csak a mező jelenlétét (nem a boolean-t) ellenőriznie, de a boolean-t is
    * megkapja, hogy a UI-logika a szerver-oldali szándékkal 1:1 megegyezzen. */
   show_inspector_on_pdf: boolean;
@@ -93,10 +93,10 @@ export interface PublicReportFinalAssessment {
 }
 
 /**
- * Sérülés- és Hibatérkép modul -- egy szabadkézi pont az autó-nézetenkénti referenciaképeken
+ * Sérülés- és Hibatérkép modul, egy szabadkézi pont az autó-nézetenkénti referenciaképeken
  * (ugyanaz az `x`/`y` százalékos-relatív-pozíció elv, mint a `PublicReportPaintMeasurement`-
  * nél). Lásd `lib/inspections/types.ts` `DamagePointState` a wizard-oldali megfelelőjéért.
- * A `view` OPCIONÁLIS -- lásd `lib/inspections/carViews.ts` (2026-08-17) a "RENDSZER-CSERE,
+ * A `view` OPCIONÁLIS, lásd `lib/inspections/carViews.ts` (2026-08-17) a "RENDSZER-CSERE,
  * 2. NEKIFUTÁS" teljes indoklásáért; egy RÉGI, e mező bevezetése előtt mentett pontnál
  * hiányzik, ilyenkor a `DamageCanvas.tsx` a `DEFAULT_CAR_VIEW`-ra esik vissza.
  */
@@ -122,7 +122,7 @@ export interface PublicReportServiceHistoryEntry {
 export interface PublicReportServiceHistory {
   status: ServiceHistoryStatus | null;
   photos: string[];
-  /** CarVertical (vagy hasonló autó-előéleti szolgáltatás) PDF riport -- mindkét mező
+  /** CarVertical (vagy hasonló autó-előéleti szolgáltatás) PDF riport, mindkét mező
    * `null`, ha a vizsgáló nem töltött fel ilyet. */
   carvertical_pdf_url: string | null;
   carvertical_pdf_name: string | null;
@@ -140,7 +140,7 @@ export interface PublicReportDiagnostics {
 }
 
 /**
- * A `get_public_report` RPC-n keresztül visszaadott felszereltség-elem alak -- 1:1 az
+ * A `get_public_report` RPC-n keresztül visszaadott felszereltség-elem alak, 1:1 az
  * `inspections.equipment` JSONB-ben ténylegesen tárolt (lásd `lib/inspections/types.ts`
  * `FeatureState`) struktúra. `notes`/`photo_url` csak `status === 'defective'` esetén
  * lehet jelen (a mentéskor `InspectionWizard.tsx` csak ekkor írja be).
@@ -164,7 +164,7 @@ export type PublicReportTiresData = Partial<Record<TirePosition, PublicReportTir
 
 /**
  * Szabadkézi (free-form) rétegvastagság-mérési pont (PROJEKT_INSTRUKCIOK.md,
- * "Rétegvastagság-mérő Szabadkézi (Free-form Canvas) átalakítása" lépés) -- NINCS
+ * "Rétegvastagság-mérő Szabadkézi (Free-form Canvas) átalakítása" lépés), NINCS
  * előre definiált karosszéria-elem, `x`/`y` a kép bal szélétől/tetejétől mért
  * SZÁZALÉKOS relatív pozíció, `value` a mért érték (µm). A `status` (zöld/sárga/piros)
  * a `value`-ból a `getPaintStatus()`-szal számolódik ki mindkét helyen (Wizard +
@@ -193,11 +193,11 @@ export interface PublicReportCompany {
   phone: string | null;
   email: string | null;
   /** Riport küszöbértékek (2026-08-07, "Testreszabható festékvastagság/gumiabroncs
-   * küszöbértékek" lépés) -- a `get_public_report` RPC (lásd
+   * küszöbértékek" lépés), a `get_public_report` RPC (lásd
    * `supabase/migrations/20260807090000_report_thresholds.sql`) óta a `company`
    * objektum része, UGYANÚGY mint a `primary_color`. `null` csak akkor fordulhat elő,
    * ha a `profiles` sor valamiért hiányzik (lásd a `company: PublicReportCompany | null`
-   * felső szintű mezőt) -- a DB oszlopok maguk `not null default`-tal jönnek létre,
+   * felső szintű mezőt), a DB oszlopok maguk `not null default`-tal jönnek létre,
    * `app/report/[public_token]/page.tsx` mindenképp `DEFAULT_REPORT_THRESHOLDS`-re esik
    * vissza, ha ezek a mezők hiányoznának. */
   paint_threshold_gyari_max_micron: number | null;
@@ -211,12 +211,12 @@ export interface PublicReportData {
   paint_measurements: PublicReportPaintMeasurement[];
   defects: PublicReportDefect[];
   company: PublicReportCompany | null;
-  /** "Kérdezz az AI-tól" chat panel -- IGAZ, ha a vizsgálatot végző szervezet
+  /** "Kérdezz az AI-tól" chat panel, IGAZ, ha a vizsgálatot végző szervezet
    * Pro/Business csomagon van (a `get_public_report` RPC SZERVER-oldalon,
-   * `user_credits.plan_tier`-ből számolja -- lásd
+   * `user_credits.plan_tier`-ből számolja, lásd
    * `supabase/migrations/20260806180000_report_ai_chat.sql` és
    * `PLAN_ai_report_chat.md`). A kliens ez alapján dönt, megjelenítse-e a
-   * `ReportAiChat` komponenst -- Starter/Growth riporton ez a mező `false`,
+   * `ReportAiChat` komponenst, Starter/Growth riporton ez a mező `false`,
    * a komponens EGYÁLTALÁN nem renderelődik (nem "disabled", teljesen hiányzik). */
   ai_chat_enabled: boolean;
 }

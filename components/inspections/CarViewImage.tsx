@@ -10,11 +10,11 @@ interface CarViewImageProps {
 }
 
 /**
- * A kiválasztott `view`-hoz tartozó autó-referenciakép -- a `DamageCanvas.tsx` korábbi,
+ * A kiválasztott `view`-hoz tartozó autó-referenciakép, a `DamageCanvas.tsx` korábbi,
  * közvetlenül beágyazott `<Image src={CAR_IMAGE_SRC}>` blokkját váltja le, lásd
  * `lib/inspections/carViews.ts` fájl-JSDoc-ját a teljes indoklásért. A kattintás-kezelés
  * (sérülés-pont felvétele) VÁLTOZATLANUL a szülő (`DamageCanvas`) konténerén történik, ez a
- * komponens csak a vizuális hátteret adja, `pointer-events-none`-nel -- UGYANAZ a minta, mint
+ * komponens csak a vizuális hátteret adja, `pointer-events-none`-nel, UGYANAZ a minta, mint
  * a (jelenleg használaton kívüli) `CarSilhouette.tsx`-é volt.
  *
  * A `key={view}` biztosítja, hogy nézetváltáskor a `next/image` egy VADONATÚJ `<img>`-ként

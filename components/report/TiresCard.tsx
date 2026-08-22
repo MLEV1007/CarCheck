@@ -7,18 +7,18 @@ import type { ReportThresholds } from '@/lib/inspections/types';
 
 interface TiresCardProps {
   tires: PublicReportTiresData;
-  /** Riport küszöbértékek (2026-08-07) -- a vizsgálatot végző cég `profiles` sorából,
+  /** Riport küszöbértékek (2026-08-07), a vizsgálatot végző cég `profiles` sorából,
    * a `get_public_report` RPC `company` objektumán keresztül (lásd
    * `app/report/[public_token]/page.tsx`). Alapértéke `DEFAULT_REPORT_THRESHOLDS`. */
   thresholds?: ReportThresholds;
 }
 
 /**
- * Gumiabroncsok kártya (PROJEKT_INSTRUKCIOK.md, "3 új szakértői modul" lépés, 3. pont) --
- * vizuális 4-kerekes elrendezés (`TIRE_POSITIONS` sorrendje -- fl, fr, rl, rr -- egy
+ * Gumiabroncsok kártya (PROJEKT_INSTRUKCIOK.md, "3 új szakértői modul" lépés, 3. pont),
+ * vizuális 4-kerekes elrendezés (`TIRE_POSITIONS` sorrendje, fl, fr, rl, rr, egy
  * `sm:grid-cols-2` rácsban PONTOSAN a jármű elölnézeti elrendezését adja: 1. sor bal/jobb
  * ELSŐ, 2. sor bal/jobb HÁTSÓ kerék). A DOT kódot itt, a Server Componentben dekódoljuk
- * újra a `decodeDot()` tiszta függvénnyel -- a publikus riport NEM a wizardban kliens-oldalon
+ * újra a `decodeDot()` tiszta függvénnyel, a publikus riport NEM a wizardban kliens-oldalon
  * számolt értéket jeleníti meg, hanem a tárolt DOT kódból mindig frissen számolja ki a
  * gyártási hetet/évet és a "koros gumiabroncs" (5+ év) figyelmeztetést.
  */
@@ -79,7 +79,7 @@ export function TiresCard({ tires, thresholds = DEFAULT_REPORT_THRESHOLDS }: Tir
                 {tire?.dot && <span className="font-mono text-[13px] text-bmw-muted">DOT {tire.dot}</span>}
               </div>
 
-              {/* "Kopott gumiabroncs" figyelmeztetés (ÚJ, 2026-08-07) -- korábban a
+              {/* "Kopott gumiabroncs" figyelmeztetés (ÚJ, 2026-08-07), korábban a
                   profilmélységhez egyáltalán nem létezett automatikus jelzés a publikus
                   riporton sem, csak a nyers mm-érték. Lásd `isTreadWorn()`. */}
               {treadWorn && (
@@ -98,7 +98,7 @@ export function TiresCard({ tires, thresholds = DEFAULT_REPORT_THRESHOLDS }: Tir
                 >
                   {isOld && <AlertTriangle className="h-3.5 w-3.5 shrink-0" />}
                   Gyártás: {decoded.label}
-                  {isOld ? ` -- Koros gumiabroncs (${thresholds.tireAgeWarningYears}+ év)` : ''}
+                  {isOld ? `, Koros gumiabroncs (${thresholds.tireAgeWarningYears}+ év)` : ''}
                 </p>
               )}
             </div>

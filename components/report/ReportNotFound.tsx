@@ -1,6 +1,6 @@
 /**
  * Letisztult 404 állapot, ha a `get_public_report` RPC `null`-t ad vissza
- * (érvénytelen `public_token`, vagy törölt/nem létező vizsgálat) --
+ * (érvénytelen `public_token`, vagy törölt/nem létező vizsgálat),
  * PROJEKT_INSTRUKCIOK.md 5.C: "Ha a visszakapott data null, jeleníts meg egy
  * letisztult 404/Nem található oldalt". BMW design: fehér canvas, 0px lekerekítés.
  */

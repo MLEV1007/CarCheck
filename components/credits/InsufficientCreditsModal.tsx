@@ -11,14 +11,14 @@ interface InsufficientCreditsModalProps {
 
 /**
  * "Elfogyott az AI kereted" figyelmeztető modal (PROJEKT_INSTRUKCIOK.md "402 Handler"
- * lépés) -- akkor jelenik meg, amikor bármelyik `/api/ai/*` route `402`-t ad vissza
- * (`code: 'INSUFFICIENT_AI_QUOTA'`, lásd `lib/quotas.ts`) -- lásd
- * `InsufficientCreditsProvider.tsx` -- ez a komponens SOSEM közvetlenül példányosított,
+ * lépés), akkor jelenik meg, amikor bármelyik `/api/ai/*` route `402`-t ad vissza
+ * (`code: 'INSUFFICIENT_AI_QUOTA'`, lásd `lib/quotas.ts`), lásd
+ * `InsufficientCreditsProvider.tsx`, ez a komponens SOSEM közvetlenül példányosított,
  * mindig a Provideren keresztül.
  *
  * **2026-08-06, "Árazási struktúra bővítés" lépés:** korábban KÉT különböző okot
  * (a régi, generikus kredit-rendszer VS az új, Stripe-csomaghoz kötött AI-kvóta)
- * különböztetett meg egy `reason` prop -- a régi kredit-gate-et eltávolítottuk az
+ * különböztetett meg egy `reason` prop, a régi kredit-gate-et eltávolítottuk az
  * `/api/ai/*` route-okból (lásd `lib/inspectionAiCredit.ts` JSDoc-ját), így ez a modal
  * mostantól EGYETLEN, mindig ugyanazt jelentő esetet kezel: elfogyott az AI-kredit
  * (havi + vásárolt együtt, lásd `QuotaBalance.totalAiAvailable`).
@@ -28,13 +28,13 @@ interface InsufficientCreditsModalProps {
  * (`/inspections/*`) belül él.
  *
  * **Szerepkör-tudatos szöveg (2026-08-03, "Szervezeti szerepkezelés" lépés):** a modal
- * a `/api/quotas/summary` végpontról (2026-08-06-tól -- korábban `/api/credits/summary`,
- * lásd a fenti JSDoc-ot a váltás indokáról) megnyíláskor lekérdezi a hívó szerepkörét --
+ * a `/api/quotas/summary` végpontról (2026-08-06-tól, korábban `/api/credits/summary`,
+ * lásd a fenti JSDoc-ot a váltás indokáról) megnyíláskor lekérdezi a hívó szerepkörét,
  * Átvizsgálónak a "kifogyott a KÖZÖS céges keret, szólj a Menedzsernek" üzenet jelenik
  * meg, a csomagváltó/vásárlás gomb NÉLKÜL (az Átvizsgáló úgysem tud/nem szabad neki
- * csomagot váltania -- lásd a "Pénzügyi Végpontok Védelme" lépést, `lib/auth/roles.ts`
+ * csomagot váltania, lásd a "Pénzügyi Végpontok Védelme" lépést, `lib/auth/roles.ts`
  * `requireManager()`). Amíg a lekérdezés fut (vagy hibázik), a Menedzsernek szánt,
- * eredeti szöveg jelenik meg alapértelmezettként -- ez biztonságos "fail-open a
+ * eredeti szöveg jelenik meg alapértelmezettként, ez biztonságos "fail-open a
  * szövegre" (NEM a kvótára) eset, legrosszabb esetben egy Átvizsgáló egy pillanatra
  * a Menedzser-szöveget látja loading közben.
  *
@@ -56,7 +56,7 @@ export function InsufficientCreditsModal({ onClose }: InsufficientCreditsModalPr
           setRole(json.role);
         }
       } catch {
-        // Csendben megtartjuk az alapértelmezett 'manager' szöveget -- lásd a fenti JSDoc-ot.
+        // Csendben megtartjuk az alapértelmezett 'manager' szöveget, lásd a fenti JSDoc-ot.
       }
     })();
 

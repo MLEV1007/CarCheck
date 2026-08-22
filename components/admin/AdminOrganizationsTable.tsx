@@ -14,7 +14,7 @@ export interface AdminOrganizationMemberRow {
   id: string;
   email: string | null;
   role: 'manager' | 'inspector';
-  /** A meghívó Menedzser email címe -- `null`, ha ez a tag Menedzser (saját
+  /** A meghívó Menedzser email címe, `null`, ha ez a tag Menedzser (saját
    * regisztráció, nem meghívás), VAGY ha Átvizsgáló, de a meghívás e funkció
    * BEVEZETÉSE ELŐTT történt (akkor még nem lett rögzítve a `profiles.invited_by`). */
   invitedByEmail: string | null;
@@ -27,10 +27,10 @@ export interface AdminOrganizationRow {
   teamManagementEnabled: boolean;
   managerEmails: string[];
   memberCount: number;
-  /** Soronkénti tagsor -- lásd `AdminOrganizationMemberRow` JSDoc-ját. */
+  /** Soronkénti tagsor, lásd `AdminOrganizationMemberRow` JSDoc-ját. */
   members: AdminOrganizationMemberRow[];
   /** Az `inspections` táblából, kliens-oldalon összeszámolt, ÖSSZES (nem csak a havi
-   * keretbe eső) vizsgálat, amit ez a szervezet valaha indított -- lásd
+   * keretbe eső) vizsgálat, amit ez a szervezet valaha indított, lásd
    * `app/admin/page.tsx` `inspectionCountsByOrg`. Csak megjelenítési statisztika, NEM
    * szerkeszthető innen. */
   totalInspectionsCreated: number;
@@ -41,20 +41,20 @@ export interface AdminOrganizationRow {
   monthlyAiLimit: number;
   monthlyAiRemaining: number;
   purchasedAiRemaining: number;
-  /** Nyers Stripe `Subscription.status` (active/trialing/past_due/canceled/unpaid stb.)
-   * -- `null`, ha a szervezetnek soha nem volt Stripe-előfizetése (pl. mindig `free`
+  /** Nyers Stripe `Subscription.status` (active/trialing/past_due/canceled/unpaid stb.),
+   * `null`, ha a szervezetnek soha nem volt Stripe-előfizetése (pl. mindig `free`
    * maradt, vagy csak egyszeri Top-up-ot vásárolt). Lásd `app/api/stripe/webhook/route.ts`
    * `handleSubscriptionEvent`. */
   subscriptionStatus: string | null;
-  /** ISO timestamp -- a Stripe-előfizetés aktuális számlázási ciklusának vége (meddig
+  /** ISO timestamp, a Stripe-előfizetés aktuális számlázási ciklusának vége (meddig
    * érvényes/mikor újul meg). `null`, ha nincs Stripe-előfizetés. */
   subscriptionCurrentPeriodEnd: string | null;
   /** AI API hívás-statisztika, az utolsó 30 napra (2026-08-17, Levi kérésére: "lássam,
-   * mennyi AI API hívást tettek az egyes fiókok, és melyik modellnek") -- az `ai_api_calls`
+   * mennyi AI API hívást tettek az egyes fiókok, és melyik modellnek"), az `ai_api_calls`
    * táblából, `app/admin/page.tsx`-ben szervezetenként/modellenként aggregálva. MINDEN
    * ténylegesen megtörtént Gemini-hívás-próbálkozást tartalmazza (a 7 `/api/ai/*` route +
    * a publikus riport AI chat is), NEM azonos az "1 AI-kredit = 1 vizsgálat" elszámolással
-   * (`monthlyAiRemaining` stb.) -- lásd `lib/aiApiCallLog.ts`. Csak MEGJELENÍTÉS, nem
+   * (`monthlyAiRemaining` stb.), lásd `lib/aiApiCallLog.ts`. Csak MEGJELENÍTÉS, nem
    * szerkeszthető innen. */
   aiApiCallStats: {
     totalCalls: number;
@@ -67,7 +67,7 @@ interface AdminOrganizationsTableProps {
   organizations: AdminOrganizationRow[];
 }
 
-/** Csak MEGJELENÍTÉSI célra -- nyers Stripe `Subscription.status` -> magyar címke. Nem
+/** Csak MEGJELENÍTÉSI célra, nyers Stripe `Subscription.status` -> magyar címke. Nem
  * teljes lista (a Stripe-nak több státusza is van), a projektben eddig ténylegesen
  * előforduló/releváns értékekre szűkítve, ismeretlen érték esetén a nyers string jelenik
  * meg (defenzív fallback, lásd a `subscriptionStatusLabel` függvényt lent). */
@@ -86,7 +86,7 @@ function subscriptionStatusLabel(status: string): string {
   return SUBSCRIPTION_STATUS_LABELS[status] ?? status;
 }
 
-/** A `user_credits` szerkeszthető mezői -- a Platform Admin ITT állíthatja át kézzel,
+/** A `user_credits` szerkeszthető mezői, a Platform Admin ITT állíthatja át kézzel,
  * belső felülbírálásként (Levi döntése, 2026-08-11: ez NEM hív Stripe API írási
  * műveletet, csak a mi adatbázisunkban élő keretet módosítja, lásd
  * `20260811120000_admin_credits_management.sql` migráció bevezetőjét). */
@@ -112,7 +112,7 @@ function toFormState(org: AdminOrganizationRow): CreditFormState {
   };
 }
 
-/** Egyetlen szám-mező szerkesztő -- a Platform Admin panel 6 azonos felépítésű
+/** Egyetlen szám-mező szerkesztő, a Platform Admin panel 6 azonos felépítésű
  * mezőjéhez (havi/vásárolt vizsgálat + AI keret), hogy az input JSX ne 6x duplikálódjon. */
 function NumberField({
   label,
@@ -145,7 +145,7 @@ function NumberField({
 }
 
 /**
- * "Csapattagok és meghívások" panel (2026-08-14, "Meghívás-attribúció" lépés) -- a
+ * "Csapattagok és meghívások" panel (2026-08-14, "Meghívás-attribúció" lépés), a
  * kibontható kredit-panel ALATT, ugyanabban a `bg-linear-canvas` szekcióban jelenik
  * meg: soronként egy tag (email + szerepkör-jelvény), Menedzsernél "Saját
  * regisztráció", Átvizsgálónál "Meghívta: <email>" (vagy "Meghívó nincs rögzítve", ha
@@ -193,7 +193,7 @@ function MembersPanel({ members }: { members: AdminOrganizationMemberRow[] }) {
 
 /**
  * "AI API hívások" panel (2026-08-17, Levi kérésére: "lássam, mennyi AI API hívást tettek
- * az egyes fiókok, és melyik modellnek") -- a "Csapattagok és meghívások" panel ALATT,
+ * az egyes fiókok, és melyik modellnek"), a "Csapattagok és meghívások" panel ALATT,
  * ugyanabban a kibontható szekcióban. Modellenkénti bontás soronként (hívásszám +
  * hányad-sáv), fejlécben az összesített hívásszám és a sikeres/sikertelen arány. Az
  * utolsó 30 napra vonatkozik (lásd `app/admin/page.tsx` lekérdezését), MINDEN
@@ -241,22 +241,22 @@ function AiUsagePanel({ stats }: { stats: AdminOrganizationRow['aiApiCallStats']
 }
 
 /**
- * Platform Admin felület -- szervezetek listája + `team_management_enabled` kapcsoló +
+ * Platform Admin felület, szervezetek listája + `team_management_enabled` kapcsoló +
  * (2026-08-11, "Platform Admin kredit/előfizetés-kezelés" lépés) kibontható,
  * szerkeszthető kredit/kvóta/csomag panel soronként. Kizárólag `app/admin/page.tsx`-ből
- * érhető el, ami már Server Component-szinten ellenőrizte a `platform_admins` tagságot --
+ * érhető el, ami már Server Component-szinten ellenőrizte a `platform_admins` tagságot,
  * ez a kliens-komponens a tényleges kapcsolgatást/szerkesztést végzi.
  *
  * A `team_management_enabled` kapcsoló logikája VÁLTOZATLAN (lásd az eredeti JSDoc-ot a
- * git történetben) -- az ÚJ rész a kibontható panel: soronként egy chevron-gomb
+ * git történetben), az ÚJ rész a kibontható panel: soronként egy chevron-gomb
  * (`expandedId`) nyitja/zárja, a szerkesztő űrlap helyi állapotát (`formStateByOrgId`)
  * csak KIBONTÁSKOR inicializáljuk az aktuális sorból (lusta, hogy egy még nem megnyitott
  * sor módosítása más admin-fülön/frissítés után ne írja felül csendben a felhasználó még
- * el nem mentett szerkesztését -- bár ez az admin felület egyszerre jellemzően egy
+ * el nem mentett szerkesztését, bár ez az admin felület egyszerre jellemzően egy
  * személy kezében van, ez a védekező minta olcsó és konzisztens a projekt többi
  * optimista-UI mintájával).
  *
- * Mentéskor `user_credits` UPSERT `onConflict: 'organization_id'` -- lásd a mező-szintű
+ * Mentéskor `user_credits` UPSERT `onConflict: 'organization_id'`, lásd a mező-szintű
  * JSDoc-ot `AdminOrganizationRow.planTier`-nél: a szervezetnek lehet, hogy MÉG NINCS
  * `user_credits` sora (lazy-create, csak az első tényleges használatkor jönne létre), az
  * UPSERT ilyenkor létrehozza, a `plan_tier`/kvóta mezőket a most beírt értékekre állítva.
@@ -265,7 +265,7 @@ function AiUsagePanel({ stats }: { stats: AdminOrganizationRow['aiApiCallStats']
  * UGYANÚGY, mint a `team_management_enabled` kapcsolónál az `organizations_update_
  * platform_admin` policy.
  *
- * Linear Dark Design Style -- ez egy belső, kizárólag az üzemeltetőnek szánt felület, nem
+ * Linear Dark Design Style, ez egy belső, kizárólag az üzemeltetőnek szánt felület, nem
  * ügyfél-arcú, ezért a "Szakértői Munkaterület" stílusát követi (linear.md).
  */
 export function AdminOrganizationsTable({ organizations: initial }: AdminOrganizationsTableProps) {
@@ -308,7 +308,7 @@ export function AdminOrganizationsTable({ organizations: initial }: AdminOrganiz
     }
     setExpandedId(org.id);
     setSaveSuccessId(null);
-    // Lásd a komponens JSDoc-ját -- csak akkor inicializáljuk az űrlapot, ha ehhez a
+    // Lásd a komponens JSDoc-ját, csak akkor inicializáljuk az űrlapot, ha ehhez a
     // szervezethez MÉG NINCS helyi (esetleg félbehagyott) szerkesztési állapot.
     setFormStateByOrgId((current) =>
       current[org.id] ? current : { ...current, [org.id]: toFormState(org) }

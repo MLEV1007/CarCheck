@@ -29,30 +29,30 @@ export const metadata: Metadata = {
 
 /**
  * ISR (Incremental Static Regeneration, 2026-08-07, "Teljesítmény-audit és refaktorálás"
- * lépés, D pont: "Publikus Riport Caching") -- KORÁBBAN ez az oldal a `lib/supabase/server.ts`
+ * lépés, D pont: "Publikus Riport Caching"), KORÁBBAN ez az oldal a `lib/supabase/server.ts`
  * `createClient()`-jét használta, ami a `next/headers` `cookies()`-t hívja, ezért a Next.js
- * automatikusan TELJESEN DINAMIKUSNAK (per-kérés SSR-nek) minősítette a route-ot -- MINDEN
+ * automatikusan TELJESEN DINAMIKUSNAK (per-kérés SSR-nek) minősítette a route-ot, MINDEN
  * egyes megnyitás (akár ugyanaz a látogató frissíti az oldalt, akár a link több emberrel
  * megosztásra kerül) egy ÚJ `get_public_report` RPC hívást futtatott a DB-n, feleslegesen.
  * A `lib/supabase/public.ts` cookie-mentes klienssel párosítva az alábbi `revalidate` már
  * ténylegesen érvényesül: az adott `public_token`-hez tartozó renderelt HTML a Next.js
  * Data Cache-ében marad legfeljebb ennyi másodpercig, ez alatt UGYANAZT a cache-elt HTML-t
- * szolgálja ki új DB-lekérdezés nélkül -- a lejárat után az ELSŐ kérés még a régi (stale)
+ * szolgálja ki új DB-lekérdezés nélkül, a lejárat után az ELSŐ kérés még a régi (stale)
  * HTML-t kapja, a háttérben újragenerálódik a lap ("stale-while-revalidate"), a KÖVETKEZŐ
  * kérés már a frisset. Ha egy vizsgáló egy MÁR publikált riportot szerkeszt/újra ment, az
  * `InspectionWizard.tsx` `handleSubmit`-ja emellett explicit on-demand revalidációt is indít
- * (`/api/inspections/revalidate-report`, lásd annak JSDoc-ját) -- ez a `revalidate` időablak
+ * (`/api/inspections/revalidate-report`, lásd annak JSDoc-ját), ez a `revalidate` időablak
  * tehát a GYAKORLATBAN csak a legfeljebb néhány másodperces "in-flight" édesélet-ablakra
  * vonatkozik, nem egy több perces/órás bizonytalan elavulási időre.
  */
 export const revalidate = 60;
 
 /**
- * Publikus Ügyfélriport (PROJEKT_INSTRUKCIOK.md 5.C) -- NEM igényel bejelentkezést,
+ * Publikus Ügyfélriport (PROJEKT_INSTRUKCIOK.md 5.C), NEM igényel bejelentkezést,
  * nincs a middleware PROTECTED_PREFIXES listáján (lib/supabase/middleware.ts).
  *
  * Adatlekérdezés KIZÁRÓLAG a `get_public_report` RPC-n keresztül (SECURITY DEFINER,
- * `anon` szerepkör is futtathatja) -- soha nem közvetlen tábla-lekérdezéssel, mert a
+ * `anon` szerepkör is futtathatja), soha nem közvetlen tábla-lekérdezéssel, mert a
  * `defects`/`paint_measurements`/`inspections` RLS policy-jai (`auth.uid() = user_id`)
  * bejelentkezés nélküli, idegen usernek szánt olvasást amúgy is elutasítanának.
  * BMW Corporate Design System (bmw.md): fehér canvas, sötétkék hero sáv, 0px
@@ -75,12 +75,12 @@ export default async function PublicReportPage({ params }: PublicReportPageProps
   // értékét használják; ha az nincs beállítva, a BMW design system kék (#1c69d4) a fallback.
   // A `--report-accent` CSS változót itt, egyetlen helyen állítjuk be, az azt felhasználó
   // komponensek (SectionHeading, ReportHeader) `text-[var(--report-accent)]` / `bg-[var(--report-accent)]`
-  // arbitrary-value Tailwind osztályokkal olvassák -- így nem kell a company objektumot
+  // arbitrary-value Tailwind osztályokkal olvassák, így nem kell a company objektumot
   // minden akcentus-elemig lefelé prop-drillelni.
   const accentColor = report.company?.primary_color?.trim() || '#1c69d4';
 
   // Riport küszöbértékek (2026-08-07, "Testreszabható festékvastagság/gumiabroncs
-  // küszöbértékek" lépés) -- a vizsgálatot végző cég `profiles` sorából, a
+  // küszöbértékek" lépés), a vizsgálatot végző cég `profiles` sorából, a
   // `get_public_report` RPC `company` objektumán keresztül (lásd `ReportThresholds`
   // JSDoc-ját, `lib/inspections/types.ts`). `?? DEFAULT_REPORT_THRESHOLDS` mezőnkénti
   // fallback, ha egy régi (a migráció előtti) `company` objektum valamiért mégis
@@ -117,8 +117,8 @@ export default async function PublicReportPage({ params }: PublicReportPageProps
         </div>
       </footer>
 
-      {/* "Kérdezz az AI-tól" chat -- Pro/Business exkluzív, lásd PLAN_ai_report_chat.md.
-          A gomb/panel EGYÁLTALÁN nem renderelődik Starter/Growth riporton -- a
+      {/* "Kérdezz az AI-tól" chat, Pro/Business exkluzív, lásd PLAN_ai_report_chat.md.
+          A gomb/panel EGYÁLTALÁN nem renderelődik Starter/Growth riporton, a
           `report.ai_chat_enabled` mezőt a `get_public_report` RPC szerver-oldalon,
           a szervezet `plan_tier`-jéből számolja, a kliens ezt nem tudja megkerülni. */}
       {report.ai_chat_enabled && <ReportAiChat token={publicToken} />}

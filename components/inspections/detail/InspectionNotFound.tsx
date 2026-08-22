@@ -2,9 +2,9 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 
 /**
- * `/inspections/[id]` -- ha az adott `id`-jú vizsgálat nem létezik, VAGY nem a
+ * `/inspections/[id]`, ha az adott `id`-jú vizsgálat nem létezik, VAGY nem a
  * bejelentkezett usert illeti (`user_id != auth.uid()`), ugyanezt az állapotot
- * mutatjuk (a két esetet szándékosan nem különböztetjük meg a felhasználó felé --
+ * mutatjuk (a két esetet szándékosan nem különböztetjük meg a felhasználó felé,
  * lásd PROJEKT_INSTRUKCIOK.md 3. pont, multi-tenant izoláció: egy idegen vizsgálat
  * létezéséről sem szabad információt szivárogtatni). Linear Dark Design Style.
  */

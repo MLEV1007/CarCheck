@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { iconHitSlopClass } from '@/components/ui/IconButton';
 
 interface ReportAiChatProps {
-  /** A riport `public_token`-je -- ez az egyetlen azonosító, amit a
+  /** A riport `public_token`-je, ez az egyetlen azonosító, amit a
    * `/api/report-chat` route kap, ebből oldja fel szerver-oldalon a
    * vizsgálatot/szervezetet (lásd a route JSDoc-ját). */
   token: string;
@@ -15,12 +15,12 @@ interface ReportAiChatProps {
 interface ChatMessage {
   role: 'user' | 'model';
   text: string;
-  /** Igaz, ha ez a sor egy sikertelen hívás visszajelzése -- vizuálisan
+  /** Igaz, ha ez a sor egy sikertelen hívás visszajelzése, vizuálisan
    * megkülönböztetve (piros szegély), de a beszélgetés-folyamban marad. */
   isError?: boolean;
 }
 
-/** Lásd `app/api/report-chat/route.ts` `MAX_MESSAGE_LENGTH`-je -- UGYANAZ az
+/** Lásd `app/api/report-chat/route.ts` `MAX_MESSAGE_LENGTH`-je, UGYANAZ az
  * érték, hogy a kliens-oldali validáció 1:1 tükrözze a szerver-oldalit. */
 const MAX_MESSAGE_LENGTH = 500;
 
@@ -31,19 +31,19 @@ const EXAMPLE_QUESTIONS = [
 ];
 
 /**
- * "Kérdezz az AI szakértőtől" chat panel -- KIZÁRÓLAG Pro/Business csomagos
+ * "Kérdezz az AI szakértőtől" chat panel, KIZÁRÓLAG Pro/Business csomagos
  * riporton renderelődik (lásd `app/report/[public_token]/page.tsx`, a szülő
  * KIZÁRÓLAG `report.ai_chat_enabled === true` esetén rendereli ezt a
- * komponenst -- ez a komponens maga nem ismétli meg a tier-ellenőrzést, azt a
+ * komponenst, ez a komponens maga nem ismétli meg a tier-ellenőrzést, azt a
  * `/api/report-chat` route úgyis szerver-oldalon, a kliensadattól függetlenül
  * kikényszeríti).
  *
  * BMW Corporate Design System: 0px lekerekítés, `--report-accent` akcentus,
- * 700/300 tipográfiai kontraszt -- lásd `bmw.md` + a meglévő `components/
+ * 700/300 tipográfiai kontraszt, lásd `bmw.md` + a meglévő `components/
  * report/*` komponensek stílusát (pl. `ReportHeader.tsx`, `MediaLightbox.tsx`).
  *
  * **GDPR / statelesség:** a beszélgetés-előzmény KIZÁRÓLAG ebben a React
- * state-ben él -- oldalfrissítésnél/bezárásnál elvész, sehol nem kerül
+ * state-ben él, oldalfrissítésnél/bezárásnál elvész, sehol nem kerül
  * perzisztens tárolásra (sem itt, sem a szerveren, lásd a route JSDoc-ját).
  * Minden hívásnál a TELJES eddigi előzményt visszaküldjük a szervernek, mert a
  * Route Handler maga stateless.

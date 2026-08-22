@@ -2,10 +2,10 @@ import { ButtonHTMLAttributes, forwardRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-// Stripe design system (stripe.md): `button-primary-pill` / `button-secondary`
-// -- rounded-full (pill), 8px 16px padding, button-md tipográfia (16px / 400).
+// Stripe design system (stripe.md): `button-primary-pill` / `button-secondary`,
+// rounded-full (pill), 8px 16px padding, button-md tipográfia (16px / 400).
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  /** `danger` -- destruktív műveletekhez (pl. "Fiók törlése"), `stripe-ruby` háttérrel --
+  /** `danger`, destruktív műveletekhez (pl. "Fiók törlése"), `stripe-ruby` háttérrel,
    * lásd `DeleteAccountCard.tsx`. */
   variant?: 'primary' | 'secondary' | 'danger';
   isLoading?: boolean;

@@ -5,9 +5,9 @@ import type { CarInfoState } from '@/lib/inspections/types';
  * "Autó adatok" lépéshez. Két réteg:
  *  - `sanitize*` függvények: minden billentyűleütésnél lefutnak (StepCarInfo.tsx
  *    `onChange`), és a mezőt azonnal a kívánt kanonikus formára hozzák (nagybetűsítés,
- *    nem megengedett karakterek eltávolítása) -- ezek SOHA nem dobnak hibát, csak tisztítanak.
+ *    nem megengedett karakterek eltávolítása), ezek SOHA nem dobnak hibát, csak tisztítanak.
  *  - `getCarInfoErrors`: a teljes `CarInfoState`-et validálja, és mezőnkénti hibaüzenetet ad
- *    vissza -- ez jelenik meg piros szöveggel a mező alatt, és ez blokkolja a "Tovább" gombot.
+ *    vissza, ez jelenik meg piros szöveggel a mező alatt, és ez blokkolja a "Tovább" gombot.
  */
 
 export type CarInfoErrors = Partial<Record<keyof CarInfoState, string>>;
@@ -16,13 +16,13 @@ const CURRENT_YEAR = new Date().getFullYear();
 const MIN_YEAR = 1900;
 const MAX_ODOMETER = 2_000_000;
 const VIN_MAX_LENGTH = 17;
-/** Motor teljesítménye (kW) -- 2000 kW bőven a valaha gyártott leggyorsabb közúti
+/** Motor teljesítménye (kW), 2000 kW bőven a valaha gyártott leggyorsabb közúti
  * jármű/teherautó fölött is, hogy a mező sose blokkoljon egy valós, szélsőséges értéket. */
 const MAX_POWER_KW = 2_000;
-/** Megengedett legnagyobb össztömeg (kg) -- 60 000 kg egy nehéz tehergépjármű/pótkocsis
+/** Megengedett legnagyobb össztömeg (kg), 60 000 kg egy nehéz tehergépjármű/pótkocsis
  * szerelvény tartományát is lefedi, nemcsak a személyautókét. */
 const MAX_GROSS_WEIGHT = 60_000;
-/** Motor típusa (szabad szöveges mező) -- max hossz, ugyanaz az elv, mint a VIN-nél, hogy
+/** Motor típusa (szabad szöveges mező), max hossz, ugyanaz az elv, mint a VIN-nél, hogy
  * egy hibásan beillesztett, túl hosszú szöveg ne torzítsa el a riport elrendezését. */
 const ENGINE_TYPE_MAX_LENGTH = 80;
 
@@ -41,31 +41,31 @@ export function sanitizeLicensePlate(raw: string): string {
   return raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
 
-/** Évjárat: csak számjegyek, max 4 karakter (nincs itt tartomány-korlátozás -- azt a
+/** Évjárat: csak számjegyek, max 4 karakter (nincs itt tartomány-korlátozás, azt a
  * `validateYear` végzi, hogy beírás közben még lehessen pl. "20" állapotban lenni). */
 export function sanitizeYear(raw: string): string {
   return raw.replace(/\D/g, '').slice(0, 4);
 }
 
-/** Km óra állás: csak számjegyek (nincs felső korlát itt -- azt a `validateOdometer` végzi). */
+/** Km óra állás: csak számjegyek (nincs felső korlát itt, azt a `validateOdometer` végzi). */
 export function sanitizeOdometer(raw: string): string {
   return raw.replace(/\D/g, '');
 }
 
 /** Motor teljesítménye (kW): csak számjegyek, max 4 karakter (9999 kW bőven a valaha
- * gyártott leggyorsabb jármű fölött is) -- ugyanaz az elv, mint `sanitizeOdometer`-nél. */
+ * gyártott leggyorsabb jármű fölött is), ugyanaz az elv, mint `sanitizeOdometer`-nél. */
 export function sanitizePowerKw(raw: string): string {
   return raw.replace(/\D/g, '').slice(0, 4);
 }
 
 /** Megengedett legnagyobb össztömeg (kg): csak számjegyek, max 6 karakter (999 999 kg
- * bőven a legnehezebb nyerges szerelvény fölött is) -- ugyanaz az elv, mint
+ * bőven a legnehezebb nyerges szerelvény fölött is), ugyanaz az elv, mint
  * `sanitizeOdometer`-nél. */
 export function sanitizeGrossWeight(raw: string): string {
   return raw.replace(/\D/g, '').slice(0, 6);
 }
 
-/** Motor típusa: szabad szöveges mező (ugyanaz az elv, mint a Típus/`carModel` mezőnél --
+/** Motor típusa: szabad szöveges mező (ugyanaz az elv, mint a Típus/`carModel` mezőnél,
  * nincs karakter-korlátozás beírás közben), csak a max hosszra vágjuk. */
 export function sanitizeEngineType(raw: string): string {
   return raw.slice(0, ENGINE_TYPE_MAX_LENGTH);
@@ -127,7 +127,7 @@ export function validateCarBrand(raw: string): string | null {
   return null;
 }
 
-/** A teljes "Autó adatok" lépés validálása -- a `Tovább` gomb csak akkor engedélyezett,
+/** A teljes "Autó adatok" lépés validálása, a `Tovább` gomb csak akkor engedélyezett,
  * ha ennek a visszatérési objektumnak minden mezője `undefined`. */
 export function getCarInfoErrors(value: CarInfoState): CarInfoErrors {
   const errors: CarInfoErrors = {};
@@ -169,13 +169,13 @@ export function sanitizeDiagnosticCode(raw: string): string {
     .slice(0, 8);
 }
 
-/** Gumiabroncs DOT kód: csak számjegyek, pontosan 4 karakter (WWYY -- lásd `tireDot.ts`). */
+/** Gumiabroncs DOT kód: csak számjegyek, pontosan 4 karakter (WWYY, lásd `tireDot.ts`). */
 export function sanitizeDotCode(raw: string): string {
   return raw.replace(/\D/g, '').slice(0, 4);
 }
 
 /** Gumiabroncs profilmélység (mm): számjegyek + legfeljebb egy tizedespont, max 5
- * karakter (pl. "12.5") -- reális profilmélység 0-20 mm körül mozog. */
+ * karakter (pl. "12.5"), reális profilmélység 0-20 mm körül mozog. */
 export function sanitizeMm(raw: string): string {
   let value = raw.replace(/[^0-9.]/g, '');
   const firstDot = value.indexOf('.');
@@ -186,20 +186,20 @@ export function sanitizeMm(raw: string): string {
 }
 
 /** Festékvastagság mérési pont (µm): csak számjegyek, max 4 karakter (0-2000 µm bőven
- * elég reális tartomány) -- lásd StepPaintMeasurements.tsx 3 pontos beviteli mezői. */
+ * elég reális tartomány), lásd StepPaintMeasurements.tsx 3 pontos beviteli mezői. */
 export function sanitizeMicron(raw: string): string {
   return raw.replace(/\D/g, '').slice(0, 4);
 }
 
-/** Szervizmúlt bejegyzés km óra állása -- ugyanaz a szabály, mint az "Autó adatok" lépés
+/** Szervizmúlt bejegyzés km óra állása, ugyanaz a szabály, mint az "Autó adatok" lépés
  * km óra állás mezőjénél (`sanitizeOdometer`), csak számjegyek. */
 export function sanitizeServiceMileage(raw: string): string {
   return raw.replace(/\D/g, '');
 }
 
-/** Végső Szakvélemény & Várható Költségek modul -- min/max várható szervizköltség (HUF):
+/** Végső Szakvélemény & Várható Költségek modul, min/max várható szervizköltség (HUF):
  * csak számjegyek, max 9 karakter (bőven elég egy reális, forintban megadott összeghez,
- * 999 999 999 Ft-ig) -- ugyanaz az elv, mint a `sanitizeOdometer`-nél. */
+ * 999 999 999 Ft-ig), ugyanaz az elv, mint a `sanitizeOdometer`-nél. */
 export function sanitizeCostAmount(raw: string): string {
   return raw.replace(/\D/g, '').slice(0, 9);
 }

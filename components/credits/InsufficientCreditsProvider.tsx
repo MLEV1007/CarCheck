@@ -4,13 +4,13 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 import { InsufficientCreditsModal } from '@/components/credits/InsufficientCreditsModal';
 
 interface InsufficientCreditsContextValue {
-  /** Bármelyik `/api/ai/*` hívóhely ezt hívja, amikor a válasz `402` (`INSUFFICIENT_AI_QUOTA`)
-   * -- lásd a hívóhelyeket: `VoiceInputButton.tsx`, `StepEquipment.tsx`, `StepCarInfo.tsx`,
+  /** Bármelyik `/api/ai/*` hívóhely ezt hívja, amikor a válasz `402` (`INSUFFICIENT_AI_QUOTA`),
+   * lásd a hívóhelyeket: `VoiceInputButton.tsx`, `StepEquipment.tsx`, `StepCarInfo.tsx`,
    * `StepFinalAssessment.tsx`. **2026-08-06, "Árazási struktúra bővítés" lépés:** korábban két
-   * KÜLÖNBÖZŐ okot (`'credits'`/`'ai_quota'`) különböztetett meg ez a callback -- a régi,
+   * KÜLÖNBÖZŐ okot (`'credits'`/`'ai_quota'`) különböztetett meg ez a callback, a régi,
    * generikus kredit-rendszer (`lib/credits.ts` `hasEnoughCredits`) gate-jét eltávolítottuk
    * az `/api/ai/*` route-okból (lásd `lib/inspectionAiCredit.ts` JSDoc-ját), így a `402` MOSTANTÓL
-   * KIZÁRÓLAG az AI-kvóta elfogyását jelentheti -- a paraméter feleslegessé vált, törölve. */
+   * KIZÁRÓLAG az AI-kvóta elfogyását jelentheti, a paraméter feleslegessé vált, törölve. */
   notifyInsufficientCredits: () => void;
 }
 
@@ -22,7 +22,7 @@ const InsufficientCreditsContext = createContext<InsufficientCreditsContextValue
  * oldalt körbevesz, hogy a wizard mélyen beágyazott AI-hívó komponensei
  * (`VoiceInputButton`, `StepEquipment` belső `EquipmentAiAssistant`, `StepCarInfo`,
  * `StepFinalAssessment`) prop-drilling NÉLKÜL, egy egyszerű `useInsufficientCredits()`
- * hívással tudják megnyitni a modalt -- ugyanaz az elv, mint a `ThemeProvider.tsx`-nél.
+ * hívással tudják megnyitni a modalt, ugyanaz az elv, mint a `ThemeProvider.tsx`-nél.
  */
 export function InsufficientCreditsProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -42,7 +42,7 @@ export function InsufficientCreditsProvider({ children }: { children: ReactNode 
   );
 }
 
-/** Lásd `InsufficientCreditsProvider` JSDoc-ját -- kizárólag azon belül használható,
+/** Lásd `InsufficientCreditsProvider` JSDoc-ját, kizárólag azon belül használható,
  * a gyökér layout mindenhol biztosítja ezt a feltételt. */
 export function useInsufficientCredits(): InsufficientCreditsContextValue {
   const ctx = useContext(InsufficientCreditsContext);

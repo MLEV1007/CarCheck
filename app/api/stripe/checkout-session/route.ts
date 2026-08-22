@@ -4,18 +4,18 @@ import { getUserRoleContext } from '@/lib/auth/roles';
 import { getStripeClient } from '@/lib/stripe';
 
 /**
- * Stripe Checkout Session -> számla-link lekérdező végpont (GET) -- 2026-08-09, "Nincs
+ * Stripe Checkout Session -> számla-link lekérdező végpont (GET), 2026-08-09, "Nincs
  * számla-email" lépés. Azért kellett, mert kiderült, hogy a `stripe.invoices.sendInvoice()`
  * hívás (`app/api/stripe/webhook/route.ts`) `invoice_creation`-nel létrehozott Checkout-
  * számláknál IDŐSZAKOSAN, indoklás nélkül `400 invalid_request_error`-t dob ("This invoice
- * cannot be sent right now. Please contact us...") -- ugyanolyan felépítésű Session-öknél,
+ * cannot be sent right now. Please contact us..."), ugyanolyan felépítésű Session-öknél,
  * ahol egyszer sikeres volt, másszor nem. Mivel ez egy Stripe-oldali, API-n keresztül nem
  * diagnosztizálható/megbízhatóan javítható viselkedés, a MEGBÍZHATÓ megoldás: a számla
  * linkjét a SAJÁT felületünkön (a sikeres fizetés banner, `BillingTab.tsx`) is
  * megjelenítjük, függetlenül attól, hogy a Stripe e-mailje eljutott-e a vevőhöz.
  *
  * **Biztonsági guard:** a `session.metadata.organizationId`-nak EGYEZNIE kell a bejelentkezett
- * felhasználó szervezetével -- anélkül bárki, aki ismeri/kitalálja egy másik szervezet
+ * felhasználó szervezetével, anélkül bárki, aki ismeri/kitalálja egy másik szervezet
  * `session_id`-jét, megnézhetné AZ Ő számlájukat. Ugyanaz a Menedzser-guard, mint a
  * `/api/stripe/checkout` route-on (lásd annak JSDoc-ját).
  */
@@ -63,7 +63,7 @@ export async function GET(
     const stripe = getStripeClient();
     const session = await stripe.checkout.sessions.retrieve(sessionId);
 
-    // Lásd a fenti JSDoc "Biztonsági guard" pontját -- csak a SAJÁT szervezet Session-jét
+    // Lásd a fenti JSDoc "Biztonsági guard" pontját, csak a SAJÁT szervezet Session-jét
     // engedjük megnézni.
     if (session.metadata?.organizationId !== roleContext.organizationId) {
       return NextResponse.json({ success: false, error: 'Ez a fizetés nem a szervezetedhez tartozik.' }, { status: 403 });

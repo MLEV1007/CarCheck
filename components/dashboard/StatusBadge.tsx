@@ -3,7 +3,7 @@ interface StatusBadgeProps {
 }
 
 /**
- * Linear design system (linear.md): `status-badge` -- surface-2 alapon, rounded-pill,
+ * Linear design system (linear.md): `status-badge`, surface-2 alapon, rounded-pill,
  * caption tipográfia. A draft/completed megkülönböztetést egy tompított sárga (draft)
  * és a `{colors.semantic-success}` (#27a644) zöld (completed) jelzi, kis színes ponttal.
  */

@@ -4,24 +4,24 @@ import { createClient } from '@/lib/supabase/server';
 import { FEEDBACK_CATEGORIES, FEEDBACK_CATEGORY_LABELS, type FeedbackCategory } from '@/types/feedback';
 
 /**
- * Saját, pillekönnyű in-app visszajelző widget backendje (NEM Formbricks -- lásd a
- * korábbi, 2026-08-20-án teljesen eltávolított kísérletet) -- a `FeedbackModal.tsx`
+ * Saját, pillekönnyű in-app visszajelző widget backendje (NEM Formbricks, lásd a
+ * korábbi, 2026-08-20-án teljesen eltávolított kísérletet), a `FeedbackModal.tsx`
  * ('use client', lásd JSDoc-ját) küldi ide a beérkezett hibát/ötletet, ez a végpont pedig
  * a Notion API-n (`@notionhq/client`) keresztül létrehoz belőle egy lapot a saját Notion
- * Kanban adatbázisunkban ("Status" oszloppal csoportosítva -- új beküldés mindig 'Új'
+ * Kanban adatbázisunkban ("Status" oszloppal csoportosítva, új beküldés mindig 'Új'
  * státusszal érkezik).
  *
  * A pontos Notion adatbázis-séma (property nevek/típusok), a Notion Integration Token
  * beszerzése és az adatbázis megosztása az integrációval a
- * `docs/notion-feedback-widget-setup-2026-08-22.md` fájlban van dokumentálva -- ez a
+ * `docs/notion-feedback-widget-setup-2026-08-22.md` fájlban van dokumentálva, ez a
  * projekt egyetlen olyan lépése, amit KIZÁRÓLAG a felhasználó tud elvégezni (a Notion
  * Integration Token/Database ID az ő saját Notion workspace-éhez tartozik).
  *
- * **Autentikáció:** ugyanaz a minta, mint a `/api/credits/summary`-nál -- `lib/supabase/
+ * **Autentikáció:** ugyanaz a minta, mint a `/api/credits/summary`-nál, `lib/supabase/
  * server.ts` cookie-alapú kliens, `401` bejelentkezés nélkül (a gomb amúgy is csak
  * bejelentkezve érhető el, `DashboardHeader.tsx`/Beállítások, de a végpont saját magát is
  * védi). A `userId`-t a Notion lapra SOSEM a kliens által küldött body-ból, hanem a
- * hitelesített session-ből olvassuk -- ne bízzunk azonosításra kliens-oldali payloadban,
+ * hitelesített session-ből olvassuk, ne bízzunk azonosításra kliens-oldali payloadban,
  * még akkor sem, ha a `FeedbackModal.tsx` "jóhiszeműen" elküldi. A `userEmail`-t viszont a
  * body-ból fogadjuk el elsődlegesen (session `user.email` a fallback), mert ez kizárólag a
  * Notion lap egy megjelenítő mezője, nem azonosítás.
@@ -45,7 +45,7 @@ interface FeedbackErrorResponse {
 }
 
 // A Notion `rich_text`/`title` property egyetlen text-objektuma legfeljebb 2000
-// karaktert fogad el (Notion API korlát) -- ennél hosszabb leírást levágunk, hogy a
+// karaktert fogad el (Notion API korlát), ennél hosszabb leírást levágunk, hogy a
 // `pages.create` hívás ne bukjon el egy validációs hibán.
 const MAX_DESCRIPTION_LENGTH = 2000;
 const TITLE_SUMMARY_LENGTH = 60;
@@ -101,7 +101,7 @@ export async function POST(request: Request): Promise<NextResponse<FeedbackSucce
 
   if (!notionApiKey || !notionDatabaseId) {
     console.error(
-      '[feedback] Hiányzó NOTION_API_KEY vagy NOTION_DATABASE_ID környezeti változó -- lásd .env.local.example ' +
+      '[feedback] Hiányzó NOTION_API_KEY vagy NOTION_DATABASE_ID környezeti változó, lásd .env.local.example ' +
         'és docs/notion-feedback-widget-setup-2026-08-22.md.'
     );
     return NextResponse.json(
@@ -120,17 +120,17 @@ export async function POST(request: Request): Promise<NextResponse<FeedbackSucce
     // FONTOS: a property NEVEK ("Name"/"Status"/"Category"/"Description"/"User Email"/
     // "Image URL") és TÍPUSOK (title/select/select/rich_text/rich_text/url) PONTOSAN
     // egyezniük kell a Notion adatbázisban ténylegesen beállított oszlopokkal, különben a
-    // Notion API 400-at ad vissza -- lásd a séma-táblázatot
+    // Notion API 400-at ad vissza, lásd a séma-táblázatot
     // `docs/notion-feedback-widget-setup-2026-08-22.md`-ben.
     //
-    // **"Status" -- SELECT, nem a Notion beépített "status" property-típusa** (2026-08-22,
+    // **"Status", SELECT, nem a Notion beépített "status" property-típusa** (2026-08-22,
     // MCP-vel élesben felderítve): a Notion API ma nem enged a `status` típusú property-hez
     // egyetlen meglévő adatbázis-élre sem ÚJ opciót DDL-lel felvenni ("If a new status
-    // option is needed, the data source must be updated to add it" -- de a rendelkezésre
+    // option is needed, the data source must be updated to add it", de a rendelkezésre
     // álló update-data-source eszköz a STATUS típushoz NEM fogad el opció-listát,
     // kizárólag a SELECT/MULTI_SELECT szintaxis teszi ezt lehetővé). Emiatt a "Status"
     // oszlop a Notion adatbázisban SZÁNDÉKOSAN sima Select (nem a speciális Status
-    // property-típus) -- Új/Folyamatban/Kész/Elutasítva opciókkal.
+    // property-típus), Új/Folyamatban/Kész/Elutasítva opciókkal.
     await notion.pages.create({
       parent: { database_id: notionDatabaseId },
       properties: {

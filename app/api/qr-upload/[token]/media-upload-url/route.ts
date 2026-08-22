@@ -11,11 +11,11 @@ import {
 
 /**
  * Aláírt Storage feltöltési token kiadása a QR-kódos TELEFONOS (anonim, token+claimSecret-tel
- * hitelesített) kliensnek -- lásd PLAN_video_qr_upload.md 4. és 6. szakaszát. Ugyanaz a
+ * hitelesített) kliensnek, lásd PLAN_video_qr_upload.md 4. és 6. szakaszát. Ugyanaz a
  * `issueMediaUploadTicket`/`assertVideoUploadAllowed` páros, mint az asztali
  * `/api/inspections/media-upload-url`-nél (lásd annak JSDoc-ját a videó-gate indoklásáért),
  * DE itt admin (service-role) kliensen keresztül fut, mert a hívónak SOSINCS Supabase
- * munkamenete -- a jogosultságot a `resolve_qr_upload_session` RPC "claim" ellenőrzése adja
+ * munkamenete, a jogosultságot a `resolve_qr_upload_session` RPC "claim" ellenőrzése adja
  * (lásd a migráció kommentjét), NEM egy Supabase Auth session.
  */
 export async function POST(request: Request, context: { params: Promise<{ token: string }> }) {
@@ -63,7 +63,7 @@ export async function POST(request: Request, context: { params: Promise<{ token:
 
   // A Storage-útvonal első szegmensének (`storage.objects` RLS tulajdonlási feltétele) a
   // session-t létrehozó ASZTALI felhasználó `auth.uid()`-ja kell legyen, NEM az anonim
-  // telefoné (aminek nincs is `auth.uid()`-ja) -- lásd `mediaUploadServer.ts`
+  // telefoné (aminek nincs is `auth.uid()`-ja), lásd `mediaUploadServer.ts`
   // `buildInspectionMediaPath` JSDoc-ját.
   const { data: sessionRow, error: sessionRowError } = await admin
     .from('qr_upload_sessions')

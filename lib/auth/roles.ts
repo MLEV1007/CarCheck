@@ -4,7 +4,7 @@ import type { OrganizationRole } from '@/types/credits';
 
 /**
  * Szervezeti szerepkör-kontextus (PROJEKT_INSTRUKCIOK.md "Szervezeti szerepkezelés"
- * lépés) -- minden Server Component/route handler, amelynek tudnia kell a bejelentkezett
+ * lépés), minden Server Component/route handler, amelynek tudnia kell a bejelentkezett
  * user szervezetét/szerepkörét (fejléc kredit-jelvény elrejtése, Csapatkezelés fül,
  * Dashboard riport-lekérdezés, `/api/stripe/*` védelem), ezt a helpert használja a
  * kódduplikáció elkerülésére.
@@ -16,7 +16,7 @@ export interface UserRoleContext {
 }
 
 /**
- * Lekéri a bejelentkezett user `profiles` sorából a szervezeti kontextust -- a request-
+ * Lekéri a bejelentkezett user `profiles` sorából a szervezeti kontextust, a request-
  * hatókörű, cookie-alapú Supabase klienssel (`lib/supabase/server.ts`), tehát a hívó
  * SAJÁT RLS-jogosultságával fut (a `profiles_select_own` policy mindig engedi a saját
  * sor olvasását, függetlenül a szerepkörtől). `null`-t ad vissza, ha a profil-sor
@@ -49,7 +49,7 @@ export async function getUserRoleContext(userId: string): Promise<UserRoleContex
  * Végpontok Védelme" lépés): "Az `/api/stripe/*` útvonalak azonnal dobjanak `403
  * Forbidden` hibát, ha `role !== 'manager'`." A projektben JELENLEG még nincs egyetlen
  * `/api/stripe/*` route SEM (a Stripe checkout/webhook integráció külön, jövőbeli lépés,
- * lásd status.md "Következő lépés") -- ez a guard előre elkészítve várja azt a lépést,
+ * lásd status.md "Következő lépés"), ez a guard előre elkészítve várja azt a lépést,
  * hogy amint az első ilyen route létrejön, egyetlen hívással bedrótozható legyen:
  *
  * ```ts
@@ -86,11 +86,11 @@ export async function requireManager(): Promise<NextResponse | null> {
 }
 
 /**
- * Platform Admin (2026-08-03, "Platform Admin + Csapatkezelés-entitlement" lépés) --
+ * Platform Admin (2026-08-03, "Platform Admin + Csapatkezelés-entitlement" lépés),
  * ÚJ, a szervezetek FÖLÖTTI szerepkör: a CarPass SaaS ÜZEMELTETŐJE (nem egy
  * autóvizsgáló cég Menedzsere!), aki a `/admin` felületen dönti el, melyik ÜGYFÉL
  * (szervezet) kap Menedzser-szintű csapatkezelést (`organizations.
- * team_management_enabled`). A `platform_admins` tábla explicit allow-list --
+ * team_management_enabled`). A `platform_admins` tábla explicit allow-list,
  * KIZÁRÓLAG SQL-en/Supabase Dashboardon keresztül bővíthető (nincs insert/update RLS
  * policy rajta), hogy egy alkalmazás-szintű hiba se tudjon valakit önmagát platform
  * adminná léptetni. Lásd `supabase/migrations/20260803_platform_admin_entitlements.sql`.

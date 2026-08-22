@@ -13,24 +13,24 @@ interface BillingTabProps {
    * belső védelmi réteg, ha ez a komponens valaha egy Átvizsgálónak is látható helyre
    * kerülne. */
   role: 'manager' | 'inspector';
-  /** A Stripe Price ID-k a szerver-oldali env változókból (`STRIPE_PRICE_ID_*`) -- ez a
+  /** A Stripe Price ID-k a szerver-oldali env változókból (`STRIPE_PRICE_ID_*`), ez a
    * kliens-komponens nem olvashatja őket közvetlenül (nincs `NEXT_PUBLIC_` előtag,
    * szándékosan, lásd `.env.local.example`), ezért a szülő Server Component
    * (`app/settings/_components/SettingsPageContent.tsx`) adja át prop-ként. `null`, ha az
-   * adott ár még nincs beállítva a Vercel környezeti változói között -- ilyenkor a
+   * adott ár még nincs beállítva a Vercel környezeti változói között, ilyenkor a
    * hozzá tartozó gomb `disabled` marad, hibaüzenet helyett.
    *
    * **2026-08-06, "Árazási struktúra bővítés" lépés:** `growthPriceId` (új, `growth` havi
-   * csomag) + 3 AI-kredit-csomag ár (`aiTopup5/15/40PriceId`) hozzáadva -- lásd
+   * csomag) + 3 AI-kredit-csomag ár (`aiTopup5/15/40PriceId`) hozzáadva, lásd
    * `supabase/migrations/20260806_pricing_tiers_growth_business_ai_credits.sql`
    * `apply_plan_purchase` RPC-jének bővített `p_plan_action` enumját. A `business` tier
-   * SZÁNDÉKOSAN nem kap price ID-t -- egyedi ártárgyalás, nem önkiszolgáló Stripe
+   * SZÁNDÉKOSAN nem kap price ID-t, egyedi ártárgyalás, nem önkiszolgáló Stripe
    * Checkout tétel (lásd lent a `plans` tömb `business` bejegyzését). */
   starterPriceId: string | null;
   growthPriceId: string | null;
   proPriceId: string | null;
-  /** Éves (kb. 20% kedvezményes) Price ID-k -- 2026-08-07, "Havi/éves kapcsoló" lépés.
-   * `null`, ha még nincs beállítva -- ilyenkor az éves nézetben a kártya gombja az
+  /** Éves (kb. 20% kedvezményes) Price ID-k, 2026-08-07, "Havi/éves kapcsoló" lépés.
+   * `null`, ha még nincs beállítva, ilyenkor az éves nézetben a kártya gombja az
    * érvényes havi árra esik vissza (lásd a kártya-renderelésnél az `activePriceId`
    * `?? plan.monthlyPriceId` fallback-et), hogy a vásárlás gomb ne váljon haszontalanná
    * egy hiányzó env változó miatt. */
@@ -42,31 +42,31 @@ interface BillingTabProps {
   aiTopup15PriceId: string | null;
   aiTopup40PriceId: string | null;
   /** `?success=true`/`?canceled=true` a Stripe Checkout `success_url`/`cancel_url`
-   * visszairányításából (lásd `app/api/stripe/checkout/route.ts`) -- a szülő oldal
+   * visszairányításából (lásd `app/api/stripe/checkout/route.ts`), a szülő oldal
    * (`app/settings/billing/page.tsx`) olvassa ki a `searchParams`-ból. */
   banner: 'success' | 'canceled' | null;
-  /** `?session_id=` a Stripe Checkout `success_url`-jéből -- 2026-08-09, "Nincs
+  /** `?session_id=` a Stripe Checkout `success_url`-jéből, 2026-08-09, "Nincs
    * számla-email" lépés. `null`, ha nincs (pl. `canceled` banner esetén). Ebből kérjük le
    * a `/api/stripe/checkout-session` route-tól a számla linkjét, hogy MEGBÍZHATÓAN
    * megjelenítsük, függetlenül attól, hogy a Stripe `sendInvoice` e-mailje eljutott-e a
-   * vevőhöz (lásd `app/api/stripe/webhook/route.ts` JSDoc-ját -- ez időszakosan,
+   * vevőhöz (lásd `app/api/stripe/webhook/route.ts` JSDoc-ját, ez időszakosan,
    * indokolatlanul hibázik ugyanolyan felépítésű Session-öknél). */
   sessionId: string | null;
 }
 
-/** `plan_tier` -> magyar megjelenítendő címke -- ugyanaz a forrás, mint
+/** `plan_tier` -> magyar megjelenítendő címke, ugyanaz a forrás, mint
  * `CreditDashboardModal.tsx`-ben (a két felület szándékosan azonos szóhasználatot ad).
  * 2026-08-07, "Fizetések átnevezése" lépés: a belső `starter`/`growth`/`pro`/`business`
  * azonosító VÁLTOZATLAN maradt (DB enum, Stripe webhook leképezés), csak a felhasználónak
- * mutatott név cserélődött -- lásd PROJEKT_INSTRUKCIOK.md-hez tartozó kérést.
- * 2026-08-07, "Ingyenes alap-kvóta bevezetése" lépés: `free` hozzáadva -- ez a fizetés
+ * mutatott név cserélődött, lásd PROJEKT_INSTRUKCIOK.md-hez tartozó kérést.
+ * 2026-08-07, "Ingyenes alap-kvóta bevezetése" lépés: `free` hozzáadva, ez a fizetés
  * nélküli kezdőállapot címkéje, SZÁNDÉKOSAN nem szerepel a `plans` tömbben (lent), tehát
  * egy ilyen usernek egyik fizetős kártyán sem jelenik meg "Aktív csomag".
  *
- * `export` -- 2026-08-11, "Platform Admin kredit/előfizetés-kezelés" lépés: az
+ * `export`, 2026-08-11, "Platform Admin kredit/előfizetés-kezelés" lépés: az
  * `AdminOrganizationsTable.tsx` is ugyanezt a címke-szóhasználatot használja a csomag-
  * választó dropdownnál, hogy a Platform Admin ÉS az ügyfél-arcú Billing felület
- * konzisztens legyen -- egyetlen forrás, nem duplikált leképezés. */
+ * konzisztens legyen, egyetlen forrás, nem duplikált leképezés. */
 export const PLAN_TIER_LABELS: Record<QuotaPlanTier, string> = {
   free: 'Ingyenes csomag',
   starter: 'Egyéni csomag',
@@ -77,32 +77,32 @@ export const PLAN_TIER_LABELS: Record<QuotaPlanTier, string> = {
 
 /** IDEIGLENES teszt-üzemmódi zár (2026-08-12, felhasználói kérés: "szeretném ha a
  * vásárlás gomb inaktív lenne a tesztelés alatt... Ki fogom adni tesztelésre cégeknek a
- * rendszert, még nem szeretném ha vásárolnának") -- `true` esetén a 3 TÉNYLEGES Stripe
+ * rendszert, még nem szeretném ha vásárolnának"), `true` esetén a 3 TÉNYLEGES Stripe
  * Checkout-ot indító gomb (csomagváltás, +10 vizsgálat Top-up, AI-kredit vásárlása)
  * TELJESEN NORMÁL kinézettel LÁTHATÓ marad (nem tűnik el, nem halványul el), de nem
- * kattintható -- a "Kapcsolatfelvétel" (Autóház, mailto) gomb és a Havi/Éves kapcsoló NEM
+ * kattintható, a "Kapcsolatfelvétel" (Autóház, mailto) gomb és a Havi/Éves kapcsoló NEM
  * érintett, mert azok nem indítanak valódi fizetést.
  *
- * **2026-08-17, "Fizetés élesítése" lépés: `false`-ra állítva** -- a felhasználó kérte a
+ * **2026-08-17, "Fizetés élesítése" lépés: `false`-ra állítva**, a felhasználó kérte a
  * tesztelési zár feloldását, mostantól minden Menedzser ténylegesen vásárolhat
  * (előfizetés-csomag, +10 vizsgálat Top-up, AI-kredit csomagok). A kapcsoló és a fenti
- * teszt-időszaki dokumentáció szándékosan a helyén maradt (NINCS törölve/kód-eltávolítva)
- * -- ha egy KÉSŐBBI tesztelési időszakhoz megint kellene, elég `true`-ra visszaállítani,
+ * teszt-időszaki dokumentáció szándékosan a helyén maradt (NINCS törölve/kód-eltávolítva),
+ * ha egy KÉSŐBBI tesztelési időszakhoz megint kellene, elég `true`-ra visszaállítani,
  * nincs hozzá env-változó vagy DB-mező.
  *
- * **FONTOS -- SZÁNDÉKOSAN NEM a natív HTML `disabled` attribútummal van megvalósítva
+ * **FONTOS, SZÁNDÉKOSAN NEM a natív HTML `disabled` attribútummal van megvalósítva
  * (2026-08-12, 2. finomítás, felhasználói kérés: "ha ráviszem a kurzort piros kör
  * áthúzva jelenjen meg rajta"):** az ELSŐ verzió `disabled={PURCHASES_DISABLED_FOR_TESTING
  * || ...}`-t használt, ami éles tesztelésben (macOS Safari/Chrome) NEM mutatta a
- * "tiltott" (`cursor: not-allowed`, a kör-áthúzva ikon) kurzort ráhúzáskor -- ez egy jól
+ * "tiltott" (`cursor: not-allowed`, a kör-áthúzva ikon) kurzort ráhúzáskor, ez egy jól
  * dokumentált böngésző-kvirk: a `cursor` CSS tulajdonság `disabled` form-vezérlőkön
  * megbízhatatlanul/egyáltalán nem érvényesül (Safari pl. figyelmen kívül hagyja), a
  * natívan letiltott gomb `title` tooltipje pedig Chrome-ban/Safariban EGYÁLTALÁN NEM
  * jelenik meg ráhúzáskor. Ehelyett a gomb HTML-szinten "engedélyezett" marad (a natív
- * `disabled` KIZÁRÓLAG a valódi, átmeneti okoknál -- checkout épp folyamatban/hiányzó
- * price ID -- aktív), a tényleges blokkolást a `handlePurchase()` elején lévő korai
+ * `disabled` KIZÁRÓLAG a valódi, átmeneti okoknál, checkout épp folyamatban/hiányzó
+ * price ID, aktív), a tényleges blokkolást a `handlePurchase()` elején lévő korai
  * `return` (lásd lent) végzi, a `cursor-not-allowed` osztály pedig FELTÉTEL NÉLKÜL (nem
- * `disabled:` variánsként) kerül a gombra -- ez a kombináció MINDEN böngészőben
+ * `disabled:` variánsként) kerül a gombra, ez a kombináció MINDEN böngészőben
  * megbízhatóan mutatja a kör-áthúzva kurzort ÉS a `title` tooltipet is, miközben a gomb
  * kinézete (szín/árnyalat) nem változik, tehát nem "tűnik el"/halványul. */
 const PURCHASES_DISABLED_FOR_TESTING = false;
@@ -113,10 +113,10 @@ type BillingPeriod = 'monthly' | 'yearly';
 interface PlanCardDef {
   key: 'starter' | 'growth' | 'pro' | 'business';
   title: string;
-  /** `null` a `business` tier-nél -- egyedi ártárgyalás, nincs fix, nyilvánosan
+  /** `null` a `business` tier-nél, egyedi ártárgyalás, nincs fix, nyilvánosan
    * megjelenített ár (lásd a kártya renderelésénél a "Egyedi ajánlat" ágat). */
   monthlyPrice: number | null;
-  /** Éves ár TELJES (12 havi) összege, kb. 20% kedvezménnyel -- `null` a `business`
+  /** Éves ár TELJES (12 havi) összege, kb. 20% kedvezménnyel, `null` a `business`
    * tier-nél, ugyanúgy, mint a `monthlyPrice`-nál. */
   yearlyPrice: number | null;
   monthlyPriceId: string | null;
@@ -135,28 +135,28 @@ interface AiPackDef {
 
 /**
  * Beállítások > Előfizetés (Billing) felület (PROJEKT_INSTRUKCIOK.md "Frontend Fizetési
- * Modal / Billing Felület" lépés, 2026-08-04) -- Stripe design system (`stripe.md`, mert a
+ * Modal / Billing Felület" lépés, 2026-08-04), Stripe design system (`stripe.md`, mert a
  * `/settings` alatti felület, lásd PROJEKT_INSTRUKCIOK.md 4.1 pontja): jelenlegi csomag +
  * hátralévő vizsgálati/AI keret, majd a 4 előfizetési csomag kártyája, végül egy külön
  * "AI-kredit vásárlása" szekció.
  *
- * **2026-08-06, "Árazási struktúra bővítés" lépés -- a korábbi 3-kártyás (Starter/Pro/
+ * **2026-08-06, "Árazási struktúra bővítés" lépés, a korábbi 3-kártyás (Starter/Pro/
  * +10 Autó) elrendezés helyett:**
  *   1) 4 ELŐFIZETÉSI csomag: Starter (20 vizsgálat / 6 AI-kredit havonta), Growth (ÚJ, 35
- *      vizsgálat / 14 AI-kredit), Pro (50 vizsgálat / 25 AI-kredit -- az AI-keret
+ *      vizsgálat / 14 AI-kredit), Pro (50 vizsgálat / 25 AI-kredit, az AI-keret
  *      TUDATOSAN kevesebb, mint a vizsgálati keret MINDEN csomagnál, hogy ne lehessen az
  *      összes vizsgálatot AI-val elvégezni, lásd a felhasználóval egyeztetett
  *      "scarcity by design" elvet), Business (ÚJ, gyakorlatban korlátlan vizsgálat + 100
- *      AI-kredit, EGYEDI ártárgyalás -- kapcsolatfelvétel gomb, NEM Stripe Checkout).
+ *      AI-kredit, EGYEDI ártárgyalás, kapcsolatfelvétel gomb, NEM Stripe Checkout).
  *   2) a "+10 Autó" eseti vizsgálat-Top-up KÜLÖN szekcióban marad (nem előfizetés).
- *   3) ÚJ: "AI-kredit vásárlása" szekció 3 csomaggal (5/15/40 kredit) -- a felhasználó
+ *   3) ÚJ: "AI-kredit vásárlása" szekció 3 csomaggal (5/15/40 kredit), a felhasználó
  *      explicit kérése volt egy ÖNÁLLÓAN vásárolható AI-kredit termék, hogy ha valakinek
  *      elfogy a havi AI-kerete, ne kelljen magasabb csomagra váltania, csak kredit-et
  *      vegyen. "1 AI-kredit = 1 vizsgálat" (a `lib/inspectionAiCredit.ts` "1 AI kredit = 1
  *      vizsgálat" elve alapján, TELJES vizsgálatra vonatkozik, nem egyedi AI-hívásra).
  *
  * Önállóan, kliens-oldalon tölti be a `/api/quotas/summary` adatot (ugyanaz a minta, mint
- * `CreditDashboardModal.tsx`/`HeaderCreditBadge.tsx`) -- MINDEN fül-váltáskor/oldal-
+ * `CreditDashboardModal.tsx`/`HeaderCreditBadge.tsx`), MINDEN fül-váltáskor/oldal-
  * betöltéskor friss adatot mutat, nem egy esetlegesen elavult pillanatképet.
  */
 export function BillingTab({
@@ -176,13 +176,13 @@ export function BillingTab({
 }: BillingTabProps) {
   const [state, setState] = useState<LoadState>('loading');
   const [data, setData] = useState<QuotaSummarySuccessResponse | null>(null);
-  /** A sikeres fizetés banner számla-linkje -- lásd a `sessionId` prop JSDoc-ját.
+  /** A sikeres fizetés banner számla-linkje, lásd a `sessionId` prop JSDoc-ját.
    * `undefined` = még nem érkezett válasz (nincs link megjelenítve), `null` = lekérdezve,
    * de nincs számla ehhez a Session-höz (pl. előfizetés, nem egyszeri vásárlás). */
   const [invoiceUrl, setInvoiceUrl] = useState<string | null | undefined>(undefined);
   const [checkoutLoadingKey, setCheckoutLoadingKey] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
-  /** "Előfizetés lemondása" (2026-08-17, felhasználói kérés) -- lásd
+  /** "Előfizetés lemondása" (2026-08-17, felhasználói kérés), lásd
    * `app/api/stripe/cancel-subscription/route.ts` JSDoc-ját. `isCancelModalOpen` a
    * megerősítő modal (lásd lent `CancelSubscriptionModal`), `cancelActionLoading` a
    * lemondás/visszavonás GOMB saját (a csomagváltó gombokétól KÜLÖN) töltési állapota,
@@ -190,7 +190,7 @@ export function BillingTab({
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [cancelActionLoading, setCancelActionLoading] = useState(false);
   const [cancelActionError, setCancelActionError] = useState<string | null>(null);
-  /** Havi/éves kapcsoló -- 2026-08-07, "Havi/éves kapcsoló" lépés. Csak a 3 önkiszolgáló
+  /** Havi/éves kapcsoló, 2026-08-07, "Havi/éves kapcsoló" lépés. Csak a 3 önkiszolgáló
    * előfizetési kártyát (Egyéni/Műhely Kereskedői/Profi) érinti, az Autóház (egyedi
    * ajánlat) és a Top-up/AI-kredit szekciók változatlanok maradnak. */
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
@@ -246,15 +246,15 @@ export function BillingTab({
   }, [banner, sessionId]);
 
   async function handlePurchase(priceId: string | null, key: string) {
-    // Teszt-üzemmódi zár (lásd `PURCHASES_DISABLED_FOR_TESTING` JSDoc-ját fent) -- ez a
+    // Teszt-üzemmódi zár (lásd `PURCHASES_DISABLED_FOR_TESTING` JSDoc-ját fent), ez a
     // TÉNYLEGES blokkolási pont (a gombok HTML-szinten szándékosan NEM `disabled`-ek,
     // hogy a `cursor-not-allowed` és a `title` tooltip ráhúzáskor megbízhatóan
-    // megjelenjen minden böngészőben) -- billentyűzettel (Enter/Space) aktivált
+    // megjelenjen minden böngészőben), billentyűzettel (Enter/Space) aktivált
     // kattintást is ugyanígy elnyel.
     if (PURCHASES_DISABLED_FOR_TESTING) return;
 
     if (!priceId) {
-      setCheckoutError('Ez a csomag jelenleg nem elérhető -- keress meg minket az aktiváláshoz.');
+      setCheckoutError('Ez a csomag jelenleg nem elérhető, keress meg minket az aktiváláshoz.');
       return;
     }
 
@@ -286,11 +286,11 @@ export function BillingTab({
   }
 
   /**
-   * Előfizetés lemondása/visszavonása (2026-08-17) -- lásd
+   * Előfizetés lemondása/visszavonása (2026-08-17), lásd
    * `app/api/stripe/cancel-subscription/route.ts` JSDoc-ját a "biztos megoldás"
    * (`cancel_at_period_end`) indoklásáért. Sikeres válasz esetén OPTIMISTA módon,
    * helyben frissítjük a `data.quota` állapotot (nem várjuk meg a webhook kör-utat,
-   * lásd a route JSDoc "DB write-through" pontját) -- a `planTier`/kvóta-oszlopok
+   * lásd a route JSDoc "DB write-through" pontját), a `planTier`/kvóta-oszlopok
    * VÁLTOZATLANOK maradnak, hiszen a lemondás csak a `cancelAtPeriodEnd`/
    * `subscriptionCurrentPeriodEnd` mezőket érinti, amíg a kifizetett ciklus le nem jár.
    */
@@ -422,7 +422,7 @@ export function BillingTab({
       {banner === 'success' && (
         <div className="rounded-stripe-md border border-green-200 bg-green-50 px-4 py-3 font-sohne text-[13px] text-green-800">
           <p>
-            Sikeres fizetés! A csomagod/keretkiegészítésed néhány másodpercen belül megjelenik itt lent -- ha nem
+            Sikeres fizetés! A csomagod/keretkiegészítésed néhány másodpercen belül megjelenik itt lent, ha nem
             látod azonnal, frissítsd az oldalt.
           </p>
           {invoiceUrl && (
@@ -439,7 +439,7 @@ export function BillingTab({
       )}
       {banner === 'canceled' && (
         <div className="rounded-stripe-md border border-stripe-hairline bg-stripe-canvas-soft px-4 py-3 font-sohne text-[13px] text-stripe-ink-secondary">
-          A fizetés megszakadt -- semmi nem történt, bármikor újrapróbálhatod.
+          A fizetés megszakadt, semmi nem történt, bármikor újrapróbálhatod.
         </div>
       )}
 
@@ -502,15 +502,15 @@ export function BillingTab({
               szakvélemény-összefoglalóig).
             </p>
 
-            {/* Előfizetés lemondása (2026-08-17) -- csak Menedzsernek, és csak ha van
-                tényleges Stripe-előfizetés (lásd `hasActiveStripeSubscription` JSDoc-ját --
+            {/* Előfizetés lemondása (2026-08-17), csak Menedzsernek, és csak ha van
+                tényleges Stripe-előfizetés (lásd `hasActiveStripeSubscription` JSDoc-ját,
                 az Autóház/business tier egyedi ajánlat, Stripe Subscription nélkül). */}
             {role === 'manager' && data.quota.hasActiveStripeSubscription && (
               <div className="border-t border-stripe-hairline pt-4">
                 {data.quota.cancelAtPeriodEnd ? (
                   <div className="flex flex-col gap-3 rounded-stripe-md border border-amber-200 bg-amber-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                     <p className="font-sohne text-[13px] font-light text-amber-800">
-                      Az előfizetésed lemondva --{' '}
+                      Az előfizetésed lemondva,{' '}
                       <span className="font-medium">
                         {formatDateTimeHu(data.quota.subscriptionCurrentPeriodEnd) || 'a jelenlegi ciklus végéig'}
                       </span>{' '}
@@ -554,7 +554,7 @@ export function BillingTab({
 
             {role === 'manager' && !data.quota.hasActiveStripeSubscription && data.quota.planTier === 'business' && (
               <p className="border-t border-stripe-hairline pt-4 font-sohne text-[12px] font-light text-stripe-ink-mute">
-                Az Autóház csomag egyedi ajánlat -- a lemondásához{' '}
+                Az Autóház csomag egyedi ajánlat, a lemondásához{' '}
                 <a
                   href="mailto:levente.manyi@buildmysite.hu?subject=Aut%C3%B3h%C3%A1z%20csomag%20-%20lemond%C3%A1s"
                   className="font-medium text-stripe-primary underline underline-offset-2"
@@ -582,7 +582,7 @@ export function BillingTab({
       )}
 
       {/* 4 előfizetési csomag-kártya + Havi/Éves kapcsoló (2026-08-07, "Havi/éves kapcsoló"
-          lépés) -- könnyű, függőségmentes szegmentált kapcsoló (nincs @radix-ui/react-switch,
+          lépés), könnyű, függőségmentes szegmentált kapcsoló (nincs @radix-ui/react-switch,
           hogy ne kerüljön be egy csak erre az egy helyre importált új csomag). */}
       <div>
         <div className="mb-4 flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
@@ -648,7 +648,7 @@ export function BillingTab({
                       </p>
                       <p className="mt-1 font-sohne text-[12px] font-light leading-relaxed text-stripe-ink-mute">
                         {showYearly
-                          ? `évente egyben számlázva (${formatHuf(plan.yearlyPrice)}) -- spórolsz ${formatHuf(
+                          ? `évente egyben számlázva (${formatHuf(plan.yearlyPrice)}), spórolsz ${formatHuf(
                               yearlySavings
                             )}-ot/év`
                           : 'havonta számlázva'}
@@ -749,7 +749,7 @@ export function BillingTab({
         </div>
       </div>
 
-      {/* AI-kredit vásárlása -- "1 AI kredit = 1 vizsgálat" */}
+      {/* AI-kredit vásárlása, "1 AI kredit = 1 vizsgálat" */}
       <div>
         <h2 className="mb-1 font-sohne text-[15px] font-medium text-stripe-ink">AI-kredit vásárlása</h2>
         <p className="mb-3 font-sohne text-[13px] font-light text-stripe-ink-secondary">
@@ -810,10 +810,10 @@ export function BillingTab({
 }
 
 /**
- * "Előfizetés lemondása" megerősítő modal (2026-08-17) -- ugyanaz a modal-mintázat, mint
+ * "Előfizetés lemondása" megerősítő modal (2026-08-17), ugyanaz a modal-mintázat, mint
  * a `DeleteAccountCard.tsx` "Fiók törlése" modaljánál (háttér-kattintás/`X`/`Mégse` zárja
  * be, amíg nincs folyamatban lévő kérés), DE annál KÖNNYEBB megerősítéssel (nincs beírandó
- * email cím) -- a lemondás VISSZAVONHATÓ (lásd "Lemondás visszavonása" gomb), a fiók/
+ * email cím), a lemondás VISSZAVONHATÓ (lásd "Lemondás visszavonása" gomb), a fiók/
  * adatok NEM vesznek el, tehát nem indokolt ugyanolyan szigorú megerősítés, mint egy
  * végleges fiók-törlésnél.
  */
@@ -866,7 +866,7 @@ function CancelSubscriptionModal({
             A már kifizetett időszak végéig ({periodEndLabel || 'a jelenlegi ciklus végéig'}) MINDEN funkciódat
             változatlanul tovább használhatod.
           </p>
-          <p>Utána a fiókod automatikusan Ingyenes csomagra vált -- a fiókod és a korábbi vizsgálataid megmaradnak.</p>
+          <p>Utána a fiókod automatikusan Ingyenes csomagra vált, a fiókod és a korábbi vizsgálataid megmaradnak.</p>
           <p>A lemondást a ciklus vége előtt bármikor visszavonhatod.</p>
         </div>
 

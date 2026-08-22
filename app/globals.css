@@ -3,13 +3,13 @@
 @tailwind utilities;
 
 /*
- * Rendszer-téma (System Theme) -- csak a Linear design system tokenjeihez (Szakértői
+ * Rendszer-téma (System Theme), csak a Linear design system tokenjeihez (Szakértői
  * Munkaterület: /dashboard, /inspections/*), lásd tailwind.config.ts és
  * components/theme/ThemeProvider.tsx. A `next-themes` a <html>-re teszi rá a `.dark`
  * class-t, ha az eszköz sötét témán van; ha a rendszer-téma nem olvasható be, a
  * ThemeProvider `defaultTheme="light"`-ja miatt ez a :root (világos) blokk marad
  * érvényben. A Stripe (stripe-*) és BMW (bmw-*) tokenek SZÁNDÉKOSAN nem szerepelnek
- * itt -- azok a design rendszerük szerint mindig fixen világosak, literal hex értékkel.
+ * itt, azok a design rendszerük szerint mindig fixen világosak, literal hex értékkel.
  */
 :root {
   --linear-canvas: #ffffff;
@@ -25,7 +25,7 @@
   --linear-primary-rgb: 94 106 210; /* #5e6ad2 */
   --linear-primary-hover: #4c58c4;
   --linear-primary-focus: #5e6ad2;
-  --linear-success-rgb: 22 128 61; /* #16803d -- kontrasztosabb zöld világos háttéren */
+  --linear-success-rgb: 22 128 61; /* #16803d, kontrasztosabb zöld világos háttéren */
   --linear-success-soft: #e5f6ea;
   --linear-warning-rgb: 146 98 10; /* #92620a */
   --linear-warning-soft: #fdf3d9;
@@ -66,13 +66,13 @@ body {
   font-feature-settings: 'ss01';
 }
 
-/* Pénzügyi / numerikus cellákhoz -- Stripe `body-tabular` tokenje (tnum). */
+/* Pénzügyi / numerikus cellákhoz, Stripe `body-tabular` tokenje (tnum). */
 .tabular-nums-stripe {
   font-feature-settings: 'tnum';
 }
 
 /*
- * Felszereltség modul UX-újratervezés (2026-08-02) -- lágy megjelenés a
+ * Felszereltség modul UX-újratervezés (2026-08-02), lágy megjelenés a
  * StepEquipment.tsx "Hibás" állapotra váltáskor felugró progressive-disclosure
  * panelhez (Megjegyzés + Fotó csatolása). Egyszerű fade + enyhe lecsúszás, nincs
  * hozzá külön animációs könyvtár (a projekt eddig sem használt ilyet).
@@ -89,7 +89,7 @@ body {
 }
 
 /*
- * BMW design system (bmw.md) -- Publikus Ügyfélriport (/report/[public_token]).
+ * BMW design system (bmw.md), Publikus Ügyfélriport (/report/[public_token]).
  * Nyomtatás / "PDF letöltés" a böngésző window.print()-jét használja: háttérszínek
  * (sötétkék hero sáv, festék-státusz kártyák) nélkül a nyomtatott/PDF export
  * használhatatlan lenne, ezért itt kényszerítjük ki a színek megtartását.
@@ -102,16 +102,16 @@ body {
 }
 
 /*
- * iOS Safari mobil-zoom hiba javítása -- ha egy `<input>`/`<textarea>`/`<select>`
+ * iOS Safari mobil-zoom hiba javítása, ha egy `<input>`/`<textarea>`/`<select>`
  * betűmérete 16px alatt van, iOS Safari a mezőre koppintáskor automatikusan ráközelít
- * (zoom) az oldalra, hogy a szöveg "olvashatóbb" legyen -- ez a wizard mobil-first
+ * (zoom) az oldalra, hogy a szöveg "olvashatóbb" legyen, ez a wizard mobil-first
  * használatánál (garázsban/terepen, telefonon kitöltött űrlapok) minden egyes mező
  * érintésekor zavaró ugrálást okozott. A legtöbb mezőt adó megosztott komponens
  * (`FormControls.tsx` `TextField`/`SelectField`/`TextareaField`) már eleve 16px-es
  * (`text-[16px] sm:text-[14px]`, lásd a fájlt), DE ez a globális, `!important`-tal
  * kikényszerített szabály egy VÉGSŐ biztonsági háló minden egyéb, egyedi/inline
  * stílusú mezőre is (pl. `PaintCanvas.tsx`/`DamageCanvas.tsx` popover-jei, a
- * Felszereltség lépés keresőmezője, a Rendszám felségjelzés `<select>`-je stb.) --
+ * Felszereltség lépés keresőmezője, a Rendszám felségjelzés `<select>`-je stb.),
  * KIZÁRÓLAG mobil szélességen (`max-width: 768px`) aktív, desktopon a komponensek
  * saját (jellemzően kisebb, sűrűbb) betűmérete érvényesül.
  */

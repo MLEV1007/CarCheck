@@ -14,7 +14,7 @@ interface ReportThresholdsCardProps {
 
 /**
  * "Riport küszöbértékek" kártya (2026-08-07, "Testreszabható festékvastagság/
- * gumiabroncs küszöbértékek" lépés) -- a `profiles` táblán élő 4 új oszlopot
+ * gumiabroncs küszöbértékek" lépés), a `profiles` táblán élő 4 új oszlopot
  * (`supabase/migrations/20260807090000_report_thresholds.sql`) szerkeszti: mikortól
  * "Újrafújt / Javított" ill. "Gittelt / Sérült" egy festékvastagság-mérési pont
  * (`getPaintStatus()`), és mikortól jelezzen "Koros" (életkor) ill. "Kopott"
@@ -24,7 +24,7 @@ interface ReportThresholdsCardProps {
  * UGYANAZ a "kliens-oldali state + explicit Mentés gomb" minta, mint a
  * `SettingsForm.tsx`-nél (NEM az azonnali-mentős `DefaultPreferencesCard.tsx` minta),
  * mert itt 4, EGYMÁSTÓL FÜGGŐ értéket (a "Gyári" határnak KISEBBNEK kell lennie az
- * "Újrafújt" határnál) kell együtt, egy konzisztens állapotban menteni -- egy
+ * "Újrafújt" határnál) kell együtt, egy konzisztens állapotban menteni, egy
  * mezőnkénti azonnali mentés átmenetileg érvénytelen (gyári > újrafújt) állapotot
  * engedne a DB-be kerülni a 2. mező módosítása előtt.
  *
@@ -51,7 +51,7 @@ export function ReportThresholdsCard({ userId, initialThresholds }: ReportThresh
     const ageYears = Number(tireAgeYears);
     const treadMm = Number(tireTreadMm);
 
-    // Kliens-oldali validáció -- a DB-oldali CHECK constraint (`profiles_paint_thresholds_
+    // Kliens-oldali validáció, a DB-oldali CHECK constraint (`profiles_paint_thresholds_
     // positive_check`/`profiles_tire_thresholds_positive_check`) a végső védelmi vonal, de
     // itt egy érthető, magyar hibaüzenettel akarjuk megállítani a mentést a hálózati
     // kör-út ELŐTT, ugyanúgy, ahogy a wizard "Szigorú adatvalidáció" lépése is teszi.
@@ -72,11 +72,11 @@ export function ReportThresholdsCard({ userId, initialThresholds }: ReportThresh
 
     const supabase = createClient();
     // FONTOS (2026-08-07-es hibajavítás): SZÁNDÉKOSAN `.update().eq('id', userId)`, NEM
-    // `.upsert({ id: userId, ... })` -- lásd a részletes indoklást `SettingsForm.tsx`
+    // `.upsert({ id: userId, ... })`, lásd a részletes indoklást `SettingsForm.tsx`
     // ugyanerről a javításról. Röviden: az `.upsert()` PostgREST alatt egy `INSERT ...
     // ON CONFLICT DO UPDATE`-et generál, ami a payloadban NEM szereplő, de NOT NULL (és
     // default NÉLKÜLI) `organization_id` oszlopra MEGLÉVŐ sor UPDATE-jénél IS lefuttatta a
-    // NOT NULL ellenőrzést -- emiatt ez a mentés MINDIG hibával elszállt ("A mentés
+    // NOT NULL ellenőrzést, emiatt ez a mentés MINDIG hibával elszállt ("A mentés
     // sikertelen volt"), a `profiles` tábla `null value in column "organization_id" ...
     // violates not-null constraint` Postgres-hibájával a háttérben.
     const { error: upsertError } = await supabase
@@ -113,7 +113,7 @@ export function ReportThresholdsCard({ userId, initialThresholds }: ReportThresh
         <div>
           <h2 className="font-sohne text-[15px] font-medium text-stripe-ink">Riport küszöbértékek</h2>
           <p className="mt-1 font-sohne text-[13px] font-light text-stripe-ink-mute">
-            Mikortól jelezzen "Újrafújt / Gittelt" festékréteget, illetve "Koros / Kopott" gumiabroncsot a riport --
+            Mikortól jelezzen "Újrafújt / Gittelt" festékréteget, illetve "Koros / Kopott" gumiabroncsot a riport,
             minden ÚJ vizsgálatra és a publikus ügyfélriportra is érvényes. A már elmentett vizsgálatokon a besorolás
             a MEGTEKINTÉSKOR aktuális küszöbök alapján frissül.
           </p>
@@ -132,7 +132,7 @@ export function ReportThresholdsCard({ userId, initialThresholds }: ReportThresh
           <h3 className="font-sohne text-[13px] font-medium text-stripe-ink-secondary">Festékvastagság-mérés</h3>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Input
-              label="Gyári -- felső határ (µm)"
+              label="Gyári, felső határ (µm)"
               name="paint-gyari-max"
               type="number"
               inputMode="numeric"
@@ -142,7 +142,7 @@ export function ReportThresholdsCard({ userId, initialThresholds }: ReportThresh
               onChange={(e) => setPaintGyariMax(e.target.value)}
             />
             <Input
-              label="Újrafújt / Javított -- felső határ (µm)"
+              label="Újrafújt / Javított, felső határ (µm)"
               name="paint-ujrafujt-max"
               type="number"
               inputMode="numeric"
@@ -161,7 +161,7 @@ export function ReportThresholdsCard({ userId, initialThresholds }: ReportThresh
           <h3 className="font-sohne text-[13px] font-medium text-stripe-ink-secondary">Gumiabroncsok</h3>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Input
-              label="Koros gumiabroncs -- kortól (év)"
+              label="Koros gumiabroncs, kortól (év)"
               name="tire-age-years"
               type="number"
               inputMode="decimal"
@@ -171,7 +171,7 @@ export function ReportThresholdsCard({ userId, initialThresholds }: ReportThresh
               onChange={(e) => setTireAgeYears(e.target.value)}
             />
             <Input
-              label="Kopott gumiabroncs -- profilmélységtől (mm)"
+              label="Kopott gumiabroncs, profilmélységtől (mm)"
               name="tire-tread-mm"
               type="number"
               inputMode="decimal"

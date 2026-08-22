@@ -10,7 +10,7 @@ interface MediaProcessingOverlayProps {
 
 /**
  * A `useMediaSelection` hook (`lib/inspections/mediaSelection.ts`) `modalState`-jét jeleníti
- * meg -- `StepGeneralPhotos.tsx` ÉS `StepDefects.tsx` EGYARÁNT ezt a KÖZÖS, prezentációs
+ * meg, `StepGeneralPhotos.tsx` ÉS `StepDefects.tsx` EGYARÁNT ezt a KÖZÖS, prezentációs
  * komponenst rendereli a hook `modalState`-jével, hogy a vágás-megerősítő/tömörítési
  * folyamatjelző/hibaüzenet UI ne duplikálódjon a két hívóhely között.
  */
@@ -30,7 +30,7 @@ export function MediaProcessingOverlay({ state }: MediaProcessingOverlayProps) {
             <p className="text-[16px] font-semibold text-linear-ink">Hosszú videó</p>
             <p className="mt-2 text-[13px] leading-relaxed text-linear-ink-subtle">
               A kiválasztott videó {Math.round(state.durationSeconds)} másodperc hosszú. A feltölthető
-              videók legfeljebb {MAX_VIDEO_DURATION_SECONDS} másodpercesek lehetnek -- szeretnéd, hogy a
+              videók legfeljebb {MAX_VIDEO_DURATION_SECONDS} másodpercesek lehetnek, szeretnéd, hogy a
               videó ELEJÉT vágjuk erre a hosszra?
             </p>
             <div className="mt-4 flex gap-2">

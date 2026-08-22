@@ -11,21 +11,21 @@ import type { QuotaBalance, QuotaPlanTier } from '@/types/quotas';
  * request-hatókörű, cookie-alapú (NEM service role) klienst használja, tehát minden
  * művelet a hívó, bejelentkezett felhasználó saját RLS-jogosultságával fut, a `user_credits`
  * tábla `_org` RLS policy-jai (lásd `20260803_organizations_rbac.sql`) mindig a hívó SAJÁT
- * `organization_id`-jára szűkítenek -- multi-tenant izoláció garantálva.
+ * `organization_id`-jára szűkítenek, multi-tenant izoláció garantálva.
  *
  * A `plan_tier`/kvóta-oszlopok UGYANAZON a `user_credits` táblán élnek, mint a régi, egyedi
  * AI-kredit rendszer (`monthly_credits_remaining`/`purchased_credits_remaining`, lásd
- * `lib/credits.ts`) -- a két rendszer jelenleg TUDATOSAN PÁRHUZAMOSAN fut (lásd
+ * `lib/credits.ts`), a két rendszer jelenleg TUDATOSAN PÁRHUZAMOSAN fut (lásd
  * `supabase/migrations/20260804_inspection_quotas.sql` bevezető kommentjét): a régi
  * kredit-rendszer az EGYEDI AI-hívásokat számolja generikusan, az ÚJ kvóta-rendszer a
  * Stripe csomaghoz (Starter/Pro) kötött KÉT KÜLÖN keretet (vizsgálat-indítás + AI-hívás)
  * vezeti, plan-alapú havi limittel.
  *
  * **Két KÜLÖNBÖZŐ hiba-stratégia, szándékosan:**
- * - `checkInspectionQuota`/`consumeInspectionQuota` -- SZIGORÚ, DOB hibát, ha nincs keret,
+ * - `checkInspectionQuota`/`consumeInspectionQuota`, SZIGORÚ, DOB hibát, ha nincs keret,
  *   mert egy új vizsgálat indítása egy egyértelmű, blokkoló üzleti szabály (PROJEKT_INSTRUKCIOK.md:
  *   "Ha nincs, dobjon hibát").
- * - `checkAiQuota` -- LÁGY, `boolean`-t ad vissza, SOSE dob -- mert az AI-funkció (hangdiktálás/
+ * - `checkAiQuota`, LÁGY, `boolean`-t ad vissza, SOSE dob, mert az AI-funkció (hangdiktálás/
  *   forgalmi szkenner) kifogyása NEM szabad, hogy blokkolja a vizsgálat gépeléssel/kattintással
  *   történő elvégzését, csak magát az AI-gyorsítást (PROJEKT_INSTRUKCIOK.md: "az átvizsgálás
  *   gépeléssel/kattintással továbbra is elvégezhető maradjon").
@@ -56,7 +56,7 @@ interface QuotaRow {
   monthly_ai_limit: number;
   monthly_ai_remaining: number;
   purchased_ai_remaining: number;
-  /** 2026-08-17, "Előfizetés lemondása" lépés -- lásd `types/quotas.ts`
+  /** 2026-08-17, "Előfizetés lemondása" lépés, lásd `types/quotas.ts`
    * `QuotaBalance.hasActiveStripeSubscription`/`cancelAtPeriodEnd`/
    * `subscriptionCurrentPeriodEnd` JSDoc-ját. */
   stripe_subscription_id: string | null;
@@ -67,14 +67,14 @@ interface QuotaRow {
 const QUOTA_COLUMNS =
   'organization_id, plan_tier, monthly_inspections_limit, monthly_inspections_remaining, purchased_inspections_remaining, monthly_ai_limit, monthly_ai_remaining, purchased_ai_remaining, stripe_subscription_id, cancel_at_period_end, subscription_current_period_end';
 
-/** A DB `plan_tier` szöveges oszlopát a `QuotaPlanTier` unióra képezi le -- 2026-08-06,
+/** A DB `plan_tier` szöveges oszlopát a `QuotaPlanTier` unióra képezi le, 2026-08-06,
  * "Árazási struktúra bővítés" lépés óta EXHAUSZTÍV (a korábbi bináris `=== 'pro' ? 'pro'
  * : 'starter'` ternary minden ismeretlen/jövőbeli értéket csendben `'starter'`-re
  * fordított volna, ami a `growth`/`business` bevezetésével MÁR TÉNYLEGESEN hibás lett
- * volna). Igazán ismeretlen (jövőbeli, itt még nem kezelt) DB-érték esetén -- ami csak a
+ * volna). Igazán ismeretlen (jövőbeli, itt még nem kezelt) DB-érték esetén, ami csak a
  * DB CHECK constraint (`user_credits_plan_tier_check`) és ez a leképezés szétcsúszása
- * esetén fordulhatna elő -- defenzíven `'free'`-re esik vissza (2026-08-07 óta, korábban
- * `'starter'`-re esett vissza -- ez tévesen egy fizetős csomag megjelenítését okozta
+ * esetén fordulhatna elő, defenzíven `'free'`-re esik vissza (2026-08-07 óta, korábban
+ * `'starter'`-re esett vissza, ez tévesen egy fizetős csomag megjelenítését okozta
  * volna egy ismeretlen/hibás DB-értékre, holott a biztonságos, "nem járhat neki több,
  * mint amennyit fizetett" alapállás a `free`). */
 function toPlanTier(rawPlanTier: string): QuotaPlanTier {
@@ -108,7 +108,7 @@ function toQuotaBalance(row: QuotaRow): QuotaBalance {
   };
 }
 
-/** Feloldja a hívó user `organization_id`-ját -- lásd `lib/credits.ts` `resolveOrganizationId`
+/** Feloldja a hívó user `organization_id`-ját, lásd `lib/credits.ts` `resolveOrganizationId`
  * dokumentációját, ugyanaz a minta. */
 async function resolveOrganizationId(userId: string): Promise<string> {
   const context = await getUserRoleContext(userId);
@@ -122,7 +122,7 @@ async function resolveOrganizationId(userId: string): Promise<string> {
  * Visszaadja a SZERVEZET aktuális kvóta-egyenlegét (`user_credits` sor, plan_tier +
  * vizsgálati/AI kvóta oszlopok). Ha a szervezethez még nem létezik `user_credits` rekord
  * (pl. a szervezet eddig sem AI-funkciót, sem vizsgálatot nem indított), létrehozza az
- * alapértelmezett (2026-08-07 óta: `free`, 5 vizsgálat / 3 AI-hívás -- lásd
+ * alapértelmezett (2026-08-07 óta: `free`, 5 vizsgálat / 3 AI-hívás, lásd
  * `supabase/migrations/20260807_free_tier_default_quota.sql`) sort, ugyanazzal a
  * lazy-create + race-condition-visszaolvasás mintával, mint a `lib/credits.ts`
  * `getOrganizationCreditBalance`-je.
@@ -133,18 +133,18 @@ export async function getQuotaBalance(userId: string): Promise<QuotaBalance> {
 }
 
 /**
- * EXPORTÁLVA (2026-08-07, "Vercel-en is lassú" hibaelhárítás) -- a `/api/quotas/summary`
+ * EXPORTÁLVA (2026-08-07, "Vercel-en is lassú" hibaelhárítás), a `/api/quotas/summary`
  * route korábban `Promise.all([getQuotaBalance(user.id), getUserRoleContext(user.id)])`-t
  * hívott: ez ÚGY TŰNT párhuzamos, de a `getQuotaBalance` MAGA is meghívja belül a
- * `resolveOrganizationId`-n keresztül a `getUserRoleContext`-et -- vagyis a `profiles`
+ * `resolveOrganizationId`-n keresztül a `getUserRoleContext`-et, vagyis a `profiles`
  * tábla EGYETLEN kéréshez KÉTSZER lett lekérdezve (egyszer feleslegesen), és emellett a
  * `getQuotaBalance` belső lánca (role-lookup -> quota-lookup) is szekvenciális 2 DB-kör-út,
  * NEM párhuzamosítható a másikkal. Élő Vercel-adatban (`car-check` projekt, Region IAD1,
- * a Supabase projekt `eu-central-1`-ben) ez a route P75 4,55 másodpercet mutatott -- a
+ * a Supabase projekt `eu-central-1`-ben) ez a route P75 4,55 másodpercet mutatott, a
  * transzatlanti kör-utak (auth + 2x profiles + user_credits, részben feleslegesen
  * duplikálva) összeadódtak. Ha a hívó MÁR ismeri az `organizationId`-t (mert ő maga
  * hívta a `getUserRoleContext`-et), ezt a függvényt KÖZVETLENÜL hívva a felesleges
- * második `profiles`-lekérdezés elkerülhető -- lásd `app/api/quotas/summary/route.ts`.
+ * második `profiles`-lekérdezés elkerülhető, lásd `app/api/quotas/summary/route.ts`.
  */
 export async function getOrganizationQuotaBalance(organizationId: string): Promise<QuotaBalance> {
   const supabase = await createClient();
@@ -173,7 +173,7 @@ export async function getOrganizationQuotaBalance(organizationId: string): Promi
     return toQuotaBalance(created);
   }
 
-  // Párhuzamos létrehozás/unique-ütközés esetén visszaolvassuk a közben létrejött sort --
+  // Párhuzamos létrehozás/unique-ütközés esetén visszaolvassuk a közben létrejött sort,
   // lásd `lib/credits.ts` `getOrganizationCreditBalance` ugyanezen mintájának indoklását.
   const { data: retried, error: retryError } = await supabase
     .from('user_credits')
@@ -191,9 +191,9 @@ export async function getOrganizationQuotaBalance(organizationId: string): Promi
 }
 
 /**
- * SZIGORÚ vizsgálati-keret ellenőrzés -- új autó vizsgálat indításakor hívandó (lásd
+ * SZIGORÚ vizsgálati-keret ellenőrzés, új autó vizsgálat indításakor hívandó (lásd
  * `app/inspections/new/page.tsx`). Dob egy `InsufficientInspectionQuotaError`-t, ha a
- * szervezetnek nincs elérhető vizsgálati kerete (havi + vásárolt összesen <= 0) -- a hívó
+ * szervezetnek nincs elérhető vizsgálati kerete (havi + vásárolt összesen <= 0), a hívó
  * ezt elkapva blokkolhatja az új vizsgálat indítását.
  */
 export async function checkInspectionQuota(userId: string): Promise<QuotaBalance> {
@@ -207,21 +207,21 @@ export async function checkInspectionQuota(userId: string): Promise<QuotaBalance
 }
 
 /**
- * Levonja 1 vizsgálati keretet a hívó user SZERVEZETÉNEK közös kvóta-sorából -- elsőbbséggel
+ * Levonja 1 vizsgálati keretet a hívó user SZERVEZETÉNEK közös kvóta-sorából, elsőbbséggel
  * a lejáró `monthly_inspections_remaining`-ből, majd (ha az elfogyott) a `purchased_
  * inspections_remaining`-ből. A tényleges levonás a DB-oldali `consume_inspection_quota`
- * RPC-n keresztül, atomikusan (sor-zárolással) fut -- lásd
+ * RPC-n keresztül, atomikusan (sor-zárolással) fut, lásd
  * `supabase/migrations/20260804_inspection_quotas.sql`.
  *
  * @throws {InsufficientInspectionQuotaError} ha a szervezetnek időközben elfogyott a kerete
- * (pl. egy párhuzamos kérés -- a `checkInspectionQuota`-nál és emitt is ellenőrizve van).
+ * (pl. egy párhuzamos kérés, a `checkInspectionQuota`-nál és emitt is ellenőrizve van).
  */
 export async function consumeInspectionQuota(userId: string): Promise<QuotaBalance> {
   const organizationId = await resolveOrganizationId(userId);
   const supabase = await createClient();
 
   // Biztosítja, hogy a szervezet sora létezzen, mielőtt az RPC lefutna (az RPC csak
-  // MEGLÉVŐ sort tud módosítani, újat nem hoz létre) -- lásd `deductCredits` (lib/credits.ts)
+  // MEGLÉVŐ sort tud módosítani, újat nem hoz létre), lásd `deductCredits` (lib/credits.ts)
   // ugyanezen mintáját.
   await getOrganizationQuotaBalance(organizationId);
 
@@ -241,26 +241,26 @@ export async function consumeInspectionQuota(userId: string): Promise<QuotaBalan
 }
 
 /**
- * LÁGY AI-keret ellenőrzés -- AI-funkció (hangdiktálás/forgalmi szkenner) hívása ELŐTT
- * hívandó. Igaz, ha a szervezetnek van szabad AI kerete -- havi ÉS vásárolt együtt (lásd
+ * LÁGY AI-keret ellenőrzés, AI-funkció (hangdiktálás/forgalmi szkenner) hívása ELŐTT
+ * hívandó. Igaz, ha a szervezetnek van szabad AI kerete, havi ÉS vásárolt együtt (lásd
  * `QuotaBalance.totalAiAvailable`, 2026-08-06). **Szigorúan "fail-closed",
  * UGYANAZ a minta, mint `hasEnoughCredits` (lib/credits.ts):** BÁRMILYEN hiba esetén (DB/
- * hálózat/RLS/hiányzó szervezet) `false`-t ad vissza, SOSE dob kivételt -- a hívó AI route
+ * hálózat/RLS/hiányzó szervezet) `false`-t ad vissza, SOSE dob kivételt, a hívó AI route
  * ezt egy egyszerű `if (!hasAiQuota) { ...ne hívja a Gemini API-t... }` ággal használja, DE
  * (a `checkInspectionQuota`-val ellentétben) ez a kifogyás NEM szabad, hogy blokkolja a
- * vizsgálat gépeléssel/kattintással történő elvégzését -- lásd a fájl tetején lévő JSDoc-ot.
+ * vizsgálat gépeléssel/kattintással történő elvégzését, lásd a fájl tetején lévő JSDoc-ot.
  */
 export async function checkAiQuota(userId: string): Promise<boolean> {
   try {
     const balance = await getQuotaBalance(userId);
     // 2026-08-06, "Árazási struktúra bővítés" lépés óta a TELJES (havi + vásárolt)
-    // AI-kredit keretet nézzük, nem csak a havit -- korábban a vásárolt AI-kredit
+    // AI-kredit keretet nézzük, nem csak a havit, korábban a vásárolt AI-kredit
     // csomagok (lásd `purchasedAiRemaining`) sosem tudták volna feloldani ezt a kaput,
     // pedig pont ez a rendeltetésük (a havi keret elfogyása UTÁNI vásárolható kiegészítés).
     return balance.totalAiAvailable > 0;
   } catch (error) {
     console.error(
-      '[checkAiQuota] Hiba az AI-keret lekérése közben -- fail-closed, false-t adunk vissza:',
+      '[checkAiQuota] Hiba az AI-keret lekérése közben, fail-closed, false-t adunk vissza:',
       error
     );
     return false;
@@ -268,9 +268,9 @@ export async function checkAiQuota(userId: string): Promise<boolean> {
 }
 
 /**
- * Levonja 1 AI-hívást a hívó user SZERVEZETÉNEK havi AI keretéből -- a tényleges levonás a
+ * Levonja 1 AI-hívást a hívó user SZERVEZETÉNEK havi AI keretéből, a tényleges levonás a
  * `consume_ai_quota` RPC-n keresztül, atomikusan fut. Ha a levonás hibázna (pl. egy
- * párhuzamos kérés időközben elfogyasztotta az utolsó AI-hívást), a hibát a hívó logolja --
+ * párhuzamos kérés időközben elfogyasztotta az utolsó AI-hívást), a hibát a hívó logolja,
  * ugyanaz az elv, mint `deductCredits`-nél: a válasz, amit a felhasználó a MÁR lefutott,
  * ténylegesen kifizetett AI-hívásért cserébe kapott, ne vesszen el emiatt.
  */

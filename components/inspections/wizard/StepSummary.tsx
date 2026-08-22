@@ -58,7 +58,7 @@ interface StepSummaryProps {
   onBack: () => void;
   onSaveDraft: () => void;
   onPublish: () => void;
-  /** Riport küszöbértékek (2026-08-07) -- lásd `InspectionWizard.tsx` JSDoc-ját.
+  /** Riport küszöbértékek (2026-08-07), lásd `InspectionWizard.tsx` JSDoc-ját.
    * Alapértéke `DEFAULT_REPORT_THRESHOLDS`. */
   thresholds?: ReportThresholds;
 }
@@ -70,7 +70,7 @@ const FEATURE_ICON_CLASS = {
   not_present: 'text-linear-ink-tertiary',
 } as const;
 
-/** LÉPÉS 8 -- Összegzés & Publikálás (PROJEKT_INSTRUKCIOK.md 5.B.4 + "3 új szakértői modul"). */
+/** LÉPÉS 8, Összegzés & Publikálás (PROJEKT_INSTRUKCIOK.md 5.B.4 + "3 új szakértői modul"). */
 export function StepSummary({
   carInfo,
   generalPhotoCount,
@@ -141,17 +141,17 @@ export function StepSummary({
       </div>
 
       {/* Átvizsgáló és Ügyfél adatok + PDF megjelenítési kapcsolók (2026-08-06,
-          kiegészítve az Átvizsgáló neve input mezővel) -- az EGYETLEN wizard-lépés,
+          kiegészítve az Átvizsgáló neve input mezővel), az EGYETLEN wizard-lépés,
           ahol az "Összegzés" mellett még ténylegesen szerkeszthető mező is van: az
           "Átvizsgáló neve" input + a "Megrendelő adatai" blokk (Név/Telefon/Email) +
           a publikus riporton (PDF) az Átvizsgáló/Megrendelő blokk láthatóságát
           vezérlő 2 kapcsoló. Szándékosan ITT, az Összegzés & Publikálás lépésen él,
-          nem egy külön wizard-lépésként -- ez a legutolsó állomás Publikálás előtt,
+          nem egy külön wizard-lépésként, ez a legutolsó állomás Publikálás előtt,
           ahol a "mi kerüljön a bejelentkezés nélkül elérhető nyilvános linkre"
           döntés amúgy is meghozandó (lásd `InspectionWizard.tsx` `handleSubmit`,
           `inspector_id`/`inspector_name`/`client_*`/`show_*_on_pdf` mezők). A 2
           kapcsoló ELŐBB jelenik meg, a hozzájuk tartozó input mező(k) pedig
-          KIZÁRÓLAG a kapcsoló BE állapotában renderelődnek -- kikapcsolt kapcsolónál
+          KIZÁRÓLAG a kapcsoló BE állapotában renderelődnek, kikapcsolt kapcsolónál
           az input eltűnik (a state-ben megmaradó érték nem vész el, csak a UI nem
           mutatja), hogy a felület ne kínáljon fel kitöltésre olyan mezőt, ami úgyis
           rejtve marad a publikus riporton. */}
@@ -240,7 +240,7 @@ export function StepSummary({
         {diagnostics.noDtc ? (
           <p className="mt-2 inline-flex items-center gap-1.5 text-[13px] text-linear-success">
             <CheckCircle2 className="h-3.5 w-3.5" />
-            OBD Tiszta -- nincs hibakód
+            OBD Tiszta, nincs hibakód
           </p>
         ) : diagnosticCodes.length === 0 ? (
           <p className="mt-2 text-[13px] text-linear-ink-subtle">Nincs rögzített hibakód.</p>
@@ -381,7 +381,7 @@ export function StepSummary({
                   <p className="text-[13px] font-medium text-linear-ink">
                     #{index + 1} · {DAMAGE_TYPE_LABEL[damage.type]}
                   </p>
-                  {/* "Egyéb" kategóriánál a cím egyedi szöveg -- csak akkor jelenik meg ez a
+                  {/* "Egyéb" kategóriánál a cím egyedi szöveg, csak akkor jelenik meg ez a
                       sor, ha van kiírható tartalom (fix kategóriáknál a cím megegyezne a
                       fenti sorral, lásd DamageCanvas.tsx). */}
                   {(damage.title !== DAMAGE_TYPE_LABEL[damage.type] || damage.description) && (
@@ -443,7 +443,7 @@ export function StepSummary({
         finalAssessment.costNotes.trim() === '' &&
         finalAssessment.summaryText.trim() === '' ? (
           <p className="mt-2 text-[13px] text-linear-ink-subtle">
-            Nincs megadva -- ez a szekció opcionális, üresen a publikus riporton nem jelenik meg.
+            Nincs megadva, ez a szekció opcionális, üresen a publikus riporton nem jelenik meg.
           </p>
         ) : (
           <div className="mt-2 flex flex-col gap-2 text-[13px]">
@@ -494,10 +494,10 @@ function SummaryField({
   mono?: boolean;
   /** 17 karakteres VIN-hez: 2-oszlopos mobil rácsban teljes szélességű sort kap, hogy ne
    * csússzon/lógjon bele a szomszédos mezőbe (`col-span-full` a legszűkebb, `grid-cols-2`
-   * nézeten -- `sm:` felett már mindenképp elfér a saját cellájában). */
+   * nézeten, `sm:` felett már mindenképp elfér a saját cellájában). */
   fullWidth?: boolean;
   /** Ha meg van adva, ez jelenik meg a `value` sima szövege HELYETT (pl. a Rendszám mezőnél
-   * a `LicensePlateBadge` -- lásd "Rendszám felségjelzés" lépés) -- a `value` ilyenkor is
+   * a `LicensePlateBadge`, lásd "Rendszám felségjelzés" lépés), a `value` ilyenkor is
    * kötelező marad, csak a screen reader szöveges tartalmához (nincs `aria-label` duplikálva). */
   valueNode?: ReactNode;
 }) {

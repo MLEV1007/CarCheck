@@ -11,23 +11,23 @@ interface StepPaintMeasurementsProps {
   onChange: (value: PaintPointState[]) => void;
   onBack: () => void;
   onNext: () => void;
-  /** A KÖVETKEZŐ lépés rövid címe -- lásd StepCarInfo.tsx ugyanerről a propról. */
+  /** A KÖVETKEZŐ lépés rövid címe, lásd StepCarInfo.tsx ugyanerről a propról. */
   nextLabel: string;
-  /** Riport küszöbértékek (2026-08-07) -- lásd `InspectionWizard.tsx` JSDoc-ját.
+  /** Riport küszöbértékek (2026-08-07), lásd `InspectionWizard.tsx` JSDoc-ját.
    * Alapértéke `DEFAULT_REPORT_THRESHOLDS`, ha a szülő nem adja át. */
   thresholds?: ReportThresholds;
 }
 
 /**
- * LÉPÉS -- Rétegvastagság-mérő "Szabadkézi" (Free-form Canvas) modul
+ * LÉPÉS, Rétegvastagság-mérő "Szabadkézi" (Free-form Canvas) modul
  * (PROJEKT_INSTRUKCIOK.md, "Rétegvastagság-mérő Szabadkézi (Free-form Canvas)
- * átalakítása" lépés). NINCS előre definiált karosszéria-elem -- a felhasználó a kép
+ * átalakítása" lépés). NINCS előre definiált karosszéria-elem, a felhasználó a kép
  * TETSZŐLEGES pontjára kattinthat, hogy ott felvegyen egy mérési pontot (`PaintCanvas`,
  * `mode="edit"`). Egy meglévő, színes buborékra kattintva a pont módosítható vagy
  * törölhető.
  *
- * **Nincs "Teljes autó átlaga" kártya ezen a lépésen** (2026-08-10, felhasználói kérés
- * -- "7. lépésben az átlagot vedd ki. Erre nincs szükség") -- a korábban itt megjelenő
+ * **Nincs "Teljes autó átlaga" kártya ezen a lépésen** (2026-08-10, felhasználói kérés,
+ * "7. lépésben az átlagot vedd ki. Erre nincs szükség"), a korábban itt megjelenő
  * kiemelt összefoglaló kártyát eltávolítottuk. Az átlag SZÁMÍTÁSA (`getOverallPaintAverage`)
  * és a hozzá tartozó `getPaintStatus()` továbbra is megmarad/használt más helyeken
  * (`StepSummary.tsx`, `InspectionDetailView.tsx`, publikus riport), csak EZEN a

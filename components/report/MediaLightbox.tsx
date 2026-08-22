@@ -11,7 +11,7 @@ interface MediaLightboxProps {
 /**
  * Kattintásra felugró kép-/videónézegető a hiba médiákhoz (PROJEKT_INSTRUKCIOK.md 5.C).
  * `print:hidden`, mert a nyomtatott/PDF kimenetben a lightbox soha nincs releváns
- * állapotban -- a fotók maguktól, a `DefectsGallery` sorában is látszanak.
+ * állapotban, a fotók maguktól, a `DefectsGallery` sorában is látszanak.
  */
 export function MediaLightbox({ url, onClose }: MediaLightboxProps) {
   useEffect(() => {

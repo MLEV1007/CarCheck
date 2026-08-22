@@ -8,7 +8,7 @@ const config: Config = {
   content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}', './lib/**/*.{ts,tsx}'],
   // Rendszer-téma (System Theme): a `next-themes` a <html>-re teszi a `dark` class-t,
   // ha az eszköz sötét témán van (lásd `components/theme/ThemeProvider.tsx`). Csak a
-  // `linear-*` tokenek (Szakértői Munkaterület) CSS-változó-alapúak és reagálnak erre --
+  // `linear-*` tokenek (Szakértői Munkaterület) CSS-változó-alapúak és reagálnak erre,
   // a `stripe-*` (Auth/Landing/Beállítások) és `bmw-*` (Publikus riport) tokenek
   // szándékosan fix, literal hex értékek maradnak, a design rendszer előírása szerint.
   darkMode: 'class',
@@ -34,7 +34,7 @@ const config: Config = {
           magenta: '#f96bee',
           lemon: '#9b6829',
         },
-        // Design tokenek forrása: linear.md (Szakértői Munkaterület -- /dashboard, /inspections/*).
+        // Design tokenek forrása: linear.md (Szakértői Munkaterület, /dashboard, /inspections/*).
         // CSS-változókra épülnek (lásd app/globals.css :root / .dark), hogy a Rendszer-téma
         // (System Theme, components/theme/ThemeProvider.tsx) világos/sötét váltása minden
         // meglévő `bg-linear-*`/`text-linear-*`/stb. class-t automatikusan kövessen, komponens-
@@ -62,7 +62,7 @@ const config: Config = {
           danger: 'rgb(var(--linear-danger-rgb) / <alpha-value>)',
           'danger-soft': 'var(--linear-danger-soft)',
         },
-        // Design tokenek forrása: bmw.md (Publikus Ügyfélriport -- /report/[public_token]).
+        // Design tokenek forrása: bmw.md (Publikus Ügyfélriport, /report/[public_token]).
         bmw: {
           primary: '#1c69d4',
           'primary-active': '#0653b6',

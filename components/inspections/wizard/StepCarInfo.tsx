@@ -30,7 +30,7 @@ const AI_SCAN_FAILURE_MESSAGE = 'Nem sikerült az AI-alapú beolvasás. Próbál
 const AI_SCAN_TOO_LARGE_MESSAGE =
   'A kép túl nagy volt a feltöltéshez a tömörítés után is. Próbálj egy alacsonyabb felbontású fotót, vagy gépeld be manuálisan!';
 
-/** A `/api/ai/scan-vin` route válasz-alakja (lásd `app/api/ai/scan-vin/route.ts`) -- csak a
+/** A `/api/ai/scan-vin` route válasz-alakja (lásd `app/api/ai/scan-vin/route.ts`), csak a
  * kliens-oldalon ténylegesen felhasznált mezőket modellezi, ugyanaz az elv, mint a
  * `StepEquipment.tsx` `ParseEquipmentApiResponse` típusánál. */
 interface ScanVinApiResponse {
@@ -44,38 +44,38 @@ interface ScanVinApiResponse {
       make?: string;
       model?: string;
       registrationYear?: string;
-      /** Motor típusa/üzemanyag (pl. "Dízel, 1968 cm³") -- lásd `route.ts`
+      /** Motor típusa/üzemanyag (pl. "Dízel, 1968 cm³"), lásd `route.ts`
        * `buildSystemInstruction()` "P.1"/"P.3" pontjait. */
       engineType?: string;
-      /** Nyers számjegy-string (kW, mértékegység nélkül) -- lásd `route.ts`
+      /** Nyers számjegy-string (kW, mértékegység nélkül), lásd `route.ts`
        * `sanitizeExtractedDetails()`. */
       powerKw?: string;
-      /** Nyers számjegy-string (kg, mértékegység nélkül) -- lásd `route.ts`
+      /** Nyers számjegy-string (kg, mértékegység nélkül), lásd `route.ts`
        * `sanitizeExtractedDetails()`. */
       grossWeight?: string;
-      /** Üzemanyag típusa (2026-08-10) -- a modell a "benzin"/"dizel"/"elektromos"
+      /** Üzemanyag típusa (2026-08-10), a modell a "benzin"/"dizel"/"elektromos"
        * kulcsok egyikét adja vissza (lásd `route.ts` `buildSystemInstruction()` "P.3"
        * pontját), a kliens `matchFuelType()`-tel MÉG EGYSZER validálja. */
       fuelType?: string;
     };
   };
   error?: string;
-  /** Hibakeresési célú nyers hibaüzenet -- lásd `route.ts` `toErrorDetails()`. */
+  /** Hibakeresési célú nyers hibaüzenet, lásd `route.ts` `toErrorDetails()`. */
   details?: string;
 }
 
 /** A kép-tömörítés (`compressImageForAiScan`) mostantól a `lib/inspections/aiImageCompression.ts`
- * megosztott modulban él (2026-08-06, "Szervizbejegyzés AI-beolvasás" lépés) -- korábban itt,
+ * megosztott modulban él (2026-08-06, "Szervizbejegyzés AI-beolvasás" lépés), korábban itt,
  * ebben a fájlban volt egy önálló másolata, de a `/api/ai/scan-service-doc` (StepServiceHistory.tsx)
  * második fotó-alapú AI-funkció bevezetésekor ez duplikációt jelentett volna, ezért kiemelve.
  * Lásd a megosztott modul JSDoc-ját a "Miért kellett ez a lépés" indoklásért. */
 
 /** Az AI által felismert gyártmány szöveget megpróbálja a `CAR_CATALOG`-ban szereplő PONTOS
  * névre illeszteni (ékezet-/kis-nagybetű-független összehasonlítással, `localeCompare`
- * `sensitivity: 'base'`-zel -- pl. "skoda"/"Škoda" is egyezzen). `null`, ha nincs egyértelmű
- * találat -- ekkor a hívó a nyers AI-szöveget szabad szöveges ("Egyéb / Más") mezőként tölti
+ * `sensitivity: 'base'`-zel, pl. "skoda"/"Škoda" is egyezzen). `null`, ha nincs egyértelmű
+ * találat, ekkor a hívó a nyers AI-szöveget szabad szöveges ("Egyéb / Más") mezőként tölti
  * be, ugyanúgy, mint amikor a user maga választ ismeretlen márkát. A Típus mező NEM katalógus-
- * alapú (lásd lent), ezért ahhoz nincs hasonló illesztő függvény -- a nyers AI-szöveg
+ * alapú (lásd lent), ezért ahhoz nincs hasonló illesztő függvény, a nyers AI-szöveg
  * közvetlenül a szabad szöveges mezőbe kerül. */
 function matchCatalogBrand(rawMake: string | undefined): string | null {
   const trimmed = rawMake?.trim();
@@ -84,10 +84,10 @@ function matchCatalogBrand(rawMake: string | undefined): string | null {
 }
 
 /** Az AI által visszaadott üzemanyag-szöveget a zárt `FUEL_TYPES` egyikére próbálja
- * illeszteni -- MÉG EGYSZER, kliens-oldalon is (nem bízzuk kizárólag a szerver/prompt
+ * illeszteni, MÉG EGYSZER, kliens-oldalon is (nem bízzuk kizárólag a szerver/prompt
  * pontos betartására), ugyanaz az elv, mint a `matchCatalogBrand`-nél. `null`, ha nincs
  * egyértelmű találat (pl. hibrid/LPG/CNG, vagy a modell mégis szabad szöveget adott
- * vissza) -- ekkor a mező üresen marad, a vizsgáló kézzel választ. */
+ * vissza), ekkor a mező üresen marad, a vizsgáló kézzel választ. */
 function matchFuelType(raw: string | undefined): FuelType | null {
   const trimmed = raw?.trim().toLowerCase();
   if (!trimmed) return null;
@@ -98,34 +98,34 @@ interface StepCarInfoProps {
   value: CarInfoState;
   onChange: (value: CarInfoState) => void;
   onNext: () => void;
-  /** A KÖVETKEZŐ lépés rövid címe (`WIZARD_STEP_META` a constants.ts-ben) -- a "Tovább"
+  /** A KÖVETKEZŐ lépés rövid címe (`WIZARD_STEP_META` a constants.ts-ben), a "Tovább"
    * gomb felirata ebből épül fel dinamikusan, hogy egy jövőbeli lépés-sorrend módosítás
    * ne hagyhasson elavult, kézzel beégetett szöveget (lásd "Dinamikus Tovább gomb" lépés). */
   nextLabel: string;
 }
 
-/** A megadott márka szerepel-e a katalógusban -- ha nem (vagy üres), az a "Egyéb / Más"
+/** A megadott márka szerepel-e a katalógusban, ha nem (vagy üres), az a "Egyéb / Más"
  * szabad szöveges módot jelenti a dropdown helyett. */
 function isKnownBrand(brand: string): boolean {
   return brand !== '' && brand in CAR_CATALOG;
 }
 
 /**
- * LÉPÉS 1 -- Autó alapadatok (PROJEKT_INSTRUKCIOK.md 5.B.1).
+ * LÉPÉS 1, Autó alapadatok (PROJEKT_INSTRUKCIOK.md 5.B.1).
  *
  * Márka: gördülőmenüs kiválasztás a `lib/inspections/carCatalog.ts` katalógusból, "Egyéb / Más"
- * opcióval, ami szabad szöveges mezőre vált -- így ritkább márkák is rögzíthetők. Márkaváltáskor
+ * opcióval, ami szabad szöveges mezőre vált, így ritkább márkák is rögzíthetők. Márkaváltáskor
  * a korábban beírt típus törlődik.
  *
- * **Típus: MINDIG sima szabad szöveges mező** (felhasználói kérésre, 2026-08-02 -- korábban
+ * **Típus: MINDIG sima szabad szöveges mező** (felhasználói kérésre, 2026-08-02, korábban
  * a Márkához hasonlóan katalógus-alapú dropdown volt "Egyéb / Más" opcióval, de a katalógus
- * márkánkénti típuslistája túl szűknek/karbantartás-igényesnek bizonyult a gyakorlatban) --
+ * márkánkénti típuslistája túl szűknek/karbantartás-igényesnek bizonyult a gyakorlatban),
  * nincs `isKnownModel`/`isCustomModel` állapot, nincs katalógus-illesztés, a user (vagy az AI
  * szkenner) által beírt/felismert szöveg közvetlenül a mezőbe kerül.
  *
  * Validáció (`lib/inspections/validation.ts`): a mezők `sanitize*` függvényekkel minden
  * billentyűleütésnél tisztulnak (nagybetűsítés, csak megengedett karakterek), a hibaüzenetek
- * pedig "touched" mezőnél vagy a "Tovább" gombra kattintás után jelennek meg piros szöveggel --
+ * pedig "touched" mezőnél vagy a "Tovább" gombra kattintás után jelennek meg piros szöveggel,
  * érvénytelen adatnál a `onNext` nem hívódik meg.
  */
 export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoProps) {
@@ -135,7 +135,7 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
 
   const [vinScanToast, setVinScanToast] = useState<{ variant: VinScanToastVariant; message: string } | null>(null);
 
-  // Gemini Vision AI szkenner (`/api/ai/scan-vin`, lásd a route JSDoc-ját) -- Forgalmi
+  // Gemini Vision AI szkenner (`/api/ai/scan-vin`, lásd a route JSDoc-ját), Forgalmi
   // Engedély VAGY alvázszám-matrica fotóból VIN + (Forgalmi esetén) rendszám/gyártmány/
   // típus/évjárat kinyerése egyetlen AI-hívással.
   const aiScanFileInputRef = useRef<HTMLInputElement>(null);
@@ -162,7 +162,7 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
       return;
     }
     setIsCustomBrand(false);
-    // Márkaváltáskor a korábbi típus törlődik -- más márkánál valószínűleg más típus érvényes.
+    // Márkaváltáskor a korábbi típus törlődik, más márkánál valószínűleg más típus érvényes.
     onChange({ ...value, carBrand: selected, carModel: '' });
   }
 
@@ -171,28 +171,28 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
   }
 
   /**
-   * Fotó kiválasztása/lefotózása után Canvas-szal tömöríti a képet (`compressImageForAiScan`
-   * -- lásd a JSDoc-ját arról, miért kritikus ez a Vercel request body korlátja miatt),
-   * elküldi a `/api/ai/scan-vin` route-nak, majd a válasz alapján -- KIZÁRÓLAG az AI által
-   * ténylegesen visszaadott mezőket felülírva -- előtölti a formot:
+   * Fotó kiválasztása/lefotózása után Canvas-szal tömöríti a képet (`compressImageForAiScan`,
+   * lásd a JSDoc-ját arról, miért kritikus ez a Vercel request body korlátja miatt),
+   * elküldi a `/api/ai/scan-vin` route-nak, majd a válasz alapján, KIZÁRÓLAG az AI által
+   * ténylegesen visszaadott mezőket felülírva, előtölti a formot:
    *  - `vin` -> Alvázszám (a helyi `sanitizeVin` szigorú ISO 3779-tisztítást is elvégzi
-   *    "MÉG EGYSZER", ugyanazzal az elvvel, mint a szerver-oldali `sanitizeVin` a route-ban --
+   *    "MÉG EGYSZER", ugyanazzal az elvvel, mint a szerver-oldali `sanitizeVin` a route-ban,
    *    dupla védelmi vonal, nem bízzuk kizárólag a szerverre).
    *  - `extractedDetails.plateNumber` -> Rendszám (`sanitizeLicensePlate`).
-   *  - `extractedDetails.make` -> Márka -- ha a `CAR_CATALOG`-ban PONTOSAN azonosítható a
+   *  - `extractedDetails.make` -> Márka, ha a `CAR_CATALOG`-ban PONTOSAN azonosítható a
    *    név (`matchCatalogBrand`), dropdown-módra váltunk a felismert értékkel; ha nem, a
-   *    nyers AI-szöveggel szabad szöveges ("Egyéb / Más") módra váltunk -- UGYANAZ a
+   *    nyers AI-szöveggel szabad szöveges ("Egyéb / Más") módra váltunk, UGYANAZ a
    *    viselkedés, mint amikor a user saját kezűleg választja az "Egyéb / Más" opciót egy
    *    nem katalogizált márkánál.
-   *  - `extractedDetails.model` -> Típus -- a Típus mező MINDIG sima szabad szöveges mező
+   *  - `extractedDetails.model` -> Típus, a Típus mező MINDIG sima szabad szöveges mező
    *    (nincs katalógus-illesztés), a nyers AI-szöveg közvetlenül ide kerül.
    *  - `extractedDetails.registrationYear` -> Évjárat (`sanitizeYear`).
-   *  - `extractedDetails.engineType` -> Motor típusa -- szabad szöveges, a nyers AI-szöveg
+   *  - `extractedDetails.engineType` -> Motor típusa, szabad szöveges, a nyers AI-szöveg
    *    közvetlenül ide kerül (`sanitizeEngineType` csak a max hosszra vágja).
-   *  - `extractedDetails.powerKw` -> Teljesítmény (kW) (`sanitizePowerKw`) -- a lóerő (LE)
+   *  - `extractedDetails.powerKw` -> Teljesítmény (kW) (`sanitizePowerKw`), a lóerő (LE)
    *    élőben számolódik ebből, lásd a mező `hint`-jét lent.
    *  - `extractedDetails.grossWeight` -> Megengedett össztömeg (kg) (`sanitizeGrossWeight`).
-   *  - A Km óra állás mezőt az AI SOSEM tölti ki -- a Forgalmi Engedély nem tartalmaz
+   *  - A Km óra állás mezőt az AI SOSEM tölti ki, a Forgalmi Engedély nem tartalmaz
    *    kilométeróra-állást, ez a `/api/ai/scan-vin` válasz-sémájának SOSEM volt és nem is
    *    lesz része, a mezőt a szakinak mindig manuálisan kell kitöltenie.
    * A gomb a feldolgozás alatt le van tiltva (`isAiScanning`), hogy ne induljon el
@@ -215,17 +215,17 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
         body: JSON.stringify({ image: imageDataUrl, inspectionId }),
       });
 
-      // 402 (INSUFFICIENT_AI_QUOTA) -- lásd `InsufficientCreditsProvider.tsx`. A globális
+      // 402 (INSUFFICIENT_AI_QUOTA), lásd `InsufficientCreditsProvider.tsx`. A globális
       // "Elfogyott az AI kereted" modalt nyitjuk meg a lokális toast helyett.
       if (response.status === 402) {
         notifyInsufficientCredits();
         return;
       }
 
-      // A válasz JSON-parszolását KÜLÖN try/catch-ben végezzük -- ha a kérés a Vercel
+      // A válasz JSON-parszolását KÜLÖN try/catch-ben végezzük, ha a kérés a Vercel
       // infrastruktúra szintjén (pl. a kb. 4,5 MB-os request body limit átlépése miatt)
       // MÉG A ROUTE-UNK MEGHÍVÁSA ELŐTT elutasításra kerül, a válasz `413`/HTML-hibaoldal
-      // lehet, NEM a route JSON válasza -- ezt korábban a `response.json()` kivétele a
+      // lehet, NEM a route JSON válasza, ezt korábban a `response.json()` kivétele a
       // `catch`-ig görgette, ahol csak a generikus `AI_SCAN_FAILURE_MESSAGE` jelent meg,
       // a tényleges ok (túl nagy kép) nélkül. Itt explicit különválasztjuk a két esetet.
       let result: ScanVinApiResponse | null = null;
@@ -280,7 +280,7 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
         filledCount += 1;
       }
 
-      // A Típus mező MINDIG sima szabad szöveges mező (nincs katalógus-illesztés) -- a nyers
+      // A Típus mező MINDIG sima szabad szöveges mező (nincs katalógus-illesztés), a nyers
       // AI-szöveg közvetlenül ide kerül, ugyanúgy, mint ahogy a user is szabadon gépelhetné be.
       if (details?.model) {
         next.carModel = details.model.trim();
@@ -341,7 +341,7 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
       } else if (data.confidence === 'low') {
         setVinScanToast({
           variant: 'warning',
-          message: `Beolvasva (${filledCount} mező kitöltve), de kérlek ellenőrizd az alvázszámot -- a kép elmosódott lehet!`,
+          message: `Beolvasva (${filledCount} mező kitöltve), de kérlek ellenőrizd az alvázszámot, a kép elmosódott lehet!`,
         });
       } else {
         setVinScanToast({
@@ -386,12 +386,12 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
         rendszámot, márkát, típust és a legtöbb egyéb mezőt helyetted.
       </HintCallout>
 
-      {/* Adatok beolvasása -- kiemelt kártya a lépés tetején, a mezők kitöltése ELŐTT,
+      {/* Adatok beolvasása, kiemelt kártya a lépés tetején, a mezők kitöltése ELŐTT,
           hogy a szaki egyetlen fotóval elindíthassa az auto-fill-t. A korábbi lila
           Sparkles ikon és "AI-alapú felismerés" felirat "generatív AI tech-demó" hatást
-          keltett -- a "UI/UX finomhangolás, Copywriting tisztítás" lépés kérésére egy
-          letisztult, ikon nélküli, profi SaaS-copy váltotta fel (a funkció maga --
-          Gemini Vision -- változatlan, csak a megjelenés/szöveg egyszerűsödött). */}
+          keltett, a "UI/UX finomhangolás, Copywriting tisztítás" lépés kérésére egy
+          letisztult, ikon nélküli, profi SaaS-copy váltotta fel (a funkció maga,
+          Gemini Vision, változatlan, csak a megjelenés/szöveg egyszerűsödött). */}
       <div className="rounded-lg border border-linear-primary/30 bg-linear-surface-1 p-4">
         <div className="mb-3">
           <p className="text-[14px] font-semibold text-linear-ink">Adatok beolvasása</p>
@@ -566,7 +566,7 @@ export function StepCarInfo({ value, onChange, onNext, nextLabel }: StepCarInfoP
             </label>
           </div>
           {/* Rendszám felségjelzés dropdown (PROJEKT_INSTRUKCIOK.md, "Rendszám felségjelzés
-              dropdown és profilhoz kötött alapértelmezés" lépés) -- egyetlen vizuális "Input
+              dropdown és profilhoz kötött alapértelmezés" lépés), egyetlen vizuális "Input
               Group"-ba csatolva a rendszám mező elé, közös kerettel. Az alapértelmezett érték
               a bejelentkezett user Settings oldalon beállított `default_license_country`
               metaadatából töltődik elő (`InspectionWizard.tsx` `defaultLicensePlateCountry`

@@ -95,7 +95,7 @@ uploadInspectionMedia(params: {
   file: File;
   category: 'general' | 'service' | 'equipment' | 'damages' | 'defect';
   // Asztali (hitelesített) híváskor: a meglévő supabase-js kliens + userId/inspectionId.
-  // QR híváskor: NINCS supabase-js session -- helyette a qrToken.
+  // QR híváskor: NINCS supabase-js session, helyette a qrToken.
   authMode: { type: 'session'; userId: string; inspectionId: string } | { type: 'qrToken'; token: string };
 }): Promise<{ publicUrl: string }>
 ```
@@ -119,16 +119,16 @@ uploadInspectionMedia(params: {
 ```sql
 create table public.qr_upload_sessions (
   token uuid primary key default gen_random_uuid(),
-  inspection_id uuid not null,       -- NINCS FK -- lásd inspection_ai_credit_usage.sql indoklását:
+  inspection_id uuid not null,       -- NINCS FK, lásd inspection_ai_credit_usage.sql indoklását:
                                       -- a wizard inspectionId-ja a wizard megnyitásakor generálódik,
                                       -- MIELŐTT az inspections sor létrejönne.
   organization_id uuid not null references public.organizations(id) on delete cascade,
   created_by uuid not null references auth.users(id) on delete cascade,
-  target text not null,              -- 'general' VAGY 'defect:<clientId>' -- a wizard SAJÁT, kliens-oldali
+  target text not null,              -- 'general' VAGY 'defect:<clientId>', a wizard SAJÁT, kliens-oldali
                                       -- állapot-kulcsa, hogy a desktop tudja, a beérkező elemet hova illessze.
                                       -- A szerver ezt csak átlátszóan tárolja/adja vissza, nem értelmezi.
   expires_at timestamptz not null,   -- created_at + kb. 20 perc
-  claimed_at timestamptz,            -- az ELSŐ sikeres telefon-oldali "session lekérdezés" időpontja --
+  claimed_at timestamptz,            -- az ELSŐ sikeres telefon-oldali "session lekérdezés" időpontja,
                                       -- lásd lent az "egyszer használatos" pontos jelentését.
   created_at timestamptz not null default now()
 );

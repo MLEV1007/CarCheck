@@ -9,7 +9,7 @@ interface GoogleAuthButtonProps {
 }
 
 /**
- * "Folytatás Google fiókkal" gomb -- Supabase Google OAuth provider.
+ * "Folytatás Google fiókkal" gomb, Supabase Google OAuth provider.
  * Stripe design system (stripe.md): `button-secondary` geometria (rounded-full, hairline border),
  * fehér háttéren, hogy vizuálisan alárendelt maradjon az elsődleges indigó CTA-nak.
  *
@@ -29,7 +29,7 @@ export function GoogleAuthButton({ redirectTo = '/dashboard' }: GoogleAuthButton
         redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`,
       },
     });
-    // Ha a hívás elindult, a böngésző átirányít a Google bejelentkező oldalára --
+    // Ha a hívás elindult, a böngésző átirányít a Google bejelentkező oldalára,
     // a loading state-et szándékosan nem állítjuk vissza, hogy a gomb az átirányításig letiltva maradjon.
   }
 

@@ -35,7 +35,7 @@ interface StepEquipmentProps {
   onChange: (value: FeatureFormState[]) => void;
   onBack: () => void;
   onNext: () => void;
-  /** A KÖVETKEZŐ lépés rövid címe -- lásd StepCarInfo.tsx ugyanerről a propról. */
+  /** A KÖVETKEZŐ lépés rövid címe, lásd StepCarInfo.tsx ugyanerről a propról. */
   nextLabel: string;
 }
 
@@ -49,7 +49,7 @@ const STATUS_OPTIONS: { status: FeatureStatus; icon: LucideIcon; activeClass: st
   },
 ];
 
-/** Statikus (a modul betöltésekor egyszer számolt) `Set`-ek a preset-gombokhoz -- a
+/** Statikus (a modul betöltésekor egyszer számolt) `Set`-ek a preset-gombokhoz, a
  * `EQUIPMENT_PRESET_BASIC`/`EQUIPMENT_PRESET_COMFORT_EXTRA` importált tömbök nem
  * változnak renderelés közben, ezért NEM `useMemo`-ban, hanem modul-szinten élnek. */
 const BASIC_PRESET_IDS = new Set(EQUIPMENT_PRESET_BASIC);
@@ -64,20 +64,20 @@ const PRESET_BUTTONS: { key: PresetKey; label: string }[] = [
   { key: 'reset', label: '🔄 Visszaállítás (Minden üres)' },
 ];
 
-/** A Gemini AI parse-equipment route válasz-alakja (`app/api/ai/parse-equipment/route.ts`)
- * -- csak a kliens-oldalon ténylegesen felhasznált mezőket modellezi. */
+/** A Gemini AI parse-equipment route válasz-alakja (`app/api/ai/parse-equipment/route.ts`),
+ * csak a kliens-oldalon ténylegesen felhasznált mezőket modellezi. */
 interface ParseEquipmentApiResponse {
   success: boolean;
   updates?: { id: string; status: FeatureStatus; notes?: string }[];
   error?: string;
-  /** Hibakeresési célú nyers hibaüzenet (lásd `route.ts` `toErrorDetails()`) -- ha jelen
+  /** Hibakeresési célú nyers hibaüzenet (lásd `route.ts` `toErrorDetails()`), ha jelen
    * van, a toast-üzenethez fűzve jelenik meg, hogy a szaki (vagy a fejlesztő Vercel-en) a
    * konzol megnyitása nélkül is lássa a tényleges okot. */
   details?: string;
 }
 
 /**
- * LÉPÉS -- Felszereltségi Elemek Állapota Modul.
+ * LÉPÉS, Felszereltségi Elemek Állapota Modul.
  *
  * **UX TELJES ÚJRATERVEZÉSE (2026-08-02, 1. hullám):** a korábbi "Hibrid Okos-Lista"
  * (Kiemelt szekció + kategória-fülek + nézet-szűrő) helyett egy sokkal egyszerűbb,
@@ -86,19 +86,19 @@ interface ParseEquipmentApiResponse {
  * soronként, D) progressive disclosure (Megjegyzés + Fotó) KIZÁRÓLAG "Hibás" állapotnál.
  *
  * **AI DIKTÁLÁS + CSOMAG-PRESETEK (2026-08-02, 2. hullám, PROJEKT_INSTRUKCIOK.md "2. LÉPÉS"):**
- *  E) Csomag-alapú gyorsgombok (`PRESET_BUTTONS`/`applyPreset()`) -- Alap/Átlagos/Full
+ *  E) Csomag-alapú gyorsgombok (`PRESET_BUTTONS`/`applyPreset()`), Alap/Átlagos/Full
  *     Extra/Visszaállítás, 1 kattintással előkészítve a TELJES katalógust egy tipikus
  *     felszereltségi szinthez, lásd `lib/inspections/constants.ts`
  *     `EQUIPMENT_PRESET_BASIC`/`EQUIPMENT_PRESET_COMFORT_EXTRA`.
- *  F) AI diktálás (`EquipmentAiAssistant`) -- a szaki szabad szöveges/hangalapú (a
+ *  F) AI diktálás (`EquipmentAiAssistant`), a szaki szabad szöveges/hangalapú (a
  *     megosztott `TextareaField` beépített `VoiceInputButton`-ján keresztül, magyar,
  *     Web Speech API) leírásából a `/api/ai/parse-equipment` Gemini 2.0 Flash backend
  *     (lásd az előző fejlesztési lépést) strukturált `FeatureState`-frissítéseket ad
- *     vissza, amiket `applyAiUpdates()` a state-be merge-el -- KIZÁRÓLAG az AI által
+ *     vissza, amiket `applyAiUpdates()` a state-be merge-el, KIZÁRÓLAG az AI által
  *     ténylegesen visszaküldött elemeket módosítva, a többit érintetlenül hagyva.
  *
  * A `value` (`FeatureFormState[]`) a TELJES katalógust tartalmazza mindig (lásd
- * `InspectionWizard.tsx` `defaultEquipment()`) -- a keresés/csoportosítás/preset csak azt
+ * `InspectionWizard.tsx` `defaultEquipment()`), a keresés/csoportosítás/preset csak azt
  * szabályozza, mely elemek LÁTSZANAK/módosulnak, a tömb hossza maga nem változik.
  */
 export function StepEquipment({ value, onChange, onBack, onNext, nextLabel }: StepEquipmentProps) {
@@ -133,10 +133,10 @@ export function StepEquipment({ value, onChange, onBack, onNext, nextLabel }: St
     );
   }
 
-  /** E) Csomag-alapú gyorsgombok -- a TELJES katalógusra hatnak (nem a keresés által
+  /** E) Csomag-alapú gyorsgombok, a TELJES katalógusra hatnak (nem a keresés által
    * szűrt listára, szemben az alábbi `markListedAsWorking()`-gal), mert egy preset
    * kifejezetten a teljes vizsgálat egyben történő előkészítésére szolgál. Státusz-
-   * VÁLTÁSKOR a korábbi hiba-megjegyzés/fotó törlődik (a blob URL felszabadításával) --
+   * VÁLTÁSKOR a korábbi hiba-megjegyzés/fotó törlődik (a blob URL felszabadításával),
    * egy már nem "Hibás" elemnél ezek elavulttá válnának, a "Visszaállítás" gombnál pedig
    * ez a szándékolt, teljes nullázó viselkedés. */
   function applyPreset(preset: PresetKey) {
@@ -155,11 +155,11 @@ export function StepEquipment({ value, onChange, onBack, onNext, nextLabel }: St
     );
   }
 
-  /** F) Az AI válaszában érkező frissítések merge-elése -- KIZÁRÓLAG a `updates`-ben
+  /** F) Az AI válaszában érkező frissítések merge-elése, KIZÁRÓLAG a `updates`-ben
    * ténylegesen szereplő `id`-jű elemeket módosítja, a többi elem VÁLTOZATLAN marad.
    * "Hibás" célállapotnál az AI `notes` mezőjét (ha érkezett) átveszi, egyébként a
-   * meglévő megjegyzést megtartja; minden más célállapotnál -- ugyanúgy, mint a
-   * preset-eknél -- törli az esetleg korábban rögzített hiba-megjegyzést/fotót. */
+   * meglévő megjegyzést megtartja; minden más célállapotnál, ugyanúgy, mint a
+   * preset-eknél, törli az esetleg korábban rögzített hiba-megjegyzést/fotót. */
   function applyAiUpdates(updates: { id: string; status: FeatureStatus; notes?: string }[]) {
     const updateMap = new Map(updates.map((update) => [update.id, update]));
     onChange(
@@ -183,7 +183,7 @@ export function StepEquipment({ value, onChange, onBack, onNext, nextLabel }: St
     [value, trimmedQuery]
   );
 
-  /** A) Szupergyors tömeges kijelölés -- KIZÁRÓLAG a keresés által jelenleg LISTÁZOTT
+  /** A) Szupergyors tömeges kijelölés, KIZÁRÓLAG a keresés által jelenleg LISTÁZOTT
    * elemekre hat (nem a teljes katalógusra), hogy kereséssel kombinálva célzottan is
    * használható legyen (pl. "ülés" -> Összes kijelölése -> az összes ülés-extra egyszerre
    * működőre áll). Keresés nélkül ez a teljes katalógust jelenti. */
@@ -233,7 +233,7 @@ export function StepEquipment({ value, onChange, onBack, onNext, nextLabel }: St
         vagy hibás. Hibás elemhez fűzhetsz megjegyzést és fotót is.
       </HintCallout>
 
-      {/* E) Csomag-alapú gyorsgombok -- lásd a `StepEquipment` JSDoc-ját fent. */}
+      {/* E) Csomag-alapú gyorsgombok, lásd a `StepEquipment` JSDoc-ját fent. */}
       <div className="flex flex-wrap gap-2">
         {PRESET_BUTTONS.map(({ key, label }) => (
           <button
@@ -247,10 +247,10 @@ export function StepEquipment({ value, onChange, onBack, onNext, nextLabel }: St
         ))}
       </div>
 
-      {/* F) AI diktálás -- lásd `EquipmentAiAssistant` lent. */}
+      {/* F) AI diktálás, lásd `EquipmentAiAssistant` lent. */}
       <EquipmentAiAssistant value={value} onApplyUpdates={applyAiUpdates} onToast={setToast} />
 
-      {/* A) Tömeges kijelölő varázsgomb + B) Élő kereső -- ragadós, hogy hosszú görgetés
+      {/* A) Tömeges kijelölő varázsgomb + B) Élő kereső, ragadós, hogy hosszú görgetés
           közben is elérhető maradjon. */}
       <div className="sticky top-0 z-10 -mx-5 flex flex-col gap-2 border-b border-linear-hairline bg-linear-surface-1 px-5 py-3 sm:-mx-7 sm:flex-row sm:items-center sm:px-7">
         <button
@@ -309,15 +309,15 @@ export function StepEquipment({ value, onChange, onBack, onNext, nextLabel }: St
 }
 
 /**
- * F) AI diktálás kártya -- kiemelt, a lépés tetején (a preset-gombok alatt) élő vezérlő.
- * A szöveges mező a megosztott `TextareaField`-et használja fel VÁLTOZTATÁS NÉLKÜL --
+ * F) AI diktálás kártya, kiemelt, a lépés tetején (a preset-gombok alatt) élő vezérlő.
+ * A szöveges mező a megosztott `TextareaField`-et használja fel VÁLTOZTATÁS NÉLKÜL,
  * az automatikusan tartalmazza a magyar (hu-HU) `VoiceInputButton`-t (mikrofon gomb,
  * pulzáló "Diktálás…" jelzéssel felvétel közben, lásd `lib/hooks/useSpeechToText.ts`),
- * így nem kellett külön mikrofon-komponenst építeni -- ugyanaz a bevált, projekt-szintű
+ * így nem kellett külön mikrofon-komponenst építeni, ugyanaz a bevált, projekt-szintű
  * hangalapú bevitel, mint minden más hosszabb Megjegyzés/Leírás mezőnél.
  *
  * A mikrofon kikapcsolásakor a `TextareaField` `onDictationEnd` callback-je AUTOMATIKUSAN
- * meghívja a `/api/ai/parse-equipment` route-ot hívó `handleProcess()`-t -- külön "Feldolgozás
+ * meghívja a `/api/ai/parse-equipment` route-ot hívó `handleProcess()`-t, külön "Feldolgozás
  * AI-val" gomb NEM kell, mert a diktálás vége önmagában elindítja a feldolgozást (lásd
  * "Auto-Trigger AI Diktálás", 39. szakasz). A gomb 2026-08-06-án el lett távolítva, mert a
  * kézi indítás redundáns volt a beépített auto-trigger mellett. A válasz `updates` tömbjét
@@ -338,15 +338,15 @@ function EquipmentAiAssistant({
   const { notifyInsufficientCredits } = useInsufficientCredits();
   const inspectionId = useInspectionId();
 
-  /** "Auto-Trigger AI Diktálás" lépés (2026-08-02) -- `overrideText` az
+  /** "Auto-Trigger AI Diktálás" lépés (2026-08-02), `overrideText` az
    * `onDictationEnd`-ből érkezik (lásd a `TextareaField` hívását lent): a diktálás
    * VÉGÉN a `useSpeechToText` közvetlenül a frissen felismert, végleges szöveget adja
-   * át, NEM a `text` React state-re támaszkodva -- ez elkerüli azt az elméleti
+   * át, NEM a `text` React state-re támaszkodva, ez elkerüli azt az elméleti
    * race condition-t, hogy a `text` state a `onSessionEnd` böngésző-esemény
    * lefutásakor még nem feltétlenül frissült a legutolsó `onresult`-ból (a state-
    * frissítés aszinkron). A kézi "Feldolgozás AI-val" gomb 2026-08-06-án eltávolításra
    * került (redundáns volt az auto-trigger mellett), így `overrideText` a gyakorlatban
-   * MINDIG megadott -- az opcionális paraméter csak azért maradt, hogy a függvény
+   * MINDIG megadott, az opcionális paraméter csak azért maradt, hogy a függvény
    * jövőbeli, kézi hívási móddal is kompatibilis maradjon módosítás nélkül. */
   async function handleProcess(overrideText?: string) {
     const trimmed = (overrideText ?? text).trim();
@@ -360,7 +360,7 @@ function EquipmentAiAssistant({
         body: JSON.stringify({ text: trimmed, inspectionId }),
       });
 
-      // 402 (INSUFFICIENT_AI_QUOTA) -- lásd `InsufficientCreditsProvider.tsx`. A globális
+      // 402 (INSUFFICIENT_AI_QUOTA), lásd `InsufficientCreditsProvider.tsx`. A globális
       // "Elfogyott az AI kereted" modalt nyitjuk meg a lokális toast helyett, hogy a
       // felhasználó egyértelmű, akcionálható visszajelzést kapjon.
       if (response.status === 402) {
@@ -371,11 +371,11 @@ function EquipmentAiAssistant({
       const data = (await response.json()) as ParseEquipmentApiResponse;
 
       if (!response.ok || !data.success) {
-        // A `details` mezőt (ha érkezett -- lásd `route.ts` `toErrorDetails()`) KIZÁRÓLAG a
-        // konzolba logoljuk hibakereséshez -- ez a nyers Gemini API hibaüzenet (pl. kvóta-
+        // A `details` mezőt (ha érkezett, lásd `route.ts` `toErrorDetails()`) KIZÁRÓLAG a
+        // konzolba logoljuk hibakereséshez, ez a nyers Gemini API hibaüzenet (pl. kvóta-
         // túllépés, modell-hiba stb.) fejlesztői/hibakeresési célú, a szakinak (felhasználónak)
         // szánt toast-üzenetben SOSE jelenhet meg. Korábban ez a nyers szöveg a `baseMessage`
-        // után zárójelben a toast-ba is bekerült -- egy 2026-08-09-i éles hibajegy szerint ez
+        // után zárójelben a toast-ba is bekerült, egy 2026-08-09-i éles hibajegy szerint ez
         // egy hosszú, technikai Gemini-hibaüzenetet jelenített meg a felhasználónak, ezért
         // mostantól a toast MINDIG a rövid, általános `baseMessage`-et mutatja, a `details`
         // csak a böngésző konzolján (és a Vercel szerver-logokban) érhető el.
@@ -398,7 +398,7 @@ function EquipmentAiAssistant({
       onToast({ variant: 'success', message: `AI frissítve: ${updates.length} elem módosítva` });
       setText('');
     } catch {
-      onToast({ variant: 'warning', message: 'Hálózati hiba -- az AI feldolgozás nem sikerült. Próbáld újra.' });
+      onToast({ variant: 'warning', message: 'Hálózati hiba, az AI feldolgozás nem sikerült. Próbáld újra.' });
     } finally {
       setIsProcessing(false);
     }
@@ -407,9 +407,9 @@ function EquipmentAiAssistant({
   return (
     <div className="rounded-lg border border-linear-primary/30 bg-linear-surface-1 p-4">
       {/* A korábbi lila Sparkles ikon és "AI diktálás" felirat "generatív AI tech-demó"
-          hatást keltett -- a "UI/UX finomhangolás, Copywriting tisztítás" lépés kérésére
-          egy letisztult, ikon nélküli, profi SaaS-copy váltotta fel (a funkció maga --
-          Gemini szöveg-értelmezés + a megosztott hangalapú diktálás -- változatlan). */}
+          hatást keltett, a "UI/UX finomhangolás, Copywriting tisztítás" lépés kérésére
+          egy letisztult, ikon nélküli, profi SaaS-copy váltotta fel (a funkció maga,
+          Gemini szöveg-értelmezés + a megosztott hangalapú diktálás, változatlan). */}
       <div className="mb-3">
         <p className="text-[14px] font-semibold text-linear-ink">Hangalapú gyorskitöltés</p>
         <p className="text-[12px] text-linear-ink-subtle">
@@ -424,7 +424,7 @@ function EquipmentAiAssistant({
         value={text}
         onChange={(e) => setText(e.target.value)}
         rows={3}
-        // "Auto-Trigger AI Diktálás" lépés -- ez KIVÁLTJA a `TextareaField`
+        // "Auto-Trigger AI Diktálás" lépés, ez KIVÁLTJA a `TextareaField`
         // alapértelmezett nyelvhelyesség-javítását: itt a mikrofon kikapcsolásakor
         // NEM a szöveg "kisimítása" a cél, hanem a `/api/ai/parse-equipment` strukturált
         // feldolgozás AZONNALI, kézi gombnyomás nélküli elindítása.
@@ -497,7 +497,7 @@ function FeatureRow({
         </div>
       </div>
 
-      {/* Progressive disclosure -- csak "Hibás" állapotnál, lágy fade+slide animációval
+      {/* Progressive disclosure, csak "Hibás" állapotnál, lágy fade+slide animációval
           (globals.css `feature-defect-panel-in` keyframe). */}
       {isDefective && (
         <div
@@ -523,7 +523,7 @@ function FeatureRow({
   );
 }
 
-/** Kompakt, egyetlen-fotós csatoló a "Hibás" progressive-disclosure panelhez -- a
+/** Kompakt, egyetlen-fotós csatoló a "Hibás" progressive-disclosure panelhez, a
  * meglévő `DefectMediaUpload.tsx`-nél (Hibák & Média lépés) jóval kisebb, sűrűbb
  * elrendezésben, mert itt sok sor mellett, egy szűk inline panelben él, és
  * SZÁNDÉKOSAN csak fotót fogad (nem videót, `accept="image/*"`), a spec "📷 Fotó
@@ -546,7 +546,7 @@ function FeaturePhotoPicker({
     return (
       <div className="flex items-center gap-3">
         <div className="h-16 w-16 shrink-0 overflow-hidden rounded-md border border-linear-hairline bg-linear-surface-2">
-          {/* eslint-disable-next-line @next/next/no-img-element -- kliens-oldali object URL / meglévő Storage URL előnézet */}
+          {/* eslint-disable-next-line @next/next/no-img-element, kliens-oldali object URL / meglévő Storage URL előnézet */}
           <img src={previewUrl} alt={file?.name ?? 'Hibafotó előnézet'} className="h-full w-full object-cover" />
         </div>
         <button

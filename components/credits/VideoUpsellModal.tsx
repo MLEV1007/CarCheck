@@ -12,16 +12,16 @@ interface VideoUpsellModalProps {
 /**
  * "Videó csatolása csak magasabb csomaggal érhető el" figyelmeztető/upsell modal
  * (PLAN_video_qr_upload.md 6.3 pontja, a felhasználóval egyeztetett "Mindig látszik,
- * kattintásra upsell" UX-döntés) -- akkor jelenik meg, amikor egy Free/Egyéni/Növekedési
+ * kattintásra upsell" UX-döntés), akkor jelenik meg, amikor egy Free/Egyéni/Növekedési
  * csomagú szervezet tagja videót próbál csatolni (asztali fájlválasztóból VAGY a QR-kódos
- * telefonos feltöltő gombra kattintva). Lásd `VideoUpsellProvider.tsx` -- ez a komponens
+ * telefonos feltöltő gombra kattintva). Lásd `VideoUpsellProvider.tsx`, ez a komponens
  * SOSEM közvetlenül példányosított, mindig a Provideren keresztül.
  *
  * 1:1 UGYANAZ a minta (role-tudatos szöveg, `/api/quotas/summary` lekérdezés, Linear Dark
- * Design Style, Escape/háttér-kattintás zárás), mint az `InsufficientCreditsModal.tsx`-nél
- * -- SZÁNDÉKOSAN nem lett belőle egy közös, paraméterezett komponens, mert a két eset
+ * Design Style, Escape/háttér-kattintás zárás), mint az `InsufficientCreditsModal.tsx`-nél,
+ * SZÁNDÉKOSAN nem lett belőle egy közös, paraméterezett komponens, mert a két eset
  * (elfogyott AI-kredit vs. csomag-szintű funkció-korlátozás) szemantikailag különbözik, és a
- * jövőbeli szövegezésük/CTA-juk könnyen szétválhat -- a duplikált, de olvasható komponens
+ * jövőbeli szövegezésük/CTA-juk könnyen szétválhat, a duplikált, de olvasható komponens
  * jobb csereút, mint egy korai, feleslegesen általánosított absztrakció.
  */
 export function VideoUpsellModal({ onClose }: VideoUpsellModalProps) {
@@ -38,7 +38,7 @@ export function VideoUpsellModal({ onClose }: VideoUpsellModalProps) {
           setRole(json.role);
         }
       } catch {
-        // Csendben megtartjuk az alapértelmezett 'manager' szöveget -- lásd
+        // Csendben megtartjuk az alapértelmezett 'manager' szöveget, lásd
         // `InsufficientCreditsModal.tsx` azonos elvű JSDoc-ját.
       }
     })();

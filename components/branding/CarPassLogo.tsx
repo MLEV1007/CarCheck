@@ -1,21 +1,21 @@
 import { outfit, dmMono } from './fonts';
 
 interface CarPassMarkProps {
-  /** Az ikon MAGASSÁGA px-ben -- a szélesség a natív 52:58 arányból számolódik. */
+  /** Az ikon MAGASSÁGA px-ben, a szélesség a natív 52:58 arányból számolódik. */
   size?: number;
   className?: string;
 }
 
 /**
- * CarPass logómárka -- pajzs + autó-sziluett + zöld pipa-jelvény.
+ * CarPass logómárka, pajzs + autó-sziluett + zöld pipa-jelvény.
  *
  * Forrás: a felhasználó által mellékelt referencia-design (Figma Make export,
- * `CarPass logo design/src/App.tsx`, `CarPassMark` komponens) -- az SVG-jelölés
+ * `CarPass logo design/src/App.tsx`, `CarPassMark` komponens), az SVG-jelölés
  * 1:1 átemelve onnan, csak a gradiens/szűrő `id`-k lettek `carpass-`-előtaggal
  * névtér-ütközés ellen védve (több `<svg>` egy DOM-on belüli előfordulása esetén
  * a duplikált `id` némely böngészőben rossz renderelést okozna).
  *
- * Önálló, fix színvilágú (kék pajzs-gradiens + zöld pipa-gradiens) -- ezért
+ * Önálló, fix színvilágú (kék pajzs-gradiens + zöld pipa-gradiens), ezért
  * VILÁGOS és SÖTÉT háttéren egyaránt jól látható, nincs külön "light"/"dark"
  * verziója (ellentétben a `CarPassLogo` szöveges wordmark-jával, ahol a szöveg
  * színe a háttértől függően vált).
@@ -63,7 +63,7 @@ export function CarPassMark({ size = 32, className }: CarPassMarkProps) {
         fill="rgba(255,255,255,0.07)"
       />
 
-      {/* Autó-sziluett -- egyszerűsített felülnézeti profil */}
+      {/* Autó-sziluett, egyszerűsített felülnézeti profil */}
       <g transform="translate(12, 20)">
         <path
           d="M2 10 L4 6 Q5.5 3.5 9 3 L19 3 Q22.5 3.5 24 6 L26 10 L27 10 Q28.2 10 28.2 11.2 L28.2 14 Q28.2 15 27 15 L1 15 Q0 15 0 14 L0 11.2 Q0 10 1 10 Z"
@@ -80,7 +80,7 @@ export function CarPassMark({ size = 32, className }: CarPassMarkProps) {
         <rect x="8" y="11" width="12" height="1.2" rx="0.6" fill="rgba(255,255,255,0.15)" />
       </g>
 
-      {/* Pipa-jelvény -- jobb alsó sarok */}
+      {/* Pipa-jelvény, jobb alsó sarok */}
       <circle cx="40" cy="44" r="10" fill="#0d1117" />
       <circle cx="40" cy="44" r="8.5" fill="url(#carpass-accent-grad)" filter="url(#carpass-glow)" />
       <path
@@ -97,25 +97,25 @@ export function CarPassMark({ size = 32, className }: CarPassMarkProps) {
 
 interface CarPassLogoProps {
   /**
-   * `dark` -- fixen sötét háttérre (fehér "Car" + zöld "Pass").
-   * `light` -- fixen világos háttérre (sötét tintakék "Car" + zöld "Pass"), pl. Stripe
+   * `dark`, fixen sötét háttérre (fehér "Car" + zöld "Pass").
+   * `light`, fixen világos háttérre (sötét tintakék "Car" + zöld "Pass"), pl. Stripe
    * auth-oldalak, ahol a háttér SOSEM váltogat (lásd `ThemeProvider.tsx`: a Stripe/BMW
    * felületek szándékosan NEM `dark:`-tudatosak).
-   * `auto` -- Tailwind `dark:` osztályokkal követi a `<html>` elem `dark` class-ét
-   * (`next-themes`, `enableSystem`) -- ott kell használni, ahol a háttér maga is a
+   * `auto`, Tailwind `dark:` osztályokkal követi a `<html>` elem `dark` class-ét
+   * (`next-themes`, `enableSystem`), ott kell használni, ahol a háttér maga is a
    * Rendszer-témával vált (pl. a Linear Dark navbar `bg-linear-canvas`-a világos OS-témán
-   * TÉNYLEGESEN fehér, nem fekete -- lásd `app/globals.css` `:root`/`.dark`).
+   * TÉNYLEGESEN fehér, nem fekete, lásd `app/globals.css` `:root`/`.dark`).
    */
   variant?: 'dark' | 'light' | 'auto';
   /** "JÁRMŰÁTVIZSGÁLÁS" alcím megjelenítése a wordmark alatt. Alapértelmezetten látszik. */
   withSubtitle?: boolean;
-  /** Az ikon magassága px-ben -- a wordmark betűmérete ehhez arányosan skálázódik. */
+  /** Az ikon magassága px-ben, a wordmark betűmérete ehhez arányosan skálázódik. */
   size?: number;
   className?: string;
 }
 
 /**
- * Teljes CarPass logó-lockup (ikon + "CarPass" wordmark + opcionális alcím) --
+ * Teljes CarPass logó-lockup (ikon + "CarPass" wordmark + opcionális alcím),
  * a felhasználó által mellékelt referencia-kép ("Main logo — full colour on dark"
  * variánsa) alapján. Lásd `CarPassMark` a forrás/névtér-megjegyzésekért.
  */

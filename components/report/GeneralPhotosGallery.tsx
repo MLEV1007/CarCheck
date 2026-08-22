@@ -18,7 +18,7 @@ interface GeneralPhotosGalleryProps {
  * miniatűrök, hairline szegély.
  *
  * **2026-08-21-i felhasználói visszajelzés:** a videó a riportban KIZÁRÓLAG linkként
- * jelenjen meg (ne beágyazott lejátszóként/előnézetként) -- lásd `DefectsGallery.tsx`
+ * jelenjen meg (ne beágyazott lejátszóként/előnézetként), lásd `DefectsGallery.tsx`
  * ugyanezen elvét, `isVideoUrl` (`lib/reports/media.ts`) dönti el, melyik URL videó.
  */
 export function GeneralPhotosGallery({ photos }: GeneralPhotosGalleryProps) {

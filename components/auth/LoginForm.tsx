@@ -16,7 +16,7 @@ const CALLBACK_ERROR_MESSAGES: Record<string, string> = {
 
 /**
  * Jelszómentes belépés (PROJEKT_INSTRUKCIOK.md "Átállás Jelszómentes hitelesítésre" lépés):
- * NINCS jelszó mező és NINCS Google OAuth gomb -- kizárólag Passkey (elsődleges) és Magic
+ * NINCS jelszó mező és NINCS Google OAuth gomb, kizárólag Passkey (elsődleges) és Magic
  * Link (másodlagos, fallback) belépési mód. Lásd PasskeyButton.tsx / MagicLinkForm.tsx.
  */
 export function LoginForm() {
@@ -24,7 +24,7 @@ export function LoginForm() {
   const redirectTo = searchParams.get('redirectTo') ?? '/dashboard';
   const callbackError = searchParams.get('error');
   // `DeleteAccountCard.tsx` ide irányít vissza sikeres fiók-törlés után
-  // (`/login?accountDeleted=1`) -- egy semleges, nem hiba-stílusú visszajelzés, hogy a
+  // (`/login?accountDeleted=1`), egy semleges, nem hiba-stílusú visszajelzés, hogy a
   // user tudja, a törlés ténylegesen megtörtént, nem csak kijelentkezett.
   const accountDeleted = searchParams.get('accountDeleted') === '1';
 

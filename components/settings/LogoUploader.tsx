@@ -8,7 +8,7 @@ interface LogoUploaderProps {
   userId: string;
   logoUrl: string | null;
   onUploaded: (url: string) => void;
-  /** Igaz Átvizsgálóknál (2026-08-14, "Öröklött cégadatok" lépés) -- a logó ilyenkor a
+  /** Igaz Átvizsgálóknál (2026-08-14, "Öröklött cégadatok" lépés), a logó ilyenkor a
    * szervezet Menedzserétől öröklődik, csak ELŐNÉZET, a feltöltő gomb nem jelenik meg. */
   disabled?: boolean;
 }
@@ -19,10 +19,10 @@ const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
  * Céglogó feltöltő (PROJEKT_INSTRUKCIOK.md 5.A + a "Cégbeállítások oldal" lépés):
  * fájlválasztó gomb + meglévő logó előnézete. A kép ugyanabba a Storage bucket-be
  * (`inspection-media`) kerül, mint a hiba-fotók/videók, a user saját mappájába
- * (`{user_id}/logo/...`) -- az RLS policy-k (`(storage.foldername(name))[1] = auth.uid()`)
+ * (`{user_id}/logo/...`), az RLS policy-k (`(storage.foldername(name))[1] = auth.uid()`)
  * ezt kényszerítik ki, lásd PROJEKT_INSTRUKCIOK.md 3. pont.
  *
- * A feltöltés azonnal, fájlválasztáskor megtörténik (nem várja meg a "Mentés" gombot) --
+ * A feltöltés azonnal, fájlválasztáskor megtörténik (nem várja meg a "Mentés" gombot),
  * a publikus URL-t a szülő `SettingsForm` a `profiles.logo_url` mezőbe menti majd.
  */
 export function LogoUploader({ userId, logoUrl, onUploaded, disabled = false }: LogoUploaderProps) {
@@ -74,7 +74,7 @@ export function LogoUploader({ userId, logoUrl, onUploaded, disabled = false }: 
     <div className="flex items-center gap-4">
       <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-stripe-md border border-stripe-hairline bg-stripe-canvas-soft">
         {logoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- a logó a Supabase Storage-ból, tetszőleges méretben érkezik
+          // eslint-disable-next-line @next/next/no-img-element, a logó a Supabase Storage-ból, tetszőleges méretben érkezik
           <img src={logoUrl} alt="Céglogó előnézet" className="h-full w-full object-contain" />
         ) : (
           <span className="px-1 text-center font-sohne text-[11px] font-normal leading-tight text-stripe-ink-mute">

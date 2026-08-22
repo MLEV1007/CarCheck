@@ -16,27 +16,27 @@ import { logAiApiCall } from '@/lib/aiApiCallLog';
  * (pl. "a klíma működik, a tolatókamera hibás, homályos a kép, navigáció nincs az autóban"),
  * ezt küldi ez a route a Gemini modellnek, ami a `lib/inspections/constants.ts`
  * `EQUIPMENT_ITEMS` KATALÓGUSÁRA szigorúan korlátozva (semmilyen más elem-nevet nem fogadunk
- * el a válaszból) tér vissza a felismert elemek `FeatureState`-jeivel -- a kliens ezekkel az
+ * el a válaszból) tér vissza a felismert elemek `FeatureState`-jeivel, a kliens ezekkel az
  * `id`/`status`/`notes` frissítésekkel tudja utólag (merge-eléssel) átírni a wizard state-jét,
  * a `currentStates`-ben esetlegesen már meglévő, NEM említett elemeket változatlanul hagyva.
  *
- * **Modellválasztás + fallback-lánc (2026-08-16, frissítve -- a korábbi kísérletek
+ * **Modellválasztás + fallback-lánc (2026-08-16, frissítve, a korábbi kísérletek
  * teljes története a git history-ban követhető, itt csak a jelenlegi, ÉRVÉNYES
  * állapot):** kiderült, hogy a korábban használt `gemini-2.0-flash` modellt a Google
  * 2026-06-01-jén kivezette (lásd https://ai.google.dev/gemini-api/docs/deprecations),
  * ami minden hívásnál azonnali 404-et okozott, és a kódot a lassú, kiszámíthatatlan
- * dinamikus `ai.models.list()` biztonsági hálóra kényszerítette -- ez magyarázta a
+ * dinamikus `ai.models.list()` biztonsági hálóra kényszerítette, ez magyarázta a
  * felhasználó által észlelt "van ahol csak tölt, van ahol hibázik" tünetegyüttest. Emellett
  * a felhasználó Google AI Studio irányítópultja azt mutatta, hogy a fiók (számlázás
  * nélküli/nem-verifikált állapotban) egy fiókszintű, minden modellre egységes, napi 20
- * kérés (RPD) plafonnal van korlátozva -- ez a modellnévtől függetlenül is 429/503
+ * kérés (RPD) plafonnal van korlátozva, ez a modellnévtől függetlenül is 429/503
  * hibákat okoz nagyobb terhelésnél. A modellnév-csere ezt önmagában nem oldja meg
  * (lásd lent, "Ismert korlát" megjegyzés), de a 404-eket igen. Elsődleges modell mostantól
  * `gemini-3.1-flash-lite` (a Google jelenlegi, kifejezetten a `gemini-2.0-flash-lite`
  * utódjaként dokumentált, olcsó/gyors Lite-modellje), fallback `gemini-3.6-flash` (a
  * `gemini-2.0-flash` hivatalos utódja, teljes képességű Flash-modell). Mindkét név
  * explicit, verzióhoz kötött (NEM `-latest` alias), hogy a jövőbeli Google-oldali
- * modellváltások ne okozzanak újra észrevétlen, csendes 404-fallback-eket -- egy jövőbeli
+ * modellváltások ne okozzanak újra észrevétlen, csendes 404-fallback-eket, egy jövőbeli
  * kivezetésről a Google e-mailben értesít, és a docs/deprecations oldal is jelzi, ekkor
  * itt kell frissíteni a nevet.
  *
@@ -44,55 +44,55 @@ import { logAiApiCall } from '@/lib/aiApiCallLog';
  * plafonon van (a Google AI Studio irányítópult "Rate limits by model" táblázata szerint
  * ez minden modellre egyformán vonatkozik, függetlenül a névtől), az éles, több
  * felhasználós használathoz a Google Cloud projekten a számlázás bekapcsolása (Tier 1)
- * szükséges -- ez a modellnév-választástól független, fiók/projekt-szintű beállítás.
+ * szükséges, ez a modellnév-választástól független, fiók/projekt-szintű beállítás.
  *
  * **Dinamikus modell-listázó végső biztonsági háló:** ha VÉLETLENÜL mindkét fix
  * `MODEL_CANDIDATES` név elbukna (pl. egy jövőbeli, előre nem látott Google-oldali
  * modell-átnevezés miatt), a `POST` handler `ai.models.list({ config: { queryBase: true
  * } })`-szal lekérdezi a ténylegesen elérhető modellek listáját, és az ELSŐ, nevében
- * "flash" szót tartalmazó modellel próbálkozik -- ez a réteg kódmódosítás NÉLKÜL is
+ * "flash" szót tartalmazó modellel próbálkozik, ez a réteg kódmódosítás NÉLKÜL is
  * túlél egy jövőbeli modellnév-változást, csak a statikus lista frissítése válik
  * feleslegessé (bár a gyorsabb, egy hálózati kör nélküli sikeres hívás miatt a
  * `MODEL_CANDIDATES` karbantartása továbbra is ajánlott).
  *
  * A hibaválasz `details` mezője TOVÁBBRA IS KIZÁRÓLAG az ELSŐDLEGES (`MODEL_CANDIDATES[0]`,
  * azaz `gemini-3.1-flash-lite`) hibáját mutatja, függetlenül attól, hány fallback (statikus
- * VAGY dinamikus) próbálkozás futott utána -- lásd a `POST` handler `primaryError`
+ * VAGY dinamikus) próbálkozás futott utána, lásd a `POST` handler `primaryError`
  * változóját, és a korábbi (`gemini-1.5-pro` 404-es esetét dokumentáló) fejlesztési
  * lépést a `status.md`-ben arról, miért fontos ez a szétválasztás.
  *
  * `runtime = 'nodejs'`, mert a `@google/genai` SDK Node.js API-kra (pl. `fetch` felett, de a
- * csomag maga Node.js-célzású) épül -- Edge runtime-on nem garantált a működése.
+ * csomag maga Node.js-célzású) épül, Edge runtime-on nem garantált a működése.
  *
- * **Autentikáció + kredit-védelem (2026-08-02, CANONIKUS leírás -- a `scan-vin`,
+ * **Autentikáció + kredit-védelem (2026-08-02, CANONIKUS leírás, a `scan-vin`,
  * `generate-summary`, `fix-grammar` route-ok UGYANEZT a mintát követik, ott csak erre a
  * szakaszra hivatkozunk):** a `/api/ai/*` route-ok korábban NEM voltak védve a
  * middleware-ben (`lib/supabase/middleware.ts` `PROTECTED_PREFIXES`-je csak OLDAL-
- * útvonalakat fed le, API route-okat nem) -- bárki, bejelentkezés nélkül is meg tudta
+ * útvonalakat fed le, API route-okat nem), bárki, bejelentkezés nélkül is meg tudta
  * hívni őket közvetlenül, ami feleslegesen fizetős Gemini-hívásokat tett lehetővé. A
  * `POST` handler elején ezért a `lib/supabase/server.ts` cookie-alapú (NEM service role)
- * kliensével lekérjük a hívó felhasználót (`auth.getUser()`) -- ha nincs bejelentkezve,
+ * kliensével lekérjük a hívó felhasználót (`auth.getUser()`), ha nincs bejelentkezve,
  * `401`-et adunk vissza, MIELŐTT bármilyen egyéb (API kulcs/body) ellenőrzés lefutna.
  * Ezután, MIELŐTT a Gemini API-t hívnánk, `hasEnoughCredits(userId, 1)`-gyel ellenőrizzük,
- * van-e szabad kreditje -- ha nincs, `402`-t adunk vissza `INSUFFICIENT_CREDITS` kóddal, a
+ * van-e szabad kreditje, ha nincs, `402`-t adunk vissza `INSUFFICIENT_CREDITS` kóddal, a
  * Gemini API-t EGYÁLTALÁN NEM hívjuk meg (nincs felesleges szerverköltség). A tényleges
  * `deductCredits(userId, featureName, 1)` levonás KIZÁRÓLAG a válasz VALIDÁLÁSA (nem csak a
  * Gemini-hívás technikai sikere, hanem a `success: true` válasz összeállítása) UTÁN, a
- * `return NextResponse.json({ success: true, ... })` sor ELŐTT fut le -- ha a Gemini-hívás
+ * `return NextResponse.json({ success: true, ... })` sor ELŐTT fut le, ha a Gemini-hívás
  * hibázik VAGY a válasz érvénytelennek bizonyul (JSON parse hiba, séma-eltérés stb.), NEM
  * vonunk le kreditet. Ha maga a levonás hibázna (pl. egy párhuzamos kérés időközben
- * elfogyasztotta a kreditet), a hibát logoljuk, de a választ -- amit a felhasználó a MÁR
- * lefutott, kifizetett Gemini-hívásért cserébe jogosan kapott -- nem tartjuk vissza.
+ * elfogyasztotta a kreditet), a hibát logoljuk, de a választ, amit a felhasználó a MÁR
+ * lefutott, kifizetett Gemini-hívásért cserébe jogosan kapott, nem tartjuk vissza.
  */
 export const runtime = 'nodejs';
 
-/** Modell-fallback lánc, kipróbálási sorrendben -- lásd a fenti JSDoc "Modellválasztás +
+/** Modell-fallback lánc, kipróbálási sorrendben, lásd a fenti JSDoc "Modellválasztás +
  * fallback-lánc" pontját. Az első sikeres válasz azonnal megszakítja a ciklust, a
  * `POST` handlerben. Ha MINDKETTŐ elbukna, a `POST` handler egy dinamikus
  * modell-listázó fallback-kel próbálkozik tovább (lásd `ai.models.list()` hívás lent). */
 const MODEL_CANDIDATES = ['gemini-3.1-flash-lite', 'gemini-3.6-flash'] as const;
 
-/** A `usage_logs.feature_name` értéke ehhez a route-hoz -- lásd `lib/credits.ts`. */
+/** A `usage_logs.feature_name` értéke ehhez a route-hoz, lásd `lib/credits.ts`. */
 const FEATURE_NAME = 'equipment_parse';
 
 const VALID_STATUSES: FeatureStatus[] = ['working', 'defective', 'not_present'];
@@ -103,11 +103,11 @@ function isValidStatus(value: unknown): value is FeatureStatus {
 
 interface ParseEquipmentRequestBody {
   text: string;
-  /** Opcionális, a jelenlegi gomb-állapotok -- MVP-ben csak kontextusnak/jövőbeli
+  /** Opcionális, a jelenlegi gomb-állapotok, MVP-ben csak kontextusnak/jövőbeli
    * finomításnak tartjuk fenn (pl. hogy a modell tudja, mi volt már beállítva), a validáció
    * és a végleges válasz nem függ tőle. */
   currentStates?: FeatureState[];
-  /** A wizard-munkamenet vizsgálat-azonosítója -- lásd `scan-vin/route.ts` azonos mezőjének
+  /** A wizard-munkamenet vizsgálat-azonosítója, lásd `scan-vin/route.ts` azonos mezőjének
    * JSDoc-ját ("1 AI kredit = 1 vizsgálat", `lib/inspectionAiCredit.ts`). */
   inspectionId: string;
 }
@@ -127,12 +127,12 @@ interface ParseEquipmentErrorResponse {
   success: false;
   error: string;
   /** A nyers hibaüzenet (kivétel `.message`-e, vagy `String(error)` ha nem `Error`
-   * példány) -- KIZÁRÓLAG hibakeresési célból kerül bele a válaszba, hogy Vercel-en (ahol
+   * példány), KIZÁRÓLAG hibakeresési célból kerül bele a válaszba, hogy Vercel-en (ahol
    * a szerver-konzol logok nem mindig kényelmesen elérhetők) is azonnal látszódjon a
    * tényleges ok (pl. hibás/hiányzó API kulcs, kvóta-túllépés, modellnév-hiba stb.), ne
    * csak egy generikus "Hiba történt..." szöveg. */
   details?: string;
-  /** Gépileg feldolgozható hibakód (pl. `'UNAUTHORIZED'`, `'INSUFFICIENT_CREDITS'`) --
+  /** Gépileg feldolgozható hibakód (pl. `'UNAUTHORIZED'`, `'INSUFFICIENT_CREDITS'`),
    * a kliens ez alapján tud speciális UI-t mutatni (pl. "vásárolj több kreditet" gombot),
    * nem csak a szabad szöveges `error` üzenetet kiírni. */
   code?: string;
@@ -146,7 +146,7 @@ function toErrorDetails(error: unknown): string {
 
 const MAX_TEXT_LENGTH = 4000;
 
-/** A Gemini modellt a katalógus PONTOS elem-neveire szorítjuk -- a rendszerutasítás
+/** A Gemini modellt a katalógus PONTOS elem-neveire szorítjuk, a rendszerutasítás
  * (systemInstruction) explicit felsorolja a teljes, jelenleg érvényes katalógust, hogy a
  * modell ne találjon ki új, a UI-ban nem létező elemnevet. */
 function buildSystemInstruction(): string {
@@ -155,22 +155,22 @@ function buildSystemInstruction(): string {
   return `Te egy magyar nyelvű autóvizsgáló szakértő asszisztense vagy. A feladatod, hogy a felhasználó által diktált vagy beírt szabad szöveges magyar leírásból kinyerd, mely felszereltségi elemek állapotát említette, és ezeket a MEGADOTT KATALÓGUS elemeihez rendeld hozzá.
 
 SZABÁLYOK:
-1. KIZÁRÓLAG a katalógusban szó szerint szereplő elem-neveket használhatod "id" mezőként -- SOHA ne találj ki új elemnevet, és SOHA ne módosítsd, rövidítsd vagy fordítsd le a katalógusban szereplő pontos elnevezést.
+1. KIZÁRÓLAG a katalógusban szó szerint szereplő elem-neveket használhatod "id" mezőként, SOHA ne találj ki új elemnevet, és SOHA ne módosítsd, rövidítsd vagy fordítsd le a katalógusban szereplő pontos elnevezést.
 2. Csak azokat az elemeket add vissza, amelyeket a szöveg EXPLICITEN, egyértelműen említ. Köznyelvi elnevezéseket/szinonimákat felismerhetsz (pl. "klíma" -> "Klímaberendezés"), de ha nem egyértelmű, melyik katalógus-elemről van szó, hagyd ki.
 3. A "status" mező PONTOSAN az alábbi három érték egyike lehet:
-   - "working" -- ha a szöveg szerint az elem működik / rendben van / megfelelő.
-   - "defective" -- ha a szöveg szerint az elem hibás / nem működik / sérült / valamilyen problémája van.
-   - "not_present" -- ha a szöveg szerint az elem nincs az autóban / nem releváns / nem szerelték fel.
+   - "working", ha a szöveg szerint az elem működik / rendben van / megfelelő.
+   - "defective", ha a szöveg szerint az elem hibás / nem működik / sérült / valamilyen problémája van.
+   - "not_present", ha a szöveg szerint az elem nincs az autóban / nem releváns / nem szerelték fel.
 4. Ha egy "defective" elemhez a szöveg konkrét hibaleírást is tartalmaz (pl. "recseg", "nem fűt", "villog a fényszóró"), add vissza tömören, magyarul a "notes" mezőben. Minden más esetben hagyd el a "notes" mezőt.
 5. Ha a szöveg egyetlen felismerhető felszereltségi elemet sem tartalmaz, adj vissza üres tömböt.
-6. Kizárólag a megadott JSON séma szerinti választ add -- semmi mást, se magyarázatot, se markdown jelölést, se kódblokkot.
+6. Kizárólag a megadott JSON séma szerinti választ add, semmi mást, se magyarázatot, se markdown jelölést, se kódblokkot.
 
-KATALÓGUS (a pontos elem-nevek -- EZEKET és KIZÁRÓLAG ezeket használd "id"-ként):
+KATALÓGUS (a pontos elem-nevek, EZEKET és KIZÁRÓLAG ezeket használd "id"-ként):
 ${catalogJson}`;
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse<ParseEquipmentSuccessResponse | ParseEquipmentErrorResponse>> {
-  // AUTENTIKÁCIÓ -- lásd a fenti JSDoc "Autentikáció + kredit-védelem" szakaszát.
+  // AUTENTIKÁCIÓ, lásd a fenti JSDoc "Autentikáció + kredit-védelem" szakaszát.
   const supabase = await createClient();
   const {
     data: { user },
@@ -184,12 +184,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<ParseEqui
     );
   }
 
-  // Környezeti változó megtisztítása -- Vercel-en (vagy más .env kezelőkben) előfordul,
+  // Környezeti változó megtisztítása, Vercel-en (vagy más .env kezelőkben) előfordul,
   // hogy a beillesztett API kulcs köré véletlenül idézőjelek kerülnek, vagy a másolás
   // felesleges vezető/záró szóközt/sortörést hagy maga után. Egy ilyen "szennyezett" kulcs
   // a Gemini API-nál generikus hitelesítési hibaként (a mi kódunkban eddig "Hiba történt a
   // Gemini API hívása közben"-ként) jelentkezett, a valódi ok (érvénytelen kulcs) elrejtve
-  // maradt -- ezért itt, HASZNÁLAT ELŐTT explicit tisztítjuk.
+  // maradt, ezért itt, HASZNÁLAT ELŐTT explicit tisztítjuk.
   const apiKey = process.env.GEMINI_API_KEY?.trim().replace(/^["']|["']$/g, '');
   if (!apiKey) {
     return NextResponse.json({ success: false, error: 'A GEMINI_API_KEY érvénytelen vagy hiányzik.' }, { status: 500 });
@@ -221,17 +221,17 @@ export async function POST(request: NextRequest): Promise<NextResponse<ParseEqui
     return NextResponse.json({ success: false, error: 'Az "inspectionId" mező kötelező.' }, { status: 400 });
   }
 
-  // "1 AI KREDIT = 1 VIZSGÁLAT" -- lásd `lib/inspectionAiCredit.ts` JSDoc-ját. Ha ez a
+  // "1 AI KREDIT = 1 VIZSGÁLAT", lásd `lib/inspectionAiCredit.ts` JSDoc-ját. Ha ez a
   // vizsgálat MÁR "AI-aktív", a keret-ellenőrzést átugorjuk.
   const alreadyClaimed = await hasInspectionClaimedAiCredit(user.id, inspectionId);
 
   if (!alreadyClaimed) {
     // ELŐZETES AI-KVÓTA ELLENŐRZÉS (PROJEKT_INSTRUKCIOK.md "Keret-ellenőrző és fogyasztó
-    // logika" lépés, 2026-08-04) -- a Stripe csomaghoz kötött (havi + vásárolt) AI-keretet
-    // ellenőrizzük. A `checkAiQuota` (lib/quotas.ts) szigorúan "fail-closed" -- hiba esetén
+    // logika" lépés, 2026-08-04), a Stripe csomaghoz kötött (havi + vásárolt) AI-keretet
+    // ellenőrizzük. A `checkAiQuota` (lib/quotas.ts) szigorúan "fail-closed", hiba esetén
     // is `false`. Ha elfogyott, ez a KONKRÉT AI-hívás blokkolódik (`INSUFFICIENT_AI_QUOTA`),
-    // DE a vizsgálat egyéb, kézi gépeléssel/kattintással kitölthető részei NEM -- ez a route
-    // nem érinti azokat. 2026-08-06-tól ez az EGYETLEN kapu -- a régi, generikus
+    // DE a vizsgálat egyéb, kézi gépeléssel/kattintással kitölthető részei NEM, ez a route
+    // nem érinti azokat. 2026-08-06-tól ez az EGYETLEN kapu, a régi, generikus
     // `hasEnoughCredits` (`lib/credits.ts`) gate-et eltávolítottuk, lásd `scan-vin/route.ts`
     // azonos elvű kommentjét az indoklásról.
     const hasAiQuota = await checkAiQuota(user.id);
@@ -262,9 +262,9 @@ export async function POST(request: NextRequest): Promise<NextResponse<ParseEqui
           status: { type: Type.STRING, enum: VALID_STATUSES },
           notes: { type: Type.STRING },
         },
-        // A `propertyOrdering` explicit megadása a kimenet stabil mezősorrendjéhez -- a
+        // A `propertyOrdering` explicit megadása a kimenet stabil mezősorrendjéhez, a
         // Google dokumentáció a 2.0-s modelleknél kifejezetten kéri, újabb modelleknél már
-        // opcionális, de nem árt -- ugyanaz a séma megy mindegyik próbált modellhez
+        // opcionális, de nem árt, ugyanaz a séma megy mindegyik próbált modellhez
         // (`MODEL_CANDIDATES` ÉS az esetleges dinamikus fallback modell is).
         propertyOrdering: ['id', 'status', 'notes'],
         required: ['id', 'status'],
@@ -273,19 +273,19 @@ export async function POST(request: NextRequest): Promise<NextResponse<ParseEqui
   };
 
   // A kérés tartalma (`contents`) minden próbálkozásnál (statikus ÉS dinamikus fallback)
-  // ugyanaz -- egyetlen helyen építjük fel, hogy ne duplikálódjon a kód.
+  // ugyanaz, egyetlen helyen építjük fel, hogy ne duplikálódjon a kód.
   const contents = [{ role: 'user' as const, parts: [{ text: `Diktált/beírt szöveg:\n"""\n${text}\n"""` }] }];
 
-  // Modell-fallback lánc -- sorban kipróbáljuk a `MODEL_CANDIDATES`-t, az ELSŐ sikeres
+  // Modell-fallback lánc, sorban kipróbáljuk a `MODEL_CANDIDATES`-t, az ELSŐ sikeres
   // választ azonnal felhasználjuk. MINDEN próbálkozás hibáját logoljuk (modellnevenként
   // külön, hogy a Vercel logokból pontosan látszódjon, melyik modell hányadik
   // próbálkozásra bukott el), DE a kliensnek küldött `details` mezőbe KIZÁRÓLAG az
-  // ELSŐDLEGES (`MODEL_CANDIDATES[0]`, azaz `gemini-3.1-flash-lite`) modell hibáját tesszük --
+  // ELSŐDLEGES (`MODEL_CANDIDATES[0]`, azaz `gemini-3.1-flash-lite`) modell hibáját tesszük,
   // egy esetleges fallback-modell hibája NE fedje el a valódi, elsődleges okot.
   let rawText: string | undefined;
   let succeeded = false;
   let primaryError: unknown;
-  // Melyik modell adta a ténylegesen felhasznált választ -- Platform Admin
+  // Melyik modell adta a ténylegesen felhasznált választ, Platform Admin
   // AI-hívás-napló célja (lásd `lib/aiApiCallLog.ts`), a statikus ÉS a dinamikus
   // fallback ág is beállítja siker esetén.
   let usedModel: string | undefined;
@@ -304,12 +304,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<ParseEqui
     }
   }
 
-  // Dinamikus modell-listázó VÉGSŐ biztonsági háló -- KIZÁRÓLAG akkor fut le, ha MINDKÉT
+  // Dinamikus modell-listázó VÉGSŐ biztonsági háló, KIZÁRÓLAG akkor fut le, ha MINDKÉT
   // fix `MODEL_CANDIDATES` elbukott. Lekérdezzük a ténylegesen elérhető (nem finomhangolt,
   // `queryBase: true`) modellek listáját, és az ELSŐ, nevében "flash" szót tartalmazó
-  // modellel próbálkozunk -- ez a réteg egy jövőbeli, előre nem látott Google-oldali
+  // modellel próbálkozunk, ez a réteg egy jövőbeli, előre nem látott Google-oldali
   // modellnév-változást is túlél kódmódosítás nélkül. A `primaryError`-t EZ a próbálkozás
-  // sem írja felül -- a kliens felé küldött hiba oka mindig az elsődleges statikus modellé
+  // sem írja felül, a kliens felé küldött hiba oka mindig az elsődleges statikus modellé
   // marad, a dinamikus fallback csak egy csendes, extra mentőöv.
   if (!succeeded) {
     try {
@@ -325,7 +325,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ParseEqui
       }
 
       if (dynamicModelName) {
-        console.error(`[parse-equipment] Statikus MODEL_CANDIDATES mind elbuktak -- dinamikus fallback próbálkozás: ${dynamicModelName}`);
+        console.error(`[parse-equipment] Statikus MODEL_CANDIDATES mind elbuktak, dinamikus fallback próbálkozás: ${dynamicModelName}`);
         try {
           const response = await ai.models.generateContent({ model: dynamicModelName, contents, config: generationConfig });
           rawText = response.text;
@@ -342,9 +342,9 @@ export async function POST(request: NextRequest): Promise<NextResponse<ParseEqui
     }
   }
 
-  // Platform Admin AI-hívás-napló (2026-08-17) -- MINDEN ténylegesen megtörtént
+  // Platform Admin AI-hívás-napló (2026-08-17), MINDEN ténylegesen megtörtént
   // Gemini-hívás-próbálkozást naplózunk, sikereset ÉS sikertelent is, FÜGGETLENÜL
-  // az alábbi JSON-validáció kimenetétől -- lásd `lib/aiApiCallLog.ts`. Best-effort,
+  // az alábbi JSON-validáció kimenetétől, lásd `lib/aiApiCallLog.ts`. Best-effort,
   // sosem dob hibát/nem akasztja meg a választ.
   await logAiApiCall(user.id, FEATURE_NAME, usedModel ?? MODEL_CANDIDATES[0], succeeded);
 
@@ -382,10 +382,10 @@ export async function POST(request: NextRequest): Promise<NextResponse<ParseEqui
   }
 
   // Szigorú, kliens-oldalon MÉG EGYSZER (nem csak a promptra/responseSchema-ra bízva) végzett
-  // validáció -- a modell kimenete szemantikailag helytelen lehet a séma-megfelelés ellenére
+  // validáció, a modell kimenete szemantikailag helytelen lehet a séma-megfelelés ellenére
   // is (lásd a Gemini strukturált kimenet dokumentáció "Validation" best practice pontját),
   // ezért minden elemet a TÉNYLEGES `EQUIPMENT_ITEMS` katalógushoz és a `FeatureStatus`
-  // unióhoz ellenőrzünk -- bármi, ami nem egyezik pontosan, csendben kimarad a válaszból.
+  // unióhoz ellenőrzünk, bármi, ami nem egyezik pontosan, csendben kimarad a válaszból.
   const catalogSet = new Set(EQUIPMENT_ITEMS);
   const seenIds = new Set<string>();
   const updates: FeatureState[] = [];
@@ -396,7 +396,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ParseEqui
 
     if (typeof item.id !== 'string' || !catalogSet.has(item.id)) continue;
     if (!isValidStatus(item.status)) continue;
-    if (seenIds.has(item.id)) continue; // duplikátum -- csak az első előfordulást tartjuk meg
+    if (seenIds.has(item.id)) continue; // duplikátum, csak az első előfordulást tartjuk meg
 
     const featureState: FeatureState = { id: item.id, status: item.status };
     if (item.status === 'defective' && typeof item.notes === 'string' && item.notes.trim()) {
@@ -407,7 +407,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ParseEqui
     seenIds.add(item.id);
   }
 
-  // "1 AI KREDIT = 1 VIZSGÁLAT" CLAIM + KREDIT/KVÓTA LEVONÁS -- KIZÁRÓLAG sikeres, érvényes
+  // "1 AI KREDIT = 1 VIZSGÁLAT" CLAIM + KREDIT/KVÓTA LEVONÁS, KIZÁRÓLAG sikeres, érvényes
   // Gemini-válasz UTÁN, és KIZÁRÓLAG ha ez a vizsgálat MÉG nem volt "AI-aktív". Lásd
   // `lib/inspectionAiCredit.ts` JSDoc-ját a race-condition kezelésről.
   if (!alreadyClaimed) {

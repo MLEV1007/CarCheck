@@ -4,25 +4,25 @@ import type { CarPointView } from '@/lib/inspections/carViews';
 interface CarViewSwitcherProps {
   view: CarPointView;
   onChange: (view: CarPointView) => void;
-  /** `dark` = Linear (Wizard), `light` = BMW (Publikus riport) -- a BMW-nél a
+  /** `dark` = Linear (Wizard), `light` = BMW (Publikus riport), a BMW-nél a
    * PROJEKT_INSTRUKCIOK.md 4.3 szabálya szerint SZIGORÚAN 0px lekerekítés (`rounded-none`)
    * kötelező minden gombon, a Linear-nél a megszokott `rounded-md`. */
   theme: 'dark' | 'light';
-  /** Nézetenkénti rögzített pontszám -- kis jelvényként jelenik meg a gomb mellett, hogy
+  /** Nézetenkénti rögzített pontszám, kis jelvényként jelenik meg a gomb mellett, hogy
    * a szaki/vevő lássa, melyik nézeten van már rögzített mérés/hiba anélkül, hogy oda
    * kellene váltania. */
   counts?: Partial<Record<CarPointView, number>>;
 }
 
 /**
- * Nézetváltó segmented control a `CarViewImage.tsx`-hez (2026-08-17, 2. nekifutás -- lásd
- * `lib/inspections/carViews.ts` fájl-JSDoc-ja a teljes előzményért) -- mindig csak EGY nézet
+ * Nézetváltó segmented control a `CarViewImage.tsx`-hez (2026-08-17, 2. nekifutás, lásd
+ * `lib/inspections/carViews.ts` fájl-JSDoc-ja a teljes előzményért), mindig csak EGY nézet
  * (elöl/bal oldal/hátul/jobb oldal/felül) látszik nagyban a `DamageCanvas.tsx` konténerében, a
  * korábbi, mind az 5 nézetet egy apró kompozit képbe zsúfoló `cars.webp`-vel szemben. Nézetet
- * `view`/`edit` módban EGYARÁNT lehet váltani -- csak az ÚJ pont felvétele van `edit`-hez
+ * `view`/`edit` módban EGYARÁNT lehet váltani, csak az ÚJ pont felvétele van `edit`-hez
  * kötve, a nézet közti navigáció nem.
  *
- * Ez a komponens változatlanul az EREDETI (2026-08-03-i, akkor be nem kötött) implementáció --
+ * Ez a komponens változatlanul az EREDETI (2026-08-03-i, akkor be nem kötött) implementáció,
  * kizárólag az importja mutat MOSTANTÓL a `carViews.ts`-re a korábbi, továbbra is használaton
  * kívüli `carSilhouette.ts` helyett (4 helyett 5 nézet: a Bal/Jobb oldal itt külön nevesített,
  * lásd `carViews.ts`).

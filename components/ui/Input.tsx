@@ -1,10 +1,10 @@
 import { InputHTMLAttributes, ReactNode, forwardRef } from 'react';
 import { cn } from '@/lib/utils';
 
-// Stripe design system (stripe.md): `text-input` / `text-input-focused`
-// -- rounded-sm (6px), 8px 12px padding, hairline-input border, fókuszban primary keret.
+// Stripe design system (stripe.md): `text-input` / `text-input-focused`,
+// rounded-sm (6px), 8px 12px padding, hairline-input border, fókuszban primary keret.
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
-  /** `ReactNode` (nem csak `string`) -- 2026-08-14, "Öröklött cégadatok" lépés: a
+  /** `ReactNode` (nem csak `string`), 2026-08-14, "Öröklött cégadatok" lépés: a
    * zárolt (Átvizsgálónak nem szerkeszthető) mezőknél a `SettingsForm.tsx` egy piros
    * tiltás-ikont fűz a címke mögé, ehhez kell a sima szövegnél bővebb típus. */
   label: ReactNode;

@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { Loader2 } from 'lucide-react';
 
 /**
- * "Global layout & navigáció javítása" lépés -- a korábbi elrendezésben minden
+ * "Global layout & navigáció javítása" lépés, a korábbi elrendezésben minden
  * wizard-lépés a SAJÁT fehér/sötét kártyájának ALJÁRA rajzolta a Vissza/Tovább gombjait
  * (`border-t border-linear-hairline pt-5` blokk minden `Step*.tsx` alján). Hosszú
  * lépéseknél (pl. Felszereltség, Hibák & Média) ez azt jelentette, hogy a
@@ -14,16 +14,16 @@ import { Loader2 } from 'lucide-react';
  *
  * Az új megoldás: EGYETLEN, mindig látható, rögzített (`fixed bottom-0`) alsó sáv
  * (lásd `InspectionWizard.tsx` `<div id="wizard-bottom-bar">`), amibe minden lépés a
- * SAJÁT Vissza/Tovább (vagy -- `StepSummary.tsx` esetén -- Vissza/Piszkozat/Publikálás)
+ * SAJÁT Vissza/Tovább (vagy, `StepSummary.tsx` esetén, Vissza/Piszkozat/Publikálás)
  * gombjait React Portal-lal "kiteleportálja". Ez megőrzi, hogy MINDEN lépés a saját
  * validációs logikáját (pl. `hasIncompleteRow`/`hasInvalidDot`) a saját komponensében
- * tartsa -- csak a gombok VIZUÁLIS HELYE változik, a `onClick`/`disabled` logika nem.
+ * tartsa, csak a gombok VIZUÁLIS HELYE változik, a `onClick`/`disabled` logika nem.
  *
- * A portál cél-elemet (`#wizard-bottom-bar`) `document.getElementById`-dal keressük meg
- * -- ez csak kliens-oldalon (`useEffect`) biztonságos, ezért a komponens az első
+ * A portál cél-elemet (`#wizard-bottom-bar`) `document.getElementById`-dal keressük meg,
+ * ez csak kliens-oldalon (`useEffect`) biztonságos, ezért a komponens az első
  * render(ek)en még `null`-t ad vissza, amíg a cél-elem referenciája be nem áll. A
  * cél-div maga MINDIG jelen van a DOM-ban (nem lépés-függő feltétellel renderelve),
- * így a portál tartalma lépésváltáskor sem "villan" -- csak a benne lévő gombok
+ * így a portál tartalma lépésváltáskor sem "villan", csak a benne lévő gombok
  * cserélődnek a React re-render során.
  */
 export function WizardBottomBarPortal({ children }: { children: ReactNode }) {
@@ -49,7 +49,7 @@ interface WizardStepFooterProps {
 
 /**
  * A wizard lépések TÖBBSÉGÉNÉL (a `StepSummary.tsx` kivételével, aminek 3 saját gombja
- * van) ugyanaz az egyszerű Vissza/Tovább pár -- ez a megosztott komponens portál-ba
+ * van) ugyanaz az egyszerű Vissza/Tovább pár, ez a megosztott komponens portál-ba
  * rajzolja ki őket, hogy minden `Step*.tsx`-ben egyetlen sor legyen a hívás, ne
  * duplikálódjon a `fixed`/gombstílus Tailwind-osztály-lista 10 fájlban.
  */
@@ -89,7 +89,7 @@ interface WizardSummaryFooterProps {
   isSubmitting: boolean;
 }
 
-/** `StepSummary.tsx` (utolsó lépés) 3 gombos alsó sávja -- ugyanaz a `WizardBottomBarPortal`
+/** `StepSummary.tsx` (utolsó lépés) 3 gombos alsó sávja, ugyanaz a `WizardBottomBarPortal`
  * cél-elem, csak Vissza/Mentés piszkozatként/Publikálás hármassal, betöltés-jelzővel. */
 export function WizardSummaryFooter({ onBack, onSaveDraft, onPublish, isSubmitting }: WizardSummaryFooterProps) {
   return (

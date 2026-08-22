@@ -6,12 +6,12 @@ import type { ReportThresholds } from '@/lib/inspections/types';
  * (PROJEKT_INSTRUKCIOK.md, "Gumiabroncsok Állapota & DOT Dekódoló Modul" lépés).
  *
  * A modern (2000 utáni gyártású) gumikon a DOT kód utolsó 4 számjegye a gyártás
- * HETÉT és ÉVÉT kódolja WWYY formában -- pl. "1122" = 2022. 11. hét. (A 2000 előtti,
- * 3 számjegyű kódolás -- ahol az utolsó számjegy csak az évtizedet jelezte -- ennek az
+ * HETÉT és ÉVÉT kódolja WWYY formában, pl. "1122" = 2022. 11. hét. (A 2000 előtti,
+ * 3 számjegyű kódolás, ahol az utolsó számjegy csak az évtizedet jelezte, ennek az
  * MVP-nek nem célja, azoknál a gumik korukból adódóan amúgy is cserélendők lennének.)
  *
- * A gyártási dátumot a hét ELSŐ napjára közelítjük (`Date.UTC(year, 0, 1 + (week-1)*7)`)
- * -- ez néhány napos pontatlanságot okozhat a pontos ISO-hét-számításhoz képest, de a
+ * A gyártási dátumot a hét ELSŐ napjára közelítjük (`Date.UTC(year, 0, 1 + (week-1)*7)`),
+ * ez néhány napos pontatlanságot okozhat a pontos ISO-hét-számításhoz képest, de a
  * "koros gumiabroncs" figyelmeztetéshez (5+ év) ez a pontosság bőven elegendő, nem
  * indokolt a teljes ISO 8601 hét-dátum algoritmus.
  */
@@ -32,7 +32,7 @@ const DOT_PATTERN = /^\d{4}$/;
 const MS_PER_YEAR = 1000 * 60 * 60 * 24 * 365.25;
 
 /**
- * @param thresholds A "koros gumiabroncs" küszöb (`tireAgeWarningYears`) forrása --
+ * @param thresholds A "koros gumiabroncs" küszöb (`tireAgeWarningYears`) forrása,
  * alapértéke `DEFAULT_REPORT_THRESHOLDS` (2026-08-07 előtti, hardkódolt 5 év), a
  * hívóhelyek a betöltött `profiles` sorból (Settings oldalon testreszabott érték)
  * adhatnak át egyedi értéket, lásd `ReportThresholds` JSDoc-ját.
@@ -47,13 +47,13 @@ export function decodeDot(
 
   const week = Number(dot.slice(0, 2));
   const yearSuffix = Number(dot.slice(2, 4));
-  // Hét (WW): kizárólag 01-53 lehet -- pl. "78" (mint a "7822" kódban) érvénytelen.
+  // Hét (WW): kizárólag 01-53 lehet, pl. "78" (mint a "7822" kódban) érvénytelen.
   if (week < 1 || week > 53) return null;
 
-  // A DOT kód csak 2 jegyű évet kódol -- 2000+ gyártásit feltételezünk (lásd fenti
+  // A DOT kód csak 2 jegyű évet kódol, 2000+ gyártásit feltételezünk (lásd fenti
   // megjegyzés a 2000 előtti, 3 jegyű formátumról).
   const year = 2000 + yearSuffix;
-  // Év (YY): nem lehet a JELENLEGI évnél későbbi -- egy gumi nem gyárthatták a jövőben.
+  // Év (YY): nem lehet a JELENLEGI évnél későbbi, egy gumi nem gyárthatták a jövőben.
   // Szándékosan a `referenceDate` (alapértelmezetten a mai nap) évéhez viszonyítunk
   // hardkódolt "26" helyett, hogy 2027-ben/2028-ban stb. is automatikusan helyes maradjon.
   if (year > referenceDate.getFullYear()) return null;
@@ -72,7 +72,7 @@ export function decodeDot(
 }
 
 /** A DOT kód év-részének (YY) jelenleg még érvényes maximuma, 2 jegyű, nullával
- * kitöltött formában (pl. "26" 2026-ban, "27" 2027-ben) -- a `decodeDot()`-tal azonos
+ * kitöltött formában (pl. "26" 2026-ban, "27" 2027-ben), a `decodeDot()`-tal azonos
  * `referenceDate`-hez viszonyítva, hogy a hibaüzenet (`StepTires.tsx`) mindig a
  * ténylegesen érvényes felső korlátot mutassa, nem egy évek múlva elavuló, beégetett
  * "26"-ot. */
@@ -81,7 +81,7 @@ export function getMaxDotYearSuffix(referenceDate: Date = new Date()): string {
 }
 
 /** Igaz, ha a 4 karakteres DOT kód formailag ÉS tartalmilag érvényes (lásd `decodeDot()`
- * szabályai) -- kényelmi wrapper, amikor csak a validitásra van szükség, nem a teljes
+ * szabályai), kényelmi wrapper, amikor csak a validitásra van szükség, nem a teljes
  * dekódolt eredményre (pl. `StepTires.tsx` "Tovább" gomb letiltásához). A validitás
  * FÜGGETLEN a "koros gumiabroncs" küszöbtől, ezért ez a függvény NEM kap `thresholds`
  * paramétert. */
@@ -91,11 +91,11 @@ export function isValidDot(rawDot: string, referenceDate: Date = new Date()): bo
 
 /**
  * "Kopott gumiabroncs" (profilmélység) figyelmeztetés (ÚJ, 2026-08-07, "Testreszabható
- * festékvastagság/gumiabroncs küszöbértékek" lépés) -- korábban a profilmélység (mm)
+ * festékvastagság/gumiabroncs küszöbértékek" lépés), korábban a profilmélység (mm)
  * mezőhöz EGYÁLTALÁN NEM létezett automatikus figyelmeztetés, csak a nyers érték volt
  * megjelenítve. Igaz, ha a megadott profilmélység (mm) ELÉRI/ALATTA van a
  * `thresholds.tireTreadWarningMm` küszöbnek (alapértéke `DEFAULT_TIRE_TREAD_WARNING_MM`,
- * 3 mm -- tájékoztató jellegű, NEM az EU jogszabályi minimum 1.6 mm).
+ * 3 mm, tájékoztató jellegű, NEM az EU jogszabályi minimum 1.6 mm).
  */
 export function isTreadWorn(mm: number, thresholds: ReportThresholds = DEFAULT_REPORT_THRESHOLDS): boolean {
   return mm <= thresholds.tireTreadWarningMm;

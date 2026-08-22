@@ -1,19 +1,19 @@
 /**
  * Univerzális formázó helperek (PROJEKT_INSTRUKCIOK.md, "Km-állás ezres elválasztó
  * formázás" + "Naptár választó" lépések). Design-rendszer-független, ezért a `lib/`
- * gyökerében él (`lib/utils.ts` `cn()` mintájára), NEM a `lib/inspections/`-ben --
+ * gyökerében él (`lib/utils.ts` `cn()` mintájára), NEM a `lib/inspections/`-ben,
  * bármely jövőbeli modul (nem csak km-állás) használhatja.
  */
 
 /**
- * Km-állás megjelenítése ezres elválasztóval + "km" felirattal (pl. `84 000 km`) --
+ * Km-állás megjelenítése ezres elválasztóval + "km" felirattal (pl. `84 000 km`),
  * MINDEN olyan helyen ezt kell használni, ahol egy km-értéket a userhez KÖZVETLENÜL
  * (nem beviteli mezőben) jelenítünk meg: Wizard Áttekintés kártyák, Szervizmúlt
  * Idővonal, `/inspections/[id]` adatlap, Publikus Riport. A `hu-HU` locale
- * (`Intl.NumberFormat`) keskeny nem törhető szóközt használ ezres elválasztóként --
+ * (`Intl.NumberFormat`) keskeny nem törhető szóközt használ ezres elválasztóként,
  * ez a magyar tipográfiai szabvány, NEM hiba/whitespace-probléma.
  *
- * `km === 0` EGY VALÓS, megjelenítendő érték (0 km-es, vadonatúj autó) -- ezért a
+ * `km === 0` EGY VALÓS, megjelenítendő érték (0 km-es, vadonatúj autó), ezért a
  * `null`/`undefined`/üres string ellenőrzés explicit módon KIZÁRJA a `0`-t.
  */
 export function formatKm(km: number | string | null | undefined): string {
@@ -24,12 +24,12 @@ export function formatKm(km: number | string | null | undefined): string {
 }
 
 /**
- * Ugyanaz a formázás, "km" felirat NÉLKÜL -- Wizard beviteli mezők (Km óra állás a
+ * Ugyanaz a formázás, "km" felirat NÉLKÜL, Wizard beviteli mezők (Km óra állás a
  * "Autó adatok" lépésen, km óra állás a Szervizmúlt idővonal bejegyzéseknél) élő,
  * ezres-elválasztós MEGJELENÍTÉSÉHEZ, amíg a mögöttes React state továbbra is a nyers
  * számjegy-string marad (`sanitizeOdometer`/`sanitizeServiceMileage`). Ez működik
  * kerekítő-kurzor-kezelés nélkül is, mert a sanitize függvények úgyis eltávolítanak
- * minden nem-számjegy karaktert -- a formázott elválasztó szóközök a következő
+ * minden nem-számjegy karaktert, a formázott elválasztó szóközök a következő
  * billentyűleütéskor ártalmatlanul lekopnak az `onChange`-ben.
  */
 export function formatKmInput(km: string | null | undefined): string {
@@ -44,15 +44,15 @@ export function formatKmInput(km: string | null | undefined): string {
 /**
  * Szervizmúlt idővonal bejegyzés dátumának megjelenítése (PROJEKT_INSTRUKCIOK.md,
  * "Naptár választó" lépés). Az ÚJ bejegyzések natív HTML5 `<input type="date">`-ből
- * mindig "YYYY-MM-DD" formában érkeznek -- ezeket magyar formában ("2024. 06. 15.")
+ * mindig "YYYY-MM-DD" formában érkeznek, ezeket magyar formában ("2024. 06. 15.")
  * jelenítjük meg. A modul bevezetése előtti/RÉGI bejegyzések (amikor a mező még
- * szabad szöveges volt) "csak év" ("YYYY") formában is tárolva lehetnek -- ezeket
+ * szabad szöveges volt) "csak év" ("YYYY") formában is tárolva lehetnek, ezeket
  * változatlanul, évszámként jelenítjük meg, hogy ne vesszen el/torzuljon a korábban
  * rögzített adat. Bármilyen más (nem felismert) formátum esetén a nyers érték jelenik meg.
  */
 /**
  * Forint (HUF) összeg megjelenítése ezres elválasztóval + "Ft" felirattal (pl.
- * `1 250 000 Ft`) -- a Végső Szakvélemény & Várható Költségek modul min/max becsült
+ * `1 250 000 Ft`), a Végső Szakvélemény & Várható Költségek modul min/max becsült
  * szervizköltség mezőihez, ugyanaz az elv, mint a `formatKm`-nél. `null`/`undefined`/üres
  * string esetén üres stringet ad vissza (a hívó dönti el, mit jelenít meg helyette, pl. "—").
  */
@@ -63,7 +63,7 @@ export function formatHuf(amount: number | string | null | undefined): string {
   return new Intl.NumberFormat('hu-HU').format(num) + ' Ft';
 }
 
-/** Ugyanaz, mint a `formatKmInput` -- "Ft" felirat NÉLKÜL, a Végső Szakvélemény wizard-lépés
+/** Ugyanaz, mint a `formatKmInput`, "Ft" felirat NÉLKÜL, a Végső Szakvélemény wizard-lépés
  * min/max költség beviteli mezőinek élő, ezres-elválasztós megjelenítéséhez, amíg a mögöttes
  * React state továbbra is a nyers számjegy-string marad (`sanitizeCostAmount`). */
 export function formatHufInput(amount: string | null | undefined): string {
@@ -76,9 +76,9 @@ export function formatHufInput(amount: string | null | undefined): string {
 }
 
 /**
- * ISO 8601 timestamp (pl. `user_credits.credits_reset_at`, `usage_logs.created_at` --
+ * ISO 8601 timestamp (pl. `user_credits.credits_reset_at`, `usage_logs.created_at`,
  * mindkettő Postgres `timestamptz`, `Date`-ként JSON-szerializálva ISO stringgé) magyar
- * dátum (és opcionálisan idő) formában -- a Kredit Dashboard modul ("Megújulás dátuma",
+ * dátum (és opcionálisan idő) formában, a Kredit Dashboard modul ("Megújulás dátuma",
  * "AI Használati Előzmények") vezette be, de bármely jövőbeli timestamp-megjelenítés
  * felhasználhatja. `null`/`undefined`/érvénytelen dátum esetén üres stringet ad vissza.
  */
@@ -94,21 +94,21 @@ export function formatDateTimeHu(iso: string | null | undefined, withTime = fals
   });
 }
 
-/** 1 kW = 1.35962 metrikus lóerő (LE/PS) -- a nemzetközi szabvány (DIN 70020) átváltási
+/** 1 kW = 1.35962 metrikus lóerő (LE/PS), a nemzetközi szabvány (DIN 70020) átváltási
  * szorzó. A projektben a lóerő SOHA nem külön tárolt/beírt mező (lásd `CarInfoState.powerKw`
- * JSDoc-ját) -- mindenhol élőben, ebből a szorzóból számolódik, hogy egyetlen forrás (a
+ * JSDoc-ját), mindenhol élőben, ebből a szorzóból számolódik, hogy egyetlen forrás (a
  * forgalmi engedélyen ténylegesen szereplő kW érték) maradjon, és a kettő sose kerülhessen
  * egymással inkonzisztenciába. */
 const KW_TO_HP_FACTOR = 1.35962;
 
-/** kW -> LE (lóerő) kerekített átváltás -- lásd `KW_TO_HP_FACTOR` JSDoc-ját. */
+/** kW -> LE (lóerő) kerekített átváltás, lásd `KW_TO_HP_FACTOR` JSDoc-ját. */
 export function kwToHp(kw: number): number {
   return Math.round(kw * KW_TO_HP_FACTOR);
 }
 
 /**
  * Motor teljesítményének megjelenítése kW-ban ÉS a mögötte zárójelben feltüntetett,
- * élőben számolt lóerő (LE) értékkel (pl. `150 kW (204 LE)`) -- a felhasználói kérés
+ * élőben számolt lóerő (LE) értékkel (pl. `150 kW (204 LE)`), a felhasználói kérés
  * ("KW teljesítmény, mögötte lóerőre átváltva") szerint MINDIG ez a megjelenítési forma,
  * a beviteli mezőnél (`StepCarInfo.tsx` hint), a wizard Összegzés kártyáján
  * (`StepSummary.tsx`) és a publikus riporton (`ReportHero.tsx`) egyaránt.
@@ -123,7 +123,7 @@ export function formatKw(kw: number | string | null | undefined): string {
 
 /**
  * Megengedett legnagyobb össztömeg megjelenítése ezres elválasztóval + "kg" felirattal
- * (pl. `2 150 kg`) -- ugyanaz az elv, mint a `formatKm`-nél. `null`/`undefined`/üres
+ * (pl. `2 150 kg`), ugyanaz az elv, mint a `formatKm`-nél. `null`/`undefined`/üres
  * string esetén üres stringet ad vissza.
  */
 export function formatKg(kg: number | string | null | undefined): string {

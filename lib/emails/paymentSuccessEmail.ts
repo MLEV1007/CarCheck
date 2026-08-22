@@ -1,17 +1,17 @@
 import { sendTransactionalEmail } from '@/lib/resend';
 
 /**
- * "Sikeres fizetés" visszaigazoló email az ügyfélnek -- 2026-08-17, "Sikeres fizetés email +
+ * "Sikeres fizetés" visszaigazoló email az ügyfélnek, 2026-08-17, "Sikeres fizetés email +
  * számlázási cím kötelezővé tétele" lépés, Levi kifejezett kérésére. Hívja:
  * `app/api/stripe/webhook/route.ts` `handleCheckoutSessionCompleted`, MINDEN sikeres
  * `checkout.session.completed` eseménynél (havi előfizetés ÉS egyszeri Top-up/AI-kredit
- * vásárlás egyaránt) -- lásd ott a hívás JSDoc-ját a "best-effort, nem dob hibát a webhook
+ * vásárlás egyaránt), lásd ott a hívás JSDoc-ját a "best-effort, nem dob hibát a webhook
  * felé" indoklásért.
  *
  * **A HTML dizájn (lásd lent `buildPaymentSuccessEmailHtml`) SZÁNDÉKOSAN ugyanaz a
  * stílus/CSS, mint a Supabase Auth "Magic Link" belépő email sablonjáé** (Levi 2026-08-17-i
  * kérése, ugyanazt a `.container`/`.logo`/`.title`/`.text`/`.button`/`.footer` osztály-
- * struktúrát használja, kiegészítve egy `.details` doboz-osztállyal a fizetés-adatoknak) --
+ * struktúrát használja, kiegészítve egy `.details` doboz-osztállyal a fizetés-adatoknak),
  * ha a Magic Link sablon dizájnja változik, ezt is érdemes vele szinkronban tartani. A KÉT
  * KÖTELEZŐ tartalmi elem, amit egy jövőbeli átdolgozásnál is MEG KELL TARTANI:
  *   1) a fizetési azonosító (`paymentId`) megjelenítése,
@@ -23,10 +23,10 @@ import { sendTransactionalEmail } from '@/lib/resend';
 
 export interface PaymentSuccessEmailParams {
   /** A vásárlást indító user email címe (Stripe Checkout `customer_details.email`, ennek
-   * hiányában a session létrehozásakor megadott `customer_email`-re esik vissza -- lásd a
+   * hiányában a session létrehozásakor megadott `customer_email`-re esik vissza, lásd a
    * hívó JSDoc-ját). */
   to: string;
-  /** Ügyfélnek mutatott fizetési azonosító -- a Checkout Session-höz tartozó PaymentIntent ID
+  /** Ügyfélnek mutatott fizetési azonosító, a Checkout Session-höz tartozó PaymentIntent ID
    * ('payment' módú, egyszeri vásárlásnál), ennek hiányában a Subscription ID
    * ('subscription' módnál), ennek hiányában maga a Checkout Session ID. Lásd a hívó
    * JSDoc-ját a pontos leképezésért. */
@@ -40,7 +40,7 @@ export interface PaymentSuccessEmailParams {
   paidAt: Date;
 }
 
-/** Éles CarPass domain a "Előfizetés megtekintése" gombhoz -- lásd `lib/supabase/client.ts` +
+/** Éles CarPass domain a "Előfizetés megtekintése" gombhoz, lásd `lib/supabase/client.ts` +
  * `app/adatkezeles/page.tsx` JSDoc-jait, ez a projekt bekötött saját domainje. A
  * `checkout/route.ts`-ben elérhető `request.nextUrl.origin` itt NEM elérhető (a webhook egy
  * szerver-szerver Stripe hívás, nincs mögötte böngésző-kérés), ezért fix URL. */
@@ -53,7 +53,7 @@ function buildPaymentSuccessEmailHtml(params: Omit<PaymentSuccessEmailParams, 't
     timeZone: 'Europe/Budapest',
   });
 
-  // Lásd a fenti JSDoc-ot -- ugyanaz a CSS-osztály-struktúra (.container/.logo/.title/.text/
+  // Lásd a fenti JSDoc-ot, ugyanaz a CSS-osztály-struktúra (.container/.logo/.title/.text/
   // .button/.footer), mint a Supabase Auth "Magic Link" belépő email sablonjában, kiegészítve
   // egy `.details` doboz-osztállyal a fizetés-adatok (tétel/összeg/azonosító/időpont)
   // áttekinthető megjelenítéséhez.
@@ -106,7 +106,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helve
 export async function sendPaymentSuccessEmail(params: PaymentSuccessEmailParams): Promise<void> {
   await sendTransactionalEmail({
     to: params.to,
-    subject: 'CarPass -- Sikeres fizetés',
+    subject: 'CarPass, Sikeres fizetés',
     html: buildPaymentSuccessEmailHtml(params),
   });
 }

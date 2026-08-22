@@ -15,7 +15,7 @@ interface SpecItem {
    * `break-all`/monospace stílust, hogy ne csússzon bele a szomszédos mezőbe. */
   fullWidth?: boolean;
   /** Ha meg van adva, ez jelenik meg a `value` sima szövege HELYETT (Rendszám mezőnél a
-   * `LicensePlateBadge` -- lásd "Rendszám felségjelzés" lépés). */
+   * `LicensePlateBadge`, lásd "Rendszám felségjelzés" lépés). */
   valueNode?: ReactNode;
 }
 
@@ -57,7 +57,7 @@ function buildSpecs(inspection: PublicReportInspection): SpecItem[] {
 
 /**
  * BMW design system (bmw.md) `hero-band-dark`: sötétkék (#1a2129) sáv, fehér szöveg,
- * drámai 700/300 tipográfiai kontraszt. Ez az egyetlen sötét sáv az oldalon --
+ * drámai 700/300 tipográfiai kontraszt. Ez az egyetlen sötét sáv az oldalon,
  * a canvas máshol mindenütt fehér, ahogy a design rendszer előírja.
  */
 export function ReportHero({ inspection }: ReportHeroProps) {

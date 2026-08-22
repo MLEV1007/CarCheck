@@ -25,7 +25,7 @@ export default function RegisterPage() {
       }
     >
       {/* `RegisterForm` a `useSearchParams()`-t használja a `?invite=<organization_id>`
-          csapattag-meghívó link kiolvasásához -- a Next.js App Router ezt Suspense
+          csapattag-meghívó link kiolvasásához, a Next.js App Router ezt Suspense
           boundary-n belül várja, különben a teljes oldal client-side renderelésre
           esne vissza build-időben (lásd "Csapattag meghívása" lépés). */}
       <Suspense fallback={null}>

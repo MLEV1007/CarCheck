@@ -9,7 +9,7 @@ interface FinalAssessmentCardProps {
   finalAssessment: PublicReportFinalAssessment;
 }
 
-/** Javaslat jelvény vizuál kulcsa -- `recommended` pozitív (zöld), `conditional`
+/** Javaslat jelvény vizuál kulcsa, `recommended` pozitív (zöld), `conditional`
  * figyelmeztető (sárga, ugyanaz a `bmw-warning` token, mint a `ServiceHistoryCard`
  * `partial` státuszánál), `not_recommended` negatív (piros, ugyanaz a minta, mint a
  * `DiagnosticsCard` hibakód-jelvényeinél). */
@@ -21,9 +21,9 @@ const RECOMMENDATION_TONE: Record<FinalAssessmentRecommendation, { icon: typeof 
 
 /**
  * Végső Szakvélemény & Várható Költségek kártya (PROJEKT_INSTRUKCIOK.md, "Végső
- * Szakvélemény & Várható Költségek modul" lépés) -- a vizsgálatot lezáró szakértői
+ * Szakvélemény & Várható Költségek modul" lépés), a vizsgálatot lezáró szakértői
  * összegzés: A) javaslat-jelvény, B) várható szervizköltség-sáv + megjegyzés, C) szabad
- * szöveges szakvélemény. TELJESEN OPCIONÁLIS -- ha a vizsgáló egyetlen mezőt sem
+ * szöveges szakvélemény. TELJESEN OPCIONÁLIS, ha a vizsgáló egyetlen mezőt sem
  * töltött ki, a kártya `return null`-t ad, a szekció EGYÁLTALÁN nem jelenik meg a
  * publikus riporton (ugyanaz a minta, mint a `ServiceHistoryCard`/`EquipmentMatrix`-nél).
  * BMW design: `rounded-none`, hairline szegélyű kártyák/sorok.

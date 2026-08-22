@@ -3,7 +3,7 @@
 interface BrandColorPickerProps {
   value: string;
   onChange: (color: string) => void;
-  /** Igaz Átvizsgálóknál (2026-08-14, "Öröklött cégadatok" lépés) -- a márkaszín
+  /** Igaz Átvizsgálóknál (2026-08-14, "Öröklött cégadatok" lépés), a márkaszín
    * ilyenkor a szervezet Menedzserétől öröklődik, csak SWATCH-ként jelenik meg, a
    * picker/hex mező és a presetek nem kattinthatók. */
   disabled?: boolean;

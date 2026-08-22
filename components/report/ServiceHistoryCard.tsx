@@ -12,7 +12,7 @@ interface ServiceHistoryCardProps {
   serviceHistory: PublicReportServiceHistory;
 }
 
-/** Általános státusz jelvény vizuál kulcsa (Szervizmúlt & Dokumentumok modul, A pont) --
+/** Általános státusz jelvény vizuál kulcsa (Szervizmúlt & Dokumentumok modul, A pont),
  * `full`/`digital` pozitív (zöld), `partial` figyelmeztető (sárga), `none` semleges (szürke). */
 const STATUS_TONE: Record<'full' | 'partial' | 'digital' | 'none', { icon: typeof CheckCircle2; className: string }> = {
   full: { icon: CheckCircle2, className: 'border-bmw-success bg-[#f0faf3] text-bmw-ink' },
@@ -23,10 +23,10 @@ const STATUS_TONE: Record<'full' | 'partial' | 'digital' | 'none', { icon: typeo
 
 /**
  * Szervizmúlt & Dokumentumok kártya (PROJEKT_INSTRUKCIOK.md, "Szervizmúlt & Dokumentumok
- * modul" lépés) -- 3 alappillér megjelenítve: A) Általános státusz jelvény, B) Dokumentum-
+ * modul" lépés), 3 alappillér megjelenítve: A) Általános státusz jelvény, B) Dokumentum-
  * fotók galériája (ugyanaz a `MediaLightbox`, mint a `GeneralPhotosGallery`-nél), C) Manuális
- * idővonal (dátum/km óra állás/típus/megjegyzés, időrendi -- a rögzítés sorrendjében).
- * Ha egyáltalán nincs adat (nincs státusz, fotó, bejegyzés), a szekció nem renderelődik --
+ * idővonal (dátum/km óra állás/típus/megjegyzés, időrendi, a rögzítés sorrendjében).
+ * Ha egyáltalán nincs adat (nincs státusz, fotó, bejegyzés), a szekció nem renderelődik,
  * ugyanaz a minta, mint a `GeneralPhotosGallery`/`EquipmentMatrix`-nél. BMW design:
  * `rounded-none`, hairline szegélyű kártyák/sorok.
  */

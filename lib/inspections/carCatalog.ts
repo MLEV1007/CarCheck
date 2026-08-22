@@ -1,7 +1,7 @@
 /**
  * Márka -> típus katalógus a wizard "Autó adatok" lépéséhez (PROJEKT_INSTRUKCIOK.md 5.B.1,
  * "Márka/Típus dropdown selection" lépés). A magyar piacon leggyakoribb márkák és az adott
- * márkán belül leggyakoribb típusok -- NEM teljes körű, ezért mindkét szinten (márka és
+ * márkán belül leggyakoribb típusok, NEM teljes körű, ezért mindkét szinten (márka és
  * típus) elérhető az `OTHER_OPTION` ("Egyéb / Más") érték, ami a StepCarInfo.tsx-ben egy
  * szabad szöveges mezőt nyit meg a ritkább márkáknak/modelleknek.
  */

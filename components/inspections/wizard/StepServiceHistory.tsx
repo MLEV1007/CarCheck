@@ -31,12 +31,12 @@ const AI_SCAN_NO_ENTRIES_MESSAGE =
   'Az AI nem talált felismerhető szerviz-bejegyzést a kijelölt képen/képeken. A bejegyzést kézzel is felviheted.';
 
 const AI_SCAN_NO_CREDITS_MESSAGE =
-  'Elfogyott az AI kereted -- a felismerés nem futott le, a bejegyzést kézzel vidd fel. (A kereted a fejléc jelvényén/az Előfizetés oldalon tölthető fel.)';
+  'Elfogyott az AI kereted, a felismerés nem futott le, a bejegyzést kézzel vidd fel. (A kereted a fejléc jelvényén/az Előfizetés oldalon tölthető fel.)';
 
 const AI_SCAN_NO_PHOTOS_MESSAGE = 'Előbb tölts fel legalább egy fotót a szervizkönyvről/számláról, utána indítható a felismerés.';
 
-/** A `/api/ai/scan-service-doc` route válasz-alakja (lásd `app/api/ai/scan-service-doc/route.ts`)
- * -- csak a kliens-oldalon ténylegesen felhasznált mezőket modellezi, ugyanaz az elv, mint a
+/** A `/api/ai/scan-service-doc` route válasz-alakja (lásd `app/api/ai/scan-service-doc/route.ts`),
+ * csak a kliens-oldalon ténylegesen felhasznált mezőket modellezi, ugyanaz az elv, mint a
  * `StepCarInfo.tsx` `ScanVinApiResponse` típusánál. */
 interface ScanServiceDocApiResponse {
   success: boolean;
@@ -54,25 +54,25 @@ interface StepServiceHistoryProps {
   onChange: (value: ServiceHistoryState) => void;
   onBack: () => void;
   onNext: () => void;
-  /** A KÖVETKEZŐ lépés rövid címe -- lásd StepCarInfo.tsx ugyanerről a propról. */
+  /** A KÖVETKEZŐ lépés rövid címe, lásd StepCarInfo.tsx ugyanerről a propról. */
   nextLabel: string;
 }
 
 const STATUS_OPTIONS: ServiceHistoryStatus[] = ['full', 'partial', 'digital', 'none'];
 
 /**
- * LÉPÉS -- Szervizmúlt & Dokumentumok modul (PROJEKT_INSTRUKCIOK.md, "Szervizmúlt &
+ * LÉPÉS, Szervizmúlt & Dokumentumok modul (PROJEKT_INSTRUKCIOK.md, "Szervizmúlt &
  * Dokumentumok modul" lépés). 3 alappillér:
- *  A) Általános státusz -- 4 választható rádiógomb-kártya (`SERVICE_HISTORY_STATUS_LABEL`).
- *  B) Fotófeltöltés -- a szervizkönyv/számlák lefotózása, ugyanaz a minta, mint a
+ *  A) Általános státusz, 4 választható rádiógomb-kártya (`SERVICE_HISTORY_STATUS_LABEL`).
+ *  B) Fotófeltöltés, a szervizkönyv/számlák lefotózása, ugyanaz a minta, mint a
  *     `StepGeneralPhotos.tsx`-nél (több kép egyszerre, kliens-oldali előnézet, a tényleges
  *     Storage-feltöltés csak a végleges mentéskor történik). A rács MELLETT egy "Felismerés
  *     indítása (AI)" gomb GOMBRA KATTINTVA (nem automatikusan feltöltéskor, lásd a lenti
  *     kommentet) elindítja a Gemini Vision AI-elemzést (`runAiScanOnPhotos`) a MÉG felismeretlen
  *     fotókon.
- *  C) Idővonal -- dinamikus, dátum/km óra állás/típus/megjegyzés bejegyzés-kártyák, ugyanaz a
+ *  C) Idővonal, dinamikus, dátum/km óra állás/típus/megjegyzés bejegyzés-kártyák, ugyanaz a
  *     minta, mint a `StepDiagnostics.tsx` hibakód-listájánál. A sorok KÉZZEL ("+ Új
- *     szerviz-bejegyzés rögzítése" gombbal) VAGY a B) pont AI-elemzéséből is bekerülhetnek --
+ *     szerviz-bejegyzés rögzítése" gombbal) VAGY a B) pont AI-elemzéséből is bekerülhetnek,
  *     a listában nincs megkülönböztetés köztük, mindegyik egyformán szerkeszthető/törölhető.
  */
 export function StepServiceHistory({ value, onChange, onBack, onNext, nextLabel }: StepServiceHistoryProps) {
@@ -80,29 +80,29 @@ export function StepServiceHistory({ value, onChange, onBack, onNext, nextLabel 
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const inspectionId = useInspectionId();
 
-  // Gemini Vision AI szkenner (`/api/ai/scan-service-doc`, lásd a route JSDoc-ját) --
+  // Gemini Vision AI szkenner (`/api/ai/scan-service-doc`, lásd a route JSDoc-ját),
   // szervizkönyv-oldal VAGY számla/munkalap fotójából szerviz-bejegyzések (dátum/km óra
   // állás/típus/megjegyzés) kinyerése. **2026-08-06, GOMBBAL indítható, NEM automatikus
   // finomítás:** korábban (63. szakasz) egy KÜLÖN, saját fájlválasztóval rendelkező kártya/gomb
   // volt, majd (64. szakasz) a felhasználó kérésére automatikusra állítottuk (minden feltöltött
-  // fotó azonnal átment az elemzésen) -- ez viszont a felhasználó szerint "valamiért nem
+  // fotó azonnal átment az elemzésen), ez viszont a felhasználó szerint "valamiért nem
   // működött" (feltehetően a kamera/galéria `<input onChange>` egyes böngészőkben/eszközökön
   // nem a várt módon triggerelte a láncot, vagy egyszerűen nem volt egyértelmű, hogy történik
   // valami a háttérben), ezért EXPLICIT gombra váltottunk vissza: a fotók feltöltése
   // (`handleFilesSelected`) TOVÁBBRA IS önmagában, AI-hívás NÉLKÜL történik, a felismerést a
-  // usernek a "Felismerés indítása (AI)" gombbal KELL elindítania -- ez egyértelműbb (látható,
+  // usernek a "Felismerés indítása (AI)" gombbal KELL elindítania, ez egyértelműbb (látható,
   // kattintható, visszajelzést ad) és megbízhatóbb (egyetlen, explicit user-akció indítja a
   // hálózati hívást, nem egy fájlválasztó `onChange` eseményéhez láncolt mellékhatás).
   const [isAiScanning, setIsAiScanning] = useState(false);
   const [aiScanProgress, setAiScanProgress] = useState<{ current: number; total: number } | null>(null);
   const [aiScanToast, setAiScanToast] = useState<{ variant: VinScanToastVariant; message: string } | null>(null);
 
-  // A már elemzett fotók `clientId`-jai -- a gomb csak az EZEKBEN NEM szereplő (még nem
+  // A már elemzett fotók `clientId`-jai, a gomb csak az EZEKBEN NEM szereplő (még nem
   // felismertetett) fotókat küldi el az AI-nak, hogy ismételt gombnyomásra ne dolgozza fel
   // (és ne számlázza le kredit szempontjából) újra ugyanazt a képet.
   const [scannedPhotoIds, setScannedPhotoIds] = useState<Set<string>>(new Set());
 
-  // A `value` prop MINDIG a legfrissebb wizard state -- egy `ref`-ben tartjuk szinkronban
+  // A `value` prop MINDIG a legfrissebb wizard state, egy `ref`-ben tartjuk szinkronban
   // (`useEffect`), hogy a `runAiScanOnPhotos()` több `await`-en átívelő, hosszabb ideig futó
   // ciklusa MINDIG a ténylegesen legfrissebb `entries`/`photos` tetejére merge-eljen, ne egy a
   // ciklus INDULÁSAKOR (esetleg már elavult) `value`-t írjon vissza.
@@ -121,12 +121,12 @@ export function StepServiceHistory({ value, onChange, onBack, onNext, nextLabel 
 
     const newPhotos = imageFiles.map((file) => CREATE_GENERAL_PHOTO(file));
     onChange({ ...value, photos: [...value.photos, ...newPhotos] });
-    // Szándékosan NINCS automatikus AI-hívás itt -- lásd a fenti kommentet. A felismerést a
+    // Szándékosan NINCS automatikus AI-hívás itt, lásd a fenti kommentet. A felismerést a
     // "Felismerés indítása (AI)" gomb (`handleRunAiScanClick`) indítja el, kézzel.
   }
 
   /**
-   * A "Felismerés indítása (AI)" gomb kattintás-kezelője -- összegyűjti a jelenlegi
+   * A "Felismerés indítása (AI)" gomb kattintás-kezelője, összegyűjti a jelenlegi
    * `value.photos` közül azokat, amiknek van kliens-oldali `file`-juk (csak az EBBEN A
    * session-ben, most feltöltött fotókat lehet elküldeni Base64-ként, egy korábban mentett,
    * már Storage-ban lévő fotóhoz csak URL tartozik, `file` nélkül) ÉS még nincsenek a
@@ -140,12 +140,12 @@ export function StepServiceHistory({ value, onChange, onBack, onNext, nextLabel 
     if (pending.length === 0) {
       setAiScanToast({
         variant: 'warning',
-        message: value.photos.length === 0 ? AI_SCAN_NO_PHOTOS_MESSAGE : 'Minden feltöltött fotó már fel lett dolgozva -- tölts fel egy újabbat a további felismeréshez.',
+        message: value.photos.length === 0 ? AI_SCAN_NO_PHOTOS_MESSAGE : 'Minden feltöltött fotó már fel lett dolgozva, tölts fel egy újabbat a további felismeréshez.',
       });
       return;
     }
 
-    // Azonnal megjelöljük "elemzettnek" a most induló fotókat -- ismételt gombnyomás közben
+    // Azonnal megjelöljük "elemzettnek" a most induló fotókat, ismételt gombnyomás közben
     // (amíg az első kérés még fut) ne induljon el rájuk egy második, párhuzamos hívás.
     setScannedPhotoIds((prev) => {
       const next = new Set(prev);
@@ -158,14 +158,14 @@ export function StepServiceHistory({ value, onChange, onBack, onNext, nextLabel 
 
   /**
    * A "Felismerés indítása (AI)" gomb (`handleRunAiScanClick`) által meghívott, tényleges
-   * batch-feldolgozó -- SORBAN (nem párhuzamosan -- lásd lent, miért) végigmegy a kapott
+   * batch-feldolgozó, SORBAN (nem párhuzamosan, lásd lent, miért) végigmegy a kapott
    * fájlokon, mindegyiket tömöríti (`compressImageForAiScan`) és elküldi a
    * `/api/ai/scan-service-doc` route-nak, majd a felismert bejegyzéseket a `valueRef.current`
    * TETEJÉRE (nem a hívás INDULÁSAKOR rögzített, esetleg időközben elavult `value`-ra) fűzi
    * hozzá.
    *
    * **Miért SOROS, nem `Promise.all`-lal párhuzamos:** (1) minden hívás kreditet/AI-keretet
-   * fogyaszt -- ha a keret a 2. fotónál kifogyna, a sorosság garantálja, hogy a hátralévő
+   * fogyaszt, ha a keret a 2. fotónál kifogyna, a sorosság garantálja, hogy a hátralévő
    * fotók feldolgozása azonnal leáll, nem indul el felesleges (biztosan `402`-t kapó) hívás
    * mindegyikre; (2) a `onChange`-eket egymás UTÁN, nem egyszerre hívjuk, ami elkerüli, hogy
    * két egyidejűleg lezáruló hívás egymás eredményét felülírja.
@@ -174,10 +174,10 @@ export function StepServiceHistory({ value, onChange, onBack, onNext, nextLabel 
    * fotónként), hogy több kép egyszerre feldolgozásakor ne "villogjon" több egymást
    * követő üzenet.
    *
-   * **Kredit/AI-keret kifogyás (`402`) -- SZÁNDÉKOSAN NEM a globális "🔒 Elfogyott a kereted"
+   * **Kredit/AI-keret kifogyás (`402`), SZÁNDÉKOSAN NEM a globális "🔒 Elfogyott a kereted"
    * blokkoló modal (`useInsufficientCredits`), ellentétben a `StepCarInfo.tsx`/`StepEquipment.tsx`
    * AI-gombjaival:** a fotó ekkorra MÁR feltöltve/elmentve van a galériába, függetlenül az
-   * AI-hívás sikerétől -- egy teljes képernyős modal itt feleslegesen félbeszakítaná a usert
+   * AI-hívás sikerétől, egy teljes képernyős modal itt feleslegesen félbeszakítaná a usert
    * a wizard kitöltése közben egy olyan mellékfunkció miatt, ami csak kényelmi gyorsítás.
    * Ehelyett csendben leáll a batch, és egy NEM blokkoló, magától eltűnő lokális toast
    * (`AI_SCAN_NO_CREDITS_MESSAGE`) jelzi, hogy a felismerés kimaradt, a bejegyzést kézzel
@@ -207,8 +207,8 @@ export function StepServiceHistory({ value, onChange, onBack, onNext, nextLabel 
           body: JSON.stringify({ image: imageDataUrl, inspectionId }),
         });
 
-        // 402 -- lásd a fenti JSDoc "Kredit/AI-keret kifogyás" szakaszát: NINCS blokkoló
-        // modal, csak csendes leállás -- a fotó már feltöltve marad, a batch hátralévő
+        // 402, lásd a fenti JSDoc "Kredit/AI-keret kifogyás" szakaszát: NINCS blokkoló
+        // modal, csak csendes leállás, a fotó már feltöltve marad, a batch hátralévő
         // részét leállítjuk (a további fotók úgyis `402`-t kapnának).
         if (response.status === 402) {
           insufficientCreditsHit = true;
@@ -255,9 +255,9 @@ export function StepServiceHistory({ value, onChange, onBack, onNext, nextLabel 
     setIsAiScanning(false);
     setAiScanProgress(null);
 
-    // A kredit/AI-keret kifogyás CSENDES (nem blokkoló) jelzése -- lásd a fenti JSDoc-ot.
+    // A kredit/AI-keret kifogyás CSENDES (nem blokkoló) jelzése, lásd a fenti JSDoc-ot.
     // Ha közben MÁR sikerült néhány fotóból bejegyzést kinyerni (pl. az 1. fotó sikeres volt,
-    // a 2.-nál fogyott el a keret), a sikeres eredményt priorizáljuk -- a usernek fontosabb
+    // a 2.-nál fogyott el a keret), a sikeres eredményt priorizáljuk, a usernek fontosabb
     // tudnia, hogy X bejegyzés bekerült, mint a keret-üzenetet olvasnia.
     if (insufficientCreditsHit && totalNewEntries === 0) {
       setAiScanToast({ variant: 'warning', message: AI_SCAN_NO_CREDITS_MESSAGE });
@@ -269,7 +269,7 @@ export function StepServiceHistory({ value, onChange, onBack, onNext, nextLabel 
       setAiScanToast({
         variant: anyLowConfidence ? 'warning' : 'success',
         message: anyLowConfidence
-          ? `Beolvasva (${totalNewEntries} bejegyzés), de kérlek ellenőrizd az adatokat -- egy vagy több kép elmosódott lehetett!`
+          ? `Beolvasva (${totalNewEntries} bejegyzés), de kérlek ellenőrizd az adatokat, egy vagy több kép elmosódott lehetett!`
           : `Szervizbejegyzés(ek) sikeresen beolvasva AI-val: ${totalNewEntries} bejegyzés hozzáadva.`,
       });
     } else if (lastErrorMessage) {
@@ -360,7 +360,7 @@ export function StepServiceHistory({ value, onChange, onBack, onNext, nextLabel 
         </div>
       </div>
 
-      {/* B) Fotófeltöltés -- a fotó feltöltése ÖNMAGÁBAN nem indít AI-hívást (lásd
+      {/* B) Fotófeltöltés, a fotó feltöltése ÖNMAGÁBAN nem indít AI-hívást (lásd
           `handleFilesSelected` kommentjét); a felismerést a rács ALATTI "Felismerés indítása
           (AI)" gomb (`handleRunAiScanClick`) indítja el, kézzel. */}
       <div className="flex flex-col gap-3">
@@ -398,9 +398,9 @@ export function StepServiceHistory({ value, onChange, onBack, onNext, nextLabel 
           </button>
         </div>
 
-        {/* "Felismerés indítása (AI)" gomb -- lásd `handleRunAiScanClick` JSDoc-ját. Mindig
+        {/* "Felismerés indítása (AI)" gomb, lásd `handleRunAiScanClick` JSDoc-ját. Mindig
             látható (nem csak feltöltött fotónál), hogy a szaki tudja, hogy ez a funkció létezik
-            -- üres galériánál/már feldolgozott fotóknál kattintásra egy toast jelzi, mit kell
+           , üres galériánál/már feldolgozott fotóknál kattintásra egy toast jelzi, mit kell
             tenni, nincs `disabled` állapot, hogy a gomb sose tűnjön "hibásnak/inaktívnak". */}
         <div className="flex flex-wrap items-center gap-3">
           <button
@@ -424,7 +424,7 @@ export function StepServiceHistory({ value, onChange, onBack, onNext, nextLabel 
         </HintCallout>
       </div>
 
-      {/* CarVertical (vagy hasonló autó-előéleti szolgáltatás) PDF riport -- a Dokumentumok
+      {/* CarVertical (vagy hasonló autó-előéleti szolgáltatás) PDF riport, a Dokumentumok
           fotói után, a Manuális Idővonal előtt, mert szintén "dokumentum-jellegű" adat, de
           egyetlen PDF fájl, nem képgaléria. */}
       <div className="flex flex-col gap-3">
@@ -436,7 +436,7 @@ export function StepServiceHistory({ value, onChange, onBack, onNext, nextLabel 
             <FileText className="h-5 w-5 shrink-0 text-linear-primary" />
             <span className="min-w-0 flex-1 truncate text-[13px] text-linear-ink">{value.carVerticalPdf.fileName}</span>
             {value.carVerticalPdf.url && (
-              // Ez `<a>`, nem `<button>`, ezért nem az IconButton primitívát használja --
+              // Ez `<a>`, nem `<button>`, ezért nem az IconButton primitívát használja,
               // az iconHitSlopClass ugyanazt a hit-slop matekot adja hozzá közvetlenül.
               <a
                 href={value.carVerticalPdf.url}
@@ -474,7 +474,7 @@ export function StepServiceHistory({ value, onChange, onBack, onNext, nextLabel 
         )}
       </div>
 
-      {/* C) Idővonal -- a fenti B) blokk "Felismerés indítása (AI)" gombjával kinyert
+      {/* C) Idővonal, a fenti B) blokk "Felismerés indítása (AI)" gombjával kinyert
           bejegyzéseket ugyanúgy listázza, mint a kézzel felvitteket (nincs "AI által generált"
           megkülönböztető jelölés, mert bármelyik szabadon szerkeszthető/törölhető). */}
       <div className="flex flex-col gap-4">

@@ -2,16 +2,16 @@ import { ButtonHTMLAttributes, forwardRef } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
- * Érintési célterület (touch target) közös alap -- lásd
+ * Érintési célterület (touch target) közös alap, lásd
  * `docs/ux-touch-targets-plan-2026-08-14.md`. A HIG (44x44pt) / Material (48x48dp) / WCAG 2.5.5
  * (AAA, 44x44 CSS px) minimum a cél, DE a Linear design system (linear.md) tudatosan tömör
- * vizuális méreteket ír elő a Szakértői Munkaterületen (24/28/32px ikon-gombok) -- ezért a
+ * vizuális méreteket ír elő a Szakértői Munkaterületen (24/28/32px ikon-gombok), ezért a
  * VIZUÁLIS méretet és az ÉRINTÉSI területet szét kell választani: a gomb kinézete NEM
  * változik, csak egy láthatatlan `::before` pszeudo-elem bővíti ki a tényleges
  * kattintható/koppintható zónát 44x44px-re (a `(44 - vizuális méret) / 2` matek szerint).
  *
  * FONTOS KORLÁT: ha a gomb szülőjén `overflow-hidden` van (pl. egy fotó-thumbnail
- * lekerekített sarkainak vágásához), ez a technika NEM működik -- a levágott terület sem
+ * lekerekített sarkainak vágásához), ez a technika NEM működik, a levágott terület sem
  * nem látszik, sem kattintást nem fogad el. Ilyen esetben a DOM-ot kétrétegűre kell
  * bontani, lásd `RemovablePhotoThumbnail.tsx` mintáját.
  */
@@ -31,12 +31,12 @@ const HIT_SLOP_INSET_CLASS: Record<IconHitTargetSize, string> = {
 };
 
 /**
- * A hit-slop pszeudo-elemhez szükséges class-ok -- akkor használd közvetlenül (a szülő
+ * A hit-slop pszeudo-elemhez szükséges class-ok, akkor használd közvetlenül (a szülő
  * `<button>`/`<a>` elemre rakva `cn(...)`-nel), ha az `IconButton` komponens saját
  * markup/stílus miatt nem illik (pl. egyedi `<a>` link, vagy már meglévő, egyedi vizuális
  * állapotokkal rendelkező gomb, mint a `VoiceInputButton` diktálás-jelzése vagy a
  * `PaintCanvas`/`DamageCanvas` popover-jeinek téma szerint váltakozó stílusa). Csak a
- * `relative`/`before:absolute`/`before:inset-*` osztályokat adja hozzá -- a vizuális
+ * `relative`/`before:absolute`/`before:inset-*` osztályokat adja hozzá, a vizuális
  * méretet (`h-*`/`w-*`) a hívó félnek KELL megadnia.
  */
 export function iconHitSlopClass(size: IconHitTargetSize) {
@@ -44,14 +44,14 @@ export function iconHitSlopClass(size: IconHitTargetSize) {
 }
 
 interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  /** Vizuális doboz mérete (px) -- lásd a fájl-JSDoc-ot. Az érintési terület a `size`-tól
+  /** Vizuális doboz mérete (px), lásd a fájl-JSDoc-ot. Az érintési terület a `size`-tól
    * függetlenül MINDIG 44x44px (láthatatlan hit-slop pszeudo-elemmel). */
   size?: IconHitTargetSize;
   variant?: 'ghost' | 'ghost-danger';
 }
 
 /**
- * Közös, semleges ("ghost") ikon-gomb primitíva a Linear munkaterülethez -- a
+ * Közös, semleges ("ghost") ikon-gomb primitíva a Linear munkaterülethez, a
  * `text-linear-ink-subtle hover:bg-linear-surface-2 hover:text-linear-ink[/danger]`
  * mintázatot egységesíti (korábban minden ikon-gomb egyedi, kézzel írt `className` string
  * volt, lásd a touch target terv "Root cause" fejezetét).

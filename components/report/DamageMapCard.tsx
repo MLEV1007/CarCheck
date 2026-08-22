@@ -11,18 +11,18 @@ interface DamageMapCardProps {
 }
 
 /**
- * Sérülés- és Hibatérkép kártya a publikus riportban (BMW Corporate Design -- 0px
+ * Sérülés- és Hibatérkép kártya a publikus riportban (BMW Corporate Design, 0px
  * lekerekítés). UGYANAZ a nézetenkénti autó-referenciaképekre épülő `DamageCanvas`
  * komponens fut itt, mint a Wizard 8. lépésében (`mode="view"`, `theme="light"`), hogy az ügyfél
  * PONTOSAN ugyanazokat a színkódolt markereket lássa a TÉNYLEGES koordinátákon, amiket a
- * vizsgáló a helyszínen rögzített -- ugyanaz az elv, mint a `PaintMap.tsx`-nél.
+ * vizsgáló a helyszínen rögzített, ugyanaz az elv, mint a `PaintMap.tsx`-nél.
  *
  * A `PublicReportDamage[]` (`photo_url`) itt alakul át a `DamageCanvas` várt
  * `DamagePointState`-forma alakjára (`file: null`, a `photo_url` a `previewUrl`-be
- * kerül) -- ugyanaz a minta, mint a `PaintMap.tsx` `measurements.map(...)`-je.
+ * kerül), ugyanaz a minta, mint a `PaintMap.tsx` `measurements.map(...)`-je.
  *
  * `mode="view"`-ban a modal fotójára kattintva a `DamageCanvas` az `onOpenPhoto` propon
- * keresztül jelzi a szülőnek, hogy nyissa meg a `MediaLightbox`-ot -- PONTOSAN ugyanaz a
+ * keresztül jelzi a szülőnek, hogy nyissa meg a `MediaLightbox`-ot, PONTOSAN ugyanaz a
  * kompozíció, mint a `DefectsGallery.tsx`-nél (`onOpenMedia`/`lightboxUrl` state).
  *
  * Ha nincs egyetlen rögzített sérülés/hiba sem, a szekció nem renderelődik (`return

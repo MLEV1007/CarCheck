@@ -2,7 +2,7 @@ export type FeedbackCategory = 'bug' | 'feature' | 'other';
 
 /**
  * A saját, pillekönnyű in-app visszajelző modal (`components/feedback/FeedbackModal.tsx`)
- * kategória-választójának címkéi -- UGYANEZEK a Notion "Category" select property opciói
+ * kategória-választójának címkéi, UGYANEZEK a Notion "Category" select property opciói
  * is (lásd `app/api/feedback/route.ts` + `docs/notion-feedback-widget-setup-2026-08-22.md`),
  * hogy a kliens és a szerver EGYETLEN forrásból dolgozzon, a két oldal szövegezése sose
  * térhessen el egymástól. Ha itt egy címkét megváltoztatsz, a Notion adatbázis "Category"
@@ -18,11 +18,11 @@ export const FEEDBACK_CATEGORIES: readonly FeedbackCategory[] = ['bug', 'feature
 
 /**
  * A `FeedbackModal.tsx` (kliens) és az `app/api/feedback/route.ts` (szerver) közötti
- * megosztott alak -- a kliens ezt a JSON-t POST-olja a `/api/feedback` végpontra.
+ * megosztott alak, a kliens ezt a JSON-t POST-olja a `/api/feedback` végpontra.
  *
  * `userId`/`userEmail`: a kliens elküldi (lásd `FeedbackModal.tsx`), DE a szerver a
  * `userId`-t SOSEM a body-ból, hanem a hitelesített Supabase session-ből olvassa (lásd a
- * route JSDoc-ját) -- ne bízzunk azonosításra kliens-oldali payloadban. Az email-t a
+ * route JSDoc-ját), ne bízzunk azonosításra kliens-oldali payloadban. Az email-t a
  * szerver a body-ból fogadja el elsődlegesen (fallback a session `user.email`-jére),
  * mert ez kizárólag a Notion lap egy megjelenítő mezője, nem azonosítás.
  */

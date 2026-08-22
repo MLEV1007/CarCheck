@@ -14,18 +14,18 @@ interface DefectMediaUploadProps {
   previewUrl: string | null;
   onSelect: (file: File) => void;
   onRemove: () => void;
-  /** A hívó szervezet videó-csatolási jogosultsága -- lásd `StepGeneralPhotos.tsx`
+  /** A hívó szervezet videó-csatolási jogosultsága, lásd `StepGeneralPhotos.tsx`
    * `videoAllowed` propjának JSDoc-ját, ugyanaz a wizard-szintű, egyszer lekérdezett érték.
-   * Opcionális, alapértéke `false` -- a `DamageCanvas.tsx` sérülés-pont fotóinál (ahol a
+   * Opcionális, alapértéke `false`, a `DamageCanvas.tsx` sérülés-pont fotóinál (ahol a
    * videó/QR-feltöltés NINCS a hatókörben, lásd a felhasználói kérés "Általános fotók ÉS
    * Hiba-média" pontját) egyszerűen kihagyható. */
   videoAllowed?: boolean;
-  /** `defect:${clientId}` -- a `qr_upload_sessions.target` oszlopba kerülő, EBBE a konkrét
-   * hiba-kártyába célzó azonosító, lásd `QrUploadPanel.tsx`. Opcionális -- ha nincs megadva
+  /** `defect:${clientId}`, a `qr_upload_sessions.target` oszlopba kerülő, EBBE a konkrét
+   * hiba-kártyába célzó azonosító, lásd `QrUploadPanel.tsx`. Opcionális, ha nincs megadva
    * (pl. `DamageCanvas.tsx` sérülés-pont fotóinál), a "Feltöltés telefonról" panel EGYSZERŰEN
    * nem jelenik meg. */
   qrTarget?: string;
-  /** A QR-kódos telefonos feltöltésből érkező, MÁR feltöltött média befogadása -- a szülő
+  /** A QR-kódos telefonos feltöltésből érkező, MÁR feltöltött média befogadása, a szülő
    * (`StepDefects.tsx`) ezt `file: null, previewUrl: item.url`-lel írja a `DefectState`-be,
    * ugyanabban az alakban, mint egy piszkozat szerkesztésekor visszaolvasott, korábban már
    * feltöltött média (lásd `draftPersistence.ts`). Opcionális, lásd a `qrTarget` JSDoc-ját. */
@@ -35,7 +35,7 @@ interface DefectMediaUploadProps {
 /**
  * Fotó/videó választó a hiba-kártyához. A tényleges Supabase Storage feltöltés
  * (`inspection-media` bucket) csak a wizard végleges beküldésekor történik meg (lásd
- * InspectionWizard.tsx `handleSubmit`) -- itt csak a fájl kiválasztása és kliens-oldali
+ * InspectionWizard.tsx `handleSubmit`), itt csak a fájl kiválasztása és kliens-oldali
  * előnézete zajlik, hogy a felhasználó a lépések közti navigáció közben ne generáljon
  * felesleges storage-hívásokat. **Kivétel a QR-kódos telefonos feltöltés** (`QrUploadPanel`):
  * az MÁR ténylegesen feltöltött Storage URL-t ad vissza, mert a fájl egy MÁSIK eszközön
@@ -43,13 +43,13 @@ interface DefectMediaUploadProps {
  * böngészőjébe.
  *
  * Piszkozat szerkesztésekor (`/inspections/[id]`) a `previewUrl` egy már meglévő Storage
- * publikus URL is lehet `file` nélkül (a médiát korábban töltötték fel) -- ilyenkor a
+ * publikus URL is lehet `file` nélkül (a médiát korábban töltötték fel), ilyenkor a
  * `file.type` nem elérhető, a videó/fotó eldöntése az URL kiterjesztése alapján történik
  * (`isVideoUrl`, ugyanaz a segédfüggvény, mint a publikus riportban).
  *
  * **2026-08-21, "Videó-tömörítés + QR-kódos telefonos feltöltés" lépés:** a videó
  * kiválasztásának jogosultság-ellenőrzését/tömörítését a `useMediaSelection` hook végzi
- * (lásd `lib/inspections/mediaSelection.ts`) -- `onSelect` mostantól MINDIG egy MÁR
+ * (lásd `lib/inspections/mediaSelection.ts`), `onSelect` mostantól MINDIG egy MÁR
  * tömörített (vagy változatlan kép-) `File`-lal hívódik.
  */
 export function DefectMediaUpload({
@@ -72,17 +72,17 @@ export function DefectMediaUpload({
 
   if (previewUrl) {
     return (
-      // A KÜLSŐ konténeren SZÁNDÉKOSAN nincs `overflow-hidden` -- csak a BELSŐ rétegen,
+      // A KÜLSŐ konténeren SZÁNDÉKOSAN nincs `overflow-hidden`, csak a BELSŐ rétegen,
       // ami kizárólag a videó/kép vágásáért felel. Ha a vágás itt, a törlés-gomb szülőjén
       // lenne, a gomb `iconHitSlopClass` hit-slop pszeudo-eleme levágódna, és a bővített
-      // érintési terület a gyakorlatban nem működne -- lásd
+      // érintési terület a gyakorlatban nem működne, lásd
       // docs/ux-touch-targets-plan-2026-08-14.md C) pontjának technikai buktatóját.
       <div className="relative w-full max-w-[220px] rounded-md border border-linear-hairline bg-linear-surface-2">
         <div className="overflow-hidden rounded-md">
           {isVideo ? (
             <video src={previewUrl} controls className="aspect-video w-full object-cover" />
           ) : (
-            // eslint-disable-next-line @next/next/no-img-element -- kliens-oldali object URL előnézet, nem optimalizálható a next/image-vel
+            // eslint-disable-next-line @next/next/no-img-element, kliens-oldali object URL előnézet, nem optimalizálható a next/image-vel
             <img src={previewUrl} alt={file?.name ?? 'Feltöltött média'} className="aspect-video w-full object-cover" />
           )}
         </div>
@@ -109,9 +109,9 @@ export function DefectMediaUpload({
         className="flex w-full flex-col items-center justify-center gap-1.5 rounded-md border border-dashed border-linear-hairline-strong bg-linear-surface-2 px-4 py-6 text-center transition-colors hover:border-linear-primary hover:bg-linear-surface-3"
       >
         <ImagePlus className="h-5 w-5 text-linear-ink-subtle" />
-        {/* A gomb szövege NEM említi a videót, ha a szervezet nem jogosult rá -- korábban ez
+        {/* A gomb szövege NEM említi a videót, ha a szervezet nem jogosult rá, korábban ez
             a szöveg MINDIG "Fotó / videó feltöltése" volt, függetlenül a jogosultságtól, és
-            csak az `accept` attribútum tért el csendben -- ez a felhasználó szerint nem volt
+            csak az `accept` attribútum tért el csendben, ez a felhasználó szerint nem volt
             egyértelmű (2026-08-21-i visszajelzés: "legyen egyértelműbb... hogy a nem jogosult
             csomagok nem tudnak feltölteni videót"). A tényleges kikényszerítés VÁLTOZATLANUL
             a szerveren történik (lásd `useMediaSelection`/`assertVideoUploadAllowed`), ez itt

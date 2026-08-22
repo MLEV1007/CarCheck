@@ -4,21 +4,21 @@ import * as tus from 'tus-js-client';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
- * Kliens-oldali Storage-feltöltési szállítási réteg jelölt (signed) tokennel -- lásd
+ * Kliens-oldali Storage-feltöltési szállítási réteg jelölt (signed) tokennel, lásd
  * PLAN_video_qr_upload.md 4.2 pontját. Az asztali wizard (`InspectionWizard.tsx`
  * `handleSubmit`) EZT hívja videó ÉS 6 MB feletti fájloknál (kis képeknél a meglévő, sima
- * `supabase.storage.from(...).upload()` út VÁLTOZATLAN marad -- lásd a route JSDoc-ját), a
+ * `supabase.storage.from(...).upload()` út VÁLTOZATLAN marad, lásd a route JSDoc-ját), a
  * QR-kódos telefonos feltöltő oldal (`app/qr-upload/[token]/page.tsx`) pedig MINDEN
  * fájlnál, mert ott sosincs Supabase munkamenet.
  *
  * SZÁNDÉKOSAN NEM importál semmit a `lib/inspections/mediaUploadServer.ts`-ből (az a
- * service-role admin klienst hoz létre, szerver-only titokkal) -- a két modul között
+ * service-role admin klienst hoz létre, szerver-only titokkal), a két modul között
  * egyetlen kapocs az általuk kiadott/felhasznált `{ path, token, projectId }` alak, amit
  * mindkét oldal a saját `MediaUploadTicket` típusával ír le.
  */
 
 /** Ugyanaz az érték, mint `mediaUploadServer.ts` `TUS_CHUNK_SIZE_BYTES`-e (Supabase TUS
- * chunk-méret követelmény, JELENLEG kötelezően 6 MiB) -- itt külön konstansként, lásd a
+ * chunk-méret követelmény, JELENLEG kötelezően 6 MiB), itt külön konstansként, lásd a
  * fenti modul-JSDoc indoklását. Egyben a plain-vs-TUS döntési küszöb is: e fölött a fájl
  * MINDIG resumable (TUS) protokollal megy, alatta egyetlen PUT (`uploadToSignedUrl`) elég. */
 const TUS_SIZE_THRESHOLD_BYTES = 6 * 1024 * 1024;
@@ -37,9 +37,9 @@ export interface UploadWithTicketOptions {
 }
 
 /** Dobva, ha a szerver `VIDEO_NOT_ALLOWED`-dal utasítja el a jelölt feltöltési token
- * kérését -- a hívó (`mediaSelection.ts`) ezt elkapva nyitja meg a `VideoUpsellModal`-t. Ez a
+ * kérését, a hívó (`mediaSelection.ts`) ezt elkapva nyitja meg a `VideoUpsellModal`-t. Ez a
  * MÁSODIK védelmi vonal (az ELSŐ a kliens-oldali `videoAllowed` prop általi UI-elrejtés/
- * upsell-kattintás, lásd PLAN_video_qr_upload.md 6. szakaszát) -- akkor is helyesen
+ * upsell-kattintás, lásd PLAN_video_qr_upload.md 6. szakaszát), akkor is helyesen
  * viselkedik, ha egy elavult kliens-oldali állapot miatt idáig eljutott a hívás. */
 export class VideoNotAllowedClientError extends Error {
   readonly code = 'VIDEO_NOT_ALLOWED' as const;
@@ -53,7 +53,7 @@ export class VideoNotAllowedClientError extends Error {
  * Feltölt egy fájlt/Blobot egy MÁR kiadott jelölt tokennel. 6 MB alatt egyetlen PUT-tal
  * (`uploadToSignedUrl`), afölött TUS resumable protokollal (`tus-js-client`, közvetlenül a
  * Supabase `/storage/v1/upload/resumable` endpoint-ja ellen, `x-signature` fejlécben a
- * tokennel -- lásd a Supabase "Resumable Uploads" dokumentációját a "jelölt feltöltési URL
+ * tokennel, lásd a Supabase "Resumable Uploads" dokumentációját a "jelölt feltöltési URL
  * tokene az x-signature fejlécbe kerül" mintáról).
  */
 export async function uploadWithTicket(
@@ -121,7 +121,7 @@ export interface UploadInspectionMediaParams {
 }
 
 /**
- * Kényelmi wrapper az ASZTALI (hitelesített) wizardhoz -- lekéri a jelölt feltöltési tokent
+ * Kényelmi wrapper az ASZTALI (hitelesített) wizardhoz, lekéri a jelölt feltöltési tokent
  * a `/api/inspections/media-upload-url` végponttól (ami a szerver-oldalon ellenőrzi a
  * videó-csomag-jogosultságot, lásd `mediaUploadServer.ts`), majd feltölti vele a fájlt.
  * `InspectionWizard.tsx` `handleSubmit`-je videó ÉS 6 MB feletti fájloknál EZT hívja a

@@ -12,7 +12,7 @@ import { logAiApiCall } from '@/lib/aiApiCallLog';
  * A kliens a `buildInspectionSnapshot()`-tal (lásd `StepFinalAssessment.tsx`) összeállított,
  * a TELJES aktuális vizsgálati adatból (autó adatai, diagnosztika, felszereltség,
  * gumiabroncsok, festékvastagság-mérés, sérülések, hibák) képzett JSON-t küldi ennek a
- * route-nak -- KIZÁRÓLAG szöveges/számszerű mezőkkel, `File`/`blob:` hivatkozás nélkül
+ * route-nak, KIZÁRÓLAG szöveges/számszerű mezőkkel, `File`/`blob:` hivatkozás nélkül
  * (azok a Gemini szöveg-modellnek irrelevánsak, és JSON-ná sem szerializálhatók). A route
  * egyetlen, 3-4 mondatos, objektív magyar szakvéleményt ad vissza sima szövegként (NEM
  * JSON-t, NEM markdown-t), amit a kliens közvetlenül a "Szöveges összefoglaló" textarea-ba
@@ -20,33 +20,33 @@ import { logAiApiCall } from '@/lib/aiApiCallLog';
  *
  * **Modellválasztás + fallback-lánc (2026-08-16, frissítve):** UGYANAZ a minta, mint a
  * `parse-equipment/route.ts`-nél (lásd annak részletes JSDoc-ját a `gemini-2.0-flash`
- * 2026-06-01-i kivezetéséről és a fiókszintű napi kérés-plafonról) -- elsődleges
+ * 2026-06-01-i kivezetéséről és a fiókszintű napi kérés-plafonról), elsődleges
  * `gemini-3.1-flash-lite`, fallback `gemini-3.6-flash`. Itt NINCS `responseSchema`/strukturált JSON kimenet (a válasz maga
  * egy szabad szöveges bekezdés), ezért a `generationConfig` egyszerűbb, mint a
  * `parse-equipment`/`scan-vin` route-oknál.
  *
- * `runtime = 'nodejs'` -- ugyanazon okból, mint a projekt többi Gemini route-jánál (lásd
+ * `runtime = 'nodejs'`, ugyanazon okból, mint a projekt többi Gemini route-jánál (lásd
  * `parse-equipment/route.ts` JSDoc-ja).
  *
  * **Autentikáció + kredit-védelem:** lásd `parse-equipment/route.ts` JSDoc "Autentikáció +
- * kredit-védelem" szakaszát (CANONIKUS leírás) -- ugyanaz a minta, `featureName: 'summary_generate'`.
+ * kredit-védelem" szakaszát (CANONIKUS leírás), ugyanaz a minta, `featureName: 'summary_generate'`.
  */
 export const runtime = 'nodejs';
 
 /** Lásd `parse-equipment/route.ts` "Modellválasztás + fallback-lánc" JSDoc pontját (2026-08-16
- * frissítés) -- ugyanaz az elsődleges/fallback pár, ugyanazon indoklással. */
+ * frissítés), ugyanaz az elsődleges/fallback pár, ugyanazon indoklással. */
 const MODEL_CANDIDATES = ['gemini-3.1-flash-lite', 'gemini-3.6-flash'] as const;
 
-/** A `usage_logs.feature_name` értéke ehhez a route-hoz -- lásd `lib/credits.ts`. */
+/** A `usage_logs.feature_name` értéke ehhez a route-hoz, lásd `lib/credits.ts`. */
 const FEATURE_NAME = 'summary_generate';
 
 interface GenerateSummaryRequestBody {
   /** A `StepFinalAssessment.tsx` `buildInspectionSnapshot()` által összeállított,
-   * tisztán JSON-szerializálható vizsgálati adat -- a route nem ismeri/nem kényszeríti ki
+   * tisztán JSON-szerializálható vizsgálati adat, a route nem ismeri/nem kényszeríti ki
    * ennek pontos alakját (a kliens felelőssége), csak a méretét korlátozza (lásd
    * `MAX_JSON_LENGTH`) és a Gemini promptjába ágyazza. */
   inspectionData: unknown;
-  /** A wizard-munkamenet vizsgálat-azonosítója -- lásd `scan-vin/route.ts` azonos mezőjének
+  /** A wizard-munkamenet vizsgálat-azonosítója, lásd `scan-vin/route.ts` azonos mezőjének
    * JSDoc-ját ("1 AI kredit = 1 vizsgálat", `lib/inspectionAiCredit.ts`). */
   inspectionId: string;
 }
@@ -59,10 +59,10 @@ interface GenerateSummarySuccessResponse {
 interface GenerateSummaryErrorResponse {
   success: false;
   error: string;
-  /** Lásd `parse-equipment/route.ts` `toErrorDetails()` JSDoc-ját -- ugyanaz a
+  /** Lásd `parse-equipment/route.ts` `toErrorDetails()` JSDoc-ját, ugyanaz a
    * hibakeresési célú, nyers hibaüzenetet hordozó mező. */
   details?: string;
-  /** Gépileg feldolgozható hibakód -- lásd `parse-equipment/route.ts` azonos mezőjének JSDoc-ját. */
+  /** Gépileg feldolgozható hibakód, lásd `parse-equipment/route.ts` azonos mezőjének JSDoc-ját. */
   code?: string;
 }
 
@@ -70,7 +70,7 @@ function toErrorDetails(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-/** A beágyazott JSON string maximális hossza -- egy vizsgálat összes adata (fotó-URL-ek
+/** A beágyazott JSON string maximális hossza, egy vizsgálat összes adata (fotó-URL-ek
  * NÉLKÜL, lásd fent) ennél jóval kisebb is bőven elég részletes szakvéleményhez; a
  * korlát a nyilvánvalóan hibás/túlméretezett kérések elutasítására szolgál, ugyanaz az
  * elv, mint a `parse-equipment/route.ts` `MAX_TEXT_LENGTH`-jénél. */
@@ -82,7 +82,7 @@ const SYSTEM_INSTRUCTION =
 export async function POST(
   request: NextRequest
 ): Promise<NextResponse<GenerateSummarySuccessResponse | GenerateSummaryErrorResponse>> {
-  // AUTENTIKÁCIÓ -- lásd `parse-equipment/route.ts` JSDoc "Autentikáció + kredit-védelem"
+  // AUTENTIKÁCIÓ, lásd `parse-equipment/route.ts` JSDoc "Autentikáció + kredit-védelem"
   // szakaszát (CANONIKUS leírás).
   const supabase = await createClient();
   const {
@@ -97,7 +97,7 @@ export async function POST(
     );
   }
 
-  // Lásd `parse-equipment/route.ts` ugyanerről a lépésről szóló JSDoc-ját -- a
+  // Lásd `parse-equipment/route.ts` ugyanerről a lépésről szóló JSDoc-ját, a
   // Vercel/.env kezelők néha véletlenül idézőjelet/szóközt hagynak a kulcs körül.
   const apiKey = process.env.GEMINI_API_KEY?.trim().replace(/^["']|["']$/g, '');
   if (!apiKey) {
@@ -140,13 +140,13 @@ export async function POST(
     return NextResponse.json({ success: false, error: 'Az "inspectionId" mező kötelező.' }, { status: 400 });
   }
 
-  // "1 AI KREDIT = 1 VIZSGÁLAT" -- lásd `lib/inspectionAiCredit.ts` JSDoc-ját. Ha ez a
+  // "1 AI KREDIT = 1 VIZSGÁLAT", lásd `lib/inspectionAiCredit.ts` JSDoc-ját. Ha ez a
   // vizsgálat MÁR "AI-aktív", a keret-ellenőrzést átugorjuk.
   const alreadyClaimed = await hasInspectionClaimedAiCredit(user.id, inspectionId);
 
   if (!alreadyClaimed) {
-    // ELŐZETES AI-KVÓTA ELLENŐRZÉS -- lásd `parse-equipment/route.ts` "ELŐZETES AI-KVÓTA
-    // ELLENŐRZÉS" JSDoc-kommentjét, ugyanaz a minta. 2026-08-06-tól ez az EGYETLEN kapu --
+    // ELŐZETES AI-KVÓTA ELLENŐRZÉS, lásd `parse-equipment/route.ts` "ELŐZETES AI-KVÓTA
+    // ELLENŐRZÉS" JSDoc-kommentjét, ugyanaz a minta. 2026-08-06-tól ez az EGYETLEN kapu,
     // lásd `scan-vin/route.ts` azonos elvű kommentjét a régi kredit-gate eltávolításának
     // indoklásáról.
     const hasAiQuota = await checkAiQuota(user.id);
@@ -173,15 +173,15 @@ export async function POST(
     { role: 'user' as const, parts: [{ text: `Vizsgálati adatok (JSON):\n${inspectionDataJson}` }] },
   ];
 
-  // Modell-fallback lánc -- lásd `parse-equipment/route.ts` ugyanerről szóló, részletes
+  // Modell-fallback lánc, lásd `parse-equipment/route.ts` ugyanerről szóló, részletes
   // JSDoc-ját. Itt (a szándékosan kisebb felület miatt) a dinamikus `ai.models.list()`
-  // végső biztonsági hálót NEM ismételjük meg -- ha mindkét statikus jelölt elbukik, azt
+  // végső biztonsági hálót NEM ismételjük meg, ha mindkét statikus jelölt elbukik, azt
   // egy 502-es hibaként adjuk vissza, a kliens toast/hibaüzenete pedig egyértelműen jelzi,
   // hogy a szakinak kézzel kell megírnia az összefoglalót.
   let rawText: string | undefined;
   let succeeded = false;
   let primaryError: unknown;
-  // Melyik modell adta a ténylegesen felhasznált választ -- Platform Admin
+  // Melyik modell adta a ténylegesen felhasznált választ, Platform Admin
   // AI-hívás-napló célja (lásd `lib/aiApiCallLog.ts`).
   let usedModel: string | undefined;
 
@@ -199,8 +199,8 @@ export async function POST(
     }
   }
 
-  // Platform Admin AI-hívás-napló (2026-08-17) -- MINDEN ténylegesen megtörtént
-  // Gemini-hívás-próbálkozást naplózunk, sikereset ÉS sikertelent is -- lásd
+  // Platform Admin AI-hívás-napló (2026-08-17), MINDEN ténylegesen megtörtént
+  // Gemini-hívás-próbálkozást naplózunk, sikereset ÉS sikertelent is, lásd
   // `lib/aiApiCallLog.ts`. Best-effort, sosem dob hibát/nem akasztja meg a választ.
   await logAiApiCall(user.id, FEATURE_NAME, usedModel ?? MODEL_CANDIDATES[0], succeeded);
 
@@ -220,7 +220,7 @@ export async function POST(
     return NextResponse.json({ success: false, error: 'A Gemini API üres választ adott.' }, { status: 502 });
   }
 
-  // "1 AI KREDIT = 1 VIZSGÁLAT" CLAIM + KREDIT/KVÓTA LEVONÁS -- KIZÁRÓLAG sikeres, érvényes
+  // "1 AI KREDIT = 1 VIZSGÁLAT" CLAIM + KREDIT/KVÓTA LEVONÁS, KIZÁRÓLAG sikeres, érvényes
   // Gemini-válasz UTÁN, és KIZÁRÓLAG ha ez a vizsgálat MÉG nem volt "AI-aktív". Lásd
   // `lib/inspectionAiCredit.ts` JSDoc-ját a race-condition kezelésről.
   if (!alreadyClaimed) {

@@ -7,17 +7,17 @@ interface InspectorClientCardProps {
 }
 
 /**
- * Átvizsgáló és Ügyfél adatok + PDF megjelenítési kapcsolók (2026-08-06) --
+ * Átvizsgáló és Ügyfél adatok + PDF megjelenítési kapcsolók (2026-08-06),
  * PROJEKT_INSTRUKCIOK.md "Publikus Ügyfélriport" (5.C) kiegészítése, a `get_public_report`
  * RPC (`supabase/migrations/20260806_inspector_and_client_fields.sql`) által visszaadott
  * `inspector_name`/`client_*` mezőkből épül fel.
  *
  * **A láthatóság KÉTSZERESEN védett:** a `show_inspector_on_pdf`/`show_client_on_pdf`
- * kapcsolókat MÁR a szerver-oldali RPC is figyelembe veszi -- ha egy kapcsoló ki van
+ * kapcsolókat MÁR a szerver-oldali RPC is figyelembe veszi, ha egy kapcsoló ki van
  * kapcsolva, a hozzá tartozó mező (`inspector_name`/`client_name`/`client_phone`/
  * `client_email`) a JSON válaszban is `null`, a Megrendelő telefonszáma/e-mail címe
  * tehát a hálózati válaszban SEM szerepel egy kikapcsolt kapcsolónál (lásd a migráció
- * JSDoc-ját). Ez a komponens emellett a boolean-t is ellenőrzi -- ez a "második"
+ * JSDoc-ját). Ez a komponens emellett a boolean-t is ellenőrzi, ez a "második"
  * védelmi vonal redundáns a jelenlegi RPC-vel, de explicit dokumentálja a szándékot,
  * és robusztus marad akkor is, ha a jövőben az RPC mégis mindig visszaadná a nyers
  * mezőket.

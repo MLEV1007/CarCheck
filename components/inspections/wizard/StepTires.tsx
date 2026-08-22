@@ -30,31 +30,31 @@ interface StepTiresProps {
   onGeneralInfoChange: (value: TireGeneralInfoState) => void;
   onBack: () => void;
   onNext: () => void;
-  /** A KÖVETKEZŐ lépés rövid címe -- lásd StepCarInfo.tsx ugyanerről a propról. */
+  /** A KÖVETKEZŐ lépés rövid címe, lásd StepCarInfo.tsx ugyanerről a propról. */
   nextLabel: string;
-  /** Riport küszöbértékek (2026-08-07) -- lásd `InspectionWizard.tsx` JSDoc-ját. A
+  /** Riport küszöbértékek (2026-08-07), lásd `InspectionWizard.tsx` JSDoc-ját. A
    * "Koros gumiabroncs" (DOT-kor) ÉS az ÚJ "Kopott gumiabroncs" (profilmélység)
    * figyelmeztetés is ezekkel számol. Alapértéke `DEFAULT_REPORT_THRESHOLDS`. */
   thresholds?: ReportThresholds;
 }
 
 /**
- * LÉPÉS -- Gumiabroncsok Állapota & DOT Dekódoló Modul (PROJEKT_INSTRUKCIOK.md,
+ * LÉPÉS, Gumiabroncsok Állapota & DOT Dekódoló Modul (PROJEKT_INSTRUKCIOK.md,
  * "3 új szakértői modul" lépés, C pont + "DOT szám szigorú validációja" lépés + "Gumiabroncs
  * & Felni modul bővítése" lépés). A lépés tetején két ÁLTALÁNOS mező (Felni típusa,
- * Gumiabroncs márkája -- `TireGeneralInfoState`, nem kerékpozíciónkénti), alatta a 4
- * kerékkártya, mindegyiknél egy "📋 Adatok másolása / Kitöltés az előzőből" gombbal --
+ * Gumiabroncs márkája, `TireGeneralInfoState`, nem kerékpozíciónkénti), alatta a 4
+ * kerékkártya, mindegyiknél egy "📋 Adatok másolása / Kitöltés az előzőből" gombbal,
  * a `TIRE_POSITIONS` sorrendjében (fl -> fr -> rl -> rr) mindegyik gomb a KÖZVETLENÜL
  * ELŐTTE lévő kerék profilmélységét és DOT kódját másolja át egyetlen kattintással (az
  * első kerék, Bal első, esetén nincs "előző", ott a gomb inaktív). A 4 számjegyű DOT
  * kódból (WWYY formátum) a `lib/inspections/tireDot.ts` `decodeDot()` élőben (minden
  * billentyűleütésnél) kiszámolja a gyártási hetet/évet, és 5+ éves kornál sárga "Koros
- * gumiabroncs" figyelmeztetést jelenít meg -- ez a kliens-oldali visszajelzés, a végleges
+ * gumiabroncs" figyelmeztetést jelenít meg, ez a kliens-oldali visszajelzés, a végleges
  * dekódolt érték a publikus riportban (get_public_report RPC) is újraszámolódik a tárolt
  * DOT kódból, nem a wizardból küldött értékből.
  *
  * Szigorú validáció: a hét (WW) kizárólag 01-53, az év (YY) legfeljebb a JELENLEGI év
- * lehet (`decodeDot()` már ezt a szabályt alkalmazza) -- 4 beírt, de érvénytelen
+ * lehet (`decodeDot()` már ezt a szabályt alkalmazza), 4 beírt, de érvénytelen
  * számjegynél piros hibaüzenet jelenik meg, és a "Tovább" gomb letiltódik, amíg a user
  * nem javítja vagy törli a hibás DOT-ot (ugyanaz a blokkolási minta, mint a Diagnosztika/
  * Hibák lépéseknél).
@@ -215,16 +215,16 @@ export function StepTires({
                   {decoded.isOld && <AlertTriangle className="h-3.5 w-3.5 shrink-0" />}
                   <span>
                     Gyártás: {decoded.label}
-                    {decoded.isOld ? ' -- Koros gumiabroncs' : ''}
+                    {decoded.isOld ? ', Koros gumiabroncs' : ''}
                   </span>
                 </div>
               )}
 
-              {/* "Kopott gumiabroncs" figyelmeztetés (ÚJ, 2026-08-07) -- korábban a
+              {/* "Kopott gumiabroncs" figyelmeztetés (ÚJ, 2026-08-07), korábban a
                   profilmélységhez (mm) egyáltalán nem létezett automatikus jelzés, csak a
                   nyers érték volt látható. UGYANAZ a vizuális minta, mint a fenti "Koros
                   gumiabroncs" DOT-figyelmeztetésnél, hogy a két jelzés konzisztensnek
-                  tűnjön -- lásd `isTreadWorn()` a `lib/inspections/tireDot.ts`-ben. */}
+                  tűnjön, lásd `isTreadWorn()` a `lib/inspections/tireDot.ts`-ben. */}
               {treadWorn && (
                 <div className="mt-2 flex items-center gap-2 rounded-md bg-linear-warning-soft px-3 py-2 text-[12px] font-medium text-linear-warning">
                   <AlertTriangle className="h-3.5 w-3.5 shrink-0" />

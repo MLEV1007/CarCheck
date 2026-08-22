@@ -1,4 +1,4 @@
-# CarPass SaaS -- MVP alapok
+# CarPass SaaS, MVP alapok
 
 Ez a csomag a projekt **első lépését** tartalmazza: Next.js 14+ App Router projektstruktúra,
 Supabase SSR integráció, védett route-ok middleware-rel, valamint a `/login` és `/register`
@@ -46,7 +46,7 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
 > Ha a projekted a régebbi "anon key"-t használja (JWT-alapú, `eyJ...`-vel kezdődik), azt is
-> nyugodtan beteheted ugyanebbe a változóba -- a `@supabase/ssr` mindkettőt elfogadja.
+> nyugodtan beteheted ugyanebbe a változóba, a `@supabase/ssr` mindkettőt elfogadja.
 
 4. Auth -> URL Configuration alatt add hozzá a redirect URL-ek közé:
    `http://localhost:3000/auth/callback` (élesben a saját domained megfelelő változatát).
@@ -57,17 +57,17 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxxxxxxxxxxxxxxxxxxxxxxx
 npm run dev
 ```
 
-Nyisd meg a [http://localhost:3000](http://localhost:3000) címet -- ez automatikusan a
+Nyisd meg a [http://localhost:3000](http://localhost:3000) címet, ez automatikusan a
 `/login` oldalra irányít, ha nem vagy bejelentkezve.
 
 ## Tesztelés
 
 1. Regisztrálj a `/register` oldalon egy valós email címmel.
 2. Ha a Supabase projektedben be van kapcsolva az email-megerősítés (alapértelmezett), nézd meg
-   a postafiókodat, és kattints a megerősítő linkre -- ez visszavisz az appba, és bejelentkeztet.
+   a postafiókodat, és kattints a megerősítő linkre, ez visszavisz az appba, és bejelentkeztet.
 3. Ha ki van kapcsolva a megerősítés (Auth -> Providers -> Email -> "Confirm email" kikapcsolva),
    a regisztráció után azonnal a `/dashboard`-ra kerülsz.
-4. Próbáld meg bejelentkezés nélkül elérni a `/dashboard`-ot egy inkognitó ablakban -- a
+4. Próbáld meg bejelentkezés nélkül elérni a `/dashboard`-ot egy inkognitó ablakban, a
    middleware-nek vissza kell irányítania a `/login`-ra.
 
 ## Design tokenek

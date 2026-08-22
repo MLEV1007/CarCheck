@@ -16,15 +16,15 @@ interface StepGeneralPhotosProps {
   onChange: (value: GeneralPhotoState[]) => void;
   onBack: () => void;
   onNext: () => void;
-  /** A KÖVETKEZŐ lépés rövid címe -- lásd StepCarInfo.tsx ugyanerről a propról. */
+  /** A KÖVETKEZŐ lépés rövid címe, lásd StepCarInfo.tsx ugyanerről a propról. */
   nextLabel: string;
-  /** A hívó szervezet videó-csatolási jogosultsága (`user_credits.plan_tier` `pro`/`business`)
-   * -- lásd `InspectionWizard.tsx`, ahol EGYSZER, a wizard szintjén kerül lekérdezésre
+  /** A hívó szervezet videó-csatolási jogosultsága (`user_credits.plan_tier` `pro`/`business`),
+   * lásd `InspectionWizard.tsx`, ahol EGYSZER, a wizard szintjén kerül lekérdezésre
    * (`/api/quotas/summary`) és adódik tovább propként ide ÉS a `StepDefects.tsx`-nek. */
   videoAllowed: boolean;
 }
 
-/** Igaz, ha egy általános fotó-elem médiája videó -- ugyanaz az elv, mint
+/** Igaz, ha egy általános fotó-elem médiája videó, ugyanaz az elv, mint
  * `StepDefects.tsx` `isDefectVideo`-ja. */
 function isGeneralPhotoVideo(photo: GeneralPhotoState): boolean {
   if (photo.file) return photo.file.type.startsWith('video/');
@@ -32,22 +32,22 @@ function isGeneralPhotoVideo(photo: GeneralPhotoState): boolean {
 }
 
 /**
- * LÉPÉS 2 -- Általános autó fotók (PROJEKT_INSTRUKCIOK.md, "Általános autó fotók modul"
+ * LÉPÉS 2, Általános autó fotók (PROJEKT_INSTRUKCIOK.md, "Általános autó fotók modul"
  * lépés). A hiba-fotóktól (StepDefects.tsx) függetlenül, egyetlen `inspections.general_photos`
- * szöveg-tömbbe kerülnek -- áttekintő képek a jármű állapotáról (elölről/hátulról/oldalról/
+ * szöveg-tömbbe kerülnek, áttekintő képek a jármű állapotáról (elölről/hátulról/oldalról/
  * beltér/műszerfal), amik a publikus riport "Gépjármű fotók" galériájában jelennek meg.
  *
  * Több kép egyszerre kiválasztható (`multiple`); a tényleges Supabase Storage feltöltés,
  * ugyanúgy mint a hiba-médiánál, csak a wizard végleges beküldésekor történik meg (lásd
- * InspectionWizard.tsx `handleSubmit`) -- itt csak a kiválasztás és a kliens-oldali
+ * InspectionWizard.tsx `handleSubmit`), itt csak a kiválasztás és a kliens-oldali
  * előnézet (`URL.createObjectURL`) zajlik.
  *
  * **2026-08-21, "Videó-tömörítés + QR-kódos telefonos feltöltés" lépés:** a fájlválasztó
- * mostantól videót is elfogad (jogosult -- Profi/Autóház -- szervezeteknél), a
+ * mostantól videót is elfogad (jogosult, Profi/Autóház, szervezeteknél), a
  * `useMediaSelection` hook végzi a jogosultság-ellenőrzést/tömörítést/vágás-megerősítést
  * (lásd `lib/inspections/mediaSelection.ts`). A "Feltöltés telefonról" QR-panel
  * (`QrUploadPanel.tsx`) a `target: 'general'`-lel érkező elemeket EGYENESEN a MÁR feltöltött
- * Storage URL alakjában (`file: null`, `previewUrl: <url>`) illeszti be -- ugyanaz a
+ * Storage URL alakjában (`file: null`, `previewUrl: <url>`) illeszti be, ugyanaz a
  * `draftPersistence.ts` által is támogatott, "már feltöltve" állapot, amit egy piszkozat
  * szerkesztésekor is látunk.
  */
@@ -62,7 +62,7 @@ export function StepGeneralPhotos({ value, onChange, onBack, onNext, nextLabel, 
 
     const newPhotos: GeneralPhotoState[] = [];
     for (const file of candidates) {
-      // Szándékosan SZEKVENCIÁLIS (nem `Promise.all`) -- egyszerre csak EGY videó
+      // Szándékosan SZEKVENCIÁLIS (nem `Promise.all`), egyszerre csak EGY videó
       // tömörítése fusson (a `useMediaSelection` "generáció"-védelme is erre az esetre
       // készült, de a felhasználónak is egyértelműbb egy soros folyamatjelző, mint több
       // párhuzamos tömörítés versengő progress-üzenete).

@@ -10,25 +10,25 @@ interface RemovablePhotoThumbnailProps {
   alt?: string;
   removeLabel?: string;
   /** Igaz, ha a `previewUrl` egy videóra mutat (2026-08-21, "Videó-tömörítés + QR-kódos
-   * telefonos feltöltés" lépés -- lásd `StepGeneralPhotos.tsx`, az EGYETLEN jelenlegi hívó,
-   * ahol a média videó is lehet) -- ilyenkor `<video>`-t renderelünk `<img>` helyett, hogy a
+   * telefonos feltöltés" lépés, lásd `StepGeneralPhotos.tsx`, az EGYETLEN jelenlegi hívó,
+   * ahol a média videó is lehet), ilyenkor `<video>`-t renderelünk `<img>` helyett, hogy a
    * kép ne törjön el egy videó URL-lel. */
   isVideo?: boolean;
 }
 
 /**
- * Négyzetes fotó-előnézet kártya, sarokban törlés-gombbal -- korábban szó szerint
+ * Négyzetes fotó-előnézet kártya, sarokban törlés-gombbal, korábban szó szerint
  * duplikálva volt `StepServiceHistory.tsx` és `StepGeneralPhotos.tsx` fájlokban, `h-6 w-6`
- * (24px) érintési területtel -- lásd `docs/ux-touch-targets-plan-2026-08-14.md` C) pontját.
+ * (24px) érintési területtel, lásd `docs/ux-touch-targets-plan-2026-08-14.md` C) pontját.
  *
  * KÉTRÉTEGŰ DOM SZÁNDÉKOSAN: a KÜLSŐ konténeren NINCS `overflow-hidden` (csak a BELSŐ,
- * kizárólag a képet tartalmazó rétegen) -- ha a vágás a törlés-gomb szülőjén lenne, az
+ * kizárólag a képet tartalmazó rétegen), ha a vágás a törlés-gomb szülőjén lenne, az
  * `iconHitSlopClass` láthatatlan hit-slop pszeudo-eleme levágódna a konténer határánál, és
  * a bővített érintési terület a gyakorlatban NEM működne a vizuális kép-határon túl (lásd a
  * touch target terv C) pontjának "Kritikus technikai buktató" megjegyzését).
  *
  * Grid-elrendezésben (2 oszlop mobilon, `gap-3` = 12px) használva a hit-slop legfeljebb
- * 4px-cel nyúlik túl a kártya vizuális határán -- ez biztonságos, nem ér át a szomszédos
+ * 4px-cel nyúlik túl a kártya vizuális határán, ez biztonságos, nem ér át a szomszédos
  * thumbnail saját hit-zónájába.
  */
 export function RemovablePhotoThumbnail({
@@ -44,7 +44,7 @@ export function RemovablePhotoThumbnail({
         {isVideo ? (
           <video src={previewUrl} className="h-full w-full object-cover" muted />
         ) : (
-          // eslint-disable-next-line @next/next/no-img-element -- kliens-oldali object URL / meglévő Storage URL előnézet
+          // eslint-disable-next-line @next/next/no-img-element, kliens-oldali object URL / meglévő Storage URL előnézet
           <img src={previewUrl} alt={alt} className="h-full w-full object-cover" />
         )}
       </div>

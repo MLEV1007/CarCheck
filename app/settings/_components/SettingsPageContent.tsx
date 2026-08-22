@@ -12,13 +12,13 @@ import { DEFAULT_LICENSE_PLATE_COUNTRY, DEFAULT_REPORT_THRESHOLDS } from '@/lib/
 import type { ReportThresholds } from '@/lib/inspections/types';
 
 interface SettingsPageContentProps {
-  /** `app/settings/page.tsx` -> `'company'`, `app/settings/billing/page.tsx` -> `'billing'`
-   * -- lásd `SettingsTabs.tsx` `initialTab` JSDoc-ját. */
+  /** `app/settings/page.tsx` -> `'company'`, `app/settings/billing/page.tsx` -> `'billing'`,
+   * lásd `SettingsTabs.tsx` `initialTab` JSDoc-ját. */
   initialTab: 'company' | 'billing';
-  /** `?success=true`/`?canceled=true` a Stripe Checkout visszairányításából -- kizárólag a
+  /** `?success=true`/`?canceled=true` a Stripe Checkout visszairányításából, kizárólag a
    * `/settings/billing` route adja át, `/settings`-nél mindig `null`. */
   billingBanner: 'success' | 'canceled' | null;
-  /** `?session_id=` a Stripe Checkout `success_url`-jéből -- lásd `BillingTab.tsx`
+  /** `?session_id=` a Stripe Checkout `success_url`-jéből, lásd `BillingTab.tsx`
    * JSDoc-ját ("Nincs számla-email" lépés, 2026-08-09). `null`, ha `/settings`-ről nyílt
    * meg, vagy nincs ilyen query param. */
   sessionId: string | null;
@@ -26,18 +26,18 @@ interface SettingsPageContentProps {
 
 /**
  * A Cégbeállítások/Csapatkezelés/Előfizetés oldal TELJES tartalma (PROJEKT_INSTRUKCIOK.md
- * 5.A "Beállítások oldal" + "Frontend Fizetési Modal / Billing Felület" lépések) -- kiemelve
+ * 5.A "Beállítások oldal" + "Frontend Fizetési Modal / Billing Felület" lépések), kiemelve
  * egy megosztott Server Component-be, mert MOSTANTÓL KÉT route jeleníti meg (`/settings` és
  * `/settings/billing`, ez utóbbi a Stripe Checkout `success_url`/`cancel_url` célja, hogy a
  * fizetésből visszatérő Menedzser egy STABIL, könyvjelezhető URL-re érkezzen, ami rögtön az
- * Előfizetés fület mutatja) -- a duplikált adatlekérdezés/layout elkerülése végett.
+ * Előfizetés fület mutatja), a duplikált adatlekérdezés/layout elkerülése végett.
  *
- * A fájl az `app/settings/_components/` mappában él -- a vezető `_` miatt a Next.js App
+ * A fájl az `app/settings/_components/` mappában él, a vezető `_` miatt a Next.js App
  * Router NEM kezeli route-ként, tisztán belső, megosztott komponens.
  *
  * **2026-08-14, "Öröklött cégadatok" lépés:** Átvizsgálónak a "Cégadatok" kártya
  * (`SettingsForm`) a szervezet Menedzserétől örökölt (nem szerkeszthető) adatokat
- * mutatja -- lásd a `brandingCompanyName`/stb. változók JSDoc-ját lent.
+ * mutatja, lásd a `brandingCompanyName`/stb. változók JSDoc-ját lent.
  */
 export async function SettingsPageContent({ initialTab, billingBanner, sessionId }: SettingsPageContentProps) {
   const supabase = await createClient();
@@ -62,14 +62,14 @@ export async function SettingsPageContent({ initialTab, billingBanner, sessionId
 
   // Öröklött céges adatok Átvizsgálóknak (2026-08-14, "Öröklött cégadatok" lépés, a
   // felhasználó explicit kérésére): a cégadatokat (név/telefon/email/logó/márkaszín)
-  // eddig MINDENKI a saját `profiles` sorából szerkesztette -- egy frissen meghívott
+  // eddig MINDENKI a saját `profiles` sorából szerkesztette, egy frissen meghívott
   // Átvizsgálónál ez üresen indult, és semmi nem kötötte a szervezet tényleges
   // brandingjéhez. Innentől Átvizsgálónál ezeket a mezőket a `get_organization_
   // branding()` SECURITY DEFINER RPC-vel a szervezet Menedzserének profiljából
   // olvassuk (a `profiles_select_org_manager` RLS policy csak Menedzsernek engedi más
-  // profil olvasását, egy Átvizsgáló SAJÁT RLS-jogosultságával ezt nem tudná lekérdezni
-  // -- ezért kell a bypass RPC), és `readOnly` módban adjuk tovább a `SettingsForm`-nak
-  // -- lásd annak JSDoc-ját a zárolt mezők UI-járól.
+  // profil olvasását, egy Átvizsgáló SAJÁT RLS-jogosultságával ezt nem tudná lekérdezni,
+  // ezért kell a bypass RPC), és `readOnly` módban adjuk tovább a `SettingsForm`-nak,
+  // lásd annak JSDoc-ját a zárolt mezők UI-járól.
   let brandingCompanyName = profile?.company_name ?? '';
   let brandingPhone = profile?.phone ?? '';
   let brandingEmail = profile?.email ?? user.email ?? '';
@@ -79,7 +79,7 @@ export async function SettingsPageContent({ initialTab, billingBanner, sessionId
   if (role === 'inspector') {
     // A Supabase kliens itt generált `Database` típus NÉLKÜL, generikusan van
     // példányosítva (lásd `lib/supabase/server.ts`), ezért az `.rpc()` visszatérési
-    // típusa `{}`-re esik vissza -- a mezők explicit típusút adjuk meg a
+    // típusa `{}`-re esik vissza, a mezők explicit típusút adjuk meg a
     // destrukturált értéknek, hogy a lenti property-elérések típushelyesek legyenek.
     const { data: orgBrandingRaw } = await supabase.rpc('get_organization_branding').maybeSingle();
     const orgBranding = orgBrandingRaw as {
@@ -97,7 +97,7 @@ export async function SettingsPageContent({ initialTab, billingBanner, sessionId
     brandingPrimaryColor = orgBranding?.primary_color ?? '#1c69d4';
   }
 
-  // Riport küszöbértékek (2026-08-07) -- lásd `ReportThresholdsCard.tsx` JSDoc-ját. A
+  // Riport küszöbértékek (2026-08-07), lásd `ReportThresholdsCard.tsx` JSDoc-ját. A
   // `??` fallback a `DEFAULT_REPORT_THRESHOLDS`-re csak defenzív biztonsági háló (a DB
   // oszlopok `not null default`-tal jönnek létre, gyakorlatban sosem `null`-ok).
   const initialThresholds: ReportThresholds = {
@@ -130,23 +130,23 @@ export async function SettingsPageContent({ initialTab, billingBanner, sessionId
   const initialDefaultLicenseCountry =
     (user.user_metadata?.default_license_country as string | undefined) || DEFAULT_LICENSE_PLATE_COUNTRY;
 
-  // Tutorial "Tipp" buborékok be/kikapcsolása (2026-08-10) -- lásd `DefaultPreferencesCard.tsx`
+  // Tutorial "Tipp" buborékok be/kikapcsolása (2026-08-10), lásd `DefaultPreferencesCard.tsx`
   // JSDoc-ját. `!== false`, NEM `=== true`: egy régebbi, a funkció bevezetése ELŐTT regisztrált
-  // usernél a `user_metadata`-ban ez a kulcs egyáltalán nem létezik (`undefined`) -- ilyenkor a
+  // usernél a `user_metadata`-ban ez a kulcs egyáltalán nem létezik (`undefined`), ilyenkor a
   // BEKAPCSOLT állapot a helyes alapértelmezés (a tippek eddig is mindig látszottak), nem a kikapcsolt.
   const initialTutorialHintsEnabled = user.user_metadata?.tutorial_hints_enabled !== false;
 
-  // Stripe Price ID-k -- SZERVER-oldalon olvasva (nincs NEXT_PUBLIC_ előtag, lásd
+  // Stripe Price ID-k, SZERVER-oldalon olvasva (nincs NEXT_PUBLIC_ előtag, lásd
   // .env.local.example), a `BillingTab.tsx` ('use client') kliens-komponensnek prop-ként
-  // adjuk tovább. `?? null` -- ha egy ár még nincs beállítva Vercelen, a hozzá tartozó
+  // adjuk tovább. `?? null`, ha egy ár még nincs beállítva Vercelen, a hozzá tartozó
   // gomb a `BillingTab`-ban `disabled` marad, nem dob build/runtime hibát.
   // 2026-08-06, "Árazási struktúra bővítés" lépés: `growth` + 3 AI-kredit-csomag ár
-  // hozzáadva -- a `business` tier szándékosan NEM kap price ID-t (egyedi ajánlat, lásd
+  // hozzáadva, a `business` tier szándékosan NEM kap price ID-t (egyedi ajánlat, lásd
   // `BillingTab.tsx` JSDoc-ját).
   const starterPriceId = process.env.STRIPE_PRICE_ID_STARTER ?? null;
   const growthPriceId = process.env.STRIPE_PRICE_ID_GROWTH ?? null;
   const proPriceId = process.env.STRIPE_PRICE_ID_PRO ?? null;
-  // Éves (kb. 20% kedvezményes) Price ID-k -- 2026-08-07, "Havi/éves kapcsoló" lépés.
+  // Éves (kb. 20% kedvezményes) Price ID-k, 2026-08-07, "Havi/éves kapcsoló" lépés.
   const starterYearlyPriceId = process.env.STRIPE_PRICE_ID_STARTER_YEARLY ?? null;
   const growthYearlyPriceId = process.env.STRIPE_PRICE_ID_GROWTH_YEARLY ?? null;
   const proYearlyPriceId = process.env.STRIPE_PRICE_ID_PRO_YEARLY ?? null;

@@ -13,13 +13,13 @@ interface RegisteredPasskey {
 }
 
 /**
- * "Biometrikus azonosítás (Face ID / Touch ID)" kártya a Cégbeállítások oldalon --
+ * "Biometrikus azonosítás (Face ID / Touch ID)" kártya a Cégbeállítások oldalon,
  * jelszómentes/Passkey (WebAuthn) hitelesítés bekötése (lásd PROJEKT_INSTRUKCIOK.md
  * "Átállás Jelszómentes hitelesítésre" lépés).
  *
  * `supabase.auth.registerPasskey()` egy MEGLÉVŐ, bejelentkezett munkamenetet igényel
  * (a Supabase dokumentáció szerint anonim/nem-bejelentkezett userhez nem regisztrálható
- * passkey) -- mivel ez a kártya a védett `/settings` oldalon él, ez a feltétel mindig
+ * passkey), mivel ez a kártya a védett `/settings` oldalon él, ez a feltétel mindig
  * teljesül. A regisztráció a böngésző saját Face ID / Touch ID / biztonsági kulcs
  * felugróját nyitja meg (`navigator.credentials.create()`), NEM egy egyedi UI-t.
  *
@@ -59,7 +59,7 @@ export function PasskeyCard() {
       setShowToast(true);
     } catch (err) {
       // Váratlan, nem WebAuthnError/AuthError kivétel (pl. a böngésző egyáltalán nem
-      // támogatja a navigator.credentials API-t) -- ugyanazzal a diszkrét hibasávval kezeljük.
+      // támogatja a navigator.credentials API-t), ugyanazzal a diszkrét hibasávval kezeljük.
       setError(describePasskeyError(err));
     } finally {
       setIsRegistering(false);
@@ -148,16 +148,16 @@ function describePasskeyError(error: unknown): string {
 
   const message = (error as { message?: string } | null)?.message ?? '';
 
-  // "The RP ID '...' is invalid for this domain." -- 2026-08-04, hibajavítás (lásd
+  // "The RP ID '...' is invalid for this domain.", 2026-08-04, hibajavítás (lásd
   // status.md, `lib/supabase/client.ts` JSDoc-ja, `PasskeyButton.tsx` ugyanezen
   // ellenőrzése bejelentkezésnél): a Supabase Dashboard Authentication -> Passkeys
   // beállításánál rögzített Relying Party ID nem egyezik a TÉNYLEGES domainnel (pl.
-  // custom domain bekötése után a Dashboardon elfelejtett frissítés) -- ez
+  // custom domain bekötése után a Dashboardon elfelejtett frissítés), ez
   // ADMINISZTRÁTORI konfigurációs hiba, NEM az eszköz/böngésző hibája, ezért itt is
   // külön, célzott üzenettel jelezzük a generikus "ellenőrizd az eszközöd" szöveg
   // helyett, ami tévesen a saját gépükre terelné a gyanút.
   if (/rp id/i.test(message) && /invalid/i.test(message)) {
-    return 'A Face ID / Touch ID rögzítése jelenleg nincs beállítva erre a domainre (adminisztrátori beállítás, nem a te eszközöd hibája) -- szólj a rendszergazdának, hogy ellenőrizze a Supabase Passkey beállításokat.';
+    return 'A Face ID / Touch ID rögzítése jelenleg nincs beállítva erre a domainre (adminisztrátori beállítás, nem a te eszközöd hibája), szólj a rendszergazdának, hogy ellenőrizze a Supabase Passkey beállításokat.';
   }
 
   return message

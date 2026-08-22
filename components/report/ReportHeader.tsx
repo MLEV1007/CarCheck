@@ -10,11 +10,11 @@ interface ReportHeaderProps {
  * BMW design system (bmw.md): fehér `top-nav`-szerű fejléc, 0px lekerekítés mindenhol.
  * A vizsgálatot végző cég brandingje (logó/monogram + név + elérhetőségek) a `profiles`
  * táblából érkezik a `get_public_report` RPC-n keresztül. A "Nyomtatás / PDF letöltés"
- * gomb a böngésző natív `window.print()`-jét hívja -- nyomtatáskor `print:hidden`-nel
+ * gomb a böngésző natív `window.print()`-jét hívja, nyomtatáskor `print:hidden`-nel
  * eltűnik, hogy ne szerepeljen a kimenetben.
  *
  * A logó-monogram háttere és a nyomtatás gomb hover-akcentusa a `--report-accent`
- * CSS változót olvassa (a cég `primary_color`-ja, BMW kék fallback-kel) -- lásd
+ * CSS változót olvassa (a cég `primary_color`-ja, BMW kék fallback-kel), lásd
  * `app/report/[public_token]/page.tsx`.
  */
 export function ReportHeader({ company }: ReportHeaderProps) {

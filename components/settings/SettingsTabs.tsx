@@ -12,7 +12,7 @@ interface SettingsTabsProps {
   role: 'manager' | 'inspector';
   organizationId: string;
   currentUserId: string;
-  /** `organizations.team_management_enabled` -- 2026-08-07, "Csapatkezelés tier-
+  /** `organizations.team_management_enabled`, 2026-08-07, "Csapatkezelés tier-
    * feloldás" lépés óta ELSŐDLEGESEN a csomag-szinttől függ: a Stripe-vásárlást
    * feldolgozó `apply_plan_purchase` RPC automatikusan `true`-ra állítja Műhely /
    * Kereskedői (growth) tier-től felfelé (lásd
@@ -20,12 +20,12 @@ interface SettingsTabsProps {
    *
    * **2026-08-07, "Csapatkezelés Egyéni-tier hibajavítás" lépés:** a korábbi
    * verzió 'starter'-re visszaváltáskor SZÁNDÉKOSAN nem kapcsolta vissza `false`-ra
-   * (grandfathering) -- ez HIBÁS volt (élő adatban reprodukálva: egy Egyéni
+   * (grandfathering), ez HIBÁS volt (élő adatban reprodukálva: egy Egyéni
    * csomagra visszaváltott szervezet Menedzsere továbbra is tudott csapattagot
    * meghívni), a felhasználó explicit kérésére javítva, lásd
    * `supabase/migrations/20260807_team_management_starter_revoke_fix.sql`. Az
    * Egyéni (starter) tier-en MOST MÁR SOSE elérhető a Csapatkezelés, függetlenül a
-   * korábbi állapottól -- az `apply_plan_purchase` 'starter' ága minden
+   * korábbi állapottól, az `apply_plan_purchase` 'starter' ága minden
    * starter-re (vissza)váltáskor aktívan `false`-ra állítja. A Platform Admin
    * (`/admin`, "Platform Admin + Csapatkezelés-entitlement" lépés, 2026-08-03) kézi
    * kapcsolója egy KIEGÉSZÍTŐ override marad Growth+ ügyfeleknél (pl. időleges
@@ -34,19 +34,19 @@ interface SettingsTabsProps {
    * funkció létezik), de zárolt állapotot mutat a tényleges csapattag-lista/
    * meghívás helyett, egy "Csomagváltás" CTA-val a Beállítások > Előfizetés fülre. */
   teamManagementEnabled: boolean;
-  /** Melyik fül legyen kezdetben aktív -- `app/settings/billing/page.tsx` (a Stripe
+  /** Melyik fül legyen kezdetben aktív, `app/settings/billing/page.tsx` (a Stripe
    * Checkout `success_url`/`cancel_url` célja) ezt `'billing'`-re állítja, hogy a
    * fizetésből visszatérő Menedzser rögtön az Előfizetés fület lássa, ne a
    * Cégbeállításokat. Alapértelmezetten `'company'` (lásd `app/settings/page.tsx`). */
   initialTab?: SettingsTabKey;
   /** Az "Előfizetés" fül Stripe Price ID-jai + a Checkout után visszairányított
-   * success/canceled banner -- lásd `components/settings/BillingTab.tsx` JSDoc-ját.
+   * success/canceled banner, lásd `components/settings/BillingTab.tsx` JSDoc-ját.
    * `growthPriceId` + a 3 AI-kredit-csomag ár (2026-08-06, "Árazási struktúra bővítés"
-   * lépés) -- a `business` tier szándékosan nem kap price ID-t (egyedi ajánlat). */
+   * lépés), a `business` tier szándékosan nem kap price ID-t (egyedi ajánlat). */
   starterPriceId: string | null;
   growthPriceId: string | null;
   proPriceId: string | null;
-  /** Éves Price ID-k -- lásd `components/settings/BillingTab.tsx` JSDoc-ját (2026-08-07,
+  /** Éves Price ID-k, lásd `components/settings/BillingTab.tsx` JSDoc-ját (2026-08-07,
    * "Havi/éves kapcsoló" lépés). */
   starterYearlyPriceId: string | null;
   growthYearlyPriceId: string | null;
@@ -56,12 +56,12 @@ interface SettingsTabsProps {
   aiTopup15PriceId: string | null;
   aiTopup40PriceId: string | null;
   billingBanner: 'success' | 'canceled' | null;
-  /** `?session_id=` a Stripe Checkout `success_url`-jéből -- lásd `BillingTab.tsx`
+  /** `?session_id=` a Stripe Checkout `success_url`-jéből, lásd `BillingTab.tsx`
    * JSDoc-ját ("Nincs számla-email" lépés, 2026-08-09). `null`, ha nincs (pl. `canceled`
    * banner esetén, vagy ha a fül nem a Checkout-visszairányításból nyílt meg). */
   sessionId: string | null;
   /** A meglévő "Cégbeállítások" kártyák (`SettingsForm`/`DefaultPreferencesCard`/
-   * `PasskeyCard`) -- a szülő (`app/settings/page.tsx`) adja át, hogy a Server Component
+   * `PasskeyCard`), a szülő (`app/settings/page.tsx`) adja át, hogy a Server Component
    * ott maradjon felelős a kezdeti adatok betöltéséért, ez a komponens csak a fül-váltás
    * kliens-oldali állapotát kezeli. */
   children: ReactNode;
@@ -69,10 +69,10 @@ interface SettingsTabsProps {
 
 /**
  * "Csapatkezelés" fül a Beállítások oldalon (PROJEKT_INSTRUKCIOK.md "Csapatkezelő
- * Felület a Menedzsernek" lépés) -- KIZÁRÓLAG `role === 'manager'`-nek látható, az
+ * Felület a Menedzsernek" lépés), KIZÁRÓLAG `role === 'manager'`-nek látható, az
  * Átvizsgáló a fül-sáv NÉLKÜL, közvetlenül a meglévő "Cégbeállítások" kártyákat látja
  * (a projektben eddig sem volt fül-mechanizmus, lásd `app/settings/page.tsx` korábbi
- * egyszerű, egymás alatti kártya-elrendezését -- Átvizsgálónak ez VÁLTOZATLAN marad).
+ * egyszerű, egymás alatti kártya-elrendezését, Átvizsgálónak ez VÁLTOZATLAN marad).
  *
  * Stripe design system (stripe.md): `rounded-full` pill tab-gombok, aktív fül
  * `bg-stripe-primary` kitöltéssel, inaktív fül halvány, hairline szegéllyel.
@@ -169,7 +169,7 @@ export function SettingsTabs({
   );
 }
 
-/** Zárolt állapot, ha a szervezet (még) NEM jogosult csapatkezelésre -- 2026-08-07,
+/** Zárolt állapot, ha a szervezet (még) NEM jogosult csapatkezelésre, 2026-08-07,
  * "Csapatkezelés tier-feloldás" lépés óta ez elsősorban a csomag-szinttől függ (Műhely /
  * Kereskedői tier-től felfelé automatikusan jár, lásd
  * `supabase/migrations/20260807_team_management_tier_unlock.sql`), a Platform Admin
@@ -185,7 +185,7 @@ function TeamManagementLocked() {
       </div>
       <p className="font-sohne text-[15px] font-medium text-stripe-ink">A Csapatkezelés még nincs engedélyezve</p>
       <p className="max-w-sm font-sohne text-[13px] font-light text-stripe-ink-mute">
-        Ez a funkció a Műhely / Kereskedői csomagtól felfelé jár -- válts csomagot, hogy
+        Ez a funkció a Műhely / Kereskedői csomagtól felfelé jár, válts csomagot, hogy
         Átvizsgáló csapattagokat is meghívhass a fiókodhoz.
       </p>
       <Link

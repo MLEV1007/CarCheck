@@ -19,14 +19,14 @@ interface SettingsFormProps {
   /** Igaz Átvizsgálóknál (2026-08-14, "Öröklött cégadatok" lépés, a felhasználó explicit
    * kérésére): a fenti `initial*` értékek ilyenkor NEM a saját, hanem a szervezet
    * Menedzserének `profiles` sorából származnak (lásd `get_organization_branding()` RPC
-   * / `SettingsPageContent.tsx`) -- az Átvizsgáló ezeket LÁTJA, de nem szerkesztheti:
+   * / `SettingsPageContent.tsx`), az Átvizsgáló ezeket LÁTJA, de nem szerkesztheti:
    * minden mező `disabled`, a "Módosítások mentése" gomb nem jelenik meg, és minden
    * mező címkéje mellett egy piros, áthúzott körös "tiltás" ikon (`Ban`, lucide-react)
    * jelzi, hogy ez a mező innen nem módosítható. */
   readOnly?: boolean;
 }
 
-/** Zárolt mező címkéje -- a szöveg mellé piros "tiltás" ikont (lucide `Ban`, áthúzott
+/** Zárolt mező címkéje, a szöveg mellé piros "tiltás" ikont (lucide `Ban`, áthúzott
  * kör) fűz, hogy egyértelmű legyen: a mező innen nem szerkeszthető (2026-08-14,
  * "Öröklött cégadatok" lépés). Csak `readOnly` módban használt, lásd a lenti mezőket. */
 function LockedFieldLabel({ children }: { children: ReactNode }) {
@@ -43,7 +43,7 @@ function LockedFieldLabel({ children }: { children: ReactNode }) {
  * a bejelentkezett user `profiles` sorát frissíti `auth.uid()` alapján. Minden mező
  * kliens-oldali state-ben él, a tényleges Supabase írás csak a "Módosítások mentése"
  * gombra történik (a logó KIVÉTEL: az azonnal, fájlválasztáskor feltöltődik a Storage-ba,
- * lásd LogoUploader.tsx -- csak a `profiles.logo_url` mezőbe kerülés vár a mentésre).
+ * lásd LogoUploader.tsx, csak a `profiles.logo_url` mezőbe kerülés vár a mentésre).
  *
  * Stripe design system (stripe.md): fehér `card-feature-light` kártya, `rounded-full`
  * pill primary gomb, hairline elválasztók a szekciók között.
@@ -70,7 +70,7 @@ export function SettingsForm({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    // Védekező -- `readOnly` módban a "Módosítások mentése" gomb amúgy sem jelenik
+    // Védekező, `readOnly` módban a "Módosítások mentése" gomb amúgy sem jelenik
     // meg, ez csak biztosíték arra az esetre, ha a form mégis submit-olódna (pl.
     // Enter billentyűvel egy input mezőben).
     if (readOnly) return;
@@ -81,12 +81,12 @@ export function SettingsForm({
 
     const supabase = createClient();
     // FONTOS (2026-08-07-es hibajavítás): SZÁNDÉKOSAN `.update().eq('id', userId)`, NEM
-    // `.upsert({ id: userId, ... })` -- a `profiles` sor mindig LÉTEZIK egy bejelentkezett
+    // `.upsert({ id: userId, ... })`, a `profiles` sor mindig LÉTEZIK egy bejelentkezett
     // userhez (regisztrációkor jön létre), tehát itt sosem szükséges INSERT ág. Az
     // `.upsert()` viszont PostgREST alatt `INSERT ... ON CONFLICT (id) DO UPDATE`-et
     // generál, ami a JELEN payloadban NEM szereplő, de NOT NULL (és default NÉLKÜLI)
     // oszlopokra (pl. `organization_id`) MÉG EGY MEGLÉVŐ sor UPDATE-jénél IS lefuttatja a
-    // NOT NULL ellenőrzést a beszúrandó tuple megkonstruálásakor -- ez a valódi ok
+    // NOT NULL ellenőrzést a beszúrandó tuple megkonstruálásakor, ez a valódi ok
     // ("null value in column \"organization_id\" ... violates not-null constraint"), amiért
     // ez a mentés korábban MINDIG hibával elszállt, "A mentés sikertelen volt" üzenettel.
     // Egy sima `.update()` csak a megadott oszlopokat módosítja a MEGLÉVŐ soron, nem épít
@@ -139,7 +139,7 @@ export function SettingsForm({
         {readOnly && (
           <p className="flex items-start gap-2.5 rounded-stripe-sm border border-stripe-hairline bg-stripe-canvas-soft px-3 py-2.5 font-sohne text-[13px] text-stripe-ink-secondary">
             <Ban className="mt-0.5 h-4 w-4 shrink-0 text-stripe-ruby" aria-hidden />
-            Ezeket a cégadatokat a szervezeted Menedzsere állította be -- Átvizsgálóként
+            Ezeket a cégadatokat a szervezeted Menedzsere állította be, Átvizsgálóként
             itt megtekintheted, de nem módosíthatod őket.
           </p>
         )}

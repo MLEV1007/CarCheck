@@ -59,11 +59,11 @@ import {
   type WizardStep,
 } from '@/lib/inspections/types';
 
-/** A "Tovább" gomb-feliratokhoz szükséges rövid lépés-címkék EGYETLEN forrása -- lásd
+/** A "Tovább" gomb-feliratokhoz szükséges rövid lépés-címkék EGYETLEN forrása, lásd
  * `WIZARD_STEP_META` a `constants.ts`-ben a teljes indoklásért ("Dinamikus Tovább gomb
  * felirat" lépés). A hosszú címke (`longLabel`) mostantól közvetlenül a
  * `StepIndicator.tsx`-ben él, mert az a progress bar felirat EGYETLEN felhasználója
- * (lásd a "Stepper teljes újratervezése" lépést) -- itt már nincs rá szükség. */
+ * (lásd a "Stepper teljes újratervezése" lépést), itt már nincs rá szükség. */
 const NEXT_STEP_SHORT_LABEL: Record<WizardStep, string> = Object.fromEntries(
   WIZARD_STEP_META.map(({ step, shortLabel }) => [step, shortLabel])
 ) as Record<WizardStep, string>;
@@ -73,14 +73,14 @@ function defaultEquipment(): FeatureFormState[] {
 }
 
 interface InspectionWizardProps {
-  /** Meglévő piszkozat folytatásakor a `/inspections/[id]` route adja át -- ha nincs megadva, új UUID generálódik (új vizsgálat). */
+  /** Meglévő piszkozat folytatásakor a `/inspections/[id]` route adja át, ha nincs megadva, új UUID generálódik (új vizsgálat). */
   inspectionId?: string;
   initialCarInfo?: CarInfoState;
   /** ÚJ vizsgálatnál (`/inspections/new`) a bejelentkezett user `user_metadata.
-   * default_license_country` értéke (Settings oldalon testre szabható) -- ez tölti elő a
+   * default_license_country` értéke (Settings oldalon testre szabható), ez tölti elő a
    * Rendszám felségjelzés dropdown kezdeti értékét, ha `initialCarInfo` NINCS megadva.
    * Piszkozat szerkesztésekor irreleváns, mert az `initialCarInfo.licensePlateCountry` már
-   * az ADOTT vizsgálathoz korábban mentett kódot tartalmazza -- lásd
+   * az ADOTT vizsgálathoz korábban mentett kódot tartalmazza, lásd
    * `app/inspections/new/page.tsx` / `app/inspections/[id]/page.tsx`. */
   defaultLicensePlateCountry?: string;
   initialGeneralPhotos?: GeneralPhotoState[];
@@ -93,21 +93,21 @@ interface InspectionWizardProps {
   initialDamages?: DamagePointState[];
   initialDefects?: DefectState[];
   initialFinalAssessment?: FinalAssessmentState;
-  /** Átvizsgáló és Ügyfél adatok + PDF megjelenítési kapcsolók (2026-08-06) --
+  /** Átvizsgáló és Ügyfél adatok + PDF megjelenítési kapcsolók (2026-08-06),
    * piszkozat szerkesztésekor a korábban mentett `client_name`/`client_phone`/
    * `client_email`/`show_inspector_on_pdf`/`show_client_on_pdf` mezőkből épül fel
    * (lásd `app/inspections/[id]/page.tsx` `toInitialClientInfo`), ÚJ vizsgálatnál
-   * nincs megadva -- ilyenkor `EMPTY_CLIENT_INFO` (a DB oszlopok default értékeivel
+   * nincs megadva, ilyenkor `EMPTY_CLIENT_INFO` (a DB oszlopok default értékeivel
    * megegyező alapállapot) a kezdeti érték. */
   initialClientInfo?: ClientInfoState;
   /** Riport küszöbértékek (2026-08-07, "Testreszabható festékvastagság/gumiabroncs
-   * küszöbértékek" lépés) -- a bejelentkezett vizsgáló `profiles` sorából töltve
+   * küszöbértékek" lépés), a bejelentkezett vizsgáló `profiles` sorából töltve
    * (`app/inspections/new/page.tsx`/`app/inspections/[id]/page.tsx`), a Festékvastagság-
    * mérés/Gumiabroncsok/Összegzés lépéseknek adja tovább. Ha nincs megadva,
    * `DEFAULT_REPORT_THRESHOLDS` a fallback (1:1 a korábbi hardkódolt viselkedéssel). */
   reportThresholds?: ReportThresholds;
   /** Tutorial "Tipp" buborékok be/kikapcsolása (2026-08-10, Settings "Tutorial tippek
-   * megjelenítése" kapcsoló) -- lásd `OnboardingHintProvider.tsx` `enabled` propját.
+   * megjelenítése" kapcsoló), lásd `OnboardingHintProvider.tsx` `enabled` propját.
    * Alapértéke `true` (a kapcsoló bevezetése előtti, mindenkinek látszó viselkedés). Az
    * `app/inspections/new/page.tsx`/`app/inspections/[id]/page.tsx` a bejelentkezett user
    * `user_metadata.tutorial_hints_enabled` értékéből tölti elő. */
@@ -117,16 +117,16 @@ interface InspectionWizardProps {
 /**
  * Több lépésből álló wizard az új vizsgálat rögzítéséhez ÉS egy meglévő piszkozat
  * folytatásához/szerkesztéséhez (PROJEKT_INSTRUKCIOK.md 5.B: Szakértői Dashboard &
- * Űrlap -- Linear Dark Design Style; a folytatás/szerkesztés a `/inspections/[id]`
+ * Űrlap, Linear Dark Design Style; a folytatás/szerkesztés a `/inspections/[id]`
  * route-on keresztül éri el ezt a komponenst).
  *
  * Ha az `inspectionId` prop nincs megadva (új vizsgálat, `/inspections/new`), kliens-oldalon
  * generálunk egy UUID-t (crypto.randomUUID()) már a wizard megnyitásakor, hogy a 3. lépés
  * média-feltöltései és a végleges mentés (5. lépés) ugyanarra a sorra hivatkozzanak. Ha meg
- * van adva (piszkozat folytatása), azt a sort frissítjük tovább -- a `handleSubmit` mindkét
+ * van adva (piszkozat folytatása), azt a sort frissítjük tovább, a `handleSubmit` mindkét
  * esetben ugyanazt az utat futja be: az `inspections` sor UPSERT-je (id-ütközésnél UPDATE),
  * a `paint_measurements`/`defects` gyerek-sorok pedig előbb törlődnek `inspection_id` alapján,
- * majd újra beszúródnak a jelenlegi state-ből -- ez új vizsgálatnál no-op törlés (nincs mit
+ * majd újra beszúródnak a jelenlegi state-ből, ez új vizsgálatnál no-op törlés (nincs mit
  * törölni), szerkesztésnél pedig biztonságosan felülírja a korábbi mérés-/hiba-listát
  * duplikáció nélkül.
  */
@@ -150,13 +150,13 @@ export function InspectionWizard({
 }: InspectionWizardProps = {}) {
   const router = useRouter();
 
-  // KLIENS-OLDALI PISZKOZAT-VISSZAÁLLÍTÁS (2026-08-09-i éles hibajegy -- lásd
+  // KLIENS-OLDALI PISZKOZAT-VISSZAÁLLÍTÁS (2026-08-09-i éles hibajegy, lásd
   // `lib/inspections/draftPersistence.ts` modul-JSDoc-ját a teljes indoklásért): EGYSZER,
   // a komponens legelső renderelése ELŐTT (lazy `useState` inicializátor) megpróbáljuk
   // visszaolvasni a `localStorage`-ban esetlegesen élő, korábbi (el nem mentett, pl. egy
   // váratlan oldal-frissítés által megszakított) munkamenet piszkozatát. Ha van ilyen, ez
   // MINDEN egyes alábbi state-nél MEGELŐZI a szerverről kapott `initial*` propokat/üres
-  // alapértékeket -- indoklás: ha létezik helyi piszkozat, az DEFINÍCIÓ SZERINT legalább
+  // alapértékeket, indoklás: ha létezik helyi piszkozat, az DEFINÍCIÓ SZERINT legalább
   // annyira friss, mint a szerver állapota (minden változásnál automatikusan mentődik,
   // lásd a `useEffect`-eket lent), tehát biztonságos elsőbbséget adni neki.
   const [restoredDraft] = useState(() => loadWizardDraft(initialInspectionId));
@@ -197,22 +197,22 @@ export function InspectionWizard({
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  // `restoredDraft?.inspectionId` -- ÚJ vizsgálatnál (nincs `initialInspectionId`) a
+  // `restoredDraft?.inspectionId`, ÚJ vizsgálatnál (nincs `initialInspectionId`) a
   // piszkozat-visszaolvasás a KORÁBBAN (az előző, megszakított munkamenetben) generált
   // azonosítót adja vissza, hogy a Storage feltöltési útvonalak (`{userId}/{inspectionId}/...`)
-  // egy oldal-frissítés UTÁN is konzisztensek maradjanak -- lásd `draftPersistence.ts`
+  // egy oldal-frissítés UTÁN is konzisztensek maradjanak, lásd `draftPersistence.ts`
   // `NEW_INSPECTION_SLOT` JSDoc-ját.
   const [inspectionId] = useState<string>(() => initialInspectionId ?? restoredDraft?.inspectionId ?? crypto.randomUUID());
   // Ha `initialInspectionId`-t kaptunk propként, ez egy MEGLÉVŐ piszkozat szerkesztése
-  // (`/inspections/[id]`) -- ez a különbségtétel a hibakezelésnél kritikus, lásd lent.
+  // (`/inspections/[id]`), ez a különbségtétel a hibakezelésnél kritikus, lásd lent.
   const isEditMode = Boolean(initialInspectionId);
 
   // Videó-csatolási jogosultság (2026-08-21, "Videó-tömörítés + QR-kódos telefonos
-  // feltöltés" lépés) -- EGYETLEN alkalommal, a wizard megnyitásakor lekérdezve
+  // feltöltés" lépés), EGYETLEN alkalommal, a wizard megnyitásakor lekérdezve
   // (`/api/quotas/summary`, ugyanaz a végpont, mint az `InsufficientCreditsModal`/
   // `VideoUpsellModal` szerepkör-lekérdezése), majd propként adva a `StepGeneralPhotos`-nak
-  // ÉS a `StepDefects`-nek -- lásd azok `videoAllowed` propjának JSDoc-ját. Alapértéke
-  // `false` ("fail-closed" -- amíg a lekérdezés fut vagy hibázik, a videó-opció NEM
+  // ÉS a `StepDefects`-nek, lásd azok `videoAllowed` propjának JSDoc-ját. Alapértéke
+  // `false` ("fail-closed", amíg a lekérdezés fut vagy hibázik, a videó-opció NEM
   // jelenik meg; a TÉNYLEGES kikényszerítés úgyis a szerveren történik a feltöltési token
   // kiadásakor, ez itt csak UX-gyorsítás).
   const [videoAllowed, setVideoAllowed] = useState(false);
@@ -227,7 +227,7 @@ export function InspectionWizard({
           setVideoAllowed(json.quota.planTier === 'pro' || json.quota.planTier === 'business');
         }
       } catch {
-        // Csendben megtartjuk a "fail-closed" `false` alapértéket -- lásd a fenti JSDoc-ot.
+        // Csendben megtartjuk a "fail-closed" `false` alapértéket, lásd a fenti JSDoc-ot.
       }
     })();
     return () => {
@@ -235,9 +235,9 @@ export function InspectionWizard({
     };
   }, []);
 
-  // AUTOMATIKUS PISZKOZAT-MENTÉS -- lásd `draftPersistence.ts` modul-JSDoc-ját. A
+  // AUTOMATIKUS PISZKOZAT-MENTÉS, lásd `draftPersistence.ts` modul-JSDoc-ját. A
   // `latestSnapshotArgsRef`-et MINDEN renderelésnél frissítjük (ez egy jól bevált, olcsó
-  // "legfrissebb érték" minta, NEM okoz extra renderelést) -- így a lent regisztrált
+  // "legfrissebb érték" minta, NEM okoz extra renderelést), így a lent regisztrált
   // `beforeunload`/`pagehide` event listener MINDIG a ténylegesen legutolsó state-et látja,
   // még akkor is, ha az adott pillanatban éppen fut egy debounce-olt mentés időzítője.
   const latestSnapshotArgsRef = useRef({
@@ -273,15 +273,15 @@ export function InspectionWizard({
     clientInfo,
   };
 
-  // A) Debounce-olt mentés MINDEN érdemi state-változásnál -- 600ms-es késleltetéssel, hogy
+  // A) Debounce-olt mentés MINDEN érdemi state-változásnál, 600ms-es késleltetéssel, hogy
   // pl. gyors gépelés közben ne írjunk `localStorage`-t minden egyes billentyűleütésnél.
   useEffect(() => {
     const timer = setTimeout(() => {
       saveWizardDraft(initialInspectionId, buildDraftSnapshot(latestSnapshotArgsRef.current));
     }, 600);
     return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- a `latestSnapshotArgsRef`-et
-    // szándékosan NEM vesszük fel függőségnek (mindig friss, lásd fent) -- az alábbi lista
+    // eslint-disable-next-line react-hooks/exhaustive-deps, a `latestSnapshotArgsRef`-et
+    // szándékosan NEM vesszük fel függőségnek (mindig friss, lásd fent), az alábbi lista
     // a TÉNYLEGES state-mezőket sorolja fel, hogy minden érdemi változás újraindítsa az
     // időzítőt.
   }, [
@@ -301,10 +301,10 @@ export function InspectionWizard({
     clientInfo,
   ]);
 
-  // B) AZONNALI (nem debounce-olt) mentés lapbezáráskor/frissítéskor -- a fenti debounce-olt
+  // B) AZONNALI (nem debounce-olt) mentés lapbezáráskor/frissítéskor, a fenti debounce-olt
   // mentés a "normál" esetet fedi le, de egy oldal-frissítés a 600ms-es időzítő lejárta ELŐTT
   // is bekövetkezhet (pl. az AI Felszereltség-diktálás hibaüzenete UTÁNI azonnali F5, ami
-  // pontosan az eredeti hibajegy forgatókönyve) -- a `pagehide`/`beforeunload` esemény
+  // pontosan az eredeti hibajegy forgatókönyve), a `pagehide`/`beforeunload` esemény
   // MINDIG szinkron lefut a tényleges kilépés/frissítés ELŐTT, így ez egy megbízható
   // "utolsó esély" a legfrissebb állapot mentésére.
   useEffect(() => {
@@ -340,7 +340,7 @@ export function InspectionWizard({
       // Szervezeti RBAC (PROJEKT_INSTRUKCIOK.md "Szervezeti szerepkezelés" lépés): minden
       // vizsgálat az `organization_id`-jához kötve él (multi-tenant riport-láthatóság,
       // lásd `supabase/migrations/20260803_organizations_rbac.sql` `inspections_select_org`
-      // RLS policy-ját) -- ezt a user `profiles` sorából olvassuk ki, a `created_by` pedig
+      // RLS policy-ját), ezt a user `profiles` sorából olvassuk ki, a `created_by` pedig
       // mindig a TÉNYLEGESEN mentő user (a `user_id` oszloppal jelenleg megegyezik, de a
       // jövőbeli csapaton-belüli szerkesztéshez a kettő szándékosan külön mező).
       const { data: profileRow, error: profileError } = await supabase
@@ -355,21 +355,21 @@ export function InspectionWizard({
 
       const organizationId = profileRow.organization_id;
 
-      // `userId`-t KÜLÖN, nem-nullázható const-ba emeljük ki -- a TypeScript a lenti,
+      // `userId`-t KÜLÖN, nem-nullázható const-ba emeljük ki, a TypeScript a lenti,
       // beágyazott (nested) `function` deklarációkban (a `Promise.all`-lal párhuzamosított
       // feltöltő/mentő függvényekben) NEM tartja meg a fenti `if (!user) throw ...`
       // null-ellenőrzésből fakadó szűkítést `user`-re (ismert TS-korlát, a beágyazott
       // function deklarációk hoisting miatt nem kapnak control-flow szűkítést a záró
-      // scope-ból) -- emiatt korábban `userId` mindenhol "possibly null" hibát adott
+      // scope-ból), emiatt korábban `userId` mindenhol "possibly null" hibát adott
       // ezekben a függvényekben. `userId` viszont már egyszerű `string`, nincs mit szűkíteni.
       const userId = user.id;
 
       // Videó ÉS 6 MB feletti fájlok szerver-oldali, jelölt (signed) URL + TUS resumable
       // úton mennek fel (`lib/inspections/mediaUpload.ts` `uploadInspectionMediaViaServer`,
       // ami a `/api/inspections/media-upload-url` végponton keresztül a videó-csomag-
-      // jogosultságot is ellenőrzi -- lásd PLAN_video_qr_upload.md 4. és 6. szakaszát). Ez a
+      // jogosultságot is ellenőrzi, lásd PLAN_video_qr_upload.md 4. és 6. szakaszát). Ez a
       // "smart" döntés KIZÁRÓLAG az `general`/`defect` kategóriáknál (ahol videó egyáltalán
-      // előfordulhat, lásd `StepGeneralPhotos.tsx`/`StepDefects.tsx`) került bevezetésre --
+      // előfordulhat, lásd `StepGeneralPhotos.tsx`/`StepDefects.tsx`) került bevezetésre,
       // a szervizmúlt/felszereltség/sérülés fotóinál (mindig kép, gyakorlatban sosem éri el
       // a 6 MB-ot) a meglévő, jól bevált sima `.upload()` út VÁLTOZATLAN maradt, hogy a
       // módosítás blast radiusa a ténylegesen érintett (videó-képes) útvonalakra korlátozódjon.
@@ -384,12 +384,12 @@ export function InspectionWizard({
           });
 
           // 60 napos automatikus videó-megőrzési politika (2026-08-21-i felhasználói kérés,
-          // lásd `supabase/migrations/20260821_video_retention_cleanup.sql`) -- KIZÁRÓLAG
+          // lásd `supabase/migrations/20260821_video_retention_cleanup.sql`), KIZÁRÓLAG
           // tényleges videónál rögzítünk `video_assets` sort (a nagy, de kép típusú fájlok
           // is ide, a szerver+TUS útra kerülnek a fenti feltétel miatt, DE azokra a
           // megőrzési politika NEM vonatkozik, lásd a felhasználó "A képek minden más
           // megmarad" kikötését). Szándékosan BEST-EFFORT: egy sikertelen nyilvántartás-
-          // beszúrás SOSE hiúsíthatja meg a tényleges (már megtörtént) feltöltést/mentést --
+          // beszúrás SOSE hiúsíthatja meg a tényleges (már megtörtént) feltöltést/mentést,
           // legrosszabb esetben az adott videó nem kerül automatikusan törlésre 60 nap
           // után, ami messze kevésbé súlyos, mint egy elveszett vizsgálat-mentés.
           if (file.type.startsWith('video/')) {
@@ -419,23 +419,23 @@ export function InspectionWizard({
       // TELJESÍTMÉNY-OPTIMALIZÁCIÓ (2026-08-07, "Teljesítmény-audit és refaktorálás" lépés):
       // az alábbi 6 Storage-feltöltési/adatelőkészítési blokk (általános fotók, szervizmúlt
       // fotók, CarVertical PDF, felszereltség hibafotók, sérülés-fotók, hiba-média) EGYMÁSTÓL
-      // TELJESEN FÜGGETLEN -- egyik sem használja fel a másik eredményét, mindegyik csak
+      // TELJESEN FÜGGETLEN, egyik sem használja fel a másik eredményét, mindegyik csak
       // `userId`/`inspectionId`-t (és a saját state-szeletét) igényli, amik már ismertek.
       // A KORÁBBI verzióban ez a 6 blokk EGYMÁS UTÁN, szekvenciálisan futott (mindegyik saját
       // `await Promise.all(...)`-lal), ezért a teljes várakozási idő az ÖSSZES csoport
       // időtartamának ÖSSZEGE volt. Az alábbi, egyetlen közös `Promise.all`-lal a várakozási
-      // idő a LEGLASSABB csoport időtartamára csökken -- több fotóval/médiával rendelkező
+      // idő a LEGLASSABB csoport időtartamára csökken, több fotóval/médiával rendelkező
       // vizsgálatnál ez érdemben (akár több másodperccel) gyorsítja a "Piszkozat mentése"/
       // "Publikálás" gombra kattintás utáni várakozást. Az egyes blokkok belső logikája
       // (blob vs. már feltöltött Storage URL megkülönböztetés stb.) VÁLTOZATLAN, csak a
       // futtatás módja lett párhuzamos.
       async function uploadGeneralPhotos() {
         // Általános autó fotók feltöltése (PROJEKT_INSTRUKCIOK.md, "Általános autó fotók
-        // modul" lépés) -- a most kiválasztott (`file` !== null) képek most töltődnek fel, a
+        // modul" lépés), a most kiválasztott (`file` !== null) képek most töltődnek fel, a
         // piszkozat szerkesztésekor már meglévő, még mindig a listában lévő URL-eket
         // (`previewUrl`, nem `blob:`) nem töltjük fel újra, csak megtartjuk. A
         // `general_photos` egyetlen oszlop az `inspections` sorban, ezért nincs szükség külön
-        // törlés+beszúrás ciklusra, mint a `paint_measurements`/`defects` gyerek-tábláknál --
+        // törlés+beszúrás ciklusra, mint a `paint_measurements`/`defects` gyerek-tábláknál,
         // az UPSERT egyszerűen felülírja a teljes tömböt a jelenlegi state-nek megfelelően.
         return Promise.all(
           generalPhotos.map(async (photo) => {
@@ -448,7 +448,7 @@ export function InspectionWizard({
       }
 
       async function uploadServiceHistoryPhotos() {
-        // Szervizmúlt & Dokumentumok modul -- fotók feltöltése: PONTOSAN ugyanaz a minta,
+        // Szervizmúlt & Dokumentumok modul, fotók feltöltése: PONTOSAN ugyanaz a minta,
         // mint az általános autó fotóknál (külön Storage almappa, `service/`, hogy ne
         // keveredjen a `general/` képekkel), csak most a `service_history.photos` state-ből.
         return Promise.all(
@@ -468,7 +468,7 @@ export function InspectionWizard({
       }
 
       async function uploadCarVerticalPdf(): Promise<string | null> {
-        // CarVertical (vagy hasonló autó-előéleti szolgáltatás) PDF riport -- EGYETLEN fájl,
+        // CarVertical (vagy hasonló autó-előéleti szolgáltatás) PDF riport, EGYETLEN fájl,
         // ezért nincs Promise.all/tömb, mint a fotóknál. Ugyanaz a "blob vs. már feltöltött
         // Storage URL" logika: ha `file` van, most töltjük fel; ha nincs, de `url` már megvan
         // (piszkozat szerkesztése), azt tartjuk meg; ha egyik sincs, `null` kerül a payloadba.
@@ -484,14 +484,14 @@ export function InspectionWizard({
       }
 
       async function uploadEquipmentPhotos() {
-        // Felszereltség -- UX teljes újratervezés (2026-08-02): a teljes katalógust mentjük
+        // Felszereltség, UX teljes újratervezés (2026-08-02): a teljes katalógust mentjük
         // (a `not_present` állapotú elemeket is), hogy a publikus riport mátrixa mindig
         // ugyanazt a fix listát tudja megjeleníteni. A hibafotó feltöltése PONTOSAN ugyanazt
-        // a "blob vs. már feltöltött Storage URL" mintát követi, mint a hiba-/sérülés-média
-        // -- csak a most kiválasztott (`file !== null`) fotók töltődnek fel most, piszkozat
+        // a "blob vs. már feltöltött Storage URL" mintát követi, mint a hiba-/sérülés-média,
+        // csak a most kiválasztott (`file !== null`) fotók töltődnek fel most, piszkozat
         // szerkesztésekor a már meglévő URL-eket (`previewUrl`, NEM `blob:`) csak megtartjuk.
         // `notes`/`photo_url` KIZÁRÓLAG `status === 'defective'` esetén kerül be a mentett
-        // objektumba -- ha a user egy korábban hibásra jelölt, majd visszaállított
+        // objektumba, ha a user egy korábban hibásra jelölt, majd visszaállított
         // (működő/nincs benne) elemhez írt megjegyzést/fotót, az a mentéskor eldobódik,
         // mert a `FeatureState` DB-alak szerint ezek csak defektnél értelmezettek.
         return Promise.all(
@@ -522,13 +522,13 @@ export function InspectionWizard({
       }
 
       async function uploadDamagePhotos() {
-        // Sérülés- és Hibatérkép modul -- fotó feltöltés pontonként: PONTOSAN ugyanaz a
-        // "blob vs. már feltöltött Storage URL" minta, mint a hiba-médiánál lentebb -- csak a
+        // Sérülés- és Hibatérkép modul, fotó feltöltés pontonként: PONTOSAN ugyanaz a
+        // "blob vs. már feltöltött Storage URL" minta, mint a hiba-médiánál lentebb, csak a
         // most kiválasztott (`file !== null`) fotók töltődnek fel most, piszkozat
         // szerkesztésekor a már meglévő Storage URL-eket (`previewUrl`, NEM `blob:`) csak
         // megtartjuk. A `damages` egyetlen JSONB oszlop az `inspections` sorban (nincs
         // gyerek-tábla, ugyanaz az elv, mint a `general_photos`/`diagnostics`/`equipment`/
-        // `tires`-nél), ezért nincs szükség külön törlés+beszúrás ciklusra -- az UPSERT
+        // `tires`-nél), ezért nincs szükség külön törlés+beszúrás ciklusra, az UPSERT
         // egyszerűen felülírja a teljes tömböt a jelenlegi state-nek megfelelően.
         return Promise.all(
           damages.map(async (damage) => {
@@ -548,9 +548,9 @@ export function InspectionWizard({
               id: damage.id,
               x: damage.x,
               y: damage.y,
-              // Melyik autó-nézeten (elöl/bal oldal/hátul/jobb oldal/felül) lett felvéve a pont
-              // -- lásd `lib/inspections/carViews.ts` (2026-08-17). `damages` egy sima JSONB
-              // oszlop, ezért ehhez NEM kellett DB-migráció -- egy RÉGI, e mező bevezetése
+              // Melyik autó-nézeten (elöl/bal oldal/hátul/jobb oldal/felül) lett felvéve a pont,
+              // lásd `lib/inspections/carViews.ts` (2026-08-17). `damages` egy sima JSONB
+              // oszlop, ezért ehhez NEM kellett DB-migráció, egy RÉGI, e mező bevezetése
               // előtt mentett pontnál `damage.view` `undefined`, ilyenkor `null`-t mentünk
               // (a `DamageCanvas.tsx` a `DEFAULT_CAR_VIEW`-ra esik vissza olvasáskor).
               view: damage.view ?? null,
@@ -564,7 +564,7 @@ export function InspectionWizard({
       }
 
       async function uploadDefectMedia() {
-        // Hiba-média feltöltés (StepDefects.tsx) -- korábban ez a blokk az `inspections`
+        // Hiba-média feltöltés (StepDefects.tsx), korábban ez a blokk az `inspections`
         // UPSERT és a gyerek-táblák törlése UTÁN futott le, teljesen szekvenciálisan; most a
         // többi feltöltési blokkal EGYÜTT, párhuzamosan fut, mert a hiba-média Storage-útvonala
         // is csak `userId`/`inspectionId`-t igényel, az `inspections` sor létezését nem.
@@ -577,7 +577,7 @@ export function InspectionWizard({
             } else if (defect.previewUrl && !defect.previewUrl.startsWith('blob:')) {
               // Piszkozat szerkesztésekor a korábban már feltöltött médiát (a `previewUrl`
               // ilyenkor a Storage publikus URL-je, NEM egy kliens-oldali `blob:` object URL)
-              // nem töltjük fel újra -- csak az URL-t hivatkozzuk az újra beszúrt sorban.
+              // nem töltjük fel újra, csak az URL-t hivatkozzuk az újra beszúrt sorban.
               mediaUrl = defect.previewUrl;
             }
             return {
@@ -602,7 +602,7 @@ export function InspectionWizard({
         ]);
 
       // Csak a ténylegesen kitöltött (legalább dátum/km óra állás/típus valamelyike megadott)
-      // idővonal-bejegyzések kerülnek mentésre -- egy üresen otthagyott "+ Új bejegyzés"
+      // idővonal-bejegyzések kerülnek mentésre, egy üresen otthagyott "+ Új bejegyzés"
       // kártya nem hoz létre üres sort a JSONB tömbben.
       const serviceHistoryPayload = {
         status: serviceHistory.status,
@@ -617,7 +617,7 @@ export function InspectionWizard({
           .map((entry) => ({
             id: entry.id,
             date: entry.date,
-            // A megadott ServiceHistory TS típus szerint `mileage: number` (nem opcionális) --
+            // A megadott ServiceHistory TS típus szerint `mileage: number` (nem opcionális),
             // ha a user üresen hagyta, 0-val mentjük, hogy a mező mindig szám maradjon.
             mileage: entry.mileage.trim() === '' ? 0 : Number(entry.mileage),
             type: entry.type,
@@ -637,18 +637,18 @@ export function InspectionWizard({
               .map((entry) => ({ code: entry.code, description: entry.description })),
           };
 
-      // Gumiabroncsok (C pont): mind a 4 pozíciót mentjük, üres/hiányos mezőknél `null`-lal --
+      // Gumiabroncsok (C pont): mind a 4 pozíciót mentjük, üres/hiányos mezőknél `null`-lal,
       // a `mm` numerikus, a `dot` KIZÁRÓLAG akkor kerül be, ha a 4 számjegyű kód formailag ÉS
-      // tartalmilag is érvényes (`isValidDot` -- hét 01-53, év a jelenlegi évig) -- lásd
+      // tartalmilag is érvényes (`isValidDot`, hét 01-53, év a jelenlegi évig), lásd
       // "DOT szám szigorú validációja" lépés: a `StepTires.tsx` már blokkolja a "Tovább"
       // gombot érvénytelen DOT-nál, ez itt egy második, szerver felé induló védelmi vonal,
       // hogy szerkesztés közbeni bármilyen state-anomália se juttathasson érvénytelen DOT-ot
       // a DB-be.
-      // Felni típusa & Gumiabroncs márkája (Gumiabroncs & Felni modul bővítése, A pont) --
+      // Felni típusa & Gumiabroncs márkája (Gumiabroncs & Felni modul bővítése, A pont),
       // ÁLTALÁNOS mezők, a `fl`/`fr`/`rl`/`rr` kulcsok TESTVÉREKÉNT kerülnek be ugyanabba
       // a `tires` JSONB oszlopba (nincs szükség séma-migrációra, a JSONB rugalmas). A
       // `brand` mindig a VÉGLEGES, megjelenítendő márkanevet tárolja (preset VAGY a
-      // szabad szöveges "Egyéb" érték) -- betöltéskor (app/inspections/[id]/page.tsx
+      // szabad szöveges "Egyéb" érték), betöltéskor (app/inspections/[id]/page.tsx
       // `toInitialTireGeneralInfo`) ismét szétválik `brand`/`customBrand`-re.
       const resolvedTireBrand =
         tireGeneralInfo.brand === TIRE_BRAND_OTHER
@@ -664,13 +664,13 @@ export function InspectionWizard({
         rr: { mm: tires.rr.mm.trim() === '' ? null : Number(tires.rr.mm), dot: isValidDot(tires.rr.dot) ? tires.rr.dot : null },
       };
 
-      // Végső Szakvélemény & Várható Költségek modul -- TELJESEN OPCIONÁLIS, minden mező
+      // Végső Szakvélemény & Várható Költségek modul, TELJESEN OPCIONÁLIS, minden mező
       // `null`/üres marad, ha a vizsgáló nem töltötte ki. A két költség-mező üres stringnél
       // `null`-lá alakul (NEM 0-vá, mert a 0 Ft egy valós, félrevezető érték lenne egy
-      // "nincs megadva" állapotra) -- ellentétben pl. a Szervizmúlt idővonal `mileage`
+      // "nincs megadva" állapotra), ellentétben pl. a Szervizmúlt idővonal `mileage`
       // mezőjével, aminél a megadott TS típus `number` (nem opcionális). Nincs szükség
       // külön törlés+beszúrás ciklusra, mint a `paint_measurements`/`defects` gyerek-
-      // tábláknál -- ez is egyetlen JSONB oszlop, az UPSERT egyszerűen felülírja.
+      // tábláknál, ez is egyetlen JSONB oszlop, az UPSERT egyszerűen felülírja.
       const finalAssessmentPayload = {
         recommendation: finalAssessment.recommendation,
         estimated_cost_min: finalAssessment.estimatedCostMin.trim() === '' ? null : Number(finalAssessment.estimatedCostMin),
@@ -686,11 +686,11 @@ export function InspectionWizard({
           user_id: userId,
           organization_id: organizationId,
           created_by: userId,
-          // Átvizsgáló és Ügyfél adatok (2026-08-06) -- az `inspector_id` MINDIG a
+          // Átvizsgáló és Ügyfél adatok (2026-08-06), az `inspector_id` MINDIG a
           // mentést ténylegesen végrehajtó bejelentkezett userre áll, automatikusan
           // (nincs hozzá szerkeszthető UI-mező). Az `inspector_name` ezzel szemben
           // OPCIONÁLIS, kézzel szerkeszthető felülírás (lásd `ClientInfoState` JSDoc-ját
-          // a `lib/inspections/types.ts`-ben) -- üresen `null`-lá alakul, ilyenkor a
+          // a `lib/inspections/types.ts`-ben), üresen `null`-lá alakul, ilyenkor a
           // `get_public_report` RPC automatikusan levezetett névre esik vissza. A
           // `client_*` mezők üresen szintén `null`-lá alakulnak (ugyanaz a "üres
           // string -> null" minta, mint pl. a `finalAssessmentPayload`-nál), a 2
@@ -710,12 +710,12 @@ export function InspectionWizard({
           license_plate_country: carInfo.licensePlateCountry || DEFAULT_LICENSE_PLATE_COUNTRY,
           odometer: carInfo.odometer ? Number(carInfo.odometer) : null,
           // Motor típusa/Teljesítmény/Össztömeg (2026-08-09, "Motor/Teljesítmény/Össztömeg
-          // mezők" lépés) -- ugyanaz a "üres string -> null" / "számjegy-string -> Number"
+          // mezők" lépés), ugyanaz a "üres string -> null" / "számjegy-string -> Number"
           // minta, mint a fenti `year`/`odometer` mezőknél.
           engine_type: carInfo.engineType || null,
           power_kw: carInfo.powerKw ? Number(carInfo.powerKw) : null,
           gross_weight_kg: carInfo.grossWeight ? Number(carInfo.grossWeight) : null,
-          // Üzemanyag típusa (2026-08-10) -- lásd `CarInfoState.fuelType` JSDoc-ját.
+          // Üzemanyag típusa (2026-08-10), lásd `CarInfoState.fuelType` JSDoc-ját.
           fuel_type: carInfo.fuelType || null,
           general_photos: generalPhotoUrls,
           service_history: serviceHistoryPayload,
@@ -732,23 +732,23 @@ export function InspectionWizard({
       if (inspectionError) throw inspectionError;
 
       // VIZSGÁLATI KVÓTA LEVONÁS (PROJEKT_INSTRUKCIOK.md "Keret-ellenőrző és fogyasztó
-      // logika" lépés, 2026-08-04) -- KIZÁRÓLAG egy VADONATÚJ vizsgálat ELSŐ sikeres
+      // logika" lépés, 2026-08-04), KIZÁRÓLAG egy VADONATÚJ vizsgálat ELSŐ sikeres
       // mentésekor (`!isEditMode`, lásd a komponens tetején lévő `isEditMode` definíciót),
       // hogy egy piszkozat TÖBBSZÖRI újramentése (Vissza/Tovább közben, majd végül
       // Publikálás) ne fogyasszon el több keretet egyetlen vizsgálatért. A tényleges
       // "van-e egyáltalán keret" ELLENŐRZÉS/BLOKKOLÁS korábban, az `/inspections/new`
       // oldal betöltésekor már megtörtént (lásd `app/inspections/new/page.tsx`
-      // `checkInspectionQuota`-hívását) -- ez itt a MÁR ellenőrzött keret tényleges,
+      // `checkInspectionQuota`-hívását), ez itt a MÁR ellenőrzött keret tényleges,
       // szerver-oldali levonása (`/api/inspections/consume-quota`, mert ez a komponens
       // kliens-oldalon fut, a `lib/quotas.ts` szerver-only). Szándékosan best-effort: ha a
       // levonás hibázna (pl. egy szűk race-condition-ablakban két böngészőfül egyszerre
       // menti az utolsó szabad keretet), a hibát logoljuk, DE a MÁR sikeresen elmentett
-      // vizsgálatot nem dobjuk el emiatt -- ugyanaz az elv, mint a `deductCredits`/
+      // vizsgálatot nem dobjuk el emiatt, ugyanaz az elv, mint a `deductCredits`/
       // `lib/credits.ts` "kredit levonás a sikeres AI-hívás UTÁN, hiba esetén csak logolva"
       // mintájánál.
       // TELJESÍTMÉNY-OPTIMALIZÁCIÓ (2026-08-07): mivel ez a hívás MÁR ELEVE best-effort
       // (a hiba csak logolásra kerül, a MÁR elmentett vizsgálatot nem befolyásolja), NEM
-      // várjuk meg (`await` nélkül, `void`-dal indítva) -- a user AZONNAL a dashboardra
+      // várjuk meg (`await` nélkül, `void`-dal indítva), a user AZONNAL a dashboardra
       // navigálhat a lenti `router.push`-sal, a kvóta levonása a háttérben fejeződik be.
       // Korábban ez a szinkron `await` feleslegesen egy teljes hálózati kör-utat adott
       // hozzá a mentés utáni várakozási időhöz.
@@ -766,17 +766,17 @@ export function InspectionWizard({
 
       // Piszkozat szerkesztésekor a korábbi mérés-/hiba-sorok a jelenlegi state-tel NEM
       // egyeznek meg 1:1 (a wizard nem tartja nyilván az egyes DB row id-kat, csak a
-      // kliens-oldali `clientId`-t) -- ezért a legegyszerűbb és legbiztonságosabb út a
+      // kliens-oldali `clientId`-t), ezért a legegyszerűbb és legbiztonságosabb út a
       // teljes gyerek-sor-halmaz törlése, majd újbóli beszúrása. Új vizsgálatnál ez a
       // törlés no-op (még nincs semmi az `inspectionId`-hez), szerkesztésnél pedig
       // garantáltan nem hoz létre duplikátumokat.
       //
       // TELJESÍTMÉNY-OPTIMALIZÁCIÓ (2026-08-07): a `paint_measurements` és a `defects`
-      // tábla EGYMÁSTÓL FÜGGETLEN (nincs közös FK/hivatkozás közöttük) -- a két "töröld a
+      // tábla EGYMÁSTÓL FÜGGETLEN (nincs közös FK/hivatkozás közöttük), a két "töröld a
       // régi sorokat, majd szúrd be az újakat" lánc korábban EGYMÁS UTÁN, szekvenciálisan
       // futott (4 egymást követő DB-kör-út: paint törlés -> paint beszúrás -> defect
       // törlés -> defect beszúrás). Az alábbi `Promise.all` a két, egyenként 2 lépéses
-      // láncot PÁRHUZAMOSAN futtatja -- a `defectRows` már a fenti, párhuzamosított
+      // láncot PÁRHUZAMOSAN futtatja, a `defectRows` már a fenti, párhuzamosított
       // feltöltési fázisban (`uploadDefectMedia`) elkészült, itt már csak a DB-műveletek
       // vannak hátra. Mindkét lánc a MÁR sikeresen létrehozott/frissített `inspections`
       // sor UTÁN fut (FK-biztonság: új vizsgálatnál a szülő sor csak a fenti UPSERT után
@@ -789,7 +789,7 @@ export function InspectionWizard({
         if (paintDeleteError) throw paintDeleteError;
 
         // Szabadkézi (free-form) mérési pontok (Rétegvastagság-mérő "Szabadkézi (Free-form
-        // Canvas)" átalakítása) -- minden felvett pont egy önálló sor `id`/`x`/`y`/`value`
+        // Canvas)" átalakítása), minden felvett pont egy önálló sor `id`/`x`/`y`/`value`
         // mezőkkel, nincs többé fix karosszéria-elem/3-pontos átlagolás. Az `id`-t a
         // kliens generálja (`crypto.randomUUID()`, lásd `PaintCanvas.tsx`), és a
         // beszúráskor is ugyanaz az érték kerül a sorba, hogy a UI és a DB sor 1:1
@@ -816,7 +816,7 @@ export function InspectionWizard({
           .eq('inspection_id', inspectionId);
         if (defectsDeleteError) throw defectsDeleteError;
 
-        // `defectRows` a fenti párhuzamosított `uploadDefectMedia()`-ból származik --
+        // `defectRows` a fenti párhuzamosított `uploadDefectMedia()`-ból származik,
         // EGYETLEN tömbösített `insert([...])` hívás (nem ciklusban egyesével).
         if (defectRows.length > 0) {
           const { error: defectsError } = await supabase.from('defects').insert(defectRows);
@@ -826,10 +826,10 @@ export function InspectionWizard({
 
       await Promise.all([persistPaintMeasurements(), persistDefects()]);
 
-      // On-demand ISR revalidáció (2026-08-07, "Publikus Riport Caching" lépés) -- KIZÁRÓLAG
+      // On-demand ISR revalidáció (2026-08-07, "Publikus Riport Caching" lépés), KIZÁRÓLAG
       // publikált (`completed`) állapotban van értelme, mert a `/report/[public_token]` oldal
       // csak a publikus riportot kesseli, egy piszkozatnak nincs elérhető publikus URL-je.
-      // Best-effort, NEM blokkoló (`void`, `await` nélkül) -- lásd
+      // Best-effort, NEM blokkoló (`void`, `await` nélkül), lásd
       // `app/api/inspections/revalidate-report/route.ts` JSDoc-ját a teljes indoklásért.
       if (status === 'completed' && inspectionRow?.public_token) {
         void fetch('/api/inspections/revalidate-report', {
@@ -842,7 +842,7 @@ export function InspectionWizard({
       }
 
       // A vizsgálat MOST már biztonságban van a szerveren (`inspections` UPSERT + a fenti
-      // gyerek-táblák) -- a helyi `localStorage` piszkozat innentől felesleges (sőt, egy
+      // gyerek-táblák), a helyi `localStorage` piszkozat innentől felesleges (sőt, egy
       // jövőbeli, VADONATÚJ vizsgálatnál félrevezető lenne, ha véletlenül visszaköszönne),
       // ezért töröljük, MIELŐTT a userst elnavigáljuk. Ha ez a törlés hibázna (lásd
       // `clearWizardDraft` csendes hibakezelését), a MÁR sikeresen elmentett vizsgálatot ez
@@ -855,9 +855,9 @@ export function InspectionWizard({
         router.push(`/dashboard?published=${inspectionRow?.public_token ?? ''}`);
       }
     } catch (err) {
-      // Best-effort rollback -- KIZÁRÓLAG új vizsgálatnál (nem szerkesztésnél)! Ha a wizard
+      // Best-effort rollback, KIZÁRÓLAG új vizsgálatnál (nem szerkesztésnél)! Ha a wizard
       // egy MEGLÉVŐ piszkozatot szerkeszt (`isEditMode`), a sorok már a mentési kísérlet
-      // előtt is léteztek -- ilyenkor a törlés nem "vissza", hanem VÉGLEGESEN elveszítené a
+      // előtt is léteztek, ilyenkor a törlés nem "vissza", hanem VÉGLEGESEN elveszítené a
       // korábban elmentett vizsgálatot egyetlen sikertelen mentési próbálkozás miatt. Új
       // vizsgálatnál viszont biztonságos: az `inspectionId` ebben a munkamenetben született,
       // szóval a törlés csak a most félbemaradt beszúrásokat takarítja el, hogy a user hibaüzenet
@@ -871,7 +871,7 @@ export function InspectionWizard({
       setSubmitError(
         isEditMode
           ? (err instanceof Error ? err.message : 'Váratlan hiba történt a mentés közben.') +
-              ' A korábban elmentett adatok megmaradtak -- próbáld újra menteni.'
+              ' A korábban elmentett adatok megmaradtak, próbáld újra menteni.'
           : err instanceof Error
             ? err.message
             : 'Váratlan hiba történt a mentés közben. Próbáld újra.'
@@ -881,13 +881,13 @@ export function InspectionWizard({
   }
 
   /** A bal felső sarokban megjelenő gyors "Tippek kikapcsolása" gomb
-   * (`QuickDisableTipsHint.tsx`) mellékhatása -- UGYANAZT a `user_metadata.
+   * (`QuickDisableTipsHint.tsx`) mellékhatása, UGYANAZT a `user_metadata.
    * tutorial_hints_enabled` mezőt írja `false`-ra, mint a Settings oldal kapcsolója
    * (`DefaultPreferencesCard.tsx` `handleToggleTutorialHints`), hogy a két belépési pont
    * (Settings VS ez a gyors gomb) ne két külön, egymásnak ellentmondó állapotot tartson
-   * nyilván -- a KÖVETKEZŐ vizsgálat-megnyitáskor (és a Settings oldalon is) már
+   * nyilván, a KÖVETKEZŐ vizsgálat-megnyitáskor (és a Settings oldalon is) már
    * kikapcsolt állapot látszik. Szándékosan best-effort (nincs hibaüzenet-UI/visszaállítás
-   * hiba esetén, ugyanaz az elv, mint a vizsgálati kvóta levonásánál fent) -- a
+   * hiba esetén, ugyanaz az elv, mint a vizsgálati kvóta levonásánál fent), a
    * `OnboardingHintProvider` a helyi state-et MÁR szinkron elrejtette a kattintás
    * pillanatában (`disableAll()`), ez a hívás csak a KÖVETKEZŐ munkamenethez szükséges
    * szerver-oldali perzisztálás; egy elvesztett hálózati hiba itt legfeljebb azt
@@ -905,23 +905,23 @@ export function InspectionWizard({
   return (
     <InspectionIdProvider inspectionId={inspectionId}>
     {/* Onboarding "Tipp" kártyák megosztott bezárás-állapota (2026-08-10, "Hint/tutorial"
-        lépés) -- lásd `OnboardingHintProvider.tsx` JSDoc-ját. A teljes wizard-fát körbeveszi,
+        lépés), lásd `OnboardingHintProvider.tsx` JSDoc-ját. A teljes wizard-fát körbeveszi,
         hogy a state lépésváltás közben (a komponens NEM mountolódik újra, csak a `step === N`
         feltétel vált) és a wizard teljes élettartama alatt megmaradjon. */}
     <OnboardingHintProvider enabled={tutorialHintsEnabled} onDisableAll={handleDisableTutorialHints}>
-    {/* Gyors "Tippek kikapcsolása" gomb (2026-08-12) -- lásd `QuickDisableTipsHint.tsx`
+    {/* Gyors "Tippek kikapcsolása" gomb (2026-08-12), lásd `QuickDisableTipsHint.tsx`
         JSDoc-ját: csak az ELSŐ tipp (`car-info`) láthatósága idején jelenik meg, pár
         másodperc után magától eltűnik. */}
     <QuickDisableTipsHint />
     <div className="mx-auto flex max-w-3xl flex-col gap-5 px-4 py-8 pb-28 sm:px-6 sm:py-10 sm:pb-32">
-      {/* Piszkozat-visszaállítás visszajelzés -- lásd a `restoredDraft`/`draftPersistence.ts`
+      {/* Piszkozat-visszaállítás visszajelzés, lásd a `restoredDraft`/`draftPersistence.ts`
           JSDoc-ját fent. Csak akkor jelenik meg, ha ténylegesen volt visszaolvasható,
-          korábbi (el nem mentett) helyi piszkozat -- normál esetben (első megnyitás,
+          korábbi (el nem mentett) helyi piszkozat, normál esetben (első megnyitás,
           vagy egy már a szerverre mentett piszkozat szerkesztése) nem látszik. */}
       {showDraftRestoredToast && (
         <VinScanToast
           variant="success"
-          message="Egy korábbi, még el nem mentett munkamenetedet visszaállítottuk -- a begépelt adatok megmaradtak."
+          message="Egy korábbi, még el nem mentett munkamenetedet visszaállítottuk, a begépelt adatok megmaradtak."
           onDismiss={() => setShowDraftRestoredToast(false)}
         />
       )}
@@ -1064,7 +1064,7 @@ export function InspectionWizard({
       </div>
 
       {/* Rögzített alsó navigációs sáv (Vissza/Tovább, ill. az utolsó lépésnél
-          Vissza/Piszkozat/Publikálás) -- a cél-elem MINDIG jelen van a DOM-ban, a
+          Vissza/Piszkozat/Publikálás), a cél-elem MINDIG jelen van a DOM-ban, a
           tényleges gombokat az aktív `Step*.tsx` portál-lal rajzolja bele, lásd
           `WizardBottomBar.tsx` JSDoc-ját. */}
       <div

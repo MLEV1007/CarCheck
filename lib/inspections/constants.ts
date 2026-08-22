@@ -15,7 +15,7 @@ import type {
 
 /**
  * Hiba-kategóriák (PROJEKT_INSTRUKCIOK.md 5.B.3). A "Karosszéria" kategória SZÁNDÉKOSAN
- * hiányzik innen (UX-egyszerűsítés, 2026-08-03) -- a látható karosszéria-/festéksérüléseket
+ * hiányzik innen (UX-egyszerűsítés, 2026-08-03), a látható karosszéria-/festéksérüléseket
  * a 8. lépés (`StepDamageMap.tsx`, "Sérülés- és Hibatérkép") vizuális, kép-alapú felülete
  * fedi le, hogy ugyanaz a hiba (pl. karcolás) ne legyen kétszer rögzíthető: egyszer pontként
  * a képen, egyszer kártyaként ebben a listában. Ez a lépés innentől kizárólag a képen nem
@@ -33,12 +33,12 @@ export const PAINT_STATUS_LABEL: Record<PaintStatus, string> = {
 /**
  * Mikron érték -> státusz besorolás (PROJEKT_INSTRUKCIOK.md, "Rétegvastagság-mérő modul
  * újratervezése" lépés, B pont): alapértelmezetten 80-150 -> Gyári, 151-250 ->
- * Újrafújt/Javított, 250 felett -> Gittelt/Sérült. (80 alatti érték -- gyakorlatban
- * ritka mérési hiba -- is Gyáriként van besorolva, mert a specifikáció csak felső
+ * Újrafújt/Javított, 250 felett -> Gittelt/Sérült. (80 alatti érték, gyakorlatban
+ * ritka mérési hiba, is Gyáriként van besorolva, mert a specifikáció csak felső
  * küszöböket ad meg.)
  *
  * A 2 küszöb (2026-08-07 óta, "Testreszabható festékvastagság/gumiabroncs
- * küszöbértékek" lépés) a vizsgáló Settings oldalán testreszabható -- a `thresholds`
+ * küszöbértékek" lépés) a vizsgáló Settings oldalán testreszabható, a `thresholds`
  * paraméter alapértéke `DEFAULT_REPORT_THRESHOLDS` (a fenti, korábban hardkódolt
  * 150/250 érték), tehát a paramétert el nem adó, régi hívóhelyek viselkedése
  * VÁLTOZATLAN marad.
@@ -51,7 +51,7 @@ export function getPaintStatus(micronValue: number, thresholds: ReportThresholds
 
 /**
  * TELJES AUTÓ ÁTLAGA (PROJEKT_INSTRUKCIOK.md, "Rétegvastagság-mérő Szabadkézi (Free-form
- * Canvas) átalakítása" lépés, 4. pont) -- a szabadon felvett mérési pontok EGYSZERŰ
+ * Canvas) átalakítása" lépés, 4. pont), a szabadon felvett mérési pontok EGYSZERŰ
  * matematikai átlaga (nincs többé elemenkénti csoportosítás/3-pontos részátlag). `null`,
  * ha egyetlen pont sincs felvéve. Egy tizedesjegyre kerekítve.
  */
@@ -62,10 +62,10 @@ export function getOverallPaintAverage(points: PaintPointState[]): number | null
 }
 
 /**
- * "Sérülés- és Hibatérkép" modul -- 6 rögzíthető kategória, magyar felirattal ÉS egy
+ * "Sérülés- és Hibatérkép" modul, 6 rögzíthető kategória, magyar felirattal ÉS egy
  * dedikált színnel (marker + jelmagyarázat a `DamageCanvas.tsx`-ben, Wizard ÉS publikus
  * riport egyaránt). A színek SZÁNDÉKOSAN eltérnek a festékvastagság-mérő zöld/sárga/piros
- * státusz-színeitől (`STATUS_FILL` a `PaintCanvas.tsx`-ben) -- itt nincs "jó/rossz"
+ * státusz-színeitől (`STATUS_FILL` a `PaintCanvas.tsx`-ben), itt nincs "jó/rossz"
  * sorrend, csak kategorizálás, ezért egy semleges, egymástól jól megkülönböztethető
  * színskála (amber/kék/barna/sárga/piros/szürke) a helyes választás, nem egy
  * zöld-sárga-piros "állapot-jelző" skála.
@@ -90,7 +90,7 @@ export const DAMAGE_TYPE_COLOR: Record<DamageType, string> = {
 
 export const DAMAGE_TYPES: DamageType[] = ['scratch', 'dent', 'rust', 'chip', 'crack', 'other'];
 
-/** Felszereltség modul UX-újratervezés (2026-08-02) -- 3-állapotú kompakt segmented
+/** Felszereltség modul UX-újratervezés (2026-08-02), 3-állapotú kompakt segmented
  * control feliratai (`StepEquipment.tsx`), és a publikus riport `EquipmentMatrix.tsx`
  * jelvényeinek felirata. */
 export const FEATURE_STATUS_LABEL: Record<FeatureStatus, string> = {
@@ -101,9 +101,9 @@ export const FEATURE_STATUS_LABEL: Record<FeatureStatus, string> = {
 
 /**
  * Bővített, kategorizált felszereltség-katalógus (a "Bővített Felszereltség Lista"
- * lépés alapján) -- 4 kategória, összesen ~200 elem. A `StepEquipment.tsx` (UX-
+ * lépés alapján), 4 kategória, összesen ~200 elem. A `StepEquipment.tsx` (UX-
  * újratervezés, 2026-08-02 óta) ebből épít fel egy élő kereséssel szűrhető, kategória-
- * fejlécekkel csoportosított listát -- nincsenek többé fülek, egyetlen felszereltség sem
+ * fejlécekkel csoportosított listát, nincsenek többé fülek, egyetlen felszereltség sem
  * "bújik el" egy másik kategória-fül mögött, mert egyetlen lapos lista ennyi elemnél
  * áttekinthetetlen lenne.
  */
@@ -344,19 +344,19 @@ export interface EquipmentCatalogItem {
   category: EquipmentCategory;
 }
 
-/** Teljes, kategóriákkal ellátott, lapított felszereltség-katalógus -- ebből épül fel
+/** Teljes, kategóriákkal ellátott, lapított felszereltség-katalógus, ebből épül fel
  * a `StepEquipment.tsx` élő kereséssel szűrhető, kategória-fejlécekkel csoportosított
  * listája. */
 export const EQUIPMENT_CATALOG_ITEMS: EquipmentCatalogItem[] = EQUIPMENT_CATEGORY_ORDER.flatMap((category) =>
   EQUIPMENT_CATALOG[category].map((name) => ({ name, category }))
 );
 
-/** Sima név-lista (kategória nélkül) -- visszafelé kompatibilis a korábbi (nem
+/** Sima név-lista (kategória nélkül), visszafelé kompatibilis a korábbi (nem
  * kategorizált) `EQUIPMENT_ITEMS` felhasználásokkal: `InspectionWizard.tsx`
  * `defaultEquipment()` és `app/inspections/[id]/page.tsx` `toInitialEquipment()`. */
 export const EQUIPMENT_ITEMS: string[] = EQUIPMENT_CATALOG_ITEMS.map((item) => item.name);
 
-/** Név -> kategória lookup a `StepEquipment.tsx`-hez -- a szűrt/kereséssel talált elemeket
+/** Név -> kategória lookup a `StepEquipment.tsx`-hez, a szűrt/kereséssel talált elemeket
  * ebből csoportosítjuk kategória-fejlécek alá a megjelenítéskor. */
 export const EQUIPMENT_NAME_TO_CATEGORY: Record<string, EquipmentCategory> = Object.fromEntries(
   EQUIPMENT_CATALOG_ITEMS.map((item) => [item.name, item.category])
@@ -364,19 +364,19 @@ export const EQUIPMENT_NAME_TO_CATEGORY: Record<string, EquipmentCategory> = Obj
 
 /**
  * Csomag-alapú gyorsgombok (PROJEKT_INSTRUKCIOK.md, "2. LÉPÉS: Felszereltség UI
- * bekötése" -- "Csomag-alapú gyorsgombok" pont, `StepEquipment.tsx`) -- a vizsgálat 1
+ * bekötése", "Csomag-alapú gyorsgombok" pont, `StepEquipment.tsx`), a vizsgálat 1
  * másodperc alatt előkészíthető egy tipikus alap/átlagos/teljes felszereltségű autóhoz,
  * a szaki utána csak a kivételeket (hibás/hiányzó/extra elem) állítja át kézzel.
  *
- * `EQUIPMENT_PRESET_BASIC` ("🥉 Alap (Fapados)") -- a legalapvetőbb, gyakorlatilag MINDEN
+ * `EQUIPMENT_PRESET_BASIC` ("🥉 Alap (Fapados)"), a legalapvetőbb, gyakorlatilag MINDEN
  * (akár a legszegényesebb felszereltségű) autóban megtalálható biztonsági/kényelmi elemek.
- * `EQUIPMENT_PRESET_COMFORT_EXTRA` ("🥈 Átlagos / Komfort") -- a leggyakoribb KIEGÉSZÍTŐ
+ * `EQUIPMENT_PRESET_COMFORT_EXTRA` ("🥈 Átlagos / Komfort"), a leggyakoribb KIEGÉSZÍTŐ
  * kényelmi extrák a `EQUIPMENT_PRESET_BASIC` FÖLÖTT (a Komfort preset a kettő UNIÓJÁT
- * állítja `working`-ra -- lásd `StepEquipment.tsx` `applyPreset()`), a ritkább prémium
+ * állítja `working`-ra, lásd `StepEquipment.tsx` `applyPreset()`), a ritkább prémium
  * extrák (pl. masszírozós ülés, HUD, tolótető) szándékosan KIMARADTAK mindkét listából,
  * ezért a Komfort preset ezeknél `not_present`-et állít be.
  *
- * Mindkét lista KIZÁRÓLAG a `EQUIPMENT_CATALOG` fenti, pontos elem-neveit tartalmazza --
+ * Mindkét lista KIZÁRÓLAG a `EQUIPMENT_CATALOG` fenti, pontos elem-neveit tartalmazza,
  * ha a katalógus egy hivatkozott nevet átnevezne, ez a két lista is frissítendő
  * (build-időben NEM ellenőrzött automatikusan, mert a `string[]` egyszerű literál lista).
  */
@@ -425,7 +425,7 @@ export interface LicensePlateCountryOption {
 
 /**
  * Rendszám felségjelzés opciók (PROJEKT_INSTRUKCIOK.md, "Rendszám felségjelzés dropdown
- * és profilhoz kötött alapértelmezés" lépés) -- MINDKÉT dropdown (Settings "Alapértelmezett
+ * és profilhoz kötött alapértelmezés" lépés), MINDKÉT dropdown (Settings "Alapértelmezett
  * rendszám felségjelzés" + Wizard kompakt kód-választó) ugyanezt a listát használja, hogy
  * a kettő sose térhessen el egymástól.
  */
@@ -443,11 +443,11 @@ export const LICENSE_PLATE_COUNTRIES: LicensePlateCountryOption[] = [
 
 /** Fallback, ha a felhasználónak még nincs mentett `user_metadata.default_license_country`-ja
  * (Settings), VAGY egy vizsgálatnak nincs (régebbi, e modul előtti) `license_plate_country`
- * oszlopértéke -- utóbbi eset a DB-szintű `not null default 'H'` miatt gyakorlatban nem
+ * oszlopértéke, utóbbi eset a DB-szintű `not null default 'H'` miatt gyakorlatban nem
  * fordulhat elő, de a kliens-oldali fallback-lánc végén is itt landol. */
 export const DEFAULT_LICENSE_PLATE_COUNTRY = 'H';
 
-/** Gumiabroncs kerékpozíciók magyar megnevezése -- KIZÁRÓLAG magyar szöveg, rövidítés
+/** Gumiabroncs kerékpozíciók magyar megnevezése, KIZÁRÓLAG magyar szöveg, rövidítés
  * (FL/FR/RL/RR) nélkül, sem a Wizardban, sem a publikus riportban. */
 export const TIRE_POSITION_LABEL: Record<TirePosition, string> = {
   fl: 'Bal első',
@@ -457,7 +457,7 @@ export const TIRE_POSITION_LABEL: Record<TirePosition, string> = {
 };
 
 /** Gumiabroncsok Állapota modul (PROJEKT_INSTRUKCIOK.md, "3 új szakértői modul" lépés,
- * C pont) -- a 4 kerékpozíció megjelenítési sorrendje és felirata. */
+ * C pont), a 4 kerékpozíció megjelenítési sorrendje és felirata. */
 export const TIRE_POSITIONS: { position: TirePosition; label: string }[] = [
   { position: 'fl', label: TIRE_POSITION_LABEL.fl },
   { position: 'fr', label: TIRE_POSITION_LABEL.fr },
@@ -468,20 +468,20 @@ export const TIRE_POSITIONS: { position: TirePosition; label: string }[] = [
 /** A gumiabroncs "koros" figyelmeztetés ALAPÉRTELMEZETT küszöbe (PROJEKT_INSTRUKCIOK.md:
  * "Ha a gumik életkora meghaladja az 5 évet"), lásd `lib/inspections/tireDot.ts`
  * `decodeDot()`. 2026-08-07 óta ez az érték a Settings oldalon testreszabható (lásd
- * `DEFAULT_REPORT_THRESHOLDS` lent) -- ez a konstans mostantól KIZÁRÓLAG az
+ * `DEFAULT_REPORT_THRESHOLDS` lent), ez a konstans mostantól KIZÁRÓLAG az
  * alapértelmezett/fallback értéket jelöli, önmagában közvetlenül már csak a
  * `DEFAULT_REPORT_THRESHOLDS` inicializálásához használt. */
 export const TIRE_AGE_WARNING_YEARS = 5;
 
-/** "Kopott gumiabroncs" (profilmélység) figyelmeztetés ALAPÉRTELMEZETT küszöbe mm-ben --
+/** "Kopott gumiabroncs" (profilmélység) figyelmeztetés ALAPÉRTELMEZETT küszöbe mm-ben,
  * ÚJ konstans (2026-08-07), lásd `isTreadWorn()` a `lib/inspections/tireDot.ts`-ben.
  * Tájékoztató jellegű alapérték, NEM jogszabályi minimum (az EU jogszabályi minimum
- * 1.6 mm) -- a Settings oldalon testreszabható. */
+ * 1.6 mm), a Settings oldalon testreszabható. */
 export const DEFAULT_TIRE_TREAD_WARNING_MM = 3;
 
 /**
  * A `getPaintStatus()`/`decodeDot()`/`isTreadWorn()` alapértelmezett `ReportThresholds`
- * paramétere -- 1:1 megegyezik a 2026-08-07 ELŐTTI hardkódolt viselkedéssel, hogy a
+ * paramétere, 1:1 megegyezik a 2026-08-07 ELŐTTI hardkódolt viselkedéssel, hogy a
  * migráció (`supabase/migrations/20260807090000_report_thresholds.sql`) alapértékei és
  * ez a kliens-oldali fallback SOHA ne térjenek el egymástól. Minden hívóhely, ami nem
  * kap explicit `thresholds` propot (pl. mert a szülő Server Component még nem töltötte
@@ -494,8 +494,8 @@ export const DEFAULT_REPORT_THRESHOLDS: ReportThresholds = {
   tireTreadWarningMm: DEFAULT_TIRE_TREAD_WARNING_MM,
 };
 
-/** Üzemanyag típusa (2026-08-10, "Autó alapadatok kiegészítése -- Üzemanyag típusa" lépés)
- * -- Segmented Control a "Autó adatok" lépésen (`StepCarInfo.tsx`), ugyanaz a minta, mint
+/** Üzemanyag típusa (2026-08-10, "Autó alapadatok kiegészítése, Üzemanyag típusa" lépés),
+ * Segmented Control a "Autó adatok" lépésen (`StepCarInfo.tsx`), ugyanaz a minta, mint
  * a `RIM_TYPES`/`RIM_TYPE_LABEL`-nél a Gumiabroncsok lépésen. Zárt, 3-elemű választás
  * (lásd `CarInfoState.fuelType` JSDoc-ját), NEM szabad szöveges, hogy a riport/AI-prompt
  * mindig pontosan ebből a 3 értékből dolgozhasson. */
@@ -508,7 +508,7 @@ export const FUEL_TYPE_LABEL: Record<FuelType, string> = {
 export const FUEL_TYPES: FuelType[] = ['benzin', 'dizel', 'elektromos'];
 
 /** Felni típusa (PROJEKT_INSTRUKCIOK.md, "Gumiabroncs & Felni modul bővítése" lépés, A
- * pont) -- Segmented Control / Toggle a Gumiabroncsok lépés tetején. */
+ * pont), Segmented Control / Toggle a Gumiabroncsok lépés tetején. */
 export const RIM_TYPE_LABEL: Record<RimType, string> = {
   alloy: 'Alufelni (Könnyűfém)',
   steel: 'Acélfelni',
@@ -516,7 +516,7 @@ export const RIM_TYPE_LABEL: Record<RimType, string> = {
 
 export const RIM_TYPES: RimType[] = ['alloy', 'steel'];
 
-/** Gumiabroncs márkák gördülőmenüje -- a leggyakoribb márkák + "Egyéb" (szabad szöveges
+/** Gumiabroncs márkák gördülőmenüje, a leggyakoribb márkák + "Egyéb" (szabad szöveges
  * mező jelenik meg, ha ezt választja a user, lásd StepTires.tsx). */
 export const TIRE_BRANDS: string[] = [
   'Michelin',
@@ -539,7 +539,7 @@ export const TIRE_BRAND_OTHER = 'Egyéb';
 
 /**
  * Wizard lépés-metaadatok EGY helyen (szám, rövid cím a lépés-jelzőhöz/gombokhoz,
- * hosszú cím a mobil "X / 9 lépés" feliratokhoz) -- ez a wizard "Wizard Stepper UI fix"
+ * hosszú cím a mobil "X / 9 lépés" feliratokhoz), ez a wizard "Wizard Stepper UI fix"
  * és "Dinamikus Tovább gomb" lépés egyetlen forrása (`StepIndicator.tsx` és
  * `InspectionWizard.tsx` is ebből olvas), hogy egy jövőbeli lépés-sorrend módosítás
  * NE tudjon elavult, kézzel beégetett gombfeliratokat hagyni maga után (pontosan ez
@@ -547,7 +547,7 @@ export const TIRE_BRAND_OTHER = 'Egyéb';
  * "Tovább" gombja elfelejtett frissülni, és rossz lépésre hivatkozott).
  *
  * "Szervizmúlt & Dokumentumok" modul: az Általános fotók UTÁN, a Diagnosztika ELŐTT kapott
- * helyet (3. lépés) -- ugyanaz az elv, mint a publikus riport szekció-sorrendjénél: az
+ * helyet (3. lépés), ugyanaz az elv, mint a publikus riport szekció-sorrendjénél: az
  * általános, dokumentum-jellegű infó a részletes szakértői vizsgálatok (diagnosztika/
  * felszereltség/gumik/festék/hibák) előtt jelenik meg. Minden utána következő lépés száma
  * eggyel eltolódott (8 -> 9 lépés összesen).
@@ -568,7 +568,7 @@ export const WIZARD_STEP_META: { step: WizardStep; shortLabel: string; longLabel
 
 export const TOTAL_WIZARD_STEPS = WIZARD_STEP_META.length;
 
-/** Szervizmúlt & Dokumentumok modul -- "Általános státusz" pillér (A pont): a 4 lehetséges
+/** Szervizmúlt & Dokumentumok modul, "Általános státusz" pillér (A pont): a 4 lehetséges
  * választás felirata, `StepServiceHistory.tsx` rádiógomb-kártyáihoz és a publikus riport
  * `ServiceHistoryCard.tsx` jelvényéhez. */
 export const SERVICE_HISTORY_STATUS_LABEL: Record<ServiceHistoryStatus, string> = {
@@ -586,9 +586,9 @@ export const SERVICE_HISTORY_STATUS_DESCRIPTION: Record<ServiceHistoryStatus, st
   none: 'Nincs elérhető szervizdokumentáció, vagy a múlt ismeretlen.',
 };
 
-/** Szervizmúlt & Dokumentumok modul -- "Manuális Idővonal" pillér (C pont): a bejegyzés
+/** Szervizmúlt & Dokumentumok modul, "Manuális Idővonal" pillér (C pont): a bejegyzés
  * "Típus" mezőjéhez javasolt, leggyakoribb szerviz-események listája (datalist, nem zárt
- * enum -- a user szabad szöveget is beírhat, lásd `StepServiceHistory.tsx`). */
+ * enum, a user szabad szöveget is beírhat, lásd `StepServiceHistory.tsx`). */
 export const SERVICE_ENTRY_TYPE_SUGGESTIONS: string[] = [
   'Olajcsere',
   'Nagyszerviz',
@@ -606,7 +606,7 @@ export const SERVICE_ENTRY_TYPE_SUGGESTIONS: string[] = [
 ];
 
 /**
- * Végső Szakvélemény & Várható Költségek modul -- a 3 választható javaslat felirata
+ * Végső Szakvélemény & Várható Költségek modul, a 3 választható javaslat felirata
  * (`StepFinalAssessment.tsx` rádiógomb-kártyáihoz, ugyanaz a minta, mint a
  * `SERVICE_HISTORY_STATUS_LABEL`-nél) + a publikus riport `FinalAssessmentCard.tsx`
  * jelvényéhez.

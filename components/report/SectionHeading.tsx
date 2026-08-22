@@ -5,7 +5,7 @@ interface SectionHeadingProps {
 
 /**
  * BMW design system (bmw.md) `label-uppercase` eyebrow (13px/700/1.5px tracking, kék)
- * + `display-sm`/`display-md` cím (700-as súly) -- a riport szekcióinak fejléce.
+ * + `display-sm`/`display-md` cím (700-as súly), a riport szekcióinak fejléce.
  *
  * Az eyebrow színe a `--report-accent` CSS változót olvassa (beállítva a
  * `/report/[public_token]/page.tsx`-ben a cég `primary_color` mezőjéből, BMW kék

@@ -13,26 +13,26 @@ type SubmitStatus = 'idle' | 'submitting' | 'success' | 'error';
 
 /** Ugyanaz a méret- és MIME-korlát, mint amit a `feedback-attachments` Storage bucket a
  * `file_size_limit`/`allowed_mime_types` mezőin kényszerít ki (lásd
- * `supabase/migrations/20260822_feedback_widget_storage.sql`) -- itt kliens-oldalon,
+ * `supabase/migrations/20260822_feedback_widget_storage.sql`), itt kliens-oldalon,
  * feltöltés ELŐTT szűrünk, ugyanaz az elv, mint a `LogoUploader.tsx`-nél. */
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 
 /**
- * Saját, pillekönnyű in-app visszajelző modal -- NEM Formbricks (lásd a korábbi,
+ * Saját, pillekönnyű in-app visszajelző modal, NEM Formbricks (lásd a korábbi,
  * 2026-08-20-án teljesen eltávolított kísérletet, `docs/`-ban már nem található), hanem
  * egy közvetlenül a saját Notion Kanban adatbázisunkba beküldő űrlap (`/api/feedback`,
  * lásd annak JSDoc-ját + `docs/notion-feedback-widget-setup-2026-08-22.md`).
  *
  * **Miért nincs Shadcn `Dialog`:** a projektben (`package.json`) SOSEM lett ténylegesen
  * telepítve a Shadcn/ui + Radix-alap (nincs `@radix-ui/*`/`class-variance-authority`
- * függőség) -- a meglévő modal-mintát (lásd `InsufficientCreditsModal.tsx`/
+ * függőség), a meglévő modal-mintát (lásd `InsufficientCreditsModal.tsx`/
  * `VideoUpsellModal.tsx`: kézzel épített `fixed inset-0` overlay + `role="dialog"` +
  * Escape/háttér-kattintás zárás) követi ez is, hogy ne kelljen egy ÚJ, a felhasználó
  * gépén még nem telepített csomag-fát (`npm install`) hozzáadni a projekthez, ami itt, a
  * távoli fájl-hídon keresztül úgysem futtatható le automatikusan.
  *
  * A Beállítások (Stripe Design System) ÉS a Szakértői Munkaterület fejléce (Linear Dark
- * Design Style) is megnyitja ezt a modalt (lásd `FeedbackTriggerButton.tsx`) -- mivel a
+ * Design Style) is megnyitja ezt a modalt (lásd `FeedbackTriggerButton.tsx`), mivel a
  * teljes képernyőt elsötétítő overlay MINDIG ugyanazt a hátteret adja alá, a kártya maga
  * SZÁNDÉKOSAN semleges, világos (Stripe-szerű) felületet kap, ez marad olvasható
  * mindkét kontextusból nyitva.
@@ -46,7 +46,7 @@ export function FeedbackModal({ onClose }: FeedbackModalProps) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // A hitelesített felhasználó -- kliens-oldalon, mountkor töltjük be (ugyanaz a minta,
+  // A hitelesített felhasználó, kliens-oldalon, mountkor töltjük be (ugyanaz a minta,
   // mint pl. `VideoUpsellModal.tsx`-nél), hogy a modal bárhonnan (fejléc VAGY Beállítások)
   // önmagát tudja ellátni, prop-drilling nélkül. Az `id`-t a szerver úgyis a SAJÁT
   // session-jéből olvassa újra (lásd `route.ts`), ez itt csak a Storage-feltöltés
@@ -69,7 +69,7 @@ export function FeedbackModal({ onClose }: FeedbackModalProps) {
     };
   }, []);
 
-  // Escape zárás -- KIVÉVE amíg a beküldés folyamatban van, hogy egy véletlen
+  // Escape zárás, KIVÉVE amíg a beküldés folyamatban van, hogy egy véletlen
   // billentyű-ütés ne szakítsa félbe a folyamatban lévő feltöltést/Notion-hívást.
   useEffect(() => {
     function handleEscape(event: KeyboardEvent) {
@@ -79,7 +79,7 @@ export function FeedbackModal({ onClose }: FeedbackModalProps) {
     return () => window.removeEventListener('keydown', handleEscape);
   }, [onClose, status]);
 
-  // Sikeres beküldés után automatikusan bezárjuk a modalt -- de csak akkor, ha a
+  // Sikeres beküldés után automatikusan bezárjuk a modalt, de csak akkor, ha a
   // felhasználó nem zárta be előbb kézzel (lásd a "Bezárás" gombot lent).
   useEffect(() => {
     if (status !== 'success') return;
@@ -133,10 +133,10 @@ export function FeedbackModal({ onClose }: FeedbackModalProps) {
       if (file) {
         const supabase = createClient();
         const extension = file.name.split('.').pop()?.toLowerCase() || 'png';
-        // A saját mappájába tölt fel mindenki (`{user_id}/...`) -- ugyanaz az elv, mint a
+        // A saját mappájába tölt fel mindenki (`{user_id}/...`), ugyanaz az elv, mint a
         // `LogoUploader.tsx`-nél, ezt kényszeríti ki a bucket RLS policy-ja is (lásd
         // `supabase/migrations/20260822_feedback_widget_storage.sql`). Ha valamiért nincs
-        // (még) betöltve a session, egy `anonim` almappába kerül -- ez elméleti eset,
+        // (még) betöltve a session, egy `anonim` almappába kerül, ez elméleti eset,
         // mert a gombot csak bejelentkezve lehet elérni (`DashboardHeader`/Beállítások),
         // de defenzíven nem hasal el rajta a feltöltés.
         const folder = authUser?.id ?? 'anonim';
@@ -203,7 +203,7 @@ export function FeedbackModal({ onClose }: FeedbackModalProps) {
             </div>
             <p className="font-sohne text-[16px] font-medium text-stripe-ink">Köszönjük a visszajelzést!</p>
             <p className="font-sohne text-[13px] font-light text-stripe-ink-mute">
-              Sikeresen elküldted -- hamarosan átnézzük.
+              Sikeresen elküldted, hamarosan átnézzük.
             </p>
             <button
               type="button"

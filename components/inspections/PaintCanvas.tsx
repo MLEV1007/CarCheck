@@ -13,16 +13,16 @@ interface PaintCanvasProps {
   points: PaintPointState[];
   /** `edit`: kattintásra a képen BÁRHOL új mérési pontot vehet fel (Wizard), egy
    * meglévő buborékra kattintva pedig szerkesztheti/törölheti azt.
-   * `view`: kizárólag olvasásra -- kattintásra a meglévő buborék értéke megtekinthető,
+   * `view`: kizárólag olvasásra, kattintásra a meglévő buborék értéke megtekinthető,
    * de nem hozható létre új pont és nem módosítható/törölhető a meglévő (Publikus riport). */
   mode: 'edit' | 'view';
-  /** KÖTELEZŐ `edit` módban -- minden pont-hozzáadás/-módosítás/-törlés után hívódik a
+  /** KÖTELEZŐ `edit` módban, minden pont-hozzáadás/-módosítás/-törlés után hívódik a
    * TELJES, frissített tömbbel. */
   onChange?: (points: PaintPointState[]) => void;
   /** `dark` = Linear design tokenek (Wizard), `light` = BMW design tokenek (Publikus riport). */
   theme: 'dark' | 'light';
   className?: string;
-  /** Riport küszöbértékek (2026-08-07) -- a buborék-színezéshez és a jelmagyarázat
+  /** Riport küszöbértékek (2026-08-07), a buborék-színezéshez és a jelmagyarázat
    * (`LEGEND_ITEMS`) tartományaihoz. Alapértéke `DEFAULT_REPORT_THRESHOLDS`. */
   thresholds?: ReportThresholds;
 }
@@ -34,7 +34,7 @@ const STATUS_FILL: Record<PaintStatus, string> = {
 };
 
 /** Jelmagyarázat-tartományok a `thresholds`-ból számolva (2026-08-07 előtt statikus
- * `80–150 µm`/`151–250 µm`/`250+ µm` szöveg volt -- mostantól a ténylegesen beállított
+ * `80–150 µm`/`151–250 µm`/`250+ µm` szöveg volt, mostantól a ténylegesen beállított
  * küszöbök szerint jelenik meg, hogy a jelmagyarázat SOSE térjen el a tényleges
  * színezéstől egy testreszabott küszöbnél). */
 function getLegendItems(thresholds: ReportThresholds): Array<{ status: PaintStatus; range: string }> {
@@ -47,7 +47,7 @@ function getLegendItems(thresholds: ReportThresholds): Array<{ status: PaintStat
 
 const ACCENT = { dark: '#5e6ad2', light: '#1c69d4' };
 
-/** A popoverben szerkesztés alatt álló pont -- `id: null` egy MÉG NEM mentett, most
+/** A popoverben szerkesztés alatt álló pont, `id: null` egy MÉG NEM mentett, most
  * kattintott új pontot jelöl (a `x`/`y` a kattintás helye, `value` üres), `id: string`
  * egy MEGLÉVŐ, a `points` tömbben már szereplő pont szerkesztését/törlését. */
 interface PendingPoint {
@@ -59,7 +59,7 @@ interface PendingPoint {
 
 /**
  * Rétegvastagság-mérő "Szabadkézi" (Free-form Canvas) komponens (PROJEKT_INSTRUKCIOK.md,
- * "Rétegvastagság-mérő Szabadkézi (Free-form Canvas) átalakítása" lépés) -- a
+ * "Rétegvastagság-mérő Szabadkézi (Free-form Canvas) átalakítása" lépés), a
  * `public/cars.webp` referenciaképre NINCS előre definiált elem/hotspot ráépítve, a
  * felhasználó a kép TETSZŐLEGES pontjára kattinthat, hogy ott felvegyen egy mérési
  * pontot. UGYANEZ a komponens fut a Wizard 6. lépésében ÉS a publikus riportban, csak
@@ -126,7 +126,7 @@ export function PaintCanvas({
   }
 
   // Popover-elhelyezés heurisztika: ha a kattintott pont a kép jobb/alsó felén van, a
-  // popover balra/felfelé nyílik (és fordítva) -- így a fix pixel-szélességű popover
+  // popover balra/felfelé nyílik (és fordítva), így a fix pixel-szélességű popover
   // egy tisztán százalék-alapú, DOM-mérés nélküli heurisztikával sosem lóg ki a képből.
   function popoverPositionClasses(point: { x: number; y: number }) {
     const anchorLeft = point.x > 55;
@@ -135,7 +135,7 @@ export function PaintCanvas({
   }
 
   // Érintési célterület: a legszűkebb eset a projektben (200px széles popover, p-3 padding,
-  // a cím szövegtől csak gap-2 = 8px távolságra) -- ezért ASZIMMETRIKUS hit-slop: jobbra/
+  // a cím szövegtől csak gap-2 = 8px távolságra), ezért ASZIMMETRIKUS hit-slop: jobbra/
   // fel/le 10px, balra (a cím szöveg felé) csak 4px, hogy a láthatatlan érintési zóna ne
   // csússzon rá a szövegre. Lásd docs/ux-touch-targets-plan-2026-08-14.md E) pont.
   const closeButtonClass =
@@ -194,7 +194,7 @@ export function PaintCanvas({
 
         {pending && (
           <>
-            {/* Láthatatlan teljes-képernyős hátlap -- kattintásra bezárja a popovert
+            {/* Láthatatlan teljes-képernyős hátlap, kattintásra bezárja a popovert
                 anélkül, hogy új pontot venne fel (a konténer saját onClick-je elé kerül,
                 mert nagyobb z-index-szel rendelkezik). */}
             <div className="fixed inset-0 z-20" onClick={(e) => { e.stopPropagation(); closePending(); }} />

@@ -22,20 +22,20 @@ type LoadState = 'loading' | 'ready' | 'error';
 
 /**
  * Csapatkezelő felület a Menedzsernek (PROJEKT_INSTRUKCIOK.md "Csapatkezelő Felület a
- * Menedzsernek" lépés) -- a `/settings` oldal "Csapatkezelés" fülében jelenik meg,
+ * Menedzsernek" lépés), a `/settings` oldal "Csapatkezelés" fülében jelenik meg,
  * KIZÁRÓLAG `role === 'manager'`-nek (lásd `app/settings/page.tsx`/`SettingsTabs.tsx`).
  *
  * Stripe design system (stripe.md): fehér `card-feature-light` kártya, `rounded-full`
- * pill gombok, hairline elválasztók -- UGYANAZ a stílus, mint a `SettingsForm.tsx`
+ * pill gombok, hairline elválasztók, UGYANAZ a stílus, mint a `SettingsForm.tsx`
  * mellette lévő kártyáknál.
  *
  * A csapattagok listáját ÉS a jogosultság-kapcsolót közvetlenül a böngésző-kliens
- * Supabase-en keresztül kezeli (nincs külön API route rá szükség) -- ezt az
+ * Supabase-en keresztül kezeli (nincs külön API route rá szükség), ezt az
  * `profiles_select_org_manager`/`profiles_update_org_manager` RLS policy-k teszik
  * biztonságossá (lásd `supabase/migrations/20260803_organizations_rbac.sql`): a
  * szerveren, adatbázis-szinten van garantálva, hogy EZT a lekérdezést/módosítást
  * kizárólag egy tényleges Menedzser futtathatja sikeresen, a SAJÁT szervezetére
- * korlátozva -- a `role === 'manager'` kliens-oldali ellenőrzés (a fül elrejtése) csak
+ * korlátozva, a `role === 'manager'` kliens-oldali ellenőrzés (a fül elrejtése) csak
  * UX, nem az egyetlen védelmi vonal.
  */
 export function TeamManagement({ organizationId, currentUserId }: TeamManagementProps) {
@@ -110,7 +110,7 @@ export function TeamManagement({ organizationId, currentUserId }: TeamManagement
 
       <p className="font-sohne text-[13px] font-light text-stripe-ink-mute">
         A csapatod tagjai közösen, a te AI kreditkeretedből dolgoznak. Az Átvizsgálóknak
-        alapból csak a saját vizsgálataik láthatók -- a kapcsolóval engedélyezheted, hogy
+        alapból csak a saját vizsgálataik láthatók, a kapcsolóval engedélyezheted, hogy
         a cég ÖSSZES riportját lássák.
       </p>
 
@@ -194,17 +194,17 @@ function TeamMemberRow({
           <span className="font-sohne text-[12px] text-stripe-ink-secondary">
             Láthatja az összes céges riportot
           </span>
-          {/* Toggle switch geometria javítás (2026-08-06) -- a korábbi verzió a knob-ot
+          {/* Toggle switch geometria javítás (2026-08-06), a korábbi verzió a knob-ot
               `position: absolute` + `top-0.5` + feltételes `translate-x` kombinációval
-              pozicionálta, DE `left-*` osztály NÉLKÜL -- a knob vízszintes nyugalmi
+              pozicionálta, DE `left-*` osztály NÉLKÜL, a knob vízszintes nyugalmi
               pozíciója emiatt a böngésző "abszolút pozicionált elem statikus pozíciója"
               tartalék-számításától függött, ami a gyakorlatban a szülő elem
               megjelenítési kontextusától függően INKONZISZTENSEN renderelt (halvány
-              szín + a knob a jobb szélen túlcsordulva/levágva -- lásd a felhasználó
+              szín + a knob a jobb szélen túlcsordulva/levágva, lásd a felhasználó
               screenshotjait). Az ÚJ minta (`flex items-center` + `p-0.5` padding a
               "sínen" + a knob NEM abszolút pozicionált, hanem normál flex-gyerek,
               KIZÁRÓLAG `translate-x`-szel tolva) ugyanaz a hivatalos, robusztus
-              Tailwind UI switch-minta -- a knob nyugalmi pozícióját a `p-0.5` padding
+              Tailwind UI switch-minta, a knob nyugalmi pozícióját a `p-0.5` padding
               garantálja (nem egy ambiguity-re épülő böngésző-fallback), így minden
               böngészőben/kontextusban determinisztikusan ugyanott jelenik meg. */}
           <button
@@ -241,10 +241,10 @@ function InviteMemberModal({
   const [email, setEmail] = useState('');
   const [copied, setCopied] = useState(false);
 
-  // `invited_by` (2026-08-14, "Meghívás-attribúció" lépés) -- a hívó (jelen komponenst
+  // `invited_by` (2026-08-14, "Meghívás-attribúció" lépés), a hívó (jelen komponenst
   // megnyitó) Menedzser saját user id-ja a linkbe ágyazva, hogy a `handle_new_user()`
   // DB trigger rögzíthesse a `profiles.invited_by` mezőbe, KI hívta meg ezt az
-  // Átvizsgálót -- ez teszi lehetővé, hogy a Platform Admin (`/admin`) felületen
+  // Átvizsgálót, ez teszi lehetővé, hogy a Platform Admin (`/admin`) felületen
   // egyértelműen látszódjon, melyik Menedzser hívott meg kit.
   const inviteLink =
     typeof window !== 'undefined'
@@ -257,7 +257,7 @@ function InviteMemberModal({
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Clipboard API nem elérhető -- a user kézzel is kijelölheti/másolhatja a mezőből.
+      // Clipboard API nem elérhető, a user kézzel is kijelölheti/másolhatja a mezőből.
     }
   }
 
@@ -287,7 +287,7 @@ function InviteMemberModal({
         </div>
 
         <p className="mt-2 font-sohne text-[13px] font-light text-stripe-ink-mute">
-          Küldd el ezt a regisztrációs linket az új Átvizsgálónak -- a linkre kattintva
+          Küldd el ezt a regisztrációs linket az új Átvizsgálónak, a linkre kattintva
           automatikusan a csapatod tagjaként (Átvizsgáló szerepkörrel) jön létre a fiókja,
           és a te AI kreditkeretedet fogja használni.
         </p>

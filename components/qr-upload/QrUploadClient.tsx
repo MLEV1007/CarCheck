@@ -44,19 +44,19 @@ function storeClaimSecret(token: string, claimSecret: string): void {
   try {
     window.sessionStorage.setItem(SESSION_STORAGE_PREFIX + token, claimSecret);
   } catch {
-    // Csendben elnyelve -- lásd draftPersistence.ts azonos elvű hibakezelését. Legrosszabb
+    // Csendben elnyelve, lásd draftPersistence.ts azonos elvű hibakezelését. Legrosszabb
     // esetben egy oldal-frissítés a "lejárt/foglalt" hibaágba fut, a felhasználó pedig
     // újranyithatja a QR-kódot az asztali gépen.
   }
 }
 
 /**
- * A QR-kódos telefonos feltöltő oldal kliens-oldali logikája -- lásd
+ * A QR-kódos telefonos feltöltő oldal kliens-oldali logikája, lásd
  * `app/qr-upload/[token]/page.tsx` JSDoc-ját a teljes kontextusért. Feloldja a session-t
  * (`resolve_qr_upload_session` RPC-n keresztül, `/api/qr-upload/[token]`), majd fotót/videót
  * fogad kamerából vagy galériából, a videót ugyanazzal a `videoCompression.ts` motorral
  * tömöríti, mint az asztali wizard, végül a `mediaUpload.ts` szállítási réteggel tölti fel
- * és a `/confirm` végponton keresztül jelenti be -- ez utóbbi triggereli a Realtime
+ * és a `/confirm` végponton keresztül jelenti be, ez utóbbi triggereli a Realtime
  * broadcastot, amitől a feltöltés ÉLŐBEN megjelenik az asztali wizardban.
  */
 export function QrUploadClient({ token }: QrUploadClientProps) {
@@ -141,7 +141,7 @@ export function QrUploadClient({ token }: QrUploadClientProps) {
           if (durationSeconds > MAX_VIDEO_DURATION_SECONDS) {
             const confirmed = window.confirm(
               `A videó ${Math.round(durationSeconds)} másodperc hosszú. A feltölthető videók legfeljebb ` +
-                `${MAX_VIDEO_DURATION_SECONDS} másodpercesek lehetnek -- vágjuk a videó ELEJÉT erre a hosszra?`
+                `${MAX_VIDEO_DURATION_SECONDS} másodpercesek lehetnek, vágjuk a videó ELEJÉT erre a hosszra?`
             );
             if (!confirmed) {
               setItems((prev) => prev.filter((item) => item.id !== id));
@@ -239,7 +239,7 @@ export function QrUploadClient({ token }: QrUploadClientProps) {
       <div className="mx-auto max-w-md">
         <h1 className="text-[18px] font-semibold tracking-[-0.3px] text-linear-ink">Feltöltés telefonról</h1>
         <p className="mt-1 text-[13px] text-linear-ink-subtle">
-          Készíts fotót{resolveState.videoAllowed ? ' vagy videót' : ''}, vagy válassz a galériából -- a feltöltés
+          Készíts fotót{resolveState.videoAllowed ? ' vagy videót' : ''}, vagy válassz a galériából, a feltöltés
           automatikusan megjelenik a szakértő képernyőjén.
         </p>
 
@@ -298,7 +298,7 @@ export function QrUploadClient({ token }: QrUploadClientProps) {
                   {item.kind === 'video' ? (
                     <video src={item.previewUrl} className="h-full w-full object-cover" muted />
                   ) : (
-                    // eslint-disable-next-line @next/next/no-img-element -- kliens-oldali object URL előnézet
+                    // eslint-disable-next-line @next/next/no-img-element, kliens-oldali object URL előnézet
                     <img src={item.previewUrl} alt="Feltöltött média" className="h-full w-full object-cover" />
                   )}
                 </div>

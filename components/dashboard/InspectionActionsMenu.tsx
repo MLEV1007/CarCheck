@@ -13,25 +13,25 @@ interface InspectionActionsMenuProps {
   onDelete: () => void;
 }
 
-/** `w-56` (14rem) -- meg kell egyeznie a menü panel Tailwind szélesség-osztályával lent,
+/** `w-56` (14rem), meg kell egyeznie a menü panel Tailwind szélesség-osztályával lent,
  * mert a jobbra igazított pozíciószámításhoz (`rect.right - MENU_WIDTH`) kell ismerni. */
 const MENU_WIDTH = 224;
 
 /**
- * Hárompontos (kebab) menü a befejezett vizsgálatok sorában -- a "Dashboard táblázat teljes
+ * Hárompontos (kebab) menü a befejezett vizsgálatok sorában, a "Dashboard táblázat teljes
  * UX/UI újratervezése" lépés fő UX-fixe. Korábban a Műveletek oszlopban 3 önálló gomb
  * (Megtekintés / Riport / Link másolása) állt egymás mellett, ami köztes szélességeknél
  * szétnyomta a táblázat középső oszlopait. Mostantól csak a "Riport" (fő CTA, változatlanul
- * önálló gomb marad a `InspectionsExplorer.tsx`-ben) marad látható -- a ritkábban használt
+ * önálló gomb marad a `InspectionsExplorer.tsx`-ben) marad látható, a ritkábban használt
  * (Megtekintés, Link másolása) és a destruktív (Törlés) műveletek ide, egy kattintásra nyíló
  * helyi menübe kerültek.
  *
  * SZÁNDÉKOSAN `position: fixed`-del, JS-ből kiszámolt koordinátákkal (NEM egy egyszerű
- * `absolute right-0 top-full`-lal) -- a táblázat konténere `overflow-hidden`-t használ a
+ * `absolute right-0 top-full`-lal), a táblázat konténere `overflow-hidden`-t használ a
  * lekerekített sarkokhoz és `overflow-x-auto`-t a vízszintes görgetéshez (lásd
  * `InspectionsExplorer.tsx`), egy `absolute` menü tehát a konténer alján/szélén levágódna.
  * A `fixed` pozíció a viewporthoz igazodik, ezt egyetlen `overflow` ancestor sem vágja le
- * (amíg egyik szülőnek sincs `transform`/`filter`/`will-change: transform`-ja -- itt nincs).
+ * (amíg egyik szülőnek sincs `transform`/`filter`/`will-change: transform`-ja, itt nincs).
  * Görgetésre/ablak-átméretezésre a menü bezáródik, hogy sose maradjon "elszakadva" a
  * gombjától.
  */
@@ -70,7 +70,7 @@ export function InspectionActionsMenu({ inspectionId, isCopied, onCopyLink, onDe
 
     document.addEventListener('mousedown', handlePointerDown);
     document.addEventListener('keydown', handleKeyDown);
-    // `capture: true` szükséges, mert a `scroll` esemény nem "bubble"-öl -- capturing fázisban
+    // `capture: true` szükséges, mert a `scroll` esemény nem "bubble"-öl, capturing fázisban
     // viszont eljut a window-ig akkor is, ha a táblázat belső `overflow-x-auto` div-je görgött.
     window.addEventListener('scroll', handleScrollOrResize, true);
     window.addEventListener('resize', handleScrollOrResize);

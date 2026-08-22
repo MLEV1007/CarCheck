@@ -15,34 +15,34 @@ import { SERVICE_ENTRY_TYPE_SUGGESTIONS } from '@/lib/inspections/constants';
  * A vizsgáló lefotózza a szervizkönyv egy (vagy több) oldalát, VAGY egy szervizszámlát/
  * munkalapot, ezt a fotót Base64 kódolással küldi be ez a route, ami a Gemini Flash Vision
  * modellel egyetlen hívásban kinyeri a fotón szereplő szerviz-eseményeket (dátum, km óra
- * állás, elvégzett munka típusa, opcionális megjegyzés) -- EGY fotón (pl. egy szervizkönyv
+ * állás, elvégzett munka típusa, opcionális megjegyzés), EGY fotón (pl. egy szervizkönyv
  * táblázatos oldalán) TÖBB bejegyzés is szerepelhet, ezért a válasz mindig egy TÖMB, nem
  * egyetlen objektum (ellentétben a `scan-vin` route-tal, ami mindig egyetlen járművet ír le).
  *
  * A kliens (`StepServiceHistory.tsx`) a válasz `entries` tömbjét `ServiceHistoryEntryState[]`-
- * re alakítva HOZZÁFŰZI (nem felülírja) a meglévő `value.entries` listához -- a szaki utólag
+ * re alakítva HOZZÁFŰZI (nem felülírja) a meglévő `value.entries` listához, a szaki utólag
  * bármelyik AI-val előtöltött sort kézzel is módosíthatja/törölheti, ugyanúgy, mint egy
  * manuálisan felvitt bejegyzést.
  *
  * **Modellválasztás + fallback-lánc, Autentikáció + kredit-védelem:** UGYANAZ a minta, mint a
- * `parse-equipment`/`scan-vin` route-oknál -- lásd `parse-equipment/route.ts` JSDoc-ját
+ * `parse-equipment`/`scan-vin` route-oknál, lásd `parse-equipment/route.ts` JSDoc-ját
  * (CANONIKUS leírás), ide csak a route-specifikus eltéréseket dokumentáljuk.
  *
  * `runtime = 'nodejs'`, mert a `@google/genai` SDK Node.js-célzású.
  */
 export const runtime = 'nodejs';
 
-/** Modell-fallback lánc -- lásd `scan-vin/route.ts` azonos elvű kommentjét (2026-08-16
+/** Modell-fallback lánc, lásd `scan-vin/route.ts` azonos elvű kommentjét (2026-08-16
  * frissítés: `gemini-2.0-flash` kivezetve, lásd `parse-equipment/route.ts` JSDoc-ját). */
 const MODEL_CANDIDATES = ['gemini-3.1-flash-lite', 'gemini-3.6-flash'] as const;
 
-/** A `usage_logs.feature_name` értéke ehhez a route-hoz -- lásd `lib/credits.ts` és a
+/** A `usage_logs.feature_name` értéke ehhez a route-hoz, lásd `lib/credits.ts` és a
  * `components/credits/CreditDashboardModal.tsx` `FEATURE_NAME_LABELS` térképét (bővítve
  * ezzel az értékkel, hogy a Kredit Dashboard táblázatban is olvasható magyar néven jelenjen
  * meg, ne a nyers kódként). */
 const FEATURE_NAME = 'service_doc_scan';
 
-/** A Gemini `inlineData` bemenetéhez elfogadott kép MIME-típusok -- lásd `scan-vin/route.ts`
+/** A Gemini `inlineData` bemenetéhez elfogadott kép MIME-típusok, lásd `scan-vin/route.ts`
  * azonos elvű kommentjét. */
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 type AllowedMimeType = (typeof ALLOWED_MIME_TYPES)[number];
@@ -51,7 +51,7 @@ function isAllowedMimeType(value: string): value is AllowedMimeType {
   return (ALLOWED_MIME_TYPES as readonly string[]).includes(value);
 }
 
-/** A beküldött kép max. mérete -- lásd `scan-vin/route.ts` `MAX_IMAGE_BYTES` JSDoc-ját
+/** A beküldött kép max. mérete, lásd `scan-vin/route.ts` `MAX_IMAGE_BYTES` JSDoc-ját
  * (ugyanaz a Vercel ~4,5 MB-os request body korlát indokolja, a kliens `compressImageForAiScan`-
  * nel tömörít ELŐBB, ez csak egy második, szerver-oldali védelmi vonal). */
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
@@ -70,35 +70,35 @@ function isDocumentType(value: unknown): value is ScanServiceDocDocumentType {
   return typeof value === 'string' && (DOCUMENT_TYPE_VALUES as readonly string[]).includes(value);
 }
 
-/** Egy fotóból legfeljebb ennyi bejegyzést fogadunk el -- defenzív felső korlát, hogy egy
+/** Egy fotóból legfeljebb ennyi bejegyzést fogadunk el, defenzív felső korlát, hogy egy
  * hallucináló/félreértelmezett modellválasz ne tudjon irreálisan sok (pl. 100+) üres/hibás
  * sort a wizard state-jébe zúdítani. Egy valós szervizkönyv-oldal/számla ennél jóval kevesebb
  * eseményt tartalmaz jellemzően. */
 const MAX_ENTRIES = 20;
 
-/** Egy dátum-mező szöveghossza -- csak a formai előszűréshez, a tényleges validáció a
+/** Egy dátum-mező szöveghossza, csak a formai előszűréshez, a tényleges validáció a
  * `DATE_PATTERN`-nel történik. */
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
-/** Km óra állás -- csak számjegyek, ésszerű felső korlát (2 000 000 km), ugyanaz a szabály,
+/** Km óra állás, csak számjegyek, ésszerű felső korlát (2 000 000 km), ugyanaz a szabály,
  * mint `lib/inspections/validation.ts` `sanitizeOdometer`/`sanitizeServiceMileage`-nél. */
 const MAX_MILEAGE = 2_000_000;
 
-/** "Típus" mező max. hossza -- ugyanaz a mező, amit a user is szabadon gépelhet be
+/** "Típus" mező max. hossza, ugyanaz a mező, amit a user is szabadon gépelhet be
  * (`StepServiceHistory.tsx`, `SERVICE_ENTRY_TYPE_SUGGESTIONS` datalist-tel), nincs zárt
  * katalógus-validáció (ellentétben az `equipment_parse` route-tal), csak egy ésszerű
  * hosszkorlát a nyilvánvalóan hibás/túl hosszú modellkimenet ellen. */
 const MAX_TYPE_LENGTH = 80;
 
-/** "Megjegyzés" mező max. hossza -- lásd fent. */
+/** "Megjegyzés" mező max. hossza, lásd fent. */
 const MAX_NOTES_LENGTH = 300;
 
 interface ScanServiceDocRequestBody {
-  /** A kép Base64-tartalma -- data URL VAGY nyers Base64 + külön `mimeType` mező, ugyanaz a
+  /** A kép Base64-tartalma, data URL VAGY nyers Base64 + külön `mimeType` mező, ugyanaz a
    * kontraktus, mint a `scan-vin` route-nál. */
   image: string;
   mimeType?: string;
-  /** A wizard-munkamenet vizsgálat-azonosítója -- lásd `scan-vin/route.ts` azonos mezőjének
+  /** A wizard-munkamenet vizsgálat-azonosítója, lásd `scan-vin/route.ts` azonos mezőjének
    * JSDoc-ját ("1 AI kredit = 1 vizsgálat", `lib/inspectionAiCredit.ts`). */
   inspectionId: string;
 }
@@ -116,8 +116,8 @@ interface ScanServiceDocModelResponse {
   detectedDocumentType?: unknown;
 }
 
-/** A kliens felé visszaadott, MÁR megtisztított bejegyzés -- minden mező opcionális, mert egy
- * fotóról nem biztos, hogy MINDEN mező (pl. km óra állás) kiolvasható -- a hiányzó mezőket a
+/** A kliens felé visszaadott, MÁR megtisztított bejegyzés, minden mező opcionális, mert egy
+ * fotóról nem biztos, hogy MINDEN mező (pl. km óra állás) kiolvasható, a hiányzó mezőket a
  * szaki manuálisan tölti ki a `StepServiceHistory.tsx` már meglévő inputjaival, a bejegyzés
  * ettől függetlenül létrejön a listában. */
 interface CleanServiceEntry {
@@ -141,7 +141,7 @@ interface ScanServiceDocSuccessResponse {
 interface ScanServiceDocErrorResponse {
   success: false;
   error: string;
-  /** KIZÁRÓLAG hibakeresési célból -- lásd `scan-vin/route.ts` `toErrorDetails()` azonos elvű
+  /** KIZÁRÓLAG hibakeresési célból, lásd `scan-vin/route.ts` `toErrorDetails()` azonos elvű
    * kommentjét. */
   details?: string;
   code?: string;
@@ -151,7 +151,7 @@ function toErrorDetails(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-/** `data:image/jpeg;base64,....` data URL feldolgozása -- lásd `scan-vin/route.ts`
+/** `data:image/jpeg;base64,....` data URL feldolgozása, lásd `scan-vin/route.ts`
  * `parseDataUrl()`-jét (ugyanaz a kód, szándékosan duplikálva route-onként, nem közös
  * modulba emelve, mert a két route egyébként is teljesen független szerver-oldali fájl,
  * ugyanaz a minta, mint a `MODEL_CANDIDATES`/`toErrorDetails` egyéb duplikációinál). FONTOS:
@@ -162,19 +162,19 @@ function parseDataUrl(image: string): { mimeType: string; data: string } | null 
   return { mimeType: match[1].trim().toLowerCase(), data: match[2].trim() };
 }
 
-/** Mai dátum "YYYY-MM-DD" alakban -- a jövőbeli dátumok kiszűréséhez (egy szervizesemény
+/** Mai dátum "YYYY-MM-DD" alakban, a jövőbeli dátumok kiszűréséhez (egy szervizesemény
  * sosem lehet a jövőben). */
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
 /**
- * Egyetlen nyers modell-bejegyzést tisztít/validál a TÉNYLEGES mezőnkénti szabályok szerint --
+ * Egyetlen nyers modell-bejegyzést tisztít/validál a TÉNYLEGES mezőnkénti szabályok szerint,
  * szigorúan, a `parse-equipment`/`scan-vin` route-ok elvét követve: a modell kimenete
  * szemantikailag helytelen lehet a séma-megfelelés ellenére is, ezért MINDEN mezőt itt, a
  * szerveren MÉG EGYSZER ellenőrzünk, nem bízzuk kizárólag a `responseSchema`-ra. Egy
  * érvénytelennek bizonyuló mezőt csendben KIHAGYUNK a válaszból (a mező üresen marad, a szaki
- * kézzel pótolja), nem dobjuk el emiatt a teljes bejegyzést -- lásd a `CleanServiceEntry`
+ * kézzel pótolja), nem dobjuk el emiatt a teljes bejegyzést, lásd a `CleanServiceEntry`
  * JSDoc-ját.
  *
  * @returns `null`, ha a bejegyzésnek EGYETLEN használható mezője sincs (ilyenkor nincs értelme
@@ -212,7 +212,7 @@ function sanitizeServiceEntry(raw: RawServiceEntry): CleanServiceEntry | null {
 }
 
 /** A Gemini modellt a szervizkönyv/számla fotók tipikus tartalmára és a wizard mezőkiosztására
- * szorítjuk. A "Típus" mezőnél SZÁNDÉKOSAN NEM zárt katalógus -- a
+ * szorítjuk. A "Típus" mezőnél SZÁNDÉKOSAN NEM zárt katalógus, a
  * `SERVICE_ENTRY_TYPE_SUGGESTIONS` listát csak JAVASLATKÉNT kapja a modell (ugyanaz a lista,
  * amit a `StepServiceHistory.tsx` datalist-je is javasol a usernek), hogy egységesebb, a UI-val
  * konzisztens megnevezéseket adjon vissza, DE ha a dokumentumon egy ettől eltérő, konkrétabb
@@ -223,20 +223,20 @@ function buildSystemInstruction(): string {
   return `Te egy magyar nyelvű autószerviz-dokumentum elemző asszisztens vagy. A feladatod, hogy a felhasználó által feltöltött fotóról (szervizkönyv egy vagy több oldala, szervizszámla, vagy munkalap) kinyerd a rajta szereplő ÖSSZES szerviz-eseményt.
 
 SZABÁLYOK:
-1. Egy fotón (pl. egy szervizkönyv táblázatos oldalán, vagy egy tételes számlán) TÖBB szerviz-esemény is szerepelhet -- mindegyiket KÜLÖN elemként add vissza az "entries" tömbben. Ha csak egyetlen esemény azonosítható (pl. egyetlen számla egyetlen látogatásról), az "entries" tömb egyetlen elemet tartalmazzon.
+1. Egy fotón (pl. egy szervizkönyv táblázatos oldalán, vagy egy tételes számlán) TÖBB szerviz-esemény is szerepelhet, mindegyiket KÜLÖN elemként add vissza az "entries" tömbben. Ha csak egyetlen esemény azonosítható (pl. egyetlen számla egyetlen látogatásról), az "entries" tömb egyetlen elemet tartalmazzon.
 2. "date": a szerviz-esemény dátuma PONTOSAN "YYYY-MM-DD" formátumban (pl. "2024-03-15"). Ha a dokumentumon csak hónap/év szerepel, a hónap ELSŐ napját add vissza (pl. "2024-03" -> "2024-03-01"). Ha a dátum egyáltalán nem olvasható/nem szerepel, hagyd ki ezt a mezőt az adott bejegyzésnél.
 3. "mileage": a km óra állás a szerviz-esemény időpontjában, KIZÁRÓLAG számjegyekkel, elválasztó/mértékegység NÉLKÜL (pl. "84 000 km" -> "84000"). Ha nem olvasható/nem szerepel, hagyd ki.
-4. "type": az elvégzett munka rövid, magyar megnevezése. Törekedj arra, hogy -- ha a dokumentumon szereplő munka egyértelműen megfeleltethető -- az alábbi JAVASOLT megnevezések egyikét add vissza PONTOSAN úgy, ahogy szerepel: ${typeSuggestions}. Ha a dokumentumon ennél konkrétabb/eltérő munka szerepel (pl. "Vízpumpa csere", "Kipufogó javítás"), akkor a dokumentumon szereplő, tömör magyar megnevezést add vissza szabad szövegként -- SOSE találj ki olyan munkát, ami nem szerepel a dokumentumon.
-5. "notes": opcionális, tömör magyar megjegyzés -- pl. konkrét cserélt alkatrészek, garanciális megjegyzés, szerviz neve/helye, ha ez EXTRA információt ad a "type" mezőhöz képest. Ha nincs ilyen, hagyd ki ezt a mezőt.
+4. "type": az elvégzett munka rövid, magyar megnevezése. Törekedj arra, hogy, ha a dokumentumon szereplő munka egyértelműen megfeleltethető, az alábbi JAVASOLT megnevezések egyikét add vissza PONTOSAN úgy, ahogy szerepel: ${typeSuggestions}. Ha a dokumentumon ennél konkrétabb/eltérő munka szerepel (pl. "Vízpumpa csere", "Kipufogó javítás"), akkor a dokumentumon szereplő, tömör magyar megnevezést add vissza szabad szövegként, SOSE találj ki olyan munkát, ami nem szerepel a dokumentumon.
+5. "notes": opcionális, tömör magyar megjegyzés, pl. konkrét cserélt alkatrészek, garanciális megjegyzés, szerviz neve/helye, ha ez EXTRA információt ad a "type" mezőhöz képest. Ha nincs ilyen, hagyd ki ezt a mezőt.
 6. Ha a képen SEMMILYEN felismerhető szerviz-esemény nincs (pl. üres oldal, olvashatatlan kép, vagy a dokumentum nem szervizmúlttal kapcsolatos), az "entries" tömb legyen üres.
 7. A "confidence" mező a SAJÁT bizonyosságod a kinyert adatokra vonatkozóan: "high" (a legtöbb mező tisztán olvasható), "medium" (néhány mező bizonytalan/hiányzik), "low" (a kép rossz minőségű, vagy csak részleges adatokat sikerült kiolvasni).
 8. "detectedDocumentType": "service_book" (szervizkönyv oldala, jellemzően táblázatos/pecsételt formátum), "invoice" (számla/munkalap, tételes díjtétel-listával), vagy "other" (egyik kategóriába sem sorolható egyértelműen).
 
-Kizárólag a megadott JSON séma szerinti választ add -- semmi mást, se magyarázatot, se markdown jelölést, se kódblokkot.`;
+Kizárólag a megadott JSON séma szerinti választ add, semmi mást, se magyarázatot, se markdown jelölést, se kódblokkot.`;
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse<ScanServiceDocSuccessResponse | ScanServiceDocErrorResponse>> {
-  // AUTENTIKÁCIÓ -- lásd `parse-equipment/route.ts` JSDoc "Autentikáció + kredit-védelem"
+  // AUTENTIKÁCIÓ, lásd `parse-equipment/route.ts` JSDoc "Autentikáció + kredit-védelem"
   // szakaszát (CANONIKUS leírás).
   const supabase = await createClient();
   const {
@@ -299,13 +299,13 @@ export async function POST(request: NextRequest): Promise<NextResponse<ScanServi
     return NextResponse.json({ success: false, error: 'Az "inspectionId" mező kötelező.' }, { status: 400 });
   }
 
-  // "1 AI KREDIT = 1 VIZSGÁLAT" -- lásd `lib/inspectionAiCredit.ts` JSDoc-ját. Ha ez a
+  // "1 AI KREDIT = 1 VIZSGÁLAT", lásd `lib/inspectionAiCredit.ts` JSDoc-ját. Ha ez a
   // vizsgálat MÁR "AI-aktív", a keret-ellenőrzést átugorjuk.
   const alreadyClaimed = await hasInspectionClaimedAiCredit(user.id, inspectionId);
 
   if (!alreadyClaimed) {
-    // ELŐZETES AI-KVÓTA ELLENŐRZÉS -- lásd `parse-equipment/route.ts` azonos elvű kommentjét.
-    // 2026-08-06-tól ez az EGYETLEN kapu -- lásd `scan-vin/route.ts` azonos elvű kommentjét
+    // ELŐZETES AI-KVÓTA ELLENŐRZÉS, lásd `parse-equipment/route.ts` azonos elvű kommentjét.
+    // 2026-08-06-tól ez az EGYETLEN kapu, lásd `scan-vin/route.ts` azonos elvű kommentjét
     // a régi kredit-gate eltávolításának indoklásáról.
     const hasAiQuota = await checkAiQuota(user.id);
     if (!hasAiQuota) {
@@ -362,11 +362,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<ScanServi
     },
   ];
 
-  // Modell-fallback lánc -- ugyanaz a minta, mint a `scan-vin`/`parse-equipment` route-oknál.
+  // Modell-fallback lánc, ugyanaz a minta, mint a `scan-vin`/`parse-equipment` route-oknál.
   let rawText: string | undefined;
   let succeeded = false;
   let primaryError: unknown;
-  // Melyik modell adta a ténylegesen felhasznált választ -- Platform Admin
+  // Melyik modell adta a ténylegesen felhasznált választ, Platform Admin
   // AI-hívás-napló célja (lásd `lib/aiApiCallLog.ts`), a statikus ÉS a dinamikus
   // fallback ág is beállítja siker esetén.
   let usedModel: string | undefined;
@@ -385,7 +385,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ScanServi
     }
   }
 
-  // Dinamikus modell-listázó VÉGSŐ biztonsági háló -- lásd `scan-vin/route.ts` azonos elvű
+  // Dinamikus modell-listázó VÉGSŐ biztonsági háló, lásd `scan-vin/route.ts` azonos elvű
   // kommentjét.
   if (!succeeded) {
     try {
@@ -401,7 +401,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ScanServi
       }
 
       if (dynamicModelName) {
-        console.error(`[scan-service-doc] Statikus MODEL_CANDIDATES mind elbuktak -- dinamikus fallback próbálkozás: ${dynamicModelName}`);
+        console.error(`[scan-service-doc] Statikus MODEL_CANDIDATES mind elbuktak, dinamikus fallback próbálkozás: ${dynamicModelName}`);
         try {
           const response = await ai.models.generateContent({ model: dynamicModelName, contents, config: generationConfig });
           rawText = response.text;
@@ -418,9 +418,9 @@ export async function POST(request: NextRequest): Promise<NextResponse<ScanServi
     }
   }
 
-  // Platform Admin AI-hívás-napló (2026-08-17) -- MINDEN ténylegesen megtörtént
+  // Platform Admin AI-hívás-napló (2026-08-17), MINDEN ténylegesen megtörtént
   // Gemini-hívás-próbálkozást naplózunk, sikereset ÉS sikertelent is, FÜGGETLENÜL
-  // az alábbi JSON-validáció kimenetétől -- lásd `lib/aiApiCallLog.ts`. Best-effort,
+  // az alábbi JSON-validáció kimenetétől, lásd `lib/aiApiCallLog.ts`. Best-effort,
   // sosem dob hibát/nem akasztja meg a választ.
   await logAiApiCall(user.id, FEATURE_NAME, usedModel ?? MODEL_CANDIDATES[0], succeeded);
 
@@ -462,7 +462,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ScanServi
     return NextResponse.json({ success: false, error: 'A Gemini API válasza érvénytelen "detectedDocumentType" értéket tartalmaz.' }, { status: 502 });
   }
 
-  // Szigorú, MÉG EGYSZER (nem csak a responseSchema-ra bízott) mezőnkénti validáció -- lásd
+  // Szigorú, MÉG EGYSZER (nem csak a responseSchema-ra bízott) mezőnkénti validáció, lásd
   // `sanitizeServiceEntry()` JSDoc-ját. A `MAX_ENTRIES`-nél is levágjuk a listát, defenzíven.
   const entries: CleanServiceEntry[] = [];
   for (const rawEntry of modelResponse.entries as unknown[]) {
@@ -478,7 +478,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ScanServi
     detectedDocumentType: modelResponse.detectedDocumentType,
   };
 
-  // "1 AI KREDIT = 1 VIZSGÁLAT" CLAIM + KREDIT/KVÓTA LEVONÁS -- KIZÁRÓLAG sikeres, érvényes
+  // "1 AI KREDIT = 1 VIZSGÁLAT" CLAIM + KREDIT/KVÓTA LEVONÁS, KIZÁRÓLAG sikeres, érvényes
   // Gemini-válasz UTÁN, és KIZÁRÓLAG ha ez a vizsgálat MÉG nem volt "AI-aktív". Lásd
   // `lib/inspectionAiCredit.ts` JSDoc-ját a race-condition kezelésről.
   if (!alreadyClaimed) {

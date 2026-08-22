@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { useOnboardingHint } from '@/components/onboarding/OnboardingHintProvider';
 
 interface HintCalloutProps {
-  /** Egyedi, STABIL azonosító -- ez kerül `localStorage`-ba bezáráskor
+  /** Egyedi, STABIL azonosító, ez kerül `localStorage`-ba bezáráskor
    * (`lib/onboarding/hintStorage.ts`), tehát értéke SOSE változzon utólag (egy átnevezés
    * a korábban bezárt tippet újra megjelenítené mindenkinek). Konvenció: rövid,
    * kötőjeles kulcs, pl. `"car-info"`, `"equipment-ai-dictation"`. */
@@ -14,20 +14,20 @@ interface HintCalloutProps {
   title?: string;
   children: ReactNode;
   /**
-   * A nyílhegy vízszintes igazítása a buborék TETEJÉN -- azt jelöli, melyik (a hívó fél
+   * A nyílhegy vízszintes igazítása a buborék TETEJÉN, azt jelöli, melyik (a hívó fél
    * által KÖZVETLENÜL FÖLÉ renderelt) elemre vonatkozik a tipp: `"left"` (alapértelmezett)
    * a bal szélhez igazítja (pl. egy balra igazított cím/gomb fölött), `"right"` a jobb
    * szélhez (pl. a `TextareaField` jobb felső sarkában ülő mikrofon gomb fölött),
    * `"center"` középre. A hívó fél felelőssége, hogy a `HintCallout`-ot KÖZVETLENÜL a
    * hivatkozott elem UTÁN, a dokumentum-folyamban (nem absztrakt overlay-ként)
-   * helyezze el -- lásd a komponens JSDoc-ját lent, miért ez a megbízható mobil-megoldás.
+   * helyezze el, lásd a komponens JSDoc-ját lent, miért ez a megbízható mobil-megoldás.
    */
   pointerAlign?: 'left' | 'center' | 'right';
   className?: string;
 }
 
 /**
- * Onboarding "Tipp" buborék -- coachmark-stílus: egy kitöltött, lekerekített dobozka +
+ * Onboarding "Tipp" buborék, coachmark-stílus: egy kitöltött, lekerekített dobozka +
  * egy kis háromszög-nyílhegy a tetején, ami arra az elemre mutat, ami KÖZVETLENÜL fölötte
  * áll a JSX-ben (2026-08-10, felhasználói kérés: "kiemeli azt az adott funkciót... egy
  * nyíl mutatja, hogy arra vonatkozik a tipp", "mintha egy modern app lenne").
@@ -36,10 +36,10 @@ interface HintCalloutProps {
  * egy klasszikus, abszolút pozicionált popover (pl. a felhasználó által hivatkozott
  * `@ark-ui/react` `Popover` + `Portal`) helyes elhelyezése a célelemhez képest (fent/lent/
  * balra/jobbra, ütközés-észleléssel a képernyő szélén) mobilon, sok különböző, görgethető
- * form-mezőn/gombon -- ahogy ez a wizard mind a 11 lépésén, változó elrendezésekben él --
+ * form-mezőn/gombon, ahogy ez a wizard mind a 11 lépésén, változó elrendezésekben él,
  * jelentős extra komplexitást és törékenységet (viewport-túlcsordulás, `z-index`-harc,
- * scroll-követés) hozna be. Mivel a tippnek ITT NEM kell a célelem FÖLÉ/ELÉ úsznia --
- * elég, ha közvetlenül ALATTA jelenik meg, nyílheggyel felfelé --, egyszerű, normál
+ * scroll-követés) hozna be. Mivel a tippnek ITT NEM kell a célelem FÖLÉ/ELÉ úsznia,
+ * elég, ha közvetlenül ALATTA jelenik meg, nyílheggyel felfelé, egyszerű, normál
  * `flow`-beli blokk-elemként FIX, MEGBÍZHATÓ pozíciót ad, portál/overlay-kezelés,
  * abszolút-pozicionálási szélső esetek nélkül, és garantáltan jól néz ki bármilyen
  * képernyőméreten (a doboz egyszerűen a szülő szélességéhez igazodik).
@@ -49,8 +49,8 @@ interface HintCalloutProps {
  * app-os coachmark-hatást keltsen, egy plusz ikon-jelvény itt már túlzsúfolt lenne egy
  * ilyen kompakt buborékban.
  *
- * Első látogatáskor jelenik meg -- automatikusan, KATTINTÁS NÉLKÜL (nem `Popover.Trigger`-
- * hez kötött, mindig renderelődik, amíg `id` nincs bezárva) -- a `×` gombbal ÖRÖKRE
+ * Első látogatáskor jelenik meg, automatikusan, KATTINTÁS NÉLKÜL (nem `Popover.Trigger`-
+ * hez kötött, mindig renderelődik, amíg `id` nincs bezárva), a `×` gombbal ÖRÖKRE
  * bezárható (lásd `OnboardingHintProvider.tsx`/`hintStorage.ts`).
  */
 export function HintCallout({ id, title, children, pointerAlign = 'left', className }: HintCalloutProps) {
@@ -59,7 +59,7 @@ export function HintCallout({ id, title, children, pointerAlign = 'left', classN
 
   return (
     <div className={cn('relative w-full pt-2 sm:w-fit sm:max-w-sm', className)}>
-      {/* Nyílhegy -- egy 45°-kal elforgatott négyzet sarka, ugyanolyan háttérszínnel, mint
+      {/* Nyílhegy, egy 45°-kal elforgatott négyzet sarka, ugyanolyan háttérszínnel, mint
           a buborék, hogy folytonosnak tűnjön (klasszikus CSS "speech bubble" trükk). */}
       <span
         aria-hidden="true"

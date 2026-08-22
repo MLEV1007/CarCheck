@@ -1,16 +1,16 @@
 /**
- * Kliens-oldali videó-tömörítés `ffmpeg.wasm`-mel (PLAN_video_qr_upload.md 3. szakasz) --
+ * Kliens-oldali videó-tömörítés `ffmpeg.wasm`-mel (PLAN_video_qr_upload.md 3. szakasz),
  * MINDEN feltöltött videó (telefonkamera, telefon galéria, asztali fájlválasztó, QR-kódos
  * telefonos feltöltés) ezen a modulon megy át, MIELŐTT a Supabase Storage-ba kerülne. Nincs
- * "csendes" visszaesés a tömörítetlen fájlra -- ha a tömörítés BÁRMIÉRT meghiúsul, ez a
+ * "csendes" visszaesés a tömörítetlen fájlra, ha a tömörítés BÁRMIÉRT meghiúsul, ez a
  * modul hibát dob, a hívó (`lib/inspections/mediaSelection.ts`) pedig megszakítja a
  * feltöltést, és egyértelmű magyar hibaüzenetet mutat a felhasználónak.
  *
  * **Célparaméterek (a felhasználóval egyeztetve, lásd PLAN_video_qr_upload.md "Nyitott
- * döntések" 5. pontját -- "Terv szerinti értékek" lett elfogadva):**
+ * döntések" 5. pontját, "Terv szerinti értékek" lett elfogadva):**
  * - Max. felbontás: 1280px a hosszabb oldalon (kb. 720p), csak KICSINYÍT, sosem nagyít fel.
  * - Videó bitráta: ~2 Mbps, hang: 128 kbps AAC.
- * - Max. hossz: 90 másodperc -- ha a kiválasztott videó ennél hosszabb, a hívónak KÜLÖN meg
+ * - Max. hossz: 90 másodperc, ha a kiválasztott videó ennél hosszabb, a hívónak KÜLÖN meg
  *   kell erősíttetnie a felhasználóval a vágást (lásd `mediaSelection.ts`), ez a modul saját
  *   maga SOSE vág csendben.
  *
@@ -26,7 +26,7 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
 
-/** A videó leghosszabb oldala (px) tömörítés UTÁN -- lásd a fenti modul-JSDoc-ot. */
+/** A videó leghosszabb oldala (px) tömörítés UTÁN, lásd a fenti modul-JSDoc-ot. */
 export const VIDEO_MAX_DIMENSION = 1280;
 
 /** Cél videó-bitráta kb/s-ban. */
@@ -35,7 +35,7 @@ export const VIDEO_BITRATE_KBPS = 2000;
 /** Cél hang-bitráta kb/s-ban. */
 export const AUDIO_BITRATE_KBPS = 128;
 
-/** Max. megengedett videóhossz másodpercben KÜLÖN felhasználói megerősítés NÉLKÜL -- e
+/** Max. megengedett videóhossz másodpercben KÜLÖN felhasználói megerősítés NÉLKÜL, e
  * fölött a hívónak (`mediaSelection.ts`) meg kell kérdeznie a felhasználót, hogy vágja-e
  * a videót erre a hosszra, mielőtt a tömörítés elindulna. */
 export const MAX_VIDEO_DURATION_SECONDS = 90;
@@ -49,7 +49,7 @@ export interface VideoCompressionProgress {
 }
 
 export interface CompressVideoOptions {
-  /** Ha meg van adva, a tömörített videó ENNYI másodpercre lesz vágva (a videó ELEJÉTŐL) --
+  /** Ha meg van adva, a tömörített videó ENNYI másodpercre lesz vágva (a videó ELEJÉTŐL),
    * kizárólag a felhasználó explicit megerősítése UTÁN adható meg (lásd `mediaSelection.ts`
    * `MAX_VIDEO_DURATION_SECONDS` melletti trim-megerősítő folyamatát). */
   trimToSeconds?: number;
@@ -78,7 +78,7 @@ async function attemptLoad(instance: FFmpeg, baseURL: string, includeWorker: boo
   await instance.load(loadConfig);
 }
 
-/** Betölti (vagy visszaadja a már betöltött) ffmpeg.wasm motort -- lásd a fenti modul-JSDoc
+/** Betölti (vagy visszaadja a már betöltött) ffmpeg.wasm motort, lásd a fenti modul-JSDoc
  * "Motor-betöltés" szakaszát a single-/multi-threaded döntési logikáért. Modul-szintű
  * singleton + betöltés-alatti Promise cache-elés, hogy egyidejű (pl. több kártyán egyszerre
  * kiválasztott videó) hívások ne indítsanak több párhuzamos motor-betöltést. */
@@ -132,14 +132,14 @@ async function loadFfmpeg(onProgress?: (progress: VideoCompressionProgress) => v
   try {
     return await loadPromise;
   } catch (err) {
-    // Hiba esetén NEM tartjuk meg a sikertelen Promise-t -- egy következő próbálkozás
+    // Hiba esetén NEM tartjuk meg a sikertelen Promise-t, egy következő próbálkozás
     // (pl. "Újra" gomb egy hibaüzenet után) friss betöltési kísérletet indíthasson.
     loadPromise = null;
     throw err;
   }
 }
 
-/** A fájl kiterjesztése -- ha a fájlnévből nem állapítható meg, a MIME típusból tippel,
+/** A fájl kiterjesztése, ha a fájlnévből nem állapítható meg, a MIME típusból tippel,
  * `.mp4`-re esik vissza. Az ffmpeg.wasm virtuális fájlrendszerében a bemeneti fájlnak
  * kiterjesztéssel kell rendelkeznie, hogy a demuxer helyesen ismerje fel a konténer-formátumot. */
 function guessInputExtension(file: File): string {
@@ -157,7 +157,7 @@ function guessInputExtension(file: File): string {
 }
 
 /** A videó hosszát adja vissza másodpercben, a natív `<video>` elem metaadat-betöltésén
- * keresztül (NEM az ffmpeg.wasm-en -- ez lényegesen gyorsabb, mert nem igényli a motor
+ * keresztül (NEM az ffmpeg.wasm-en, ez lényegesen gyorsabb, mert nem igényli a motor
  * betöltését, és a felhasználónak MÉG a tömörítés elindulása ELŐTT eldönthetjük, hogy kell-e
  * vágás-megerősítést kérni, lásd `MAX_VIDEO_DURATION_SECONDS`). */
 export function getVideoDuration(file: File): Promise<number> {
@@ -252,7 +252,7 @@ export async function compressVideo(file: File, options: CompressVideoOptions = 
     }
 
     // `Uint8Array<ArrayBufferLike>` (ffmpeg.wasm belső típusa) -> sima `Uint8Array` a
-    // `BlobPart` típus-elvárásához -- a másolás egyben biztonságos védelem is az ellen, hogy
+    // `BlobPart` típus-elvárásához, a másolás egyben biztonságos védelem is az ellen, hogy
     // az ffmpeg.wasm belső puffere a `deleteFile` hívás után módosuljon a Blob alól.
     const blob = new Blob([new Uint8Array(data)], { type: 'video/mp4' });
 

@@ -9,7 +9,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
  * Előfizetés lemondása / lemondás visszavonása végpont (2026-08-17, felhasználói kérés:
  * "hozd létre, hogy az előfizetést le is lehessen mondani... Csak biztos megoldás
  * érdekel, ha valaki leiratkozik, akkor még a kifizetett részig használhatja a
- * rendszert, utána biztosan nem. A fiókja természetesen megmarad.") -- a Beállítások >
+ * rendszert, utána biztosan nem. A fiókja természetesen megmarad."), a Beállítások >
  * Előfizetés fül (`BillingTab.tsx`) "Előfizetés lemondása"/"Lemondás visszavonása"
  * gombjai hívják.
  *
@@ -19,23 +19,23 @@ import { createAdminClient } from '@/lib/supabase/admin';
  * változatlanul teljes hozzáférést kap, utána viszont a Stripe SAJÁT szerverén,
  * automatikusan (semmilyen mi-oldali cron/időzített feladat nélkül, ami elmaradhatna/
  * hibázhatna) lezárja az előfizetést, és `customer.subscription.deleted` webhook-
- * eseményt küld -- ezt `app/api/stripe/webhook/route.ts` `handleSubscriptionEvent`-je
+ * eseményt küld, ezt `app/api/stripe/webhook/route.ts` `handleSubscriptionEvent`-je
  * kezeli: onnantól a szervezet VÉGLEGESEN (a fiók/korábbi vizsgálatok törlése NÉLKÜL,
  * lásd `DeleteAccountCard.tsx`-től eltérően) visszakerül az 'free' csomagra, a
  * `apply_plan_purchase('free')` RPC-ágon keresztül (lásd
  * `supabase/migrations/20260817_subscription_cancellation.sql`).
  *
- * **Szervezeti Guard -- KIZÁRÓLAG Menedzser mondhat le/vonhat vissza előfizetést** --
+ * **Szervezeti Guard, KIZÁRÓLAG Menedzser mondhat le/vonhat vissza előfizetést**,
  * ugyanaz a minta, mint `/api/stripe/checkout/route.ts`-nél.
  *
  * **`action: 'cancel' | 'resume'`:** a "Lemondás visszavonása" (resume) azért él ugyanezen
  * az endpointon, mert pontosan a Stripe `cancel_at_period_end` mezőjének ELLENKEZŐJÉT
- * állítja be (`false`), amíg a számlázási ciklus még nem járt le -- ha a Menedzser
+ * állítja be (`false`), amíg a számlázási ciklus még nem járt le, ha a Menedzser
  * meggondolja magát, ne kelljen újra végigmennie a teljes Checkout folyamaton.
  *
  * **DB write-through:** a Stripe API hívás UTÁN ez a route KÖZVETLENÜL is frissíti a
  * `user_credits.cancel_at_period_end` mezőt a service-role admin klienssel (ugyanaz a
- * minta, mint a webhook route `handleSubscriptionEvent`-je) -- ez a UI-t AZONNAL, a
+ * minta, mint a webhook route `handleSubscriptionEvent`-je), ez a UI-t AZONNAL, a
  * webhook kör-út (hálózati késleltetés, Vercel-en akár másodperces) megvárása nélkül
  * frissíti. A webhook a `customer.subscription.updated` eseménnyel ezt UTÓLAG úgyis
  * szinkronizálja (idempotens upsert), tehát ha ez a write-through bármiért elveszne, a
@@ -80,7 +80,7 @@ export async function POST(
     );
   }
 
-  // SZERVEZETI GUARD -- lásd a fenti JSDoc-ot. Csak Menedzser mondhat le/vonhat vissza.
+  // SZERVEZETI GUARD, lásd a fenti JSDoc-ot. Csak Menedzser mondhat le/vonhat vissza.
   const roleContext = await getUserRoleContext(user.id);
   if (!roleContext || roleContext.role !== 'manager') {
     return NextResponse.json(
@@ -102,7 +102,7 @@ export async function POST(
     const supabaseAdmin = createAdminClient();
 
     // A `stripe_subscription_id`-t a saját (RLS-szel védett) `user_credits` sorunkból
-    // olvassuk -- NEM a kliensből küldött értékből, hogy egy manipulált kérés ne tudjon
+    // olvassuk, NEM a kliensből küldött értékből, hogy egy manipulált kérés ne tudjon
     // egy MÁSIK szervezet előfizetésén módosítani (lásd `checkout-session/route.ts`
     // hasonló "Biztonsági guard" JSDoc-ját).
     const { data: creditsRow, error: creditsError } = await supabaseAdmin
@@ -135,7 +135,7 @@ export async function POST(
     const currentPeriodEndUnix = subscription.items.data[0]?.current_period_end;
     const currentPeriodEndIso = currentPeriodEndUnix ? new Date(currentPeriodEndUnix * 1000).toISOString() : null;
 
-    // Write-through -- lásd a fenti JSDoc "DB write-through" pontját.
+    // Write-through, lásd a fenti JSDoc "DB write-through" pontját.
     const { error: updateError } = await supabaseAdmin
       .from('user_credits')
       .update({
@@ -147,7 +147,7 @@ export async function POST(
       .eq('organization_id', roleContext.organizationId);
 
     if (updateError) {
-      // A Stripe-oldali állapotváltás ekkorra MÁR megtörtént -- ezt a hibát csak
+      // A Stripe-oldali állapotváltás ekkorra MÁR megtörtént, ezt a hibát csak
       // logoljuk, a webhook (`customer.subscription.updated`) úgyis utólag
       // szinkronizálja, ugyanaz az elv, mint a checkout webhook számla-email hibájánál.
       console.error('[stripe/cancel-subscription] user_credits write-through sikertelen (a Stripe-módosítás megtörtént):', {

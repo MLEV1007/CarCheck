@@ -13,15 +13,15 @@ export const metadata: Metadata = {
   title: 'Új vizsgálat | CarPass',
 };
 
-// Linear design system (linear.md) -- sötét canvas, tömör fejléc, a wizard maga
+// Linear design system (linear.md), sötét canvas, tömör fejléc, a wizard maga
 // Client Component (InspectionWizard.tsx), mert a lépésváltás és a Supabase
 // insert/upload logika kliens-oldali állapotot és böngésző-kliens hívásokat igényel.
 // A middleware.ts (PROTECTED_PREFIXES) már véd minden /inspections route-ot.
 //
-// Server Component -- azért, hogy a bejelentkezett user `user_metadata.default_license_country`
+// Server Component, azért, hogy a bejelentkezett user `user_metadata.default_license_country`
 // értékét (Settings oldalon testre szabható "Alapértelmezett rendszám felségjelzés") már a
 // wizard ELSŐ renderelésekor átadhassuk a Rendszám felségjelzés dropdown kezdeti értékének
-// (`InspectionWizard.tsx` `defaultLicensePlateCountry` propja) -- lásd "Rendszám felségjelzés
+// (`InspectionWizard.tsx` `defaultLicensePlateCountry` propja), lásd "Rendszám felségjelzés
 // dropdown és profilhoz kötött alapértelmezés" lépés.
 export default async function NewInspectionPage() {
   const supabase = await createClient();
@@ -33,17 +33,17 @@ export default async function NewInspectionPage() {
     (user?.user_metadata?.default_license_country as string | undefined) || DEFAULT_LICENSE_PLATE_COUNTRY;
 
   // Tutorial "Tipp" buborékok be/kikapcsolása (2026-08-10, Settings "Tutorial tippek
-  // megjelenítése" kapcsoló) -- lásd `DefaultPreferencesCard.tsx`/`OnboardingHintProvider.tsx`
+  // megjelenítése" kapcsoló), lásd `DefaultPreferencesCard.tsx`/`OnboardingHintProvider.tsx`
   // JSDoc-ját. `!== false`: a kapcsoló bevezetése ELŐTT regisztrált usereknél a
-  // `user_metadata`-ban ez a kulcs nem létezik (`undefined`) -- ilyenkor a tippek
+  // `user_metadata`-ban ez a kulcs nem létezik (`undefined`), ilyenkor a tippek
   // TOVÁBBRA IS látszanak (ez volt az eddigi, alapértelmezett viselkedés).
   const tutorialHintsEnabled = user?.user_metadata?.tutorial_hints_enabled !== false;
 
   // Szervezeti RBAC (PROJEKT_INSTRUKCIOK.md "Átvizsgálói UI" lépés): az Átvizsgáló NEM
-  // láthatja a céges AI kredit-egyenleget -- a `HeaderCreditBadge` szerver-oldalon,
+  // láthatja a céges AI kredit-egyenleget, a `HeaderCreditBadge` szerver-oldalon,
   // renderelés ELŐTT marad ki `role === 'inspector'` esetén (nincs kliens-oldali villanás).
   // Ugyanez a lekérdezés adja a Riport küszöbértékeket is (2026-08-07, lásd
-  // `ReportThresholdsCard.tsx`) -- a wizard Festékvastagság/Gumiabroncsok/Összegzés
+  // `ReportThresholdsCard.tsx`), a wizard Festékvastagság/Gumiabroncsok/Összegzés
   // lépései ezekkel jelenítik meg élőben a "Gyári/Újrafújt/Gittelt" ill.
   // "Koros/Kopott gumiabroncs" jelzéseket, NEM a korábban hardkódolt konstansokkal.
   const { data: profile } = user
@@ -65,14 +65,14 @@ export default async function NewInspectionPage() {
   };
 
   // VIZSGÁLATI KVÓTA ELLENŐRZÉS (PROJEKT_INSTRUKCIOK.md "Keret-ellenőrző és fogyasztó
-  // logika" lépés, 2026-08-04) -- "Új autó vizsgálat indításakor ellenőrizze, hogy van-e
+  // logika" lépés, 2026-08-04), "Új autó vizsgálat indításakor ellenőrizze, hogy van-e
   // még elérhető vizsgálati keret... Ha nincs, dobjon hibát." Ez a Server Component a
   // legtermészetesebb hely erre: MIELŐTT a user egyáltalán elkezdene adatokat gépelni a
   // Wizardba, itt derül ki, ha a szervezetnek elfogyott a kerete (havi + vásárolt Top-up
-  // összesen <= 0) -- ilyenkor egy blokkoló üzenetet mutatunk a Wizard HELYETT, link a
+  // összesen <= 0), ilyenkor egy blokkoló üzenetet mutatunk a Wizard HELYETT, link a
   // Beállítások > Előfizetés oldalra. A TÉNYLEGES levonás (1 egységgel) csak a vizsgálat
   // első sikeres MENTÉSEKOR történik (lásd `InspectionWizard.tsx` `/api/inspections/
-  // consume-quota` hívását), NEM itt -- ez a lépés csak egy előzetes, blokkoló ellenőrzés.
+  // consume-quota` hívását), NEM itt, ez a lépés csak egy előzetes, blokkoló ellenőrzés.
   let quotaExceeded = false;
   if (user) {
     try {
@@ -81,7 +81,7 @@ export default async function NewInspectionPage() {
       if (error instanceof InsufficientInspectionQuotaError) {
         quotaExceeded = true;
       } else {
-        // Egy váratlan (DB/hálózati) hiba esetén NEM blokkoljuk a usert -- inkább egy
+        // Egy váratlan (DB/hálózati) hiba esetén NEM blokkoljuk a usert, inkább egy
         // esetlegesen sikertelen kvóta-levonás derül ki a mentéskor, mint hogy egy
         // átmeneti infrastruktúra-hiba miatt senki ne tudjon vizsgálatot indítani.
         console.error('[inspections/new] Váratlan hiba a vizsgálati kvóta ellenőrzése közben:', error);

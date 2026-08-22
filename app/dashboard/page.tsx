@@ -14,7 +14,7 @@ interface DashboardPageProps {
   searchParams: Promise<{ published?: string }>;
 }
 
-// Linear design system (linear.md) -- a szakértői munkaterület sötét canvas alapja.
+// Linear design system (linear.md), a szakértői munkaterület sötét canvas alapja.
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
   const { published } = await searchParams;
   const supabase = await createClient();
@@ -32,12 +32,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   // FONTOS (RLS, lásd PROJEKT_INSTRUKCIOK.md 3. pont): a `profiles` lekérdezés a
   // `profiles_select_own` policy-n keresztül garantáltan csak a bejelentkezett user
   // saját sorára szűkül. Az `inspections` lekérdezésen SZÁNDÉKOSAN NINCS explicit
-  // `.eq('user_id', ...)` szűrés -- ez a "Szervezeti szerepkezelés" lépés (lásd
+  // `.eq('user_id', ...)` szűrés, ez a "Szervezeti szerepkezelés" lépés (lásd
   // `supabase/migrations/20260803_organizations_rbac.sql` `inspections_select_org`
   // RLS policy-ját) óta a helyes viselkedés: a DB-oldali RLS maga dönti el, mit lát a
   // hívó (Menedzser -> teljes szervezet; Átvizsgáló `can_view_all_reports = true` ->
   // teljes szervezet; Átvizsgáló `can_view_all_reports = false` -> kizárólag
-  // `created_by = auth.uid()`) -- a lekérdezés tehát MINDIG a helyes, szerepkör szerint
+  // `created_by = auth.uid()`), a lekérdezés tehát MINDIG a helyes, szerepkör szerint
   // szűkített listát adja vissza, kód-szintű `if role === ...` elágazás nélkül.
   const [{ data: profile }, { data: inspections }] = await Promise.all([
     supabase

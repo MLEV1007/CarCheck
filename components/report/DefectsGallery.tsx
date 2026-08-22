@@ -24,7 +24,7 @@ function groupByCategory(defects: PublicReportDefect[]): Array<[string, PublicRe
 
 /**
  * Talált hibák & média galéria (PROJEKT_INSTRUKCIOK.md 5.C): kategória szerint
- * csoportosított hibalista, fotó/videó thumbnaillel -- kattintásra a `MediaLightbox`
+ * csoportosított hibalista, fotó/videó thumbnaillel, kattintásra a `MediaLightbox`
  * nyílik meg. BMW design: `rounded-none` kártyák, hairline elválasztók, 300-as light
  * leírás-szöveg a 700-as kategória-címekkel szemben.
  */
@@ -74,10 +74,10 @@ function DefectRow({
     <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:gap-6">
       {defect.media_url ? (
         isVideoUrl(defect.media_url) ? (
-          // A videó a riportban KIZÁRÓLAG linkként jelenik meg -- NEM beágyazott
+          // A videó a riportban KIZÁRÓLAG linkként jelenik meg, NEM beágyazott
           // lejátszóként/előnézeti thumbnail-ként, lásd a felhasználó 2026-08-21-i
           // visszajelzését ("A riportban egy linkként jelenjen meg a videó."). A
-          // `MediaLightbox`-ot ez az ág SZÁNDÉKOSAN nem nyitja meg -- a link közvetlenül,
+          // `MediaLightbox`-ot ez az ág SZÁNDÉKOSAN nem nyitja meg, a link közvetlenül,
           // egy új lapon nyitja meg a videó URL-jét a böngésző natív lejátszójával.
           <a
             href={defect.media_url}

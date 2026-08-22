@@ -6,7 +6,7 @@ import { hasInspectionClaimedAiCredit, claimInspectionAiCredit } from '@/lib/ins
 import { logAiApiCall } from '@/lib/aiApiCallLog';
 
 /**
- * Google Gemini backend az "Auto-Trigger AI Diktálás" lépéshez (2026-08-02) --
+ * Google Gemini backend az "Auto-Trigger AI Diktálás" lépéshez (2026-08-02),
  * nyelvhelyesség-javítás egy hangalapú diktálásból származó, gyakran tagolatlan/
  * nyelvtanilag pontatlan magyar szöveg-szegmensre.
  *
@@ -14,21 +14,21 @@ import { logAiApiCall } from '@/lib/aiApiCallLog';
  * viselkedésének motorja: amint a mikrofon kikapcsol, a `useSpeechToText.ts`
  * `onSessionEnd` callback-je átadja a SESSION alatt ténylegesen felismert nyers szöveget
  * (NEM a teljes mező-tartalmat, csak az újonnan bediktált részt), ez a route pedig egy
- * profi, kerek, szakmai magyar mondattá/mondatokká alakítja -- a `VoiceInputButton` a
+ * profi, kerek, szakmai magyar mondattá/mondatokká alakítja, a `VoiceInputButton` a
  * választ a diktálás-indításkori mező-tartalomhoz fűzve (`joinDictatedText`) illeszti
  * be a mezőbe, a nyers verziót felülírva. Ezt a route-ot a `StepEquipment.tsx` Felszereltség
- * lépés AI diktálás kártyája SZÁNDÉKOSAN NEM használja -- ott a diktálás vége közvetlenül
+ * lépés AI diktálás kártyája SZÁNDÉKOSAN NEM használja, ott a diktálás vége közvetlenül
  * a `/api/ai/parse-equipment` strukturált feldolgozást indítja el (lásd `StepEquipment.tsx`
  * `onDictationEnd` propját), a nyers szöveg apró nyelvtani pontatlanságai ott irrelevánsak.
  *
  * **Modellválasztás + fallback-lánc (2026-08-16, frissítve):** UGYANAZ a minta, mint a
- * projekt többi Gemini route-jánál (lásd `parse-equipment/route.ts` részletes JSDoc-ját) --
+ * projekt többi Gemini route-jánál (lásd `parse-equipment/route.ts` részletes JSDoc-ját),
  * elsődleges `gemini-3.1-flash-lite`, fallback `gemini-3.6-flash`.
  *
- * `runtime = 'nodejs'` -- ugyanazon okból, mint a projekt többi Gemini route-jánál.
+ * `runtime = 'nodejs'`, ugyanazon okból, mint a projekt többi Gemini route-jánál.
  *
  * **Autentikáció + kredit-védelem:** lásd `parse-equipment/route.ts` JSDoc "Autentikáció +
- * kredit-védelem" szakaszát (CANONIKUS leírás) -- ugyanaz a minta, `featureName: 'grammar_fix'`.
+ * kredit-védelem" szakaszát (CANONIKUS leírás), ugyanaz a minta, `featureName: 'grammar_fix'`.
  */
 export const runtime = 'nodejs';
 
@@ -36,12 +36,12 @@ export const runtime = 'nodejs';
  * (2026-08-16 frissítés). */
 const MODEL_CANDIDATES = ['gemini-3.1-flash-lite', 'gemini-3.6-flash'] as const;
 
-/** A `usage_logs.feature_name` értéke ehhez a route-hoz -- lásd `lib/credits.ts`. */
+/** A `usage_logs.feature_name` értéke ehhez a route-hoz, lásd `lib/credits.ts`. */
 const FEATURE_NAME = 'grammar_fix';
 
 interface FixGrammarRequestBody {
   text: string;
-  /** A wizard-munkamenet vizsgálat-azonosítója -- lásd `scan-vin/route.ts` azonos mezőjének
+  /** A wizard-munkamenet vizsgálat-azonosítója, lásd `scan-vin/route.ts` azonos mezőjének
    * JSDoc-ját ("1 AI kredit = 1 vizsgálat", `lib/inspectionAiCredit.ts`). A `fix-grammar`
    * is a KÖZÖS "1 kredit / vizsgálat" keretbe tartozik (2026-08-06-tól), nem önálló kredit. */
   inspectionId: string;
@@ -56,7 +56,7 @@ interface FixGrammarErrorResponse {
   success: false;
   error: string;
   details?: string;
-  /** Gépileg feldolgozható hibakód -- lásd `parse-equipment/route.ts` azonos mezőjének JSDoc-ját. */
+  /** Gépileg feldolgozható hibakód, lásd `parse-equipment/route.ts` azonos mezőjének JSDoc-ját. */
   code?: string;
 }
 
@@ -65,17 +65,17 @@ function toErrorDetails(error: unknown): string {
 }
 
 /** Egyetlen diktálás-session nyers szövege ennél jóval rövidebb a gyakorlatban (egy-két
- * mondatnyi hiba-/megjegyzés-leírás) -- ugyanaz a védelmi elv, mint a
+ * mondatnyi hiba-/megjegyzés-leírás), ugyanaz a védelmi elv, mint a
  * `parse-equipment/route.ts` `MAX_TEXT_LENGTH`-jénél. */
 const MAX_TEXT_LENGTH = 4000;
 
 const SYSTEM_INSTRUCTION =
-  'Te egy magyar nyelvi lektor vagy, aki gépjármű-szakértők hangalapú diktálásait javítja. A bemenet egy hangalapú diktálásból származó, gyakran tagolatlan, nyelvtanilag pontatlan magyar szöveg. Alakítsd át egy vagy néhány profi, nyelvtanilag helyes, szakmai hangvételű magyar mondattá -- MINDEN konkrét adatot (számok, mértékegységek, alkatrész-nevek, márkanevek) őrizz meg pontosan, és NE adj hozzá új információt, NE változtass a jelentésen. A válaszod KIZÁRÓLAG a javított szöveg legyen -- semmi magyarázat, semmi idézőjel, semmi markdown formázás.';
+  'Te egy magyar nyelvi lektor vagy, aki gépjármű-szakértők hangalapú diktálásait javítja. A bemenet egy hangalapú diktálásból származó, gyakran tagolatlan, nyelvtanilag pontatlan magyar szöveg. Alakítsd át egy vagy néhány profi, nyelvtanilag helyes, szakmai hangvételű magyar mondattá, MINDEN konkrét adatot (számok, mértékegységek, alkatrész-nevek, márkanevek) őrizz meg pontosan, és NE adj hozzá új információt, NE változtass a jelentésen. A válaszod KIZÁRÓLAG a javított szöveg legyen, semmi magyarázat, semmi idézőjel, semmi markdown formázás.';
 
 export async function POST(
   request: NextRequest
 ): Promise<NextResponse<FixGrammarSuccessResponse | FixGrammarErrorResponse>> {
-  // AUTENTIKÁCIÓ -- lásd `parse-equipment/route.ts` JSDoc "Autentikáció + kredit-védelem"
+  // AUTENTIKÁCIÓ, lásd `parse-equipment/route.ts` JSDoc "Autentikáció + kredit-védelem"
   // szakaszát (CANONIKUS leírás).
   const supabase = await createClient();
   const {
@@ -118,13 +118,13 @@ export async function POST(
     return NextResponse.json({ success: false, error: 'Az "inspectionId" mező kötelező.' }, { status: 400 });
   }
 
-  // "1 AI KREDIT = 1 VIZSGÁLAT" -- lásd `lib/inspectionAiCredit.ts` JSDoc-ját. Ha ez a
+  // "1 AI KREDIT = 1 VIZSGÁLAT", lásd `lib/inspectionAiCredit.ts` JSDoc-ját. Ha ez a
   // vizsgálat MÁR "AI-aktív", a keret-ellenőrzést átugorjuk.
   const alreadyClaimed = await hasInspectionClaimedAiCredit(user.id, inspectionId);
 
   if (!alreadyClaimed) {
-    // ELŐZETES AI-KVÓTA ELLENŐRZÉS -- lásd `parse-equipment/route.ts` "ELŐZETES AI-KVÓTA
-    // ELLENŐRZÉS" JSDoc-kommentjét, ugyanaz a minta. 2026-08-06-tól ez az EGYETLEN kapu --
+    // ELŐZETES AI-KVÓTA ELLENŐRZÉS, lásd `parse-equipment/route.ts` "ELŐZETES AI-KVÓTA
+    // ELLENŐRZÉS" JSDoc-kommentjét, ugyanaz a minta. 2026-08-06-tól ez az EGYETLEN kapu,
     // lásd `scan-vin/route.ts` azonos elvű kommentjét a régi kredit-gate eltávolításának
     // indoklásáról.
     const hasAiQuota = await checkAiQuota(user.id);
@@ -149,15 +149,15 @@ export async function POST(
 
   const contents = [{ role: 'user' as const, parts: [{ text: `Nyers, diktált szöveg:\n"""\n${text}\n"""` }] }];
 
-  // Modell-fallback lánc -- lásd `parse-equipment/route.ts` részletes JSDoc-ját. Itt
+  // Modell-fallback lánc, lásd `parse-equipment/route.ts` részletes JSDoc-ját. Itt
   // (a szándékosan kisebb, gyors-válaszú felület miatt) a dinamikus `ai.models.list()`
-  // végső biztonsági hálót NEM ismételjük meg -- ha mindkét statikus jelölt elbukik, a
+  // végső biztonsági hálót NEM ismételjük meg, ha mindkét statikus jelölt elbukik, a
   // hívó fél (`VoiceInputButton`) csendben megtartja a mezőben már ott lévő, élőben
   // felismert NYERS szöveget, nincs adatvesztés.
   let rawText: string | undefined;
   let succeeded = false;
   let primaryError: unknown;
-  // Melyik modell adta a ténylegesen felhasznált választ -- Platform Admin
+  // Melyik modell adta a ténylegesen felhasznált választ, Platform Admin
   // AI-hívás-napló célja (lásd `lib/aiApiCallLog.ts`).
   let usedModel: string | undefined;
 
@@ -175,8 +175,8 @@ export async function POST(
     }
   }
 
-  // Platform Admin AI-hívás-napló (2026-08-17) -- MINDEN ténylegesen megtörtént
-  // Gemini-hívás-próbálkozást naplózunk, sikereset ÉS sikertelent is -- lásd
+  // Platform Admin AI-hívás-napló (2026-08-17), MINDEN ténylegesen megtörtént
+  // Gemini-hívás-próbálkozást naplózunk, sikereset ÉS sikertelent is, lásd
   // `lib/aiApiCallLog.ts`. Best-effort, sosem dob hibát/nem akasztja meg a választ.
   await logAiApiCall(user.id, FEATURE_NAME, usedModel ?? MODEL_CANDIDATES[0], succeeded);
 
@@ -192,7 +192,7 @@ export async function POST(
     return NextResponse.json({ success: false, error: 'A Gemini API üres választ adott.' }, { status: 502 });
   }
 
-  // "1 AI KREDIT = 1 VIZSGÁLAT" CLAIM + KREDIT/KVÓTA LEVONÁS -- KIZÁRÓLAG sikeres, érvényes
+  // "1 AI KREDIT = 1 VIZSGÁLAT" CLAIM + KREDIT/KVÓTA LEVONÁS, KIZÁRÓLAG sikeres, érvényes
   // Gemini-válasz UTÁN, és KIZÁRÓLAG ha ez a vizsgálat MÉG nem volt "AI-aktív". Lásd
   // `lib/inspectionAiCredit.ts` JSDoc-ját a race-condition kezelésről.
   if (!alreadyClaimed) {

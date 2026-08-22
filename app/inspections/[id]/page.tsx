@@ -38,7 +38,7 @@ import { FUEL_TYPES } from '@/lib/inspections/constants';
 import { CAR_VIEWS } from '@/lib/inspections/carViews';
 import type { CarPointView } from '@/lib/inspections/carViews';
 
-/** Üzemanyag típusa (2026-08-10) -- DB -> wizard state konverzió típus-őre, ugyanaz az
+/** Üzemanyag típusa (2026-08-10), DB -> wizard state konverzió típus-őre, ugyanaz az
  * elv, mint a `toInitialDamages()` `DAMAGE_TYPES.includes(...)` ellenőrzésénél: egy
  * ismeretlen/érvénytelen tárolt érték (elméletileg nem fordulhat elő a DB CHECK
  * constraint miatt, de defenzíven) üres string ('') -re esik vissza, SOSE kerül TS-en
@@ -49,7 +49,7 @@ function isFuelType(value: string | null): value is FuelType {
 
 /** DB (JSONB) -> wizard state konverzió a 3 új szakértői modulhoz (PROJEKT_INSTRUKCIOK.md,
  * "3 új szakértői modul" lépés). Külön, oldal-szintű helperek, mert csak itt (piszkozat
- * előtöltésekor) van rá szükség -- a mentés iránya (wizard state -> DB) az
+ * előtöltésekor) van rá szükség, a mentés iránya (wizard state -> DB) az
  * InspectionWizard.tsx `handleSubmit`-jában él. */
 function toInitialDiagnostics(raw: unknown): DiagnosticsState {
   const value = (raw ?? {}) as { no_dtc?: boolean; codes?: Array<{ code?: string; description?: string }> };
@@ -64,12 +64,12 @@ function toInitialDiagnostics(raw: unknown): DiagnosticsState {
   };
 }
 
-/** Felszereltség UX-újratervezés (2026-08-02) -- a `stored` tömb elemei KÉTFÉLE alakúak
+/** Felszereltség UX-újratervezés (2026-08-02), a `stored` tömb elemei KÉTFÉLE alakúak
  * lehetnek: a `migrate_equipment_to_feature_state_shape` Supabase migráció az ÉLES
  * adatbázison már átalakította a korábbi ({ name, status: working/not_working/na })
  * sorokat az új ({ id, status: working/defective/not_present, notes?, photo_url? })
  * alakra, de a kódot defenzíven MINDKÉT alakra felkészítjük (`entry.id ?? entry.name`
- * az azonosítóhoz, `LEGACY_STATUS_MAP` a régi státusz-értékekhez) -- ugyanaz az elv, mint
+ * az azonosítóhoz, `LEGACY_STATUS_MAP` a régi státusz-értékekhez), ugyanaz az elv, mint
  * a `toInitialTireGeneralInfo`-nál a régi szabad szöveges márkanevekkel. */
 const LEGACY_FEATURE_STATUS_MAP: Record<string, FeatureStatus> = {
   working: 'working',
@@ -82,7 +82,7 @@ function toInitialEquipment(raw: unknown): FeatureFormState[] {
     ? (raw as Array<{ id?: string; name?: string; status?: string; notes?: string; photo_url?: string }>)
     : [];
   const VALID_STATUSES: FeatureStatus[] = ['working', 'defective', 'not_present'];
-  // A teljes, JELENLEGI katalógust (EQUIPMENT_ITEMS) használjuk alapnak -- ha a tárolt
+  // A teljes, JELENLEGI katalógust (EQUIPMENT_ITEMS) használjuk alapnak, ha a tárolt
   // tömbben egy elem hiányzik (pl. a katalógus bővült a vizsgálat rögzítése óta), az
   // alapértelmezett `not_present` státusszal jelenik meg, nem esik ki a listából.
   return EQUIPMENT_ITEMS.map((name) => {
@@ -121,7 +121,7 @@ function toInitialTires(raw: unknown): TiresState {
 
 /** DB (JSONB) -> wizard state konverzió a Szervizmúlt & Dokumentumok modulhoz. A `photos`
  * (tárolt string-tömb) itt alakul vissza `GeneralPhotoState[]`-re (`file: null`, a tárolt
- * URL a `previewUrl`) -- ugyanaz a minta, mint az `initialGeneralPhotos` konverziónál lentebb,
+ * URL a `previewUrl`), ugyanaz a minta, mint az `initialGeneralPhotos` konverziónál lentebb,
  * hogy a `StepServiceHistory.tsx` (piszkozat) és az `InspectionDetailView.tsx` (befejezett)
  * egyaránt a wizard-state formát kapja. */
 function toInitialServiceHistory(raw: unknown): ServiceHistoryState {
@@ -159,7 +159,7 @@ function toInitialServiceHistory(raw: unknown): ServiceHistoryState {
 
 /** DB (JSONB `tires.rim_type`/`tires.brand`, a `fl`/`fr`/`rl`/`rr` kulcsok TESTVÉREI) ->
  * wizard state konverzió (Gumiabroncs & Felni modul bővítése, A pont). Ha a tárolt
- * `brand` pontosan megegyezik egy `TIRE_BRANDS` preset-tel, azt választjuk ki --
+ * `brand` pontosan megegyezik egy `TIRE_BRANDS` preset-tel, azt választjuk ki,
  * egyébként (szabad szöveges korábbi mentés) "Egyéb"-re esik vissza, a tárolt szöveg
  * a `customBrand` mezőbe kerül, hogy a UI-ban is helyesen jelenjen meg. */
 function toInitialTireGeneralInfo(raw: unknown): TireGeneralInfoState {
@@ -175,7 +175,7 @@ function toInitialTireGeneralInfo(raw: unknown): TireGeneralInfoState {
   };
 }
 
-/** DB (JSONB) -> wizard state konverzió a Sérülés- és Hibatérkép modulhoz -- a `file`
+/** DB (JSONB) -> wizard state konverzió a Sérülés- és Hibatérkép modulhoz, a `file`
  * mindig `null` (piszkozat szerkesztésekor a fotó már a Storage-ban van, a `photo_url`
  * a `previewUrl`-be kerül, ugyanaz a minta, mint a `defects`/`general_photos` fotóknál).
  * Érvénytelen/ismeretlen `type` esetén (pl. egy jövőbeli kategória-bővítés utáni, régebbi
@@ -197,7 +197,7 @@ function toInitialDamages(raw: unknown): DamagePointState[] {
     id: entry.id ?? `damage-${index}`,
     x: entry.x ?? 0,
     y: entry.y ?? 0,
-    // `view` opcionális -- egy RÉGI, `view` mező bevezetése (2026-08-17) előtt mentett pontnál
+    // `view` opcionális, egy RÉGI, `view` mező bevezetése (2026-08-17) előtt mentett pontnál
     // `undefined` marad, a `DamageCanvas.tsx` ilyenkor a `DEFAULT_CAR_VIEW`-ra esik vissza.
     // Lásd `toInitialDamages` fájl-JSDoc-ja fent.
     view: (CAR_VIEWS as string[]).includes(entry.view ?? '') ? (entry.view as CarPointView) : undefined,
@@ -209,7 +209,7 @@ function toInitialDamages(raw: unknown): DamagePointState[] {
   }));
 }
 
-/** DB (JSONB) -> wizard state konverzió a Végső Szakvélemény & Várható Költségek modulhoz --
+/** DB (JSONB) -> wizard state konverzió a Végső Szakvélemény & Várható Költségek modulhoz,
  * ugyanaz a minta, mint a többi helpernél ebben a fájlban. A két költség-mező `number|null`-ból
  * lesz beviteli-mező-string (`String(...)` vagy üres string), a `recommendation` ismeretlen/
  * érvénytelen érték esetén `null`-ra esik vissza, hogy sose kerüljön TS-en kívüli érték a state-be. */
@@ -237,11 +237,11 @@ function toInitialFinalAssessment(raw: unknown): FinalAssessmentState {
 }
 
 /** DB oszlopok -> wizard state konverzió az Átvizsgáló és Ügyfél adatok + PDF
- * megjelenítési kapcsolók modulhoz (2026-08-06) -- ugyanaz a minta, mint a többi
+ * megjelenítési kapcsolók modulhoz (2026-08-06), ugyanaz a minta, mint a többi
  * `toInitial*` helpernél ebben a fájlban: `null` DB-mezőkből üres string lesz a
  * kontrollált beviteli mezőkhöz, a 2 boolean kapcsoló pedig 1:1 átkerül (a DB oszlopok
  * `not null default`-tal jönnek létre, tehát valójában sosem `null`-ok, de a Supabase
- * generált típus mégis `boolean | null`-t ad vissza a select-ből -- a `??` a defenzív
+ * generált típus mégis `boolean | null`-t ad vissza a select-ből, a `??` a defenzív
  * fallback, ha egy jövőbeli migráció ezt megváltoztatná). */
 function toInitialClientInfo(inspection: {
   inspector_name: string | null;
@@ -275,7 +275,7 @@ export const metadata: Metadata = {
  *
  * Jogosultság-ellenőrzés: a `.eq('user_id', user.id)` szűrés a lekérdezésen az
  * `inspections_select_own` RLS policy (`auth.uid() = user_id`) mellett egy explicit,
- * defenzív második védelmi vonal -- lásd PROJEKT_INSTRUKCIOK.md 3. pont. Ha a sor nem
+ * defenzív második védelmi vonal, lásd PROJEKT_INSTRUKCIOK.md 3. pont. Ha a sor nem
  * létezik VAGY nem a bejelentkezett usert illeti, ugyanaz a "nem található" állapot
  * jelenik meg (nem szivárogtatunk információt arról, hogy létezik-e idegen vizsgálat
  * ezzel az id-vel).
@@ -313,10 +313,10 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
   }
 
   // Szervezeti RBAC (PROJEKT_INSTRUKCIOK.md "Átvizsgálói UI" lépés): az Átvizsgáló NEM
-  // láthatja a céges AI kredit-egyenleget -- a `HeaderCreditBadge` szerver-oldalon,
+  // láthatja a céges AI kredit-egyenleget, a `HeaderCreditBadge` szerver-oldalon,
   // renderelés ELŐTT marad ki `role === 'inspector'` esetén (nincs kliens-oldali villanás).
   // Ugyanez a lekérdezés adja a Riport küszöbértékeket is (2026-08-07, lásd
-  // `ReportThresholdsCard.tsx`) -- MIND a piszkozat-szerkesztő wizard, MIND a befejezett
+  // `ReportThresholdsCard.tsx`), MIND a piszkozat-szerkesztő wizard, MIND a befejezett
   // vizsgálat read-only adatlapja (`InspectionDetailView`) ezekkel jeleníti meg a
   // "Gyári/Újrafújt/Gittelt" ill. "Koros/Kopott gumiabroncs" jelzéseket.
   const { data: profile } = await supabase
@@ -328,7 +328,7 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
     .maybeSingle();
   const role = profile?.role === 'inspector' ? 'inspector' : 'manager';
 
-  // Tutorial "Tipp" buborékok be/kikapcsolása (2026-08-10) -- lásd `app/inspections/new/page.tsx`
+  // Tutorial "Tipp" buborékok be/kikapcsolása (2026-08-10), lásd `app/inspections/new/page.tsx`
   // ugyanerről a blokkról szóló JSDoc-ját.
   const tutorialHintsEnabled = user.user_metadata?.tutorial_hints_enabled !== false;
 
@@ -369,7 +369,7 @@ export default async function InspectionDetailPage({ params }: InspectionDetailP
       fuelType: isFuelType(inspection.fuel_type) ? inspection.fuel_type : '',
     };
 
-    // Szabadkézi (free-form) mérési pontok visszatöltése -- egyszerű 1:1 leképezés, nincs
+    // Szabadkézi (free-form) mérési pontok visszatöltése, egyszerű 1:1 leképezés, nincs
     // többé fix elem-lista/hátrafelé-kompatibilis "3 pontra szétosztott régi átlag" logika
     // (Rétegvastagság-mérő "Szabadkézi (Free-form Canvas)" átalakítása lépés).
     const initialPaintMeasurements: PaintPointState[] = (paintMeasurements ?? []).map((row) => ({

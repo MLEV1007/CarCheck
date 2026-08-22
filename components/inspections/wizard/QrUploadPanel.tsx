@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useInspectionId } from '@/components/inspections/wizard/InspectionIdContext';
 
 interface QrUploadPanelProps {
-  /** 'general' VAGY `defect:${clientId}` -- lásd `qr_upload_sessions.target` oszlop
+  /** 'general' VAGY `defect:${clientId}`, lásd `qr_upload_sessions.target` oszlop
    * JSDoc-ját a migrációban. Ez alapján tudja a szülő Step-komponens (`StepGeneralPhotos.tsx`/
    * `StepDefects.tsx`) eldönteni, hogy egy beérkező elemet hova illesszen a wizard
    * állapotába (`onReceive` callback). */
@@ -22,19 +22,19 @@ type PanelState =
   | { status: 'error'; message: string };
 
 /**
- * "Feltöltés telefonról" gomb + QR-kód + élő (Realtime) figyelés -- lásd
+ * "Feltöltés telefonról" gomb + QR-kód + élő (Realtime) figyelés, lásd
  * PLAN_video_qr_upload.md 5. szakaszát. `StepGeneralPhotos.tsx`-ben ÉS `StepDefects.tsx`
  * minden hiba-kártyáján megjelenik, a `target` propon keresztül különböztetve meg a célt.
  *
- * **KIZÁRÓLAG asztali nézeten jelenik meg** -- a `hidden md:flex` Tailwind-osztály dönti el
+ * **KIZÁRÓLAG asztali nézeten jelenik meg**, a `hidden md:flex` Tailwind-osztály dönti el
  * (lásd a legkülső `div`-et), SZÁNDÉKOSAN NEM user-agent sniffing, a felhasználó kérésének
  * megfelelően (egy asztali böngésző keskeny ablaka is mobilnak "tűnhetne" UA-sniffinggel,
- * miközben a QR-kód pont FELESLEGES lenne rajta -- a viewport-alapú Tailwind-osztály ezt a
+ * miközben a QR-kód pont FELESLEGES lenne rajta, a viewport-alapú Tailwind-osztály ezt a
  * félreértést nem tudja produkálni).
  *
  * **"Új session mindig" (v1, a felhasználóval egyeztetett, egyszerűsített döntés):** a panel
  * bezárása/újranyitása MINDIG új session-t hoz létre (nincs "folytatás" egy korábban már
- * megnyitott, de be nem zárt session-nel) -- ez a `handleOpen` minden hívásnál friss
+ * megnyitott, de be nem zárt session-nel), ez a `handleOpen` minden hívásnál friss
  * `/api/qr-upload/session` hívást indít.
  */
 export function QrUploadPanel({ target, onReceive }: QrUploadPanelProps) {
@@ -45,7 +45,7 @@ export function QrUploadPanel({ target, onReceive }: QrUploadPanelProps) {
 
   useEffect(() => {
     // Unmountkor (pl. a felhasználó eltávolítja a hiba-kártyát, vagy elhagyja a lépést)
-    // MINDIG le kell iratkozni a Realtime csatornáról -- egy nyitva hagyott csatorna
+    // MINDIG le kell iratkozni a Realtime csatornáról, egy nyitva hagyott csatorna
     // felesleges kapcsolatot/kvótát fogyasztana a háttérben.
     return () => {
       if (channelRef.current) {
@@ -138,7 +138,7 @@ export function QrUploadPanel({ target, onReceive }: QrUploadPanelProps) {
               <X className="h-4 w-4" />
             </button>
           </div>
-          {/* eslint-disable-next-line @next/next/no-img-element -- kliens-oldalon generált data URL QR-kód */}
+          {/* eslint-disable-next-line @next/next/no-img-element, kliens-oldalon generált data URL QR-kód */}
           <img src={state.qrDataUrl} alt="QR-kód a telefonos feltöltéshez" className="h-[180px] w-[180px]" />
           <p className="text-center text-[11px] text-linear-ink-subtle">
             A link kb. 20 percig érvényes. {state.receivedCount > 0 ? `${state.receivedCount} elem érkezett.` : ''}

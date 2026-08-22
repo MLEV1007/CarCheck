@@ -19,14 +19,14 @@ interface StepDefectsProps {
   onChange: (value: DefectState[]) => void;
   onBack: () => void;
   onNext: () => void;
-  /** A KÖVETKEZŐ lépés rövid címe -- lásd StepCarInfo.tsx ugyanerről a propról. */
+  /** A KÖVETKEZŐ lépés rövid címe, lásd StepCarInfo.tsx ugyanerről a propról. */
   nextLabel: string;
-  /** A hívó szervezet videó-csatolási jogosultsága -- lásd `StepGeneralPhotos.tsx`
+  /** A hívó szervezet videó-csatolási jogosultsága, lásd `StepGeneralPhotos.tsx`
    * `videoAllowed` propjának JSDoc-ját, ugyanaz a wizard-szintű, egyszer lekérdezett érték. */
   videoAllowed: boolean;
 }
 
-/** A `/api/ai/scan-defect` route válasz-alakja -- lásd `app/api/ai/scan-defect/route.ts`
+/** A `/api/ai/scan-defect` route válasz-alakja, lásd `app/api/ai/scan-defect/route.ts`
  * (és a hozzá tartozó `PLAN_ai_scan_defect.md` tervet), csak a kliensnek releváns mezők. */
 interface ScanDefectApiResponse {
   success: boolean;
@@ -41,7 +41,7 @@ interface ScanDefectApiResponse {
 }
 
 /**
- * Egy hiba-kártya AI-elemzésének állapota -- KIZÁRÓLAG kliens-oldali, EFEMER UI-állapot,
+ * Egy hiba-kártya AI-elemzésének állapota, KIZÁRÓLAG kliens-oldali, EFEMER UI-állapot,
  * SOSE kerül a `DefectState`-be/a mentett vizsgálati adatba (lásd `PLAN_ai_scan_defect.md`
  * 3.5 pontját: az AI javaslat sosem írhat közvetlenül a mezőkbe, csak explicit "Elfogadom"
  * kattintásra). `clientId` szerint tárolva, a `StepDefects` komponens saját `useState`-jében.
@@ -57,8 +57,8 @@ const IDLE_AI_STATE: DefectAiState = { status: 'idle' };
 
 const AI_SCAN_FAILURE_MESSAGE = 'Az AI elemzés nem sikerült. Próbáld újra, vagy töltsd ki kézzel.';
 
-/** Igaz, ha a hiba-kártya médiája videó -- lásd `DefectMediaUpload.tsx` azonos elvű
- * `isVideo` számítását. Az "AI elemzés" gomb videónál NEM jelenik meg -- a `/api/ai/scan-defect`
+/** Igaz, ha a hiba-kártya médiája videó, lásd `DefectMediaUpload.tsx` azonos elvű
+ * `isVideo` számítását. Az "AI elemzés" gomb videónál NEM jelenik meg, a `/api/ai/scan-defect`
  * route kizárólag állóképet fogad (lásd a route JSDoc-ját). */
 function isDefectVideo(defect: DefectState): boolean {
   if (defect.file) return defect.file.type.startsWith('video/');
@@ -66,9 +66,9 @@ function isDefectVideo(defect: DefectState): boolean {
   return false;
 }
 
-/** LÉPÉS -- Hibák és Média rögzítése (PROJEKT_INSTRUKCIOK.md 5.B.3). */
+/** LÉPÉS, Hibák és Média rögzítése (PROJEKT_INSTRUKCIOK.md 5.B.3). */
 export function StepDefects({ value, onChange, onBack, onNext, nextLabel, videoAllowed }: StepDefectsProps) {
-  // AI hiba-felismerés fotóból (`PLAN_ai_scan_defect.md`) -- hiba-kártyánkénti, KLIENS-OLDALI
+  // AI hiba-felismerés fotóból (`PLAN_ai_scan_defect.md`), hiba-kártyánkénti, KLIENS-OLDALI
   // állapot, sosem íródik közvetlenül a `value`-ba (a `DefectState`-be), lásd a `DefectAiState`
   // JSDoc-ját. A `notifyInsufficientCredits`/`inspectionId` ugyanaz a minta, mint a projekt
   // többi AI-hívásánál (pl. `StepCarInfo.tsx` VIN-szkennelése).
@@ -112,7 +112,7 @@ export function StepDefects({ value, onChange, onBack, onNext, nextLabel, videoA
     const previewUrl = URL.createObjectURL(file);
     updateDefect(clientId, { file, previewUrl });
     // Új fotó kiválasztásakor egy korábbi (más fotóhoz tartozó) AI javaslat/hiba-állapot
-    // ELÉVÜL -- ne maradjon a képernyőn egy már nem releváns kártyához tartozó javaslat.
+    // ELÉVÜL, ne maradjon a képernyőn egy már nem releváns kártyához tartozó javaslat.
     clearAiState(clientId);
   }
 
@@ -123,7 +123,7 @@ export function StepDefects({ value, onChange, onBack, onNext, nextLabel, videoA
     clearAiState(clientId);
   }
 
-  /** A QR-kódos telefonos feltöltésből érkező, MÁR feltöltött média befogadása -- lásd
+  /** A QR-kódos telefonos feltöltésből érkező, MÁR feltöltött média befogadása, lásd
    * `DefectMediaUpload.tsx` `onReceiveFromQr` propjának JSDoc-ját. Ugyanaz a
    * "file: null, previewUrl: <url>" alak, mint egy piszkozat szerkesztésekor visszaolvasott,
    * korábban már feltöltött médiánál (`draftPersistence.ts`). */
@@ -133,9 +133,9 @@ export function StepDefects({ value, onChange, onBack, onNext, nextLabel, videoA
   }
 
   /**
-   * "✨ AI elemzés" gomb -- lásd `PLAN_ai_scan_defect.md` 3.6 pontját: KIZÁRÓLAG explicit
+   * "✨ AI elemzés" gomb, lásd `PLAN_ai_scan_defect.md` 3.6 pontját: KIZÁRÓLAG explicit
    * felhasználói kérésre fut le, sosem automatikus a fotó kiválasztásakor. A válasz SOSE
-   * írja felül közvetlenül a `category`/`description` mezőt -- csak egy "AI javaslat"
+   * írja felül közvetlenül a `category`/`description` mezőt, csak egy "AI javaslat"
    * `DefectAiState`-et állít be, amit a szakértőnek külön "Elfogadom" gombbal kell
    * jóváhagynia (`handleAcceptSuggestion`), lásd a 3.5 pontot.
    */
@@ -153,7 +153,7 @@ export function StepDefects({ value, onChange, onBack, onNext, nextLabel, videoA
         body: JSON.stringify({ image: imageDataUrl, inspectionId }),
       });
 
-      // 402 (INSUFFICIENT_AI_QUOTA) -- lásd `InsufficientCreditsProvider.tsx`. A globális
+      // 402 (INSUFFICIENT_AI_QUOTA), lásd `InsufficientCreditsProvider.tsx`. A globális
       // "Elfogyott az AI kereted" modalt nyitjuk meg, a kártya visszaáll "idle"-re, hogy a
       // gomb újra elérhető legyen (a kézi kitöltés lehetősége mindig megmarad).
       if (response.status === 402) {
@@ -178,7 +178,7 @@ export function StepDefects({ value, onChange, onBack, onNext, nextLabel, videoA
       const { data } = result;
       if (!data.defectDetected || !data.category || !data.description) {
         // A szerver `sanitizeScanDefectResponse()`-ja `category`/`description`-t KIZÁRÓLAG
-        // `defectDetected: true` esetén ad vissza -- lásd a route JSDoc-ját. Ha bármelyik
+        // `defectDetected: true` esetén ad vissza, lásd a route JSDoc-ját. Ha bármelyik
         // hiányzik, a BIZTONSÁGOS "nem talált hibát" ágra esünk, semmit nem töltünk ki.
         setAiState(clientId, { status: 'not_detected' });
         return;
@@ -195,7 +195,7 @@ export function StepDefects({ value, onChange, onBack, onNext, nextLabel, videoA
     }
   }
 
-  /** "Elfogadom" -- KIZÁRÓLAG ez a függvény írhat a hiba-kártya `category`/`description`
+  /** "Elfogadom", KIZÁRÓLAG ez a függvény írhat a hiba-kártya `category`/`description`
    * mezőjébe AI-javaslatból, lásd `PLAN_ai_scan_defect.md` 3.5 pontját. Elfogadás után a
    * mezők ugyanúgy szabadon szerkeszthetők, mint egy kézzel beírt érték. */
   function handleAcceptSuggestion(clientId: string) {
@@ -205,7 +205,7 @@ export function StepDefects({ value, onChange, onBack, onNext, nextLabel, videoA
     clearAiState(clientId);
   }
 
-  /** "Elvetem" -- a hiba-kártya mezői garantáltan VÁLTOZATLANOK maradnak. */
+  /** "Elvetem", a hiba-kártya mezői garantáltan VÁLTOZATLANOK maradnak. */
   function handleRejectSuggestion(clientId: string) {
     clearAiState(clientId);
   }
@@ -225,7 +225,7 @@ export function StepDefects({ value, onChange, onBack, onNext, nextLabel, videoA
       <HintCallout id="defects" title="Tipp: diktálhatod is a hibaleírást, vagy kérj AI javaslatot fotóból">
         A leírás mezőnél a mikrofon ikonnal bediktálhatod a hibát, az AI automatikusan nyelvtanilag is
         kisimítja a szöveget. Fotó feltöltése után az "AI elemzés" gombbal a modell javaslatot ad
-        kategóriára és leírásra is -- ezt mindig ellenőrizd, mielőtt elfogadod.
+        kategóriára és leírásra is, ezt mindig ellenőrizd, mielőtt elfogadod.
       </HintCallout>
 
       <div className="flex flex-col gap-4">
@@ -289,7 +289,7 @@ export function StepDefects({ value, onChange, onBack, onNext, nextLabel, videoA
                   )}
 
                   {/* Videónál az "AI elemzés" gomb SZÁNDÉKOSAN nem jelenik meg (lásd
-                      `isDefectVideo` JSDoc-ját), de ezt EXPLICIT szöveggel is jelezzük -- ne
+                      `isDefectVideo` JSDoc-ját), de ezt EXPLICIT szöveggel is jelezzük, ne
                       csak a gomb csendes hiánya kommunikálja, hogy a funkció nem elérhető
                       videónál (2026-08-21-i felhasználói visszajelzés). */}
                   {isDefectVideo(defect) && (
@@ -307,7 +307,7 @@ export function StepDefects({ value, onChange, onBack, onNext, nextLabel, videoA
 
                   {aiState.status === 'not_detected' && (
                     <p className="mt-2 max-w-[220px] text-[12px] text-linear-ink-subtle">
-                      Az AI nem ismert fel egyértelmű hibát ezen a képen -- töltsd ki kézzel.
+                      Az AI nem ismert fel egyértelmű hibát ezen a képen, töltsd ki kézzel.
                     </p>
                   )}
 
@@ -326,10 +326,10 @@ export function StepDefects({ value, onChange, onBack, onNext, nextLabel, videoA
                 </div>
               </div>
 
-              {/* "AI javaslat" panel -- SZÁNDÉKOSAN elkülönítve a kész mezőktől, KÜLÖN
+              {/* "AI javaslat" panel, SZÁNDÉKOSAN elkülönítve a kész mezőktől, KÜLÖN
                   "Elfogadom"/"Elvetem" gombbal, lásd `PLAN_ai_scan_defect.md` 3.5/3.7 pontját.
                   A `category`/`description` mező a hiba-kártyán KIZÁRÓLAG az "Elfogadom"
-                  kattintásra töltődik ki -- eddig a pillanatig a javaslat csak itt látszik. */}
+                  kattintásra töltődik ki, eddig a pillanatig a javaslat csak itt látszik. */}
               {aiState.status === 'suggested' && (
                 <div className="mt-4 rounded-md border border-dashed border-linear-primary/50 bg-linear-primary/5 p-3.5">
                   <div className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.4px] text-linear-primary">
@@ -337,16 +337,16 @@ export function StepDefects({ value, onChange, onBack, onNext, nextLabel, videoA
                     AI javaslat
                   </div>
                   <p className="mt-2 text-[13.5px] text-linear-ink">
-                    <span className="font-semibold">{aiState.category}</span> -- {aiState.description}
+                    <span className="font-semibold">{aiState.category}</span>, {aiState.description}
                   </p>
                   {aiState.confidence === 'low' && (
                     <p className="mt-2 flex items-start gap-1.5 text-[12px] text-linear-warning">
                       <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                      Az AI bizonytalan ebben a javaslatban -- ellenőrizd különösen alaposan.
+                      Az AI bizonytalan ebben a javaslatban, ellenőrizd különösen alaposan.
                     </p>
                   )}
                   <p className="mt-2 text-[11.5px] text-linear-ink-subtle">
-                    Az AI-javaslat tájékoztató jellegű, a képen látottak alapján -- mindig ellenőrizd, mielőtt
+                    Az AI-javaslat tájékoztató jellegű, a képen látottak alapján, mindig ellenőrizd, mielőtt
                     elfogadod.
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">

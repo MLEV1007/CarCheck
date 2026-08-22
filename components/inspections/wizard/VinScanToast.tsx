@@ -15,12 +15,12 @@ interface VinScanToastProps {
 /**
  * Siker/hiba visszajelzés a "Forgalmi vagy Alvázszám beszkennelése (AI)" (Gemini Vision,
  * lásd `app/api/ai/scan-vin/route.ts` és `StepCarInfo.tsx`) eredményéről. Linear Dark
- * Design Style (a wizard design rendszere -- PROJEKT_INSTRUKCIOK.md 4.2), a
+ * Design Style (a wizard design rendszere, PROJEKT_INSTRUKCIOK.md 4.2), a
  * `components/settings/SuccessToast.tsx` Stripe-stílusú mintájának Linear-tokenes
  * megfelelője.
  *
  * **Megjegyzés:** korábban a projekt EGY MÁSODIK, kliens-oldali Tesseract.js-alapú VIN OCR
- * módszert is használt ugyanezzel a toast-tal -- ezt a felhasználó kérésére eltávolítottuk
+ * módszert is használt ugyanezzel a toast-tal, ezt a felhasználó kérésére eltávolítottuk
  * (`lib/inspections/vinOcr.ts` törölve, lásd a status.md megfelelő szakaszát), a Gemini
  * Vision AI szkenner maradt az EGYETLEN fotó-alapú felismerési mód.
  *

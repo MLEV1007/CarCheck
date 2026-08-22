@@ -8,20 +8,20 @@ import { LICENSE_PLATE_COUNTRIES } from '@/lib/inspections/constants';
 interface DefaultPreferencesCardProps {
   initialDefaultLicenseCountry: string;
   /** Tutorial "Tipp" buborékok be/kikapcsolása (2026-08-10, felhasználói kérés: "szeretném
-   * ha be és kikapcsolható lenne") -- lásd a `tutorialHintsEnabled` blokk JSDoc-ját lent. */
+   * ha be és kikapcsolható lenne"), lásd a `tutorialHintsEnabled` blokk JSDoc-ját lent. */
   initialTutorialHintsEnabled: boolean;
 }
 
 /**
  * "Alapértelmezett értékek" kártya (PROJEKT_INSTRUKCIOK.md, "Rendszám felségjelzés
- * dropdown és profilhoz kötött alapértelmezés" lépés) -- két, egymástól FÜGGETLEN
+ * dropdown és profilhoz kötött alapértelmezés" lépés), két, egymástól FÜGGETLEN
  * beállítás: (1) az Új vizsgálat wizard Rendszám felségjelzés dropdown-jának kezdeti
  * értéke, (2) a wizard "Tipp" buborékjainak (`components/onboarding/HintCallout.tsx`)
  * be/kikapcsolása.
  *
  * FONTOS ELTÉRÉS a `SettingsForm.tsx` többi mezőjétől: EGYIK mező sem a `profiles`
  * táblába, hanem a Supabase AUTH `user_metadata`-jába kerül (`supabase.auth.updateUser({
- * data: {...} })`), ezért NEM a fő "Módosítások mentése" gombra várnak -- mindkettő
+ * data: {...} })`), ezért NEM a fő "Módosítások mentése" gombra várnak, mindkettő
  * módosításkor AZONNAL mentődik, önálló hívással (ugyanaz az UX-elv, mint a
  * `LogoUploader.tsx`-nél: egy külön API-útvonalon élő, kis hatókörű beállítás ne kösse
  * magát a `profiles.upsert()` mentési ciklusához).
@@ -35,7 +35,7 @@ export function DefaultPreferencesCard({
   const [error, setError] = useState<string | null>(null);
   const [justSaved, setJustSaved] = useState(false);
 
-  // Tutorial "Tipp" buborékok be/kikapcsolása -- SZÁNDÉKOSAN KÜLÖN state/mentési ciklus a
+  // Tutorial "Tipp" buborékok be/kikapcsolása, SZÁNDÉKOSAN KÜLÖN state/mentési ciklus a
   // fenti rendszám-mezőtől (két, egymástól teljesen független beállítás, ugyanabban a
   // kártyában), hogy egyik mentése/hibaüzenete se zavarja a másikat.
   const [tutorialHintsEnabled, setTutorialHintsEnabled] = useState(initialTutorialHintsEnabled);
@@ -66,12 +66,12 @@ export function DefaultPreferencesCard({
     setTimeout(() => setJustSaved(false), 2500);
   }
 
-  /** A `profiles.upsert()`/Auth `user_metadata` mintát követi, mint a fenti `handleChange`
-   * -- optimista UI-frissítés, hiba esetén visszaállítás. A wizard (`InspectionWizard.tsx`
+  /** A `profiles.upsert()`/Auth `user_metadata` mintát követi, mint a fenti `handleChange`,
+   * optimista UI-frissítés, hiba esetén visszaállítás. A wizard (`InspectionWizard.tsx`
    * -> `OnboardingHintProvider`) a KÖVETKEZŐ oldal-betöltéskor olvassa ki ezt az értéket
    * (`app/inspections/new/page.tsx`/`app/inspections/[id]/page.tsx`), tehát egy ÉPPEN
    * NYITVA lévő wizard-fülben a tippek csak frissítés/újranyitás után tűnnek el/jelennek
-   * meg újra -- ez a jelenlegi kérésre elegendő, nem igényel élő, fülek közötti szinkront. */
+   * meg újra, ez a jelenlegi kérésre elegendő, nem igényel élő, fülek közötti szinkront. */
   async function handleToggleTutorialHints(nextValue: boolean) {
     setTutorialHintsEnabled(nextValue);
     setTutorialError(null);
@@ -94,7 +94,7 @@ export function DefaultPreferencesCard({
     <div className="flex flex-col gap-3 rounded-stripe-lg border border-stripe-hairline bg-white p-6 shadow-stripe-1 sm:p-8">
       <h2 className="font-sohne text-[15px] font-medium text-stripe-ink">Alapértelmezett értékek</h2>
       <p className="font-sohne text-[13px] font-light text-stripe-ink-mute">
-        Ez az érték tölti elő automatikusan az Új vizsgálat űrlap Rendszám felségjelzés mezőjét -- vizsgálatonként
+        Ez az érték tölti elő automatikusan az Új vizsgálat űrlap Rendszám felségjelzés mezőjét, vizsgálatonként
         felülírható marad.
       </p>
 

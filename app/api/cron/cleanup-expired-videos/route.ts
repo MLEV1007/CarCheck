@@ -2,43 +2,43 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 /**
- * 60 napos automatikus videó-megőrzési politika -- napi Vercel Cron végpont (lásd
+ * 60 napos automatikus videó-megőrzési politika, napi Vercel Cron végpont (lásd
  * `vercel.json` `crons` bejegyzését). 2026-08-21-i felhasználói kérés: "egy olyan fontos
  * beállítást szeretnék, hogy a videókat 60 napig tárolja csak a rendszer, utána
  * automatikusan törli. A képek minden más megmarad, viszont a videót törölni kell."
  *
  * **Miért `video_assets` tábla, nem közvetlen `storage.objects` lekérdezés:** a
  * `storage.objects` séma NINCS kitéve a PostgREST/Supabase JS API-n keresztül alapból,
- * tehát a kliens nem tud rá `.from('storage.objects')`-öt hívni -- a `video_assets` tábla
+ * tehát a kliens nem tud rá `.from('storage.objects')`-öt hívni, a `video_assets` tábla
  * (lásd `supabase/migrations/20260821_video_retention_cleanup.sql`) egy KÖNNYŰ,
  * feltöltéskor (asztali `InspectionWizard.tsx`/QR `.../confirm/route.ts`) írt nyilvántartás
  * a `public` sémában, ami a Storage-objektum útvonalát/URL-jét/létrehozási idejét tárolja.
  *
  * **Miért Storage API `.remove()`, nem SQL `DELETE FROM storage.objects`:** a
- * `storage.objects` tábla KIZÁRÓLAG a Storage METAADATAIT tárolja -- egy közvetlen SQL
+ * `storage.objects` tábla KIZÁRÓLAG a Storage METAADATAIT tárolja, egy közvetlen SQL
  * törlés a sort eltávolítaná, DE a tényleges fájlbájtokat NEM törölné a mögöttes tároló-
  * backendből, örökre árva objektumokat hagyva. A Storage API `.remove()` hívása a
  * HELYES, teljes törlést végző út.
  *
  * **A törlés 3 lépése minden lejárt videónál:**
  *   1. Storage-objektum tényleges törlése (`.storage.from('inspection-media').remove()`).
- *   2. A dangling hivatkozás megtisztítása -- `general` kategóriánál az
+ *   2. A dangling hivatkozás megtisztítása, `general` kategóriánál az
  *      `inspections.general_photos` tömbből (`remove_general_photo_url` RPC, mert a
  *      Supabase JS `.update()` nem tud `array_remove` SQL-kifejezést küldeni), `defect`
  *      kategóriánál a `defects.media_url` mező `null`-ra állítása (pontos `media_url`
- *      egyezés alapján -- a `defects` sorok a wizard minden mentésekor törlésre/újra-
+ *      egyezés alapján, a `defects` sorok a wizard minden mentésekor törlésre/újra-
  *      beszúrásra kerülnek, lásd `InspectionWizard.tsx` `persistDefects`-jét, a sor
  *      esetleg MÁR nem is létezik, ilyenkor a frissítés egyszerűen 0 sort érint, nem hiba).
- *   3. A `video_assets` sor `deleted_at`-jének beállítása -- MEGTARTJUK a sort (nem
+ *   3. A `video_assets` sor `deleted_at`-jének beállítása, MEGTARTJUK a sort (nem
  *      töröljük), hogy auditnaplója legyen, mikor lett egy videó automatikusan eltávolítva.
  *
- * A `photos`/egyéb mezők SOSE érintettek -- ez a végpont KIZÁRÓLAG a `video_assets`
+ * A `photos`/egyéb mezők SOSE érintettek, ez a végpont KIZÁRÓLAG a `video_assets`
  * táblában szereplő (tehát garantáltan videó típusú) sorokkal dolgozik.
  *
  * **Hitelesítés:** Vercel Cron a kérést a saját belső hálózatáról indítja, az
  * `authorization` fejlécbe a `CRON_SECRET` env változó értékét téve (Vercel Dashboard ->
  * Project -> Settings -> Environment Variables, ÉS a Cron Jobs UI automatikusan hozzáadja
- * a fejlécet, ha a `CRON_SECRET` be van állítva) -- lásd a Vercel "Securing cron jobs"
+ * a fejlécet, ha a `CRON_SECRET` be van állítva), lásd a Vercel "Securing cron jobs"
  * dokumentációját. Enélkül BÁRKI meghívhatná ezt a végpontot, és tömegesen törölhetne
  * videókat a 60 napos határidő figyelmen kívül hagyásával.
  */
@@ -79,7 +79,7 @@ export async function GET(request: Request) {
   let deletedCount = 0;
   const failures: Array<{ storagePath: string; error: string }> = [];
 
-  // Szándékosan SZEKVENCIÁLIS (nem `Promise.all`) -- ez egy háttér-cron, nincs
+  // Szándékosan SZEKVENCIÁLIS (nem `Promise.all`), ez egy háttér-cron, nincs
   // felhasználó, aki várakozik rá, és így egyértelműbb/olvashatóbb a hibalogolás
   // (melyik konkrét videónál akadt el a folyamat), mint egy párhuzamos futás összefésült
   // hibaüzeneteinél.

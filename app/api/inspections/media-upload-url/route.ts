@@ -10,17 +10,17 @@ import {
 
 /**
  * Aláírt (signed) Storage feltöltési token kiadása az ASZTALI, hitelesített wizardhoz
- * (`lib/inspections/mediaUpload.ts` `uploadInspectionMediaViaServer`) -- lásd
+ * (`lib/inspections/mediaUpload.ts` `uploadInspectionMediaViaServer`), lásd
  * PLAN_video_qr_upload.md 4. és 6. szakaszát. `InspectionWizard.tsx` `handleSubmit`-je
- * KIZÁRÓLAG videó ÉS 6 MB feletti fájloknál hívja ezt a végpontot -- kis képeknél a
+ * KIZÁRÓLAG videó ÉS 6 MB feletti fájloknál hívja ezt a végpontot, kis képeknél a
  * meglévő, sima `supabase.storage.from(...).upload()` út VÁLTOZATLAN marad.
  *
  * **Ez a "természetes hely" a videó-csomag-jogosultság kikényszerítésére** (a felhasználó
  * saját megfogalmazása szerint): mivel a videó feltöltéséhez ÚGYIS szerver-oldali jelölt
- * URL kell (a TUS resumable protokoll miatt), a gate itt, a token kiadása ELŐTT fut le --
+ * URL kell (a TUS resumable protokoll miatt), a gate itt, a token kiadása ELŐTT fut le,
  * ha a hívó szervezet `user_credits.plan_tier`-je nem `pro`/`business`, a válasz `403`
  * (`code: 'VIDEO_NOT_ALLOWED'`), és SOSE kap jelölt URL-t, tehát a feltöltés technikailag
- * sem tud megtörténni -- ez a kliens-oldali `videoAllowed` prop általi UI-elrejtés MÖGÖTTI,
+ * sem tud megtörténni, ez a kliens-oldali `videoAllowed` prop általi UI-elrejtés MÖGÖTTI,
  * kikényszerítő védelmi vonal (lásd a `lib/inspections/mediaUploadServer.ts` JSDoc-ját).
  */
 export async function POST(request: Request) {

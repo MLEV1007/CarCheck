@@ -10,27 +10,27 @@ import { Input } from '@/components/ui/Input';
 interface DeleteAccountCardProps {
   email: string;
   role: 'manager' | 'inspector';
-  /** Csak Menedzsernek releváns -- a szervezet TÖBBI (rajta kívüli) tagjának száma, a
+  /** Csak Menedzsernek releváns, a szervezet TÖBBI (rajta kívüli) tagjának száma, a
    * figyelmeztető szöveg testreszabásához (lásd `SettingsPage` `teamMemberCount`
    * lekérdezését). */
   otherTeamMemberCount: number;
 }
 
 /**
- * "Fiók törlése" -- Veszélyzóna kártya a Cégbeállítások oldal alján (Stripe design
+ * "Fiók törlése", Veszélyzóna kártya a Cégbeállítások oldal alján (Stripe design
  * system, `stripe-ruby` akcentussal a többi kártya semleges stílusa helyett, hogy
  * vizuálisan is elkülönüljön mint destruktív művelet).
  *
  * **A felhasználó KIFEJEZETT feltétele (2026-08-04): a korábban rögzített vizsgálatok
  * (autók, fotók, riportok) adatai a fióktörléssel NE vesszenek el.** Ez adatbázis-szinten
- * garantált (lásd `supabase/migrations/20260804_account_deletion_safe_fks.sql` -- az
+ * garantált (lásd `supabase/migrations/20260804_account_deletion_safe_fks.sql`, az
  * `inspections`/`paint_measurements`/`defects` sorok `organization_id`-je érintetlen
  * marad, csak a törölt userre mutató `user_id`/`created_by` válik NULL-lá), NEM a
- * kliens-oldali kódon -- ez a komponens csak a felhasználói folyamatot (megerősítés,
+ * kliens-oldali kódon, ez a komponens csak a felhasználói folyamatot (megerősítés,
  * kijelentkezés) kezeli.
  *
  * **Megerősítés:** a user begépeli a SAJÁT email címét egy modalban, mielőtt a végleges
- * törlés gomb aktívvá válna -- ugyanaz a mintázat, mint egy natív `window.confirm()`
+ * törlés gomb aktívvá válna, ugyanaz a mintázat, mint egy natív `window.confirm()`
  * helyett a Dashboard vizsgálat-törlésénél (lásd 18. szakasz, status.md), csak itt egy
  * ENNÉL komolyabb, VISSZAVONHATATLAN műveletről van szó (a teljes fiók, bejelentkezés,
  * beállítások eltűnnek), ezért az egyszerű OK/Mégse dialógusnál szigorúbb megerősítés
@@ -62,7 +62,7 @@ export function DeleteAccountCard({ email, role, otherTeamMemberCount }: DeleteA
 
       {role === 'manager' && otherTeamMemberCount > 0 && (
         <p className="rounded-stripe-sm border border-stripe-ruby/20 bg-white px-3 py-2 font-sohne text-[13px] font-light text-stripe-ink-secondary">
-          {otherTeamMemberCount} másik csapattagod is van -- a törlés után nem marad
+          {otherTeamMemberCount} másik csapattagod is van, a törlés után nem marad
           Menedzser a cégnél (senki nem tudja majd meghívni/kezelni a csapatot), de a
           csapattagjaid a jelenlegi jogosultságukkal továbbra is hozzáférnek a
           vizsgálatokhoz.
@@ -111,9 +111,9 @@ function DeleteAccountModal({ email, onClose }: { email: string; onClose: () => 
       const result = await response.json().catch(() => null);
 
       if (!response.ok || !result?.success) {
-        // A `details` mezőt (ha érkezett -- lásd `route.ts` `toErrorDetails()`) a
+        // A `details` mezőt (ha érkezett, lásd `route.ts` `toErrorDetails()`) a
         // konzolba is kilogoljuk, ugyanaz a minta, mint a wizard AI-hívásainál
-        // (pl. `StepCarInfo.tsx`) -- 2026-08-04, hibajavítás: korábban a szerver
+        // (pl. `StepCarInfo.tsx`), 2026-08-04, hibajavítás: korábban a szerver
         // egy GENERIKUS "Váratlan hiba történt..." üzenetet adott vissza, ami elfedte
         // a valódi okot (hiányzó `SUPABASE_SERVICE_ROLE_KEY`, lásd `route.ts` JSDoc-ját).
         const baseMessage = result?.error ?? 'Nem sikerült törölni a fiókot. Próbáld újra.';
@@ -123,7 +123,7 @@ function DeleteAccountModal({ email, onClose }: { email: string; onClose: () => 
         return;
       }
 
-      // A szerveren a user már törölve van az `auth.users`-ből -- a helyi böngésző-
+      // A szerveren a user már törölve van az `auth.users`-ből, a helyi böngésző-
       // session cookie-i emiatt érvénytelenné váltak, de ezt explicit `signOut()`-tal
       // is töröljük, hogy a middleware/kliens azonnal, biztosan kijelentkezett
       // állapotot lásson (ne egy már nem létező userre mutató, elavult cookie-t).

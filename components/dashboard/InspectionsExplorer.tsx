@@ -19,9 +19,9 @@ export interface InspectionRow {
   status: string;
   created_at: string;
   public_token: string;
-  /** Szervezeti RBAC (PROJEKT_INSTRUKCIOK.md "Riportok Lekérdezési Logikája") -- a
-   * ténylegesen létrehozó user azonosítója. A dashboard listája mostantól -- a hívó
-   * szerepkörétől függően -- CSAPATTÁRSAK vizsgálatait is tartalmazhatja (lásd
+  /** Szervezeti RBAC (PROJEKT_INSTRUKCIOK.md "Riportok Lekérdezési Logikája"), a
+   * ténylegesen létrehozó user azonosítója. A dashboard listája mostantól, a hívó
+   * szerepkörétől függően, CSAPATTÁRSAK vizsgálatait is tartalmazhatja (lásd
    * `app/dashboard/page.tsx` RLS-alapú, szerepkör-tudatos lekérdezését), ezért a UI-nak
    * el kell tudnia dönteni, melyik sor a "sajátja" a hívónak. */
   created_by: string;
@@ -29,21 +29,21 @@ export interface InspectionRow {
 
 interface InspectionsExplorerProps {
   inspections: InspectionRow[];
-  /** A bejelentkezett hívó user azonosítója -- a "sajátom-e ez a sor" eldöntéséhez. */
+  /** A bejelentkezett hívó user azonosítója, a "sajátom-e ez a sor" eldöntéséhez. */
   currentUserId: string;
-  /** A bejelentkezett hívó szerepköre -- Menedzser a TELJES szervezet vizsgálatait
+  /** A bejelentkezett hívó szerepköre, Menedzser a TELJES szervezet vizsgálatait
    * kezelheti (szerkesztheti/törölheti), egy csapattárs sorát látó, de nem tulajdonos
    * Átvizsgáló csak MEGTEKINTHETI (a "Riport" linken keresztül), nem szerkesztheti/
-   * törölheti -- lásd `inspections_update_org`/`inspections_delete_org` RLS policy-kat. */
+   * törölheti, lásd `inspections_update_org`/`inspections_delete_org` RLS policy-kat. */
   role: 'manager' | 'inspector';
 }
 
 /**
- * Fix arányú (nem tartalom-alapú `fr`) rács-oszlopok -- a "Dashboard táblázat teljes UX/UI
+ * Fix arányú (nem tartalom-alapú `fr`) rács-oszlopok, a "Dashboard táblázat teljes UX/UI
  * újratervezése" lépés kérése szerint AUTÓ&VIN 28% / RENDSZÁM 18% / ÉVJÁRAT 10% / DÁTUM 16% /
  * STÁTUSZ 14% / MŰVELETEK 14%. SZÁNDÉKOSAN `fr` egységekkel (28fr...14fr), NEM literal `%`-kal:
  * a `gap-4` (16px * 5 rés) egy tisztán %-alapú rácsnál a konténer szélessége FÖLÉ adódna hozzá
- * (100% oszlop + rögzített gap-pixelek túlcsordulást okozna) -- az `fr` egység a rács motorja
+ * (100% oszlop + rögzített gap-pixelek túlcsordulást okozna), az `fr` egység a rács motorja
  * által a `gap`-ek levonása UTÁN, arányosan osztja szét a maradék helyet, így a kért 28:18:10:
  * 16:14:14 arány garantáltan megmarad, de sosem okoz vízszintes túlcsordulást a gap miatt.
  * Header és sor UGYANEZT a konstanst használja, hogy a két rács sosem csúszhat el egymástól.
@@ -51,7 +51,7 @@ interface InspectionsExplorerProps {
 const GRID_COLS = 'sm:grid-cols-[28fr_18fr_10fr_16fr_14fr_14fr]';
 
 /**
- * Kereső + akció sáv + vizsgálatok listája -- Client Component, mert a keresés
+ * Kereső + akció sáv + vizsgálatok listája, Client Component, mert a keresés
  * kliens-oldali szűrés a már betöltött listán, a "Link másolása" a `navigator.clipboard`-ot
  * használja, a törlés pedig közvetlen Supabase-hívás (RLS `inspections_delete_own`,
  * `auth.uid() = user_id`, védi a bérlők közti izolációt). Linear design system: surface-1
@@ -85,7 +85,7 @@ export function InspectionsExplorer({ inspections: initialInspections, currentUs
         setCopiedId((current) => (current === inspection.id ? null : current));
       }, 2000);
     } catch {
-      // Clipboard API nem elérhető (pl. nem HTTPS kontextus) -- csendben elnyeljük,
+      // Clipboard API nem elérhető (pl. nem HTTPS kontextus), csendben elnyeljük,
       // a user ilyenkor a riport gombbal tudja megnyitni és onnan másolni a linket.
     }
   }
@@ -101,7 +101,7 @@ export function InspectionsExplorer({ inspections: initialInspections, currentUs
     setDeletingId(inspection.id);
     try {
       const supabase = createClient();
-      // Az `.eq('id', ...)` mellett nincs szükség explicit `user_id` szűrésre kliens-oldalon --
+      // Az `.eq('id', ...)` mellett nincs szükség explicit `user_id` szűrésre kliens-oldalon,
       // az `inspections_delete_own` RLS policy (`auth.uid() = user_id`) enélkül is garantálja,
       // hogy csak a saját sorát törölheti a user; a `paint_measurements`/`defects` gyerek-sorok
       // `ON DELETE CASCADE`-del automatikusan törlődnek.
@@ -110,7 +110,7 @@ export function InspectionsExplorer({ inspections: initialInspections, currentUs
 
       setInspections((current) => current.filter((item) => item.id !== inspection.id));
       // A `StatsBar`/`DashboardHeader` a Server Component `app/dashboard/page.tsx` saját
-      // lekérdezéséből kapja az összesítő számokat -- a kliens-oldali listától függetlenül,
+      // lekérdezéséből kapja az összesítő számokat, a kliens-oldali listától függetlenül,
       // ezért egy `router.refresh()` szükséges, hogy a számok és (ha ez volt az utolsó
       // vizsgálat) az `EmptyState` is szinkronban maradjon a törlés után.
       router.refresh();
@@ -199,9 +199,9 @@ function InspectionRowItem({
   onDelete,
 }: {
   inspection: InspectionRow;
-  /** Szervezeti RBAC -- igaz, ha a hívó a sor tulajdonosa VAGY Menedzser (lásd
+  /** Szervezeti RBAC, igaz, ha a hívó a sor tulajdonosa VAGY Menedzser (lásd
    * `InspectionsExplorerProps.role` JSDoc-ját). Csak ekkor jelenik meg a piszkozat
-   * "Folytatás" szerkesztő linkje, illetve a törlés/link-másolás akciómenü -- egy
+   * "Folytatás" szerkesztő linkje, illetve a törlés/link-másolás akciómenü, egy
    * `can_view_all_reports` miatt látható, de nem saját csapattárs-sor CSAK
    * megtekinthető (a "Riport" linken keresztül, befejezett vizsgálatnál). */
   canManage: boolean;
@@ -229,15 +229,15 @@ function InspectionRowItem({
           {carLabel}
         </p>
         {/* Mindig renderelődik (VIN hiányában is "VIN: —"), hogy a sormagasság egységes
-            maradjon minden sornál -- lásd a lépés "SOROK EGYENLETES MAGASSÁGA" kérése. */}
+            maradjon minden sornál, lásd a lépés "SOROK EGYENLETES MAGASSÁGA" kérése. */}
         <p className="mt-0.5 truncate font-mono text-[12px] text-linear-ink-subtle">VIN: {inspection.vin ?? '—'}</p>
       </Link>
 
       <div className="flex sm:justify-start">
-        {/* "Rendszám komponens letisztítása" lépés -- a korábbi, felségjelzés-sávos
+        {/* "Rendszám komponens letisztítása" lépés, a korábbi, felségjelzés-sávos
             `LicensePlateBadge` a Dashboard listájának szűk sorában (fix `h-7` magasság,
             sűrűn egymás mellett futó oszlopok) szétesett/nehezen olvashatóvá vált. A
-            listanézetben ennél egy sokkal egyszerűbb, nem túlbonyolított jelvény a cél --
+            listanézetben ennél egy sokkal egyszerűbb, nem túlbonyolított jelvény a cél,
             a `LicensePlateBadge` (felségjelzés-sáv + csillag) TOVÁBBRA IS él a Wizard
             Áttekintésben, a `/inspections/[id]` adatlapon és a publikus BMW riportban,
             csak EBBEN a szűk lista-kontextusban váltottuk le. */}
@@ -270,7 +270,7 @@ function InspectionRowItem({
           ) : (
             // Szervezeti RBAC: ez a sor egy csapattárs piszkozata, amit a hívó
             // `can_view_all_reports` miatt LÁT a listában, de nem szerkesztheti (nem ő
-            // a tulajdonos és nem Menedzser) -- lásd `inspections_update_org` RLS
+            // a tulajdonos és nem Menedzser), lásd `inspections_update_org` RLS
             // policy-t. Nincs link, csak egy tájékoztató felirat.
             <span className="text-[12px] italic text-linear-ink-subtle">Csapattárs piszkozata</span>
           )

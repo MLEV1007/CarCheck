@@ -15,7 +15,7 @@ export function SignOutButton() {
   }
 
   return (
-    // Ugyanaz a mintázat, mint a DashboardHeader.tsx "Beállítások" linkjén -- lásd az ottani
+    // Ugyanaz a mintázat, mint a DashboardHeader.tsx "Beállítások" linkjén, lásd az ottani
     // kommentet és docs/ux-touch-targets-plan-2026-08-14.md H) pontját.
     <button
       onClick={handleSignOut}

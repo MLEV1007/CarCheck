@@ -10,7 +10,7 @@ import {
 } from '@/lib/inspections/videoCompression';
 
 /** A hívó Step-komponens (`StepGeneralPhotos.tsx`/`StepDefects.tsx`) ez alapján dönti el,
- * milyen felül-úszó (overlay) modalt jelenítsen meg -- lásd `MediaProcessingOverlay.tsx`. */
+ * milyen felül-úszó (overlay) modalt jelenítsen meg, lásd `MediaProcessingOverlay.tsx`. */
 export type MediaSelectionModalState =
   | { kind: 'none' }
   | { kind: 'trim-confirm'; durationSeconds: number; onConfirm: () => void; onCancel: () => void }
@@ -18,9 +18,9 @@ export type MediaSelectionModalState =
   | { kind: 'error'; message: string; onClose: () => void };
 
 interface UseMediaSelectionOptions {
-  /** A hívó szervezet videó-jogosultsága -- egyszer, a wizard szintjén lekérdezve
+  /** A hívó szervezet videó-jogosultsága, egyszer, a wizard szintjén lekérdezve
    * (`/api/quotas/summary`), lásd `InspectionWizard.tsx`. Kliens-oldali UX-gyorsítás (nem
-   * kell minden fájlválasztásnál külön hálózati kérést indítani) -- a TÉNYLEGES,
+   * kell minden fájlválasztásnál külön hálózati kérést indítani), a TÉNYLEGES,
    * kikényszerítő ellenőrzés mindig a szerveren történik a feltöltési token kiadásakor
    * (lásd `lib/inspections/mediaUploadServer.ts` `assertVideoUploadAllowed`), tehát egy
    * elavult/hamis `true` itt legfeljebb egy felesleges tömörítést engedne meg, amit a
@@ -29,10 +29,10 @@ interface UseMediaSelectionOptions {
 }
 
 /**
- * Megosztott média-kiválasztási/videó-feldolgozási folyamat -- `StepGeneralPhotos.tsx` ÉS
+ * Megosztott média-kiválasztási/videó-feldolgozási folyamat, `StepGeneralPhotos.tsx` ÉS
  * `StepDefects.tsx` (a `DefectMediaUpload.tsx`-en keresztül) EGYARÁNT ezt a hook-ot hívja,
  * amikor a felhasználó fájlt választ (akár az asztali fájlválasztóból, akár a QR-kódos
- * telefonos feltöltésből -- ez utóbbi viszont a saját, KÜLÖN, `app/qr-upload/[token]/`
+ * telefonos feltöltésből, ez utóbbi viszont a saját, KÜLÖN, `app/qr-upload/[token]/`
  * oldalán fut, ahol NINCS `useMediaSelection`, mert ott a tömörítés+feltöltés egy egyszerűbb,
  * lineáris folyamat, videó/kép-választás nélküli lépések nélkül). Lásd
  * PLAN_video_qr_upload.md 3. és 6. szakaszát a teljes döntési fáért:
@@ -43,13 +43,13 @@ interface UseMediaSelectionOptions {
  *   3. Videó, jogosult, `MAX_VIDEO_DURATION_SECONDS`-nál rövidebb -> tömörítés, majd a
  *      tömörített `File` visszaadva.
  *   4. Videó, jogosult, DE hosszabb -> a felhasználónak MEG KELL erősítenie a vágást (egy
- *      beágyazott modal-állapoton keresztül, lásd `modalState`) -- "Mégse" esetén a fájl
+ *      beágyazott modal-állapoton keresztül, lásd `modalState`), "Mégse" esetén a fájl
  *      ELUTASÍTVA, "Vágás és tömörítés" esetén a tömörítés `trimToSeconds:
  *      MAX_VIDEO_DURATION_SECONDS`-szal fut.
- *   5. Bármilyen tömörítési hiba -> hibaüzenet-modal, a fájl ELUTASÍTVA -- SOSE esik vissza a
+ *   5. Bármilyen tömörítési hiba -> hibaüzenet-modal, a fájl ELUTASÍTVA, SOSE esik vissza a
  *      tömörítetlen eredetire (lásd `videoCompression.ts` modul-JSDoc-ját).
  *
- * A hook maga NEM renderel semmit -- a hívó Step-komponens a visszaadott `modalState`
+ * A hook maga NEM renderel semmit, a hívó Step-komponens a visszaadott `modalState`
  * alapján jeleníti meg a folyamatot (`MediaProcessingOverlay.tsx`), hogy a JSX-struktúra
  * (Linear-stílusú kártyák, gombok) a hívónál maradjon, ugyanaz az elv, mint a
  * `useSpeechToText`-nél (`lib/hooks/useSpeechToText.ts`).
