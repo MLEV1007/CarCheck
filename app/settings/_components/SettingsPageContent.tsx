@@ -6,6 +6,7 @@ import { PasskeyCard } from '@/components/settings/PasskeyCard';
 import { DefaultPreferencesCard } from '@/components/settings/DefaultPreferencesCard';
 import { ReportThresholdsCard } from '@/components/settings/ReportThresholdsCard';
 import { SettingsTabs } from '@/components/settings/SettingsTabs';
+import { FeedbackCard } from '@/components/settings/FeedbackCard';
 import { DeleteAccountCard } from '@/components/settings/DeleteAccountCard';
 import { DEFAULT_LICENSE_PLATE_COUNTRY, DEFAULT_REPORT_THRESHOLDS } from '@/lib/inspections/constants';
 import type { ReportThresholds } from '@/lib/inspections/types';
@@ -205,6 +206,7 @@ export async function SettingsPageContent({ initialTab, billingBanner, sessionId
             />
             <ReportThresholdsCard userId={user.id} initialThresholds={initialThresholds} />
             <PasskeyCard />
+            <FeedbackCard />
             <DeleteAccountCard
               email={profile?.email ?? user.email ?? ''}
               role={role}

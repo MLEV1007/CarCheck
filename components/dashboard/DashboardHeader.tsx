@@ -3,6 +3,7 @@ import { Settings } from 'lucide-react';
 import { SignOutButton } from '@/components/auth/SignOutButton';
 import { HeaderCreditBadge } from '@/components/credits/HeaderCreditBadge';
 import { CarPassLogo } from '@/components/branding/CarPassLogo';
+import { FeedbackTriggerButton } from '@/components/feedback/FeedbackTriggerButton';
 
 interface DashboardHeaderProps {
   companyName: string | null;
@@ -72,6 +73,10 @@ export function DashboardHeader({ companyName, logoUrl, role = 'manager' }: Dash
             szöveges label hiányában a korábbi `px-2` padding-only szélesség kb. csak 32px
             volt. `lg:`-nél (asztali nézet, szöveges label) visszaáll a kompakt 32px-es
             magasságra -- lásd docs/ux-touch-targets-plan-2026-08-14.md G) pont. */}
+        {/* Saját, pillekönnyű visszajelző widget (2026-08-22) -- lásd
+            `FeedbackTriggerButton.tsx` JSDoc-ját arról, hogy ez a variáns MIÉRT marad
+            örökre csak-ikon (a korábbi Formbricks-kísérlet navbar-ütközésének elkerülése). */}
+        <FeedbackTriggerButton variant="header-icon" />
         <Link
           href="/settings"
           aria-label="Beállítások"
